@@ -1,0 +1,415 @@
+DEBUG - 2026-05-04 15:28:59 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 15:29:30 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 15:29:31 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 15:29:35 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 15:29:38 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 15:29:45 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 15:29:48 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 15:29:52 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 15:29:55 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 15:30:17 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 15:30:22 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 15:30:24 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 15:30:26 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 15:58:22 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 15:58:35 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 16:08:20 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 16:08:46 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 16:09:01 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 16:09:01 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 16:09:20 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 16:09:24 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+ERROR - 2026-05-04 16:09:24 --> Unknown column 'pay.months_covered' in 'field list'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = 1
+ORDER BY `pay`.`payment_id` DESC', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = 1
+ORDER BY `pay`.`payment_id` DESC')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = 1
+ORDER BY `pay`.`payment_id` DESC')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = :pay.branch_id:
+ORDER BY `pay`.`payment_id` DESC', [...], false)
+ 5 APPPATH\Controllers\PaymentTracking.php(391): CodeIgniter\Database\BaseBuilder->get()
+ 6 APPPATH\Controllers\PaymentTracking.php(92): App\Controllers\PaymentTracking->paymentRows(1)
+ 7 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\PaymentTracking->branchAdmin()
+ 8 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\PaymentTracking))
+ 9 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+10 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+11 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+12 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-05-04 16:09:24 --> CodeIgniter\Database\Exceptions\DatabaseException: Unknown column 'pay.months_covered' in 'field list'
+[Method: GET, Route: branch-admin/payment-tracking]
+in SYSTEMPATH\Database\BaseConnection.php on line 865.
+ 1 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = :pay.branch_id:
+ORDER BY `pay`.`payment_id` DESC', [...], false)
+ 2 APPPATH\Controllers\PaymentTracking.php(391): CodeIgniter\Database\BaseBuilder->get()
+ 3 APPPATH\Controllers\PaymentTracking.php(92): App\Controllers\PaymentTracking->paymentRows(1)
+ 4 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\PaymentTracking->branchAdmin()
+ 5 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\PaymentTracking))
+ 6 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 7 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+ 8 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 9 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-05-04 16:09:24 --> [Caused by] CodeIgniter\Database\Exceptions\DatabaseException: Unknown column 'pay.months_covered' in 'field list'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 310.
+ 1 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = 1
+ORDER BY `pay`.`payment_id` DESC')
+ 2 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = 1
+ORDER BY `pay`.`payment_id` DESC')
+ 3 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = :pay.branch_id:
+ORDER BY `pay`.`payment_id` DESC', [...], false)
+ 4 APPPATH\Controllers\PaymentTracking.php(391): CodeIgniter\Database\BaseBuilder->get()
+ 5 APPPATH\Controllers\PaymentTracking.php(92): App\Controllers\PaymentTracking->paymentRows(1)
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\PaymentTracking->branchAdmin()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\PaymentTracking))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-05-04 16:09:24 --> [Caused by] mysqli_sql_exception: Unknown column 'pay.months_covered' in 'field list'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = 1
+ORDER BY `pay`.`payment_id` DESC', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = 1
+ORDER BY `pay`.`payment_id` DESC')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = 1
+ORDER BY `pay`.`payment_id` DESC')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = :pay.branch_id:
+ORDER BY `pay`.`payment_id` DESC', [...], false)
+ 5 APPPATH\Controllers\PaymentTracking.php(391): CodeIgniter\Database\BaseBuilder->get()
+ 6 APPPATH\Controllers\PaymentTracking.php(92): App\Controllers\PaymentTracking->paymentRows(1)
+ 7 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\PaymentTracking->branchAdmin()
+ 8 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\PaymentTracking))
+ 9 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+10 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+11 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+12 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-05-04 16:09:35 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 16:09:35 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 16:09:41 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 16:09:42 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 16:09:43 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 16:09:50 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 16:09:52 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+ERROR - 2026-05-04 16:09:52 --> Unknown column 'pay.months_covered' in 'field list'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = 1
+ORDER BY `pay`.`payment_id` DESC', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = 1
+ORDER BY `pay`.`payment_id` DESC')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = 1
+ORDER BY `pay`.`payment_id` DESC')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = :pay.branch_id:
+ORDER BY `pay`.`payment_id` DESC', [...], false)
+ 5 APPPATH\Controllers\PaymentTracking.php(391): CodeIgniter\Database\BaseBuilder->get()
+ 6 APPPATH\Controllers\PaymentTracking.php(92): App\Controllers\PaymentTracking->paymentRows(1)
+ 7 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\PaymentTracking->branchAdmin()
+ 8 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\PaymentTracking))
+ 9 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+10 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+11 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+12 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-05-04 16:09:52 --> CodeIgniter\Database\Exceptions\DatabaseException: Unknown column 'pay.months_covered' in 'field list'
+[Method: GET, Route: branch-admin/payment-tracking]
+in SYSTEMPATH\Database\BaseConnection.php on line 865.
+ 1 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = :pay.branch_id:
+ORDER BY `pay`.`payment_id` DESC', [...], false)
+ 2 APPPATH\Controllers\PaymentTracking.php(391): CodeIgniter\Database\BaseBuilder->get()
+ 3 APPPATH\Controllers\PaymentTracking.php(92): App\Controllers\PaymentTracking->paymentRows(1)
+ 4 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\PaymentTracking->branchAdmin()
+ 5 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\PaymentTracking))
+ 6 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 7 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+ 8 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 9 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-05-04 16:09:52 --> [Caused by] CodeIgniter\Database\Exceptions\DatabaseException: Unknown column 'pay.months_covered' in 'field list'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 310.
+ 1 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = 1
+ORDER BY `pay`.`payment_id` DESC')
+ 2 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = 1
+ORDER BY `pay`.`payment_id` DESC')
+ 3 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = :pay.branch_id:
+ORDER BY `pay`.`payment_id` DESC', [...], false)
+ 4 APPPATH\Controllers\PaymentTracking.php(391): CodeIgniter\Database\BaseBuilder->get()
+ 5 APPPATH\Controllers\PaymentTracking.php(92): App\Controllers\PaymentTracking->paymentRows(1)
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\PaymentTracking->branchAdmin()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\PaymentTracking))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-05-04 16:09:52 --> [Caused by] mysqli_sql_exception: Unknown column 'pay.months_covered' in 'field list'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = 1
+ORDER BY `pay`.`payment_id` DESC', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = 1
+ORDER BY `pay`.`payment_id` DESC')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = 1
+ORDER BY `pay`.`payment_id` DESC')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = :pay.branch_id:
+ORDER BY `pay`.`payment_id` DESC', [...], false)
+ 5 APPPATH\Controllers\PaymentTracking.php(391): CodeIgniter\Database\BaseBuilder->get()
+ 6 APPPATH\Controllers\PaymentTracking.php(92): App\Controllers\PaymentTracking->paymentRows(1)
+ 7 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\PaymentTracking->branchAdmin()
+ 8 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\PaymentTracking))
+ 9 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+10 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+11 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+12 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-05-04 16:09:55 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 16:15:34 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 16:15:39 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 16:15:58 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 16:15:59 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 16:16:02 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 16:16:14 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 16:16:18 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 16:17:03 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 16:17:05 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+ERROR - 2026-05-04 16:17:05 --> Unknown column 'pay.months_covered' in 'field list'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = 1
+ORDER BY `pay`.`payment_id` DESC', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = 1
+ORDER BY `pay`.`payment_id` DESC')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = 1
+ORDER BY `pay`.`payment_id` DESC')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = :pay.branch_id:
+ORDER BY `pay`.`payment_id` DESC', [...], false)
+ 5 APPPATH\Controllers\PaymentTracking.php(391): CodeIgniter\Database\BaseBuilder->get()
+ 6 APPPATH\Controllers\PaymentTracking.php(92): App\Controllers\PaymentTracking->paymentRows(1)
+ 7 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\PaymentTracking->branchAdmin()
+ 8 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\PaymentTracking))
+ 9 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+10 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+11 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+12 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-05-04 16:17:05 --> CodeIgniter\Database\Exceptions\DatabaseException: Unknown column 'pay.months_covered' in 'field list'
+[Method: GET, Route: branch-admin/payment-tracking]
+in SYSTEMPATH\Database\BaseConnection.php on line 865.
+ 1 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = :pay.branch_id:
+ORDER BY `pay`.`payment_id` DESC', [...], false)
+ 2 APPPATH\Controllers\PaymentTracking.php(391): CodeIgniter\Database\BaseBuilder->get()
+ 3 APPPATH\Controllers\PaymentTracking.php(92): App\Controllers\PaymentTracking->paymentRows(1)
+ 4 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\PaymentTracking->branchAdmin()
+ 5 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\PaymentTracking))
+ 6 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 7 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+ 8 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 9 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-05-04 16:17:05 --> [Caused by] CodeIgniter\Database\Exceptions\DatabaseException: Unknown column 'pay.months_covered' in 'field list'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 310.
+ 1 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = 1
+ORDER BY `pay`.`payment_id` DESC')
+ 2 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = 1
+ORDER BY `pay`.`payment_id` DESC')
+ 3 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = :pay.branch_id:
+ORDER BY `pay`.`payment_id` DESC', [...], false)
+ 4 APPPATH\Controllers\PaymentTracking.php(391): CodeIgniter\Database\BaseBuilder->get()
+ 5 APPPATH\Controllers\PaymentTracking.php(92): App\Controllers\PaymentTracking->paymentRows(1)
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\PaymentTracking->branchAdmin()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\PaymentTracking))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-05-04 16:17:05 --> [Caused by] mysqli_sql_exception: Unknown column 'pay.months_covered' in 'field list'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = 1
+ORDER BY `pay`.`payment_id` DESC', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = 1
+ORDER BY `pay`.`payment_id` DESC')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = 1
+ORDER BY `pay`.`payment_id` DESC')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `pay`.`payment_id`, `pay`.`plan_id`, `pay`.`amount`, `pay`.`months_covered`, `pay`.`payment_date`, `pay`.`payment_method`, `pay`.`reference_number`, `pay`.`official_receipt_number`, `pay`.`status`, `pay`.`remarks`, `pay`.`received_by`, `pay`.`verified_at`, `pay`.`verified_by`, `u`.`first_name`, `u`.`last_name`, `ph`.`unique_identifier`
+FROM `payments` `pay`
+INNER JOIN `plans` `p` ON `p`.`plan_id` = `pay`.`plan_id`
+INNER JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `p`.`plan_holder_id`
+INNER JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+WHERE `pay`.`branch_id` = :pay.branch_id:
+ORDER BY `pay`.`payment_id` DESC', [...], false)
+ 5 APPPATH\Controllers\PaymentTracking.php(391): CodeIgniter\Database\BaseBuilder->get()
+ 6 APPPATH\Controllers\PaymentTracking.php(92): App\Controllers\PaymentTracking->paymentRows(1)
+ 7 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\PaymentTracking->branchAdmin()
+ 8 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\PaymentTracking))
+ 9 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+10 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+11 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+12 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-05-04 16:17:35 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-04 16:17:37 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.

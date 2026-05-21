@@ -1,0 +1,668 @@
+DEBUG - 2026-05-10 07:52:13 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 07:52:29 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+ERROR - 2026-05-10 07:53:55 --> Unknown column 'type' in 'field list'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('INSERT INTO `notifications` (`user_id`, `message`, `type`, `status`, `created_at`) VALUES (13, \'Your account was created. Complete plan holder registration to unlock services and payments.\', \'registration_pending\', \'unread\', \'2026-05-10 07:53:55\')', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('INSERT INTO `notifications` (`user_id`, `message`, `type`, `status`, `created_at`) VALUES (13, \'Your account was created. Complete plan holder registration to unlock services and payments.\', \'registration_pending\', \'unread\', \'2026-05-10 07:53:55\')')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('INSERT INTO `notifications` (`user_id`, `message`, `type`, `status`, `created_at`) VALUES (13, \'Your account was created. Complete plan holder registration to unlock services and payments.\', \'registration_pending\', \'unread\', \'2026-05-10 07:53:55\')')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(2345): CodeIgniter\Database\BaseConnection->query('INSERT INTO `notifications` (`user_id`, `message`, `type`, `status`, `created_at`) VALUES (:user_id:, :message:, :type:, :status:, :created_at:)', [...], false)
+ 5 APPPATH\Services\NotificationService.php(35): CodeIgniter\Database\BaseBuilder->insert([...])
+ 6 APPPATH\Controllers\Auth.php(167): App\Services\NotificationService->notify(13, 'Your account was created. Complete plan holder registration to unlock services and payments.', 'registration_pending')
+ 7 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Auth->attemptRegister()
+ 8 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Auth))
+ 9 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+10 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+11 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+12 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+ERROR - 2026-05-10 07:53:55 --> NotificationService::notify - Unknown column 'type' in 'field list'
+ERROR - 2026-05-10 07:53:55 --> Table 'kaagapay_db.activity_logs' doesn't exist
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('INSERT INTO `activity_logs` (`user_id`, `action`, `module`, `target_id`, `description`, `old_values`, `new_values`, `ip_address`, `created_at`) VALUES (13, \'created\', \'user\', 13, \'Registered new client account\', NULL, \'{\\"linked_existing_plan_holder\\":false}\', \'::1\', \'2026-05-10 07:53:55\')', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('INSERT INTO `activity_logs` (`user_id`, `action`, `module`, `target_id`, `description`, `old_values`, `new_values`, `ip_address`, `created_at`) VALUES (13, \'created\', \'user\', 13, \'Registered new client account\', NULL, \'{\\"linked_existing_plan_holder\\":false}\', \'::1\', \'2026-05-10 07:53:55\')')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('INSERT INTO `activity_logs` (`user_id`, `action`, `module`, `target_id`, `description`, `old_values`, `new_values`, `ip_address`, `created_at`) VALUES (13, \'created\', \'user\', 13, \'Registered new client account\', NULL, \'{\\"linked_existing_plan_holder\\":false}\', \'::1\', \'2026-05-10 07:53:55\')')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(2345): CodeIgniter\Database\BaseConnection->query('INSERT INTO `activity_logs` (`user_id`, `action`, `module`, `target_id`, `description`, `old_values`, `new_values`, `ip_address`, `created_at`) VALUES (:user_id:, :action:, :module:, :target_id:, :description:, :old_values:, :new_values:, :ip_address:, :created_at:)', [...], false)
+ 5 APPPATH\Services\ActivityLogService.php(52): CodeIgniter\Database\BaseBuilder->insert([...])
+ 6 APPPATH\Controllers\Auth.php(170): App\Services\ActivityLogService->log(13, 'created', 'user', 13, 'Registered new client account', null, [...])
+ 7 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Auth->attemptRegister()
+ 8 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Auth))
+ 9 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+10 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+11 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+12 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+ERROR - 2026-05-10 07:53:55 --> ActivityLogService::log - Table 'kaagapay_db.activity_logs' doesn't exist
+DEBUG - 2026-05-10 07:53:55 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 07:53:55 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 07:53:59 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 07:54:00 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 07:54:09 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 07:54:14 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 07:54:15 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 07:54:27 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 07:54:28 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 07:54:48 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 07:54:50 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 07:54:53 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 07:54:55 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+ERROR - 2026-05-10 07:54:55 --> Table 'kaagapay_db.service_list' doesn't exist
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = 1
+ORDER BY `service_name` ASC', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = 1
+ORDER BY `service_name` ASC')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = 1
+ORDER BY `service_name` ASC')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = :is_available:
+ORDER BY `service_name` ASC', [...], false)
+ 5 APPPATH\Controllers\Client\ClientServiceController.php(39): CodeIgniter\Database\BaseBuilder->get()
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Client\ClientServiceController->services()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Client\ClientServiceController))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-05-10 07:54:55 --> CodeIgniter\Database\Exceptions\DatabaseException: Table 'kaagapay_db.service_list' doesn't exist
+[Method: GET, Route: client/service]
+in SYSTEMPATH\Database\BaseConnection.php on line 865.
+ 1 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = :is_available:
+ORDER BY `service_name` ASC', [...], false)
+ 2 APPPATH\Controllers\Client\ClientServiceController.php(39): CodeIgniter\Database\BaseBuilder->get()
+ 3 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Client\ClientServiceController->services()
+ 4 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Client\ClientServiceController))
+ 5 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 6 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+ 7 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 8 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-05-10 07:54:55 --> [Caused by] CodeIgniter\Database\Exceptions\DatabaseException: Table 'kaagapay_db.service_list' doesn't exist
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 310.
+ 1 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = 1
+ORDER BY `service_name` ASC')
+ 2 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = 1
+ORDER BY `service_name` ASC')
+ 3 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = :is_available:
+ORDER BY `service_name` ASC', [...], false)
+ 4 APPPATH\Controllers\Client\ClientServiceController.php(39): CodeIgniter\Database\BaseBuilder->get()
+ 5 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Client\ClientServiceController->services()
+ 6 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Client\ClientServiceController))
+ 7 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 8 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+ 9 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+10 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-05-10 07:54:55 --> [Caused by] mysqli_sql_exception: Table 'kaagapay_db.service_list' doesn't exist
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = 1
+ORDER BY `service_name` ASC', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = 1
+ORDER BY `service_name` ASC')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = 1
+ORDER BY `service_name` ASC')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = :is_available:
+ORDER BY `service_name` ASC', [...], false)
+ 5 APPPATH\Controllers\Client\ClientServiceController.php(39): CodeIgniter\Database\BaseBuilder->get()
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Client\ClientServiceController->services()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Client\ClientServiceController))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-05-10 07:55:05 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 07:55:08 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 10:08:25 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 10:08:38 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 10:08:38 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 10:08:55 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 10:08:56 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 10:08:58 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+ERROR - 2026-05-10 10:08:58 --> Table 'kaagapay_db.service_list' doesn't exist
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = 1
+ORDER BY `service_name` ASC', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = 1
+ORDER BY `service_name` ASC')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = 1
+ORDER BY `service_name` ASC')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = :is_available:
+ORDER BY `service_name` ASC', [...], false)
+ 5 APPPATH\Controllers\Client\ClientServiceController.php(39): CodeIgniter\Database\BaseBuilder->get()
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Client\ClientServiceController->services()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Client\ClientServiceController))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-05-10 10:08:59 --> CodeIgniter\Database\Exceptions\DatabaseException: Table 'kaagapay_db.service_list' doesn't exist
+[Method: GET, Route: client/service]
+in SYSTEMPATH\Database\BaseConnection.php on line 865.
+ 1 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = :is_available:
+ORDER BY `service_name` ASC', [...], false)
+ 2 APPPATH\Controllers\Client\ClientServiceController.php(39): CodeIgniter\Database\BaseBuilder->get()
+ 3 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Client\ClientServiceController->services()
+ 4 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Client\ClientServiceController))
+ 5 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 6 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+ 7 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 8 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-05-10 10:08:59 --> [Caused by] CodeIgniter\Database\Exceptions\DatabaseException: Table 'kaagapay_db.service_list' doesn't exist
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 310.
+ 1 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = 1
+ORDER BY `service_name` ASC')
+ 2 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = 1
+ORDER BY `service_name` ASC')
+ 3 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = :is_available:
+ORDER BY `service_name` ASC', [...], false)
+ 4 APPPATH\Controllers\Client\ClientServiceController.php(39): CodeIgniter\Database\BaseBuilder->get()
+ 5 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Client\ClientServiceController->services()
+ 6 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Client\ClientServiceController))
+ 7 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 8 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+ 9 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+10 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-05-10 10:08:59 --> [Caused by] mysqli_sql_exception: Table 'kaagapay_db.service_list' doesn't exist
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = 1
+ORDER BY `service_name` ASC', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = 1
+ORDER BY `service_name` ASC')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = 1
+ORDER BY `service_name` ASC')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = :is_available:
+ORDER BY `service_name` ASC', [...], false)
+ 5 APPPATH\Controllers\Client\ClientServiceController.php(39): CodeIgniter\Database\BaseBuilder->get()
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Client\ClientServiceController->services()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Client\ClientServiceController))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-05-10 10:09:03 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+ERROR - 2026-05-10 10:09:03 --> Table 'kaagapay_db.service_list' doesn't exist
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = 1
+ORDER BY `service_name` ASC', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = 1
+ORDER BY `service_name` ASC')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = 1
+ORDER BY `service_name` ASC')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = :is_available:
+ORDER BY `service_name` ASC', [...], false)
+ 5 APPPATH\Controllers\Client\ClientServiceController.php(39): CodeIgniter\Database\BaseBuilder->get()
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Client\ClientServiceController->services()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Client\ClientServiceController))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-05-10 10:09:03 --> CodeIgniter\Database\Exceptions\DatabaseException: Table 'kaagapay_db.service_list' doesn't exist
+[Method: GET, Route: client/service]
+in SYSTEMPATH\Database\BaseConnection.php on line 865.
+ 1 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = :is_available:
+ORDER BY `service_name` ASC', [...], false)
+ 2 APPPATH\Controllers\Client\ClientServiceController.php(39): CodeIgniter\Database\BaseBuilder->get()
+ 3 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Client\ClientServiceController->services()
+ 4 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Client\ClientServiceController))
+ 5 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 6 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+ 7 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 8 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-05-10 10:09:03 --> [Caused by] CodeIgniter\Database\Exceptions\DatabaseException: Table 'kaagapay_db.service_list' doesn't exist
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 310.
+ 1 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = 1
+ORDER BY `service_name` ASC')
+ 2 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = 1
+ORDER BY `service_name` ASC')
+ 3 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = :is_available:
+ORDER BY `service_name` ASC', [...], false)
+ 4 APPPATH\Controllers\Client\ClientServiceController.php(39): CodeIgniter\Database\BaseBuilder->get()
+ 5 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Client\ClientServiceController->services()
+ 6 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Client\ClientServiceController))
+ 7 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 8 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+ 9 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+10 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-05-10 10:09:03 --> [Caused by] mysqli_sql_exception: Table 'kaagapay_db.service_list' doesn't exist
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = 1
+ORDER BY `service_name` ASC', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = 1
+ORDER BY `service_name` ASC')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = 1
+ORDER BY `service_name` ASC')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = :is_available:
+ORDER BY `service_name` ASC', [...], false)
+ 5 APPPATH\Controllers\Client\ClientServiceController.php(39): CodeIgniter\Database\BaseBuilder->get()
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Client\ClientServiceController->services()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Client\ClientServiceController))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-05-10 10:09:29 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+ERROR - 2026-05-10 10:09:29 --> Table 'kaagapay_db.service_list' doesn't exist
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = 1
+ORDER BY `service_name` ASC', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = 1
+ORDER BY `service_name` ASC')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = 1
+ORDER BY `service_name` ASC')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = :is_available:
+ORDER BY `service_name` ASC', [...], false)
+ 5 APPPATH\Controllers\Client\ClientServiceController.php(39): CodeIgniter\Database\BaseBuilder->get()
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Client\ClientServiceController->services()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Client\ClientServiceController))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-05-10 10:09:29 --> CodeIgniter\Database\Exceptions\DatabaseException: Table 'kaagapay_db.service_list' doesn't exist
+[Method: GET, Route: client/service]
+in SYSTEMPATH\Database\BaseConnection.php on line 865.
+ 1 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = :is_available:
+ORDER BY `service_name` ASC', [...], false)
+ 2 APPPATH\Controllers\Client\ClientServiceController.php(39): CodeIgniter\Database\BaseBuilder->get()
+ 3 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Client\ClientServiceController->services()
+ 4 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Client\ClientServiceController))
+ 5 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 6 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+ 7 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 8 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-05-10 10:09:29 --> [Caused by] CodeIgniter\Database\Exceptions\DatabaseException: Table 'kaagapay_db.service_list' doesn't exist
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 310.
+ 1 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = 1
+ORDER BY `service_name` ASC')
+ 2 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = 1
+ORDER BY `service_name` ASC')
+ 3 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = :is_available:
+ORDER BY `service_name` ASC', [...], false)
+ 4 APPPATH\Controllers\Client\ClientServiceController.php(39): CodeIgniter\Database\BaseBuilder->get()
+ 5 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Client\ClientServiceController->services()
+ 6 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Client\ClientServiceController))
+ 7 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 8 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+ 9 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+10 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-05-10 10:09:29 --> [Caused by] mysqli_sql_exception: Table 'kaagapay_db.service_list' doesn't exist
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = 1
+ORDER BY `service_name` ASC', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = 1
+ORDER BY `service_name` ASC')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = 1
+ORDER BY `service_name` ASC')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `service_list_id`, `service_name`, `description`, `base_price`
+FROM `service_list`
+WHERE `is_available` = :is_available:
+ORDER BY `service_name` ASC', [...], false)
+ 5 APPPATH\Controllers\Client\ClientServiceController.php(39): CodeIgniter\Database\BaseBuilder->get()
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Client\ClientServiceController->services()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Client\ClientServiceController))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-05-10 10:21:28 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 10:21:32 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 10:21:35 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 10:21:35 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 10:25:01 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 10:25:05 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 10:25:40 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+ERROR - 2026-05-10 10:25:40 --> Unknown column 'plan_name' in 'field list'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = 1
+ORDER BY `monthly_contribution` ASC', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = 1
+ORDER BY `monthly_contribution` ASC')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = 1
+ORDER BY `monthly_contribution` ASC')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = :is_available:
+ORDER BY `monthly_contribution` ASC', [...], false)
+ 5 APPPATH\Controllers\Client\ClientRegistrationController.php(41): CodeIgniter\Database\BaseBuilder->get()
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Client\ClientRegistrationController->planInfo()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Client\ClientRegistrationController))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-05-10 10:25:40 --> CodeIgniter\Database\Exceptions\DatabaseException: Unknown column 'plan_name' in 'field list'
+[Method: GET, Route: plan-info]
+in SYSTEMPATH\Database\BaseConnection.php on line 865.
+ 1 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = :is_available:
+ORDER BY `monthly_contribution` ASC', [...], false)
+ 2 APPPATH\Controllers\Client\ClientRegistrationController.php(41): CodeIgniter\Database\BaseBuilder->get()
+ 3 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Client\ClientRegistrationController->planInfo()
+ 4 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Client\ClientRegistrationController))
+ 5 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 6 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+ 7 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 8 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-05-10 10:25:40 --> [Caused by] CodeIgniter\Database\Exceptions\DatabaseException: Unknown column 'plan_name' in 'field list'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 310.
+ 1 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = 1
+ORDER BY `monthly_contribution` ASC')
+ 2 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = 1
+ORDER BY `monthly_contribution` ASC')
+ 3 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = :is_available:
+ORDER BY `monthly_contribution` ASC', [...], false)
+ 4 APPPATH\Controllers\Client\ClientRegistrationController.php(41): CodeIgniter\Database\BaseBuilder->get()
+ 5 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Client\ClientRegistrationController->planInfo()
+ 6 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Client\ClientRegistrationController))
+ 7 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 8 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+ 9 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+10 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-05-10 10:25:40 --> [Caused by] mysqli_sql_exception: Unknown column 'plan_name' in 'field list'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = 1
+ORDER BY `monthly_contribution` ASC', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = 1
+ORDER BY `monthly_contribution` ASC')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = 1
+ORDER BY `monthly_contribution` ASC')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = :is_available:
+ORDER BY `monthly_contribution` ASC', [...], false)
+ 5 APPPATH\Controllers\Client\ClientRegistrationController.php(41): CodeIgniter\Database\BaseBuilder->get()
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Client\ClientRegistrationController->planInfo()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Client\ClientRegistrationController))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-05-10 10:26:00 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 10:26:03 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+ERROR - 2026-05-10 10:26:03 --> Unknown column 'plan_name' in 'field list'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = 1
+ORDER BY `monthly_contribution` ASC', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = 1
+ORDER BY `monthly_contribution` ASC')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = 1
+ORDER BY `monthly_contribution` ASC')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = :is_available:
+ORDER BY `monthly_contribution` ASC', [...], false)
+ 5 APPPATH\Controllers\Client\ClientRegistrationController.php(41): CodeIgniter\Database\BaseBuilder->get()
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Client\ClientRegistrationController->planInfo()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Client\ClientRegistrationController))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-05-10 10:26:03 --> CodeIgniter\Database\Exceptions\DatabaseException: Unknown column 'plan_name' in 'field list'
+[Method: GET, Route: plan-info]
+in SYSTEMPATH\Database\BaseConnection.php on line 865.
+ 1 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = :is_available:
+ORDER BY `monthly_contribution` ASC', [...], false)
+ 2 APPPATH\Controllers\Client\ClientRegistrationController.php(41): CodeIgniter\Database\BaseBuilder->get()
+ 3 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Client\ClientRegistrationController->planInfo()
+ 4 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Client\ClientRegistrationController))
+ 5 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 6 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+ 7 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 8 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-05-10 10:26:03 --> [Caused by] CodeIgniter\Database\Exceptions\DatabaseException: Unknown column 'plan_name' in 'field list'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 310.
+ 1 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = 1
+ORDER BY `monthly_contribution` ASC')
+ 2 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = 1
+ORDER BY `monthly_contribution` ASC')
+ 3 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = :is_available:
+ORDER BY `monthly_contribution` ASC', [...], false)
+ 4 APPPATH\Controllers\Client\ClientRegistrationController.php(41): CodeIgniter\Database\BaseBuilder->get()
+ 5 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Client\ClientRegistrationController->planInfo()
+ 6 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Client\ClientRegistrationController))
+ 7 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 8 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+ 9 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+10 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-05-10 10:26:03 --> [Caused by] mysqli_sql_exception: Unknown column 'plan_name' in 'field list'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = 1
+ORDER BY `monthly_contribution` ASC', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = 1
+ORDER BY `monthly_contribution` ASC')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = 1
+ORDER BY `monthly_contribution` ASC')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = :is_available:
+ORDER BY `monthly_contribution` ASC', [...], false)
+ 5 APPPATH\Controllers\Client\ClientRegistrationController.php(41): CodeIgniter\Database\BaseBuilder->get()
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Client\ClientRegistrationController->planInfo()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Client\ClientRegistrationController))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-05-10 10:27:56 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 10:28:06 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 10:30:38 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 10:30:39 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+ERROR - 2026-05-10 10:30:39 --> Unknown column 'plan_name' in 'field list'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = 1
+ORDER BY `monthly_contribution` ASC', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = 1
+ORDER BY `monthly_contribution` ASC')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = 1
+ORDER BY `monthly_contribution` ASC')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = :is_available:
+ORDER BY `monthly_contribution` ASC', [...], false)
+ 5 APPPATH\Controllers\Client\ClientRegistrationController.php(41): CodeIgniter\Database\BaseBuilder->get()
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Client\ClientRegistrationController->planInfo()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Client\ClientRegistrationController))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-05-10 10:30:39 --> CodeIgniter\Database\Exceptions\DatabaseException: Unknown column 'plan_name' in 'field list'
+[Method: GET, Route: plan-info]
+in SYSTEMPATH\Database\BaseConnection.php on line 865.
+ 1 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = :is_available:
+ORDER BY `monthly_contribution` ASC', [...], false)
+ 2 APPPATH\Controllers\Client\ClientRegistrationController.php(41): CodeIgniter\Database\BaseBuilder->get()
+ 3 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Client\ClientRegistrationController->planInfo()
+ 4 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Client\ClientRegistrationController))
+ 5 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 6 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+ 7 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 8 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-05-10 10:30:39 --> [Caused by] CodeIgniter\Database\Exceptions\DatabaseException: Unknown column 'plan_name' in 'field list'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 310.
+ 1 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = 1
+ORDER BY `monthly_contribution` ASC')
+ 2 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = 1
+ORDER BY `monthly_contribution` ASC')
+ 3 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = :is_available:
+ORDER BY `monthly_contribution` ASC', [...], false)
+ 4 APPPATH\Controllers\Client\ClientRegistrationController.php(41): CodeIgniter\Database\BaseBuilder->get()
+ 5 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Client\ClientRegistrationController->planInfo()
+ 6 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Client\ClientRegistrationController))
+ 7 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 8 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+ 9 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+10 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-05-10 10:30:39 --> [Caused by] mysqli_sql_exception: Unknown column 'plan_name' in 'field list'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = 1
+ORDER BY `monthly_contribution` ASC', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = 1
+ORDER BY `monthly_contribution` ASC')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = 1
+ORDER BY `monthly_contribution` ASC')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `plan_id`, `plan_name`, `monthly_contribution`, `description`
+FROM `plans`
+WHERE `is_available` = :is_available:
+ORDER BY `monthly_contribution` ASC', [...], false)
+ 5 APPPATH\Controllers\Client\ClientRegistrationController.php(41): CodeIgniter\Database\BaseBuilder->get()
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Client\ClientRegistrationController->planInfo()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Client\ClientRegistrationController))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-05-10 10:36:07 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 10:37:56 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 10:38:00 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 10:38:03 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-05-10 10:38:17 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
