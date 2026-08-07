@@ -1,267 +1,436 @@
 <?= $this->extend($role_layout) ?>
 
 <?= $this->section('content') ?>
-<?php $state = (string) ($access['state'] ?? 'unregistered'); ?>
-<style>
-    .restricted-wrap { position: relative; }
-    .restricted-blur { filter: blur(4px); pointer-events: none; user-select: none; }
-    .restricted-modal {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(255,255,255,.55);
-    }
-</style>
+<link rel="stylesheet" href="<?= base_url('assets/css/advance-payment.css') ?>?v=<?= date('YmdHis') ?>">
+<link rel="stylesheet" href="<?= base_url('assets/css/payments.css') ?>?v=<?= date('YmdHis') ?>">
 
-<div class="container-fluid">
-    <div class="mb-3">
-        <h1 class="h3 mb-1">Payment</h1>
-        <p class="text-muted mb-0">Track contribution records.</p>
+<?php
+    $state = (string) ($access['state'] ?? 'unregistered');
+    $viewMode = (string) ($view_mode ?? 'history');
+    $monthlyFee = (float) ($monthly_fee ?? ($plan['monthly_fee'] ?? ($program['monthly_fee'] ?? 240)));
+    $userName = (string) ($user_name ?? trim((string) (($access['user']['first_name'] ?? '') . ' ' . ($access['user']['last_name'] ?? ''))));
+    $planName = (string) ($plan_name ?? ($program['name'] ?? 'Damayan Burial Program'));
+    $lastPaymentStatus = (string) ($last_payment_status ?? 'None');
+
+    // Discount tiers
+    $discounts = [
+        1 => ['label' => '1 Month', 'discount' => 0, 'discount_label' => ''],
+        3 => ['label' => '3 Months (Save 5%)', 'discount' => 0.05, 'discount_label' => '5%'],
+        6 => ['label' => '6 Months (Save 10%)', 'discount' => 0.10, 'discount_label' => '10%'],
+        12 => ['label' => '12 Months (Save 15%)', 'discount' => 0.15, 'discount_label' => '15%'],
+    ];
+?>
+
+<?php if ($state === 'unregistered'): ?>
+    <!-- ====== Locked State ====== -->
+    <div style="background:var(--ap-surface, #fff);border:1px solid var(--ap-border, #e2e8f0);border-radius:var(--ap-radius, 16px);padding:40px 20px;text-align:center;">
+        <i class="mdi mdi-lock-outline" style="font-size:2.5rem;color:var(--ap-ink-faint, #a0aec0);"></i>
+        <h3 style="margin:16px 0 8px;font-weight:800;">Register to access this feature</h3>
+        <p style="color:var(--ap-ink-soft, #4a5568);margin-bottom:20px;">Payment is restricted until you complete plan registration.</p>
+        <a href="<?= base_url('plan-info') ?>" style="display:inline-flex;align-items:center;gap:6px;padding:12px 22px;border-radius:10px;background:#1e3a5f;color:#fff;border:none;font-weight:800;font-size:0.92rem;text-decoration:none;">Register Now</a>
     </div>
 
+<?php elseif ($state === 'awaiting_activation'): ?>
+    <!-- ====== Awaiting Activation ====== -->
+    <div style="background:var(--ap-surface, #fff);border:1px solid var(--ap-border, #e2e8f0);border-radius:var(--ap-radius, 16px);padding:40px 20px;text-align:center;">
+        <i class="mdi mdi-cash-check" style="font-size:2.5rem;color:var(--ap-orange, #e67e22);"></i>
+        <h3 style="margin:16px 0 8px;font-weight:800;">Complete Your Initial Payment</h3>
+        <p style="color:var(--ap-ink-soft, #4a5568);margin-bottom:20px;">You already registered. Submit your initial payment to unlock your membership.</p>
+        <a href="<?= base_url('initial-payment') ?>" style="display:inline-flex;align-items:center;gap:6px;padding:12px 22px;border-radius:10px;background:#1e3a5f;color:#fff;border:none;font-weight:800;font-size:0.92rem;text-decoration:none;">Go to Initial Payment</a>
+    </div>
+
+<?php else: ?>
+    <!-- ====== Flash Messages ====== -->
     <?php if (session()->getFlashdata('error')): ?>
-        <div class="alert alert-danger"><?= esc(session()->getFlashdata('error')) ?></div>
+        <div class="ap-alert ap-alert--error">
+            <i class="mdi mdi-alert-circle-outline"></i>
+            <?= esc(session()->getFlashdata('error')) ?>
+        </div>
     <?php endif; ?>
-
     <?php if (session()->getFlashdata('success')): ?>
-        <div class="alert alert-success"><?= esc(session()->getFlashdata('success')) ?></div>
+        <div class="ap-alert ap-alert--success">
+            <i class="mdi mdi-check-circle-outline"></i>
+            <?= esc(session()->getFlashdata('success')) ?>
+        </div>
     <?php endif; ?>
 
-    <?php if ($state === 'unregistered'): ?>
-        <div class="restricted-wrap">
-            <div class="restricted-blur">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="mb-3">Payment Records</h5>
-                        <table class="table">
-                            <thead><tr><th>Date</th><th>Amount</th><th>Status</th></tr></thead>
-                            <tbody>
-                                <tr><td colspan="3" class="text-center">No Data Available</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            <div class="restricted-modal">
-                <div class="card shadow" style="max-width: 420px;">
-                    <div class="card-body text-center">
-                        <h5 class="mb-2">Register to access this feature</h5>
-                        <p class="text-muted">Payment is restricted until you complete plan registration.</p>
-                        <a href="<?= base_url('plan-info') ?>" class="btn btn-primary">Register Now</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    <?php elseif ($state === 'awaiting_activation'): ?>
-        <div class="restricted-wrap">
-            <div class="restricted-blur">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="mb-3">Payment Records</h5>
-                        <table class="table">
-                            <thead><tr><th>Date</th><th>Amount</th><th>Status</th></tr></thead>
-                            <tbody>
-                                <tr><td colspan="3" class="text-center">No Data Available</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            <div class="restricted-modal">
-                <div class="card shadow" style="max-width: 420px;">
-                    <div class="card-body text-center">
-                        <h5 class="mb-2">Complete Your Initial Payment</h5>
-                        <p class="text-muted">You already registered. Submit your initial payment to unlock your membership.</p>
-                        <a href="<?= base_url('initial-payment') ?>" class="btn btn-primary">Go to Initial Payment</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    <?php else: ?>
-        <?php if (($access['initial_payment_status'] ?? 'none') === 'cancelled'): ?>
-            <div class="alert alert-danger">Payment rejected. Please resubmit.</div>
-        <?php endif; ?>
+    <?php if ($viewMode === 'advance'): ?>
+        <!-- ====== Advance Payment ====== -->
+        <form method="post" action="<?= base_url('client/payment/submit-gcash') ?>" enctype="multipart/form-data" id="ap-form">
+            <?= csrf_field() ?>
+            <input type="hidden" name="payment_date" value="<?= esc(date('Y-m-d')) ?>">
+            <input type="hidden" name="months_covered" id="ap-months-hidden" value="1">
 
-        <?php if ($state === 'awaiting_activation'): ?>
-            <div class="alert alert-warning">Your registration is complete. Submit your initial payment to activate your membership.</div>
-        <?php endif; ?>
-
-        <?php if ($state === 'active' && $plan): ?>
-            <div class="card mb-3">
-                <div class="card-body">
-                    <h5 class="mb-3">Submit GCash Payment</h5>
-                    <form method="post" action="<?= base_url('client/payment/submit-gcash') ?>" enctype="multipart/form-data">
-                        <?= csrf_field() ?>
-                        <input type="hidden" name="payment_method" value="gcash">
-                        <input type="hidden" name="months_covered" value="1">
-                        <div class="row g-3">
-                            <div class="col-md-3">
-                                <label class="form-label" for="amount">Amount</label>
-                                <input id="amount" name="amount" type="number" step="0.01" class="form-control" value="<?= esc((string) ($plan['monthly_fee'] ?? '0')) ?>" required>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label" for="payment_date">Payment Date</label>
-                                <input id="payment_date" name="payment_date" type="date" class="form-control" value="<?= date('Y-m-d') ?>" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label" for="reference_number">Reference Number</label>
-                                <input id="reference_number" name="reference_number" class="form-control" required>
-                            </div>
-                            <?php if (! empty($supports_proof_upload)): ?>
-                                <div class="col-md-12">
-                                    <label class="form-label" for="proof_image">Proof Image (Optional)</label>
-                                    <input id="proof_image" name="proof_image" type="file" class="form-control" accept="image/*">
-                                </div>
-                            <?php endif; ?>
+            <div class="ap-layout">
+                <!-- ====== Left Column: Payment Details ====== -->
+                <div class="ap-main">
+                    <div class="ap-card">
+                        <div class="ap-card__header">
+                            <h2 class="ap-card__title">Payment Details</h2>
                         </div>
-                        <button class="btn btn-primary mt-3" type="submit">Submit GCash Payment</button>
-                    </form>
-                </div>
-            </div>
+                        <div class="ap-card__body">
 
-            <div class="card mb-3">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Make Advance Payment</h5>
-                        <button class="btn btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#advancePaymentForm" aria-expanded="false">Open Form</button>
-                    </div>
-                    <div class="collapse mt-3" id="advancePaymentForm">
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-4">
-                                <label class="form-label">Plan Name</label>
-                                <select class="form-select" name="program_id" aria-label="Plan Name">
-                                    <?php if (! empty($membership_plans)): ?>
-                                        <?php foreach ($membership_plans as $membershipPlan): ?>
-                                            <option
-                                                value="<?= esc((string) ($membershipPlan['program_id'] ?? 0)) ?>"
-                                                <?= (int) ($program['id'] ?? 0) === (int) ($membershipPlan['program_id'] ?? 0) ? 'selected' : '' ?>
-                                            >
-                                                <?= esc((string) ($membershipPlan['program_name'] ?? 'Damayan Burial Program')) ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    <?php else: ?>
-                                        <option value="">No plans available</option>
-                                    <?php endif; ?>
-                                </select>
+                            <!-- Client Info -->
+                            <div class="ap-client-info">
+                                <strong>Client</strong>
                             </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Membership Status</label>
-                                <input class="form-control" value="<?= esc(ucfirst((string) ($plan['status'] ?? 'active'))) ?>" readonly>
+                            <div class="ap-client-info">
+                                <?= esc($userName) ?>
+                                <span class="ap-client-info__sep">|</span>
+                                Plan: <strong><?= esc($planName) ?></strong>
+                                <span class="ap-client-info__sep">|</span>
+                                Last Payment: <span class="ap-client-info__status ap-client-info__status--<?= strtolower($lastPaymentStatus) === 'paid' ? 'paid' : 'pending' ?>"><?= esc($lastPaymentStatus) ?></span>
                             </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Monthly Contribution</label>
-                                <input class="form-control" value="P<?= esc(number_format((float) ($plan['monthly_fee'] ?? 0), 2)) ?>" readonly>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Remaining Balance</label>
-                                <input class="form-control" value="P<?= esc(number_format((float) ($plan['remaining_balance'] ?? 0), 2)) ?>" readonly>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Months Paid</label>
-                                <input class="form-control" value="<?= esc((string) ((int) ($plan['months_paid'] ?? 0))) ?>" readonly>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Next Due Date</label>
-                                <input class="form-control" value="<?= esc((string) ($plan['next_due_date'] ?? '-')) ?>" readonly>
-                            </div>
-                        </div>
 
-                        <form method="post" action="<?= base_url('client/payment/submit-gcash') ?>" enctype="multipart/form-data" id="advance-payment-form">
-                            <?= csrf_field() ?>
-                            <input type="hidden" name="payment_method" value="gcash">
-                            <div class="row g-3">
-                                <div class="col-md-4">
-                                    <label class="form-label" for="advance_months">Number of Months to Pay</label>
-                                    <select id="advance_months" name="months_covered" class="form-select" required>
-                                        <option value="1">1 Month</option>
-                                        <option value="3">3 Months</option>
-                                        <option value="6">6 Months</option>
-                                        <option value="12">12 Months</option>
-                                    </select>
+                            <!-- Select Advance Months -->
+                            <div class="ap-section-label">Select Advance Months</div>
+                            <div class="ap-months-grid">
+                                <?php foreach ($discounts as $months => $info): ?>
+                                    <button type="button" class="ap-month-btn <?= $months === 1 ? 'ap-month-btn--active' : '' ?>"
+                                            data-months="<?= $months ?>"
+                                            onclick="apSelectMonths(this)">
+                                        <span class="ap-month-btn__label"><?= $info['label'] ?></span>
+                                        <?php if ($info['discount'] > 0): ?>
+                                            <span class="ap-month-btn__discount"><?= $info['discount_label'] ?></span>
+                                        <?php endif; ?>
+                                    </button>
+                                <?php endforeach; ?>
+                            </div>
+
+                            <!-- Progress Bar -->
+                            <div class="ap-progress-wrap">
+                                <div class="ap-progress">
+                                    <div class="ap-progress__fill" id="ap-progress-fill" style="width:8.33%"></div>
                                 </div>
-                                <div class="col-md-4">
-                                    <label class="form-label" for="advance_amount">Amount</label>
-                                    <input id="advance_amount" name="amount" type="number" step="0.01" class="form-control" required>
+                                <span class="ap-progress__label">Months Covered</span>
+                            </div>
+
+                            <!-- Payment Method -->
+                            <div class="ap-section-label">Payment Method</div>
+                            <div class="ap-method-grid">
+                                <button type="button" class="ap-method-btn ap-method-btn--active" data-method="gcash" onclick="apSelectMethod(this)">
+                                    <span class="ap-method-icon ap-method-icon--gcash"><i class="mdi mdi-cash"></i></span>
+                                    GCash
+                                </button>
+                                <button type="button" class="ap-method-btn" data-method="cash" onclick="apSelectMethod(this)">
+                                    <span class="ap-method-icon ap-method-icon--cash"><i class="mdi mdi-cash-multiple"></i></span>
+                                    Cash
+                                </button>
+                            </div>
+                            <input type="hidden" name="payment_method" id="ap-method-hidden" value="gcash">
+
+                            <!-- GCash QR Section -->
+                            <div id="ap-gcash-section" class="ap-qr-section">
+                                <div class="ap-qr-img">
+                                    <i class="mdi mdi-qrcode" style="font-size:3rem;color:var(--ap-ink-faint);"></i>
                                 </div>
-                                <div class="col-md-4">
-                                    <label class="form-label" for="advance_date">Payment Date</label>
-                                    <input id="advance_date" name="payment_date" type="date" class="form-control" value="<?= date('Y-m-d') ?>" required>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label" for="advance_reference">Reference Number</label>
-                                    <input id="advance_reference" name="reference_number" class="form-control" required>
-                                </div>
-                                <?php if (! empty($supports_proof_upload)): ?>
-                                    <div class="col-md-6">
-                                        <label class="form-label" for="advance_proof">Receipt Screenshot</label>
-                                        <input id="advance_proof" name="proof_image" type="file" class="form-control" accept="image/*" required>
+                                <div class="ap-qr-info">
+                                    <h4>GCash QR Code</h4>
+                                    <p>Open the GCash app, scan the QR code, or send the amount to the account details below.</p>
+                                    <div class="ap-qr-account">
+                                        <span>Account Details:</span>
+                                        <strong>GCASH123456789</strong>
+                                        <button type="button" class="ap-copy-btn" onclick="apCopyAccount()">
+                                            <i class="mdi mdi-content-copy"></i> Copy Account
+                                        </button>
                                     </div>
-                                <?php endif; ?>
+                                </div>
                             </div>
-                            <button class="btn btn-primary mt-3" type="submit">Submit Advance Payment</button>
-                        </form>
+
+                            <!-- Cash Section (hidden by default) -->
+                            <div id="ap-cash-section" class="ap-cash-section" style="display:none;">
+                                <h4><i class="mdi mdi-cash-multiple" style="color:var(--ap-green);"></i> Cash Payment</h4>
+                                <p>Visit your branch office to make a cash payment. Ask for the official receipt number after paying, then enter it in the Reference field below.</p>
+                            </div>
+
+                            <!-- Reference -->
+                            <div style="margin-top:20px;">
+                                <div class="ap-ref-label">Reference <span>*</span></div>
+                                <input type="text" class="ap-input" name="reference_number" id="ap-reference" placeholder="GCash Reference Number (e.g., GCASH123456789)" value="<?= esc(old('reference_number')) ?>" required>
+                            </div>
+
+                            <!-- Proof of Payment -->
+                            <div style="margin-top:20px;">
+                                <div class="ap-upload-label">Proof of Payment</div>
+                                <div class="ap-upload-zone" onclick="document.getElementById('ap-proof-input').click();">
+                                    <div class="ap-upload-zone__icon" id="ap-proof-preview">
+                                        <i class="mdi mdi-receipt-text-outline"></i>
+                                    </div>
+                                    <div class="ap-upload-zone__text">
+                                        <h5>Drag-and-drop upload zone</h5>
+                                        <p>PNG, JPG, PDF up to 5MB</p>
+                                    </div>
+                                </div>
+                                <input type="file" id="ap-proof-input" name="proof_image" accept="image/*,.pdf" style="display:none;" onchange="apPreviewProof(this)">
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ====== Right Column: Summary + History ====== -->
+                <div class="ap-sidebar">
+
+                    <!-- Summary Card -->
+                    <div class="ap-card">
+                        <div class="ap-card__header">
+                            <h3 class="ap-card__title">Advance Payment Summary</h3>
+                        </div>
+                        <div class="ap-card__body">
+                            <div class="ap-summary-row">
+                                <span class="ap-summary-row__label">Monthly Rate:</span>
+                                <span class="ap-summary-row__value">₱<?= number_format($monthlyFee, 2) ?></span>
+                            </div>
+                            <div class="ap-summary-row">
+                                <span class="ap-summary-row__label">Months Selected:</span>
+                                <span class="ap-summary-row__value" id="ap-summary-months">x 1</span>
+                            </div>
+                            <div class="ap-summary-row" id="ap-discount-row" style="display:none;">
+                                <span class="ap-summary-row__label">Plan Discount:</span>
+                                <span class="ap-summary-row__value ap-summary-row__value--discount" id="ap-summary-discount">-₱0.00</span>
+                            </div>
+                            <hr class="ap-summary-divider">
+                            <div class="ap-summary-row">
+                                <span class="ap-summary-row__label">Subtotal:</span>
+                                <span class="ap-summary-row__value" id="ap-summary-subtotal">₱<?= number_format($monthlyFee, 2) ?></span>
+                            </div>
+                            <hr class="ap-summary-divider">
+                            <div class="ap-summary-row">
+                                <span class="ap-summary-row__label" style="font-weight:800;">Total Due:</span>
+                                <span class="ap-summary-row__value ap-summary-row__value--total" id="ap-summary-total">₱<?= number_format($monthlyFee, 2) ?></span>
+                            </div>
+                            <div class="ap-summary-row">
+                                <span class="ap-summary-row__label">Payment Status:</span>
+                                <span class="ap-status-badge ap-status-badge--pending">Pending Submission</span>
+                            </div>
+
+                            <div style="margin-top:18px;">
+                                <button type="submit" class="ap-btn ap-btn--primary" id="ap-submit-btn">
+                                    Proceed to Pay <span id="ap-submit-amount">₱<?= number_format($monthlyFee, 2) ?></span>
+                                </button>
+                            </div>
+                            <a href="<?= base_url('client/dashboard') ?>" class="ap-btn ap-btn--ghost">Cancel and Return</a>
+                        </div>
+                    </div>
+
+                    <!-- Payment History -->
+                    <div class="ap-card">
+                        <div class="ap-card__body">
+                            <div class="ap-history">
+                                <div class="ap-history__header">
+                                    <h4 class="ap-history__title">Payment History</h4>
+                                    <p class="ap-history__subtitle">
+                                        Refined & consolidated summary:<br>
+                                        <?= $completed_count ?? 0 ?> Completed payments, as <?= $pending_count ?? 0 ?> Pending payments.
+                                    </p>
+                                </div>
+                                <table class="ap-history-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Rate</th>
+                                            <th>Status</th>
+                                            <th>Primary</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php if (empty($payments ?? [])): ?>
+                                            <tr><td colspan="4" class="ap-empty">No payment history yet.</td></tr>
+                                        <?php else: ?>
+                                            <?php foreach (array_slice($payments, 0, 10) as $payment):
+                                                $pStatus = strtolower((string) ($payment['status'] ?? 'pending'));
+                                            ?>
+                                            <tr>
+                                                <td><?= esc((string) ($payment['payment_date'] ?? '-')) ?></td>
+                                                <td>₱<?= number_format((float) ($payment['amount'] ?? 0), 2) ?></td>
+                                                <td>
+                                                    <span class="ap-status-badge <?= $pStatus === 'paid' ? 'ap-status-badge--paid' : 'ap-status-badge--pending' ?>" style="<?= $pStatus === 'paid' ? 'background:#f0fff4;color:#38a169;' : '' ?>">
+                                                        <?= strtoupper($pStatus) ?>
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <?php if ($pStatus === 'paid'): ?>
+                                                        <span class="ap-status-badge" style="background:#f0fff4;color:#38a169;">PAID</span>
+                                                    <?php else: ?>
+                                                        <span class="ap-status-badge" style="background:#fef5e7;color:#c2760a;">PENDING VERIFICATION</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                            </tr>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-        <?php endif; ?>
+        </form>
 
-        <div class="card">
-            <div class="card-body">
-                <h5 class="mb-3">Payment History</h5>
-                <div class="table-responsive">
-                    <table class="table align-middle">
-                        <thead><tr><th>Date</th><th>Months</th><th>Amount</th><th>Method</th><th>Reference</th><th>Status</th></tr></thead>
-                        <tbody>
-                            <?php foreach ($payments as $payment): ?>
-                                <?php $status = strtolower((string) ($payment['status'] ?? 'pending')); ?>
-                                <tr>
-                                    <td><?= esc((string) $payment['payment_date']) ?></td>
-                                    <td><?= esc((string) ((int) ($payment['months_covered'] ?? 1))) ?></td>
-                                    <td>P<?= esc(number_format((float) $payment['amount'], 2)) ?></td>
-                                    <td><?= esc(strtoupper((string) $payment['payment_method'])) ?></td>
-                                    <td><?= esc((string) ($payment['reference_number'] ?? '-')) ?></td>
-                                    <td>
-                                        <span class="badge text-bg-<?= $status === 'paid' ? 'success' : ($status === 'pending' ? 'warning' : 'danger') ?>">
-                                            <?= esc(ucfirst($status)) ?>
-                                        </span>
-                                    </td>
-                                </tr>
+    <?php else: ?>
+        <!-- ====== Payment History Mode ====== -->
+        <div class="ap-card">
+            <div class="ap-card__header">
+                <h2 class="ap-card__title">Payment History</h2>
+            </div>
+            <div class="ap-card__body">
+                <table class="ap-history-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Date</th>
+                            <th>Months</th>
+                            <th>Amount</th>
+                            <th>Method</th>
+                            <th>Reference</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($payments ?? [])): ?>
+                            <tr><td colspan="7" class="ap-empty">No payment records found.</td></tr>
+                        <?php else: ?>
+                            <?php foreach ($payments as $payment):
+                                $pStatus = strtolower((string) ($payment['status'] ?? 'pending'));
+                                $method = strtolower((string) ($payment['payment_method'] ?? 'cash'));
+                            ?>
+                            <tr>
+                                <td><strong>#<?= esc((string) ($payment['payment_id'] ?? '-')) ?></strong></td>
+                                <td><?= esc((string) ($payment['payment_date'] ?? '-')) ?></td>
+                                <td><?= esc((string) ((int) ($payment['months_covered'] ?? 1))) ?></td>
+                                <td><strong>₱<?= number_format((float) ($payment['amount'] ?? 0), 2) ?></strong></td>
+                                <td><?= esc(strtoupper($method)) ?></td>
+                                <td><?= esc((string) ($payment['reference_number'] ?? '-')) ?></td>
+                                <td>
+                                    <span class="ap-status-badge <?= $pStatus === 'paid' ? '' : 'ap-status-badge--pending' ?>" style="<?= $pStatus === 'paid' ? 'background:#f0fff4;color:#38a169;' : '' ?>">
+                                        <?= strtoupper($pStatus) ?>
+                                    </span>
+                                </td>
+                            </tr>
                             <?php endforeach; ?>
-                            <?php if (empty($payments)): ?>
-                                <tr><td colspan="6" class="text-center">No Data Available</td></tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
-                </div>
-                <?php if ($plan && (string) ($plan['status'] ?? '') !== 'active'): ?>
-                    <div class="alert alert-info mb-0">Your initial payment is pending verification.</div>
-                <?php endif; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
             </div>
         </div>
     <?php endif; ?>
-</div>
 
-<?php if ($state === 'active' && $plan): ?>
-<script>
-    (function () {
-        const monthlyFee = Number('<?= esc((string) ($plan['monthly_fee'] ?? 0)) ?>');
-        const monthsSelect = document.getElementById('advance_months');
-        const amountInput = document.getElementById('advance_amount');
-
-        if (!monthsSelect || !amountInput) {
-            return;
-        }
-
-        function updateAmount() {
-            const months = Number(monthsSelect.value || 1);
-            amountInput.value = (monthlyFee * months).toFixed(2);
-        }
-
-        monthsSelect.addEventListener('change', updateAmount);
-        updateAmount();
-    })();
-</script>
 <?php endif; ?>
+
+<!-- ====== Scripts ====== -->
+<script>
+(function () {
+    'use strict';
+
+    var monthlyFee = <?= json_encode($monthlyFee) ?>;
+    var discounts = {
+        1: { discount: 0, label: '' },
+        3: { discount: 0.05, label: '5%' },
+        6: { discount: 0.10, label: '10%' },
+        12: { discount: 0.15, label: '15%' }
+    };
+    var currentMonths = 1;
+
+    function updateSummary() {
+        var monthsEl = document.getElementById('ap-summary-months');
+        var discountRow = document.getElementById('ap-discount-row');
+        var discountEl = document.getElementById('ap-summary-discount');
+        var subtotalEl = document.getElementById('ap-summary-subtotal');
+        var totalEl = document.getElementById('ap-summary-total');
+        var submitAmount = document.getElementById('ap-submit-amount');
+        var progressFill = document.getElementById('ap-progress-fill');
+        var hiddenMonths = document.getElementById('ap-months-hidden');
+
+        if (!monthsEl) return;
+
+        var subtotal = monthlyFee * currentMonths;
+        var disc = discounts[currentMonths] || { discount: 0 };
+        var discountAmount = subtotal * disc.discount;
+        var total = subtotal - discountAmount;
+
+        monthsEl.textContent = 'x ' + currentMonths;
+
+        if (disc.discount > 0) {
+            discountRow.style.display = '';
+            discountEl.textContent = '-₱' + discountAmount.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + ' (' + disc.label + ')';
+        } else {
+            discountRow.style.display = 'none';
+        }
+
+        subtotalEl.textContent = '₱' + subtotal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+        totalEl.textContent = '₱' + total.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+        submitAmount.textContent = '₱' + total.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+
+        if (progressFill) {
+            progressFill.style.width = (currentMonths / 12 * 100) + '%';
+        }
+
+        if (hiddenMonths) {
+            hiddenMonths.value = currentMonths;
+        }
+    }
+
+    window.apSelectMonths = function (btn) {
+        document.querySelectorAll('.ap-month-btn').forEach(function (b) { b.classList.remove('ap-month-btn--active'); });
+        btn.classList.add('ap-month-btn--active');
+        currentMonths = parseInt(btn.getAttribute('data-months')) || 1;
+        updateSummary();
+    };
+
+    window.apSelectMethod = function (btn) {
+        document.querySelectorAll('.ap-method-btn').forEach(function (b) { b.classList.remove('ap-method-btn--active'); });
+        btn.classList.add('ap-method-btn--active');
+
+        var method = btn.getAttribute('data-method');
+        var gcashSection = document.getElementById('ap-gcash-section');
+        var cashSection = document.getElementById('ap-cash-section');
+        var hiddenMethod = document.getElementById('ap-method-hidden');
+        var refInput = document.getElementById('ap-reference');
+
+        if (method === 'gcash') {
+            if (gcashSection) gcashSection.style.display = '';
+            if (cashSection) cashSection.style.display = 'none';
+            if (refInput) { refInput.placeholder = 'GCash Reference Number (e.g., GCASH123456789)'; refInput.required = true; }
+        } else {
+            if (gcashSection) gcashSection.style.display = 'none';
+            if (cashSection) cashSection.style.display = '';
+            if (refInput) { refInput.placeholder = 'Enter official receipt number from branch'; refInput.required = true; }
+        }
+
+        if (hiddenMethod) hiddenMethod.value = method;
+    };
+
+    window.apCopyAccount = function () {
+        var account = 'GCASH123456789';
+        navigator.clipboard.writeText(account).then(function () {
+            var btn = document.querySelector('.ap-copy-btn');
+            if (btn) {
+                var orig = btn.innerHTML;
+                btn.innerHTML = '<i class="mdi mdi-check"></i> Copied!';
+                setTimeout(function () { btn.innerHTML = orig; }, 1500);
+            }
+        });
+    };
+
+    window.apPreviewProof = function (input) {
+        if (input.files && input.files[0]) {
+            var preview = document.getElementById('ap-proof-preview');
+            if (preview) {
+                var file = input.files[0];
+                if (file.type.startsWith('image/')) {
+                    var reader = new FileReader();
+                    reader.onload = function (e) {
+                        preview.innerHTML = '<img src="' + e.target.result + '" alt="Proof">';
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    preview.innerHTML = '<i class="mdi mdi-file-pdf-box" style="font-size:2rem;color:var(--ap-red);"></i>';
+                }
+            }
+        }
+    };
+
+    updateSummary();
+})();
+</script>
 <?= $this->endSection() ?>

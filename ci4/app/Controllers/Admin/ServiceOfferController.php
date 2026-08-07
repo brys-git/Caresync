@@ -94,8 +94,36 @@ class ServiceOfferController extends BaseController
             ->get()
             ->getResultArray();
 
+        $pendingServiceCount = 0;
+        foreach ($pendingServices as $ps) {
+            if (($ps['status'] ?? '') === 'pending') {
+                $pendingServiceCount++;
+            }
+        }
+
+        $pendingPackageCount = 0;
+        foreach ($pendingPackages as $pp) {
+            if (($pp['status'] ?? '') === 'pending') {
+                $pendingPackageCount++;
+            }
+        }
+
+        $approvedServiceCount = 0;
+        $approvedPackageCount = 0;
+        foreach ($pendingServices as $ps) {
+            if (($ps['status'] ?? '') === 'approved') {
+                $approvedServiceCount++;
+            }
+        }
+        foreach ($pendingPackages as $pp) {
+            if (($pp['status'] ?? '') === 'approved') {
+                $approvedPackageCount++;
+            }
+        }
+
         return view('admin/service_offer/index', [
             'role_layout' => 'layouts/admin',
+            'page_title' => null,
             'tab' => $tab,
             'approval_tab' => $approvalTab,
             'services' => $services,
@@ -103,6 +131,12 @@ class ServiceOfferController extends BaseController
             'package_versions' => $packageVersions,
             'pending_services' => $pendingServices,
             'pending_packages' => $pendingPackages,
+            'total_packages' => count($packages),
+            'total_services' => count($services),
+            'pending_service_count' => $pendingServiceCount,
+            'pending_package_count' => $pendingPackageCount,
+            'approved_service_count' => $approvedServiceCount,
+            'approved_package_count' => $approvedPackageCount,
         ]);
     }
 

@@ -87,6 +87,7 @@ class ClientPortal extends BaseController
 
         return view('client/dashboard', [
             'role_layout' => 'layouts/plan_holder',
+            'page_title' => null,
             'user' => $user,
             'plan_holder' => $planHolder,
             'plan' => $latestPlan,
@@ -540,13 +541,28 @@ class ClientPortal extends BaseController
             return redirect()->to('/client/service?tab=packages')->with('error', 'Package not found.');
         }
 
-        $packageServices = db_connect()->table('package_services ps')
-            ->select('sl.service_list_id, sl.service_name, sl.description, sl.base_price')
-            ->join('service_list sl', 'sl.service_list_id = ps.service_list_id', 'inner')
-            ->where('ps.package_id', $packageId)
-            ->orderBy('sl.service_name', 'ASC')
-            ->get()
-            ->getResultArray();
+        $packageServices = [];
+        $db = db_connect();
+        if ($db->tableExists('package_services') && $db->tableExists('service_list')) {
+            $psFields = $db->getFieldNames('package_services');
+            if (in_array('service_list_id', $psFields, true)) {
+                $packageServices = $db->table('package_services ps')
+                    ->select('sl.service_list_id, sl.service_name, sl.description, sl.base_price')
+                    ->join('service_list sl', 'sl.service_list_id = ps.service_list_id', 'inner')
+                    ->where('ps.package_id', $packageId)
+                    ->orderBy('sl.service_name', 'ASC')
+                    ->get()
+                    ->getResultArray();
+            } elseif (in_array('service_id', $psFields, true)) {
+                $packageServices = $db->table('package_services ps')
+                    ->select('sl.service_list_id, sl.service_name, sl.description, sl.base_price')
+                    ->join('service_list sl', 'sl.service_list_id = ps.service_id', 'inner')
+                    ->where('ps.package_id', $packageId)
+                    ->orderBy('sl.service_name', 'ASC')
+                    ->get()
+                    ->getResultArray();
+            }
+        }
 
         return view('client/package_details', [
             'role_layout' => 'layouts/plan_holder',

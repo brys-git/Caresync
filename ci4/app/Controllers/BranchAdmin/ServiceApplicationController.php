@@ -111,15 +111,27 @@ class ServiceApplicationController extends BaseController
                 $this->notificationModel->insert([
                     'user_id' => (int) $request['user_id'],
                     'message' => 'Your approved service now has a separate funeral balance for beneficiary continuation.',
-                    'status' => 'unread',
+                    'is_read' => 0,
                 ]);
             }
 
             $this->notificationModel->insert([
                 'user_id' => (int) $request['user_id'],
                 'message' => 'Your service request has been approved.',
-                'status' => 'unread',
+                'is_read' => 0,
             ]);
+
+            if (class_exists(\App\Services\ActivityLogService::class)) {
+                (new \App\Services\ActivityLogService())->log(
+                    (int) session('user_id'),
+                    'approved',
+                    'service_application',
+                    $id,
+                    'Approved service application #' . $id,
+                    ['status' => 'pending'],
+                    ['status' => 'approved']
+                );
+            }
 
             if ($db->transStatus() === false) {
                 throw new \RuntimeException('Failed to approve request.');
@@ -151,17 +163,38 @@ class ServiceApplicationController extends BaseController
             throw PageNotFoundException::forPageNotFound();
         }
 
+        if (($request['status'] ?? '') !== 'pending') {
+            return redirect()->back()->with('error', 'Only pending requests can be rejected.');
+        }
+
+        $rejectionReason = trim((string) $this->request->getPost('rejection_reason'));
+
         $db = db_connect();
         $db->transBegin();
 
         try {
-            $this->serviceApplicationModel->update($id, ['status' => 'rejected']);
+            $updateData = ['status' => 'rejected'];
+            if ($rejectionReason !== '' && $db->fieldExists('rejection_reason', 'service_applications')) {
+                $updateData['rejection_reason'] = $rejectionReason;
+            }
+            $this->serviceApplicationModel->update($id, $updateData);
 
             $this->notificationModel->insert([
                 'user_id' => (int) $request['user_id'],
-                'message' => 'Your service request has been rejected.',
-                'status' => 'unread',
+                'message' => 'Your service request has been rejected.' . ($rejectionReason !== '' ? ' Reason: ' . $rejectionReason : ''),
             ]);
+
+            if (class_exists(\App\Services\ActivityLogService::class)) {
+                (new \App\Services\ActivityLogService())->log(
+                    (int) session('user_id'),
+                    'rejected',
+                    'service_application',
+                    $id,
+                    'Rejected service application #' . $id,
+                    ['status' => 'pending'],
+                    ['status' => 'rejected', 'rejection_reason' => $rejectionReason]
+                );
+            }
 
             if ($db->transStatus() === false) {
                 throw new \RuntimeException('Failed to reject request.');

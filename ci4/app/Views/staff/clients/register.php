@@ -21,7 +21,21 @@
             <form method="post" action="<?= base_url('staff/client/store') ?>" novalidate>
                 <?= csrf_field() ?>
 
-                <!-- Personal Information Section -->
+                <div class="mb-4">
+                    <h5 class="h6 mb-3 text-primary">Client Account Status</h5>
+                    <?php $clientMode = old('client_account_mode', 'existing'); ?>
+                    <div class="border rounded p-3">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="client_account_mode" id="mode_existing" value="existing" <?= $clientMode === 'existing' ? 'checked' : '' ?> >
+                            <label class="form-check-label" for="mode_existing">Client already has an account</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="client_account_mode" id="mode_new" value="new" <?= $clientMode === 'new' ? 'checked' : '' ?> >
+                            <label class="form-check-label" for="mode_new">Client does not have an account yet</label>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="mb-4">
                     <h5 class="h6 mb-3 text-primary">Personal Information</h5>
                     <div class="row g-3">
@@ -83,6 +97,7 @@
                                 value="<?= old('email') ?>" 
                                 required
                             >
+                            <small class="text-muted" id="existing_account_help">For existing-account mode, enter the registered email and details auto-fill.</small>
                             <?php if (isset($validation) && $validation->hasError('email')): ?>
                                 <div class="invalid-feedback"><?= $validation->getError('email') ?></div>
                             <?php endif; ?>
@@ -90,7 +105,6 @@
                     </div>
                 </div>
 
-                <!-- Address Section -->
                 <div class="mb-4">
                     <h5 class="h6 mb-3 text-primary">Address</h5>
                     <div class="row g-3">
@@ -137,7 +151,6 @@
                     </div>
                 </div>
 
-                <!-- Personal Details Section -->
                 <div class="mb-4">
                     <h5 class="h6 mb-3 text-primary">Personal Details</h5>
                     <div class="row g-3">
@@ -225,7 +238,6 @@
                     </div>
                 </div>
 
-                <!-- Spouse Information Section -->
                 <div class="mb-4">
                     <h5 class="h6 mb-3 text-primary">Spouse Information (Optional)</h5>
                     <div class="row g-3">
@@ -262,7 +274,6 @@
                     </div>
                 </div>
 
-                <!-- Additional Information Section -->
                 <div class="mb-4">
                     <h5 class="h6 mb-3 text-primary">Additional Information (Optional)</h5>
                     <div class="row g-3">
@@ -289,7 +300,6 @@
                     </div>
                 </div>
 
-                <!-- Membership Program Section -->
                 <div class="mb-4">
                     <h5 class="h6 mb-3 text-primary">Membership Program</h5>
                     <div class="row g-3">
@@ -309,7 +319,6 @@
                     </div>
                 </div>
 
-                <!-- Form Actions -->
                 <div class="d-flex gap-2 justify-content-end">
                     <a href="<?= base_url('staff/client') ?>" class="btn btn-outline-secondary">Cancel</a>
                     <button type="submit" class="btn btn-primary">Register Plan Holder</button>
@@ -318,5 +327,84 @@
         </div>
     </div>
 </div>
+
+<script>
+(function () {
+    const modeExisting = document.getElementById('mode_existing');
+    const modeNew = document.getElementById('mode_new');
+    const emailField = document.getElementById('email');
+    const firstNameField = document.getElementById('first_name');
+    const middleNameField = document.getElementById('middle_name');
+    const lastNameField = document.getElementById('last_name');
+    const contactField = document.getElementById('contact_number');
+    const helpEl = document.getElementById('existing_account_help');
+
+    const existingUsers = <?= json_encode(array_values(array_map(static function ($user) {
+        return [
+            'email' => strtolower(trim((string) ($user['email'] ?? ''))),
+            'first_name' => (string) ($user['first_name'] ?? ''),
+            'middle_name' => (string) ($user['middle_name'] ?? ''),
+            'last_name' => (string) ($user['last_name'] ?? ''),
+            'contact_number' => (string) ($user['contact_number'] ?? ''),
+        ];
+    }, $existing_users ?? []))) ?>;
+
+    function isExistingMode() {
+        return modeExisting && modeExisting.checked;
+    }
+
+    function autofillByEmail() {
+        if (! isExistingMode()) {
+            return;
+        }
+
+        const email = (emailField.value || '').trim().toLowerCase();
+        if (!email) {
+            helpEl.textContent = 'For existing-account mode, enter the registered email and details auto-fill.';
+            return;
+        }
+
+        const matched = existingUsers.find((user) => user.email === email);
+        if (!matched) {
+            helpEl.textContent = 'No existing account found for this email.';
+            return;
+        }
+
+        firstNameField.value = matched.first_name;
+        middleNameField.value = matched.middle_name;
+        lastNameField.value = matched.last_name;
+        contactField.value = matched.contact_number;
+        helpEl.textContent = 'Existing account found. Details were auto-filled.';
+    }
+
+    function syncMode() {
+        if (isExistingMode()) {
+            firstNameField.readOnly = true;
+            middleNameField.readOnly = true;
+            lastNameField.readOnly = true;
+            contactField.readOnly = true;
+            helpEl.textContent = 'For existing-account mode, enter the registered email and details auto-fill.';
+            autofillByEmail();
+        } else {
+            firstNameField.readOnly = false;
+            middleNameField.readOnly = false;
+            lastNameField.readOnly = false;
+            contactField.readOnly = false;
+            helpEl.textContent = 'For new-account mode, fill in all personal details manually.';
+        }
+    }
+
+    if (modeExisting) {
+        modeExisting.addEventListener('change', syncMode);
+    }
+    if (modeNew) {
+        modeNew.addEventListener('change', syncMode);
+    }
+    emailField.addEventListener('input', autofillByEmail);
+    emailField.addEventListener('change', autofillByEmail);
+
+    syncMode();
+})();
+</script>
 
 <?= $this->endSection() ?>

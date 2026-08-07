@@ -54,8 +54,79 @@ class ClientPaymentController extends BaseController
             ]);
         }
 
-        if (($access['state'] ?? 'unregistered') === 'awaiting_activation') {
-            return redirect()->to('/initial-payment')->with('info', 'Complete your initial payment before viewing payment history.');
+        $plan = $this->latestPlan((int) $planHolder['plan_holder_id']);
+        $payments = [];
+        if ($plan) {
+            $payments = (new PaymentModel())
+                ->where('plan_id', (int) $plan['plan_id'])
+                ->orderBy('payment_id', 'DESC')
+                ->findAll();
+        }
+
+        $totalCollections = 0.0;
+        $completedCount = 0;
+        $pendingCount = 0;
+
+        foreach ($payments as $p) {
+            $pStatus = strtolower((string) ($p['status'] ?? ''));
+            if ($pStatus === 'paid') {
+                $totalCollections += (float) ($p['amount'] ?? 0);
+                $completedCount++;
+            } elseif ($pStatus === 'pending') {
+                $pendingCount++;
+            }
+        }
+
+        return view('client/payment', [
+            'role_layout' => 'layouts/plan_holder',
+            'page_title' => null,
+            'access' => $access,
+            'plan' => $plan,
+            'payments' => $payments,
+            'supports_proof_upload' => $this->supportsProofUpload(),
+            'membership_plans' => $membershipPlans,
+            'program' => $program,
+            'view_mode' => 'history',
+            'total_collections' => $totalCollections,
+            'completed_count' => $completedCount,
+            'pending_count' => $pendingCount,
+        ]);
+    }
+
+    /**
+     * Alias for the client payment page used by the Advance Payment navigation item.
+     */
+    public function advancePayment(): ResponseInterface|string
+    {
+        try {
+            $access = $this->resolveAccessState();
+        } catch (\RuntimeException $e) {
+            return redirect()->to('/signin')->with('error', 'Session expired. Please log in again.');
+        }
+        $planHolder = $access['plan_holder'];
+        $program = \App\Services\MembershipService::getProgramInfo();
+
+        $membershipPlans = [];
+        $db = db_connect();
+        if ($db->tableExists('membership_programs')) {
+            $membershipPlans = $db->table('membership_programs')
+                ->select('program_id, program_name')
+                ->where('is_active', 1)
+                ->orderBy('program_name', 'ASC')
+                ->get()
+                ->getResultArray();
+        }
+
+        if (($access['state'] ?? 'unregistered') === 'unregistered' || ! $planHolder) {
+            return view('client/payment', [
+                'role_layout' => 'layouts/plan_holder',
+                'access' => $access,
+                'plan' => null,
+                'payments' => [],
+                'membership_plans' => $membershipPlans,
+                'program' => $program,
+                'view_mode' => 'advance',
+            ]);
         }
 
         $plan = $this->latestPlan((int) $planHolder['plan_holder_id']);
@@ -67,14 +138,46 @@ class ClientPaymentController extends BaseController
                 ->findAll();
         }
 
+        $totalCollections = 0.0;
+        $completedCount = 0;
+        $pendingCount = 0;
+
+        foreach ($payments as $p) {
+            $pStatus = strtolower((string) ($p['status'] ?? ''));
+            if ($pStatus === 'paid') {
+                $totalCollections += (float) ($p['amount'] ?? 0);
+                $completedCount++;
+            } elseif ($pStatus === 'pending') {
+                $pendingCount++;
+            }
+        }
+
+        $monthlyFee = (float) ($plan['monthly_fee'] ?? ($program['monthly_fee'] ?? 240));
+
+        $userName = trim((string) (($access['user']['first_name'] ?? '') . ' ' . ($access['user']['last_name'] ?? '')));
+        $planName = (string) ($plan['package_name'] ?? ($program['name'] ?? 'Damayan Burial Program'));
+        $lastPaymentStatus = 'None';
+        if (! empty($payments)) {
+            $lastPaymentStatus = ucfirst((string) ($payments[0]['status'] ?? 'none'));
+        }
+
         return view('client/payment', [
             'role_layout' => 'layouts/plan_holder',
+            'page_title' => null,
             'access' => $access,
             'plan' => $plan,
             'payments' => $payments,
             'supports_proof_upload' => $this->supportsProofUpload(),
             'membership_plans' => $membershipPlans,
             'program' => $program,
+            'view_mode' => 'advance',
+            'total_collections' => $totalCollections,
+            'completed_count' => $completedCount,
+            'pending_count' => $pendingCount,
+            'monthly_fee' => $monthlyFee,
+            'user_name' => $userName,
+            'plan_name' => $planName,
+            'last_payment_status' => $lastPaymentStatus,
         ]);
     }
 

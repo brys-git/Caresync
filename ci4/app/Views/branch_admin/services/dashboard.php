@@ -143,7 +143,7 @@ $ongoingServices = (int) ($statistics['ongoing_services'] ?? 0);
                         <a href="<?= base_url('admin/services/approvals') ?>" class="btn btn-outline-success">
                             <i class="bi bi-check-lg me-1"></i> Process Approvals
                         </a>
-                        <a href="<?= base_url('admin/services/report') ?>" class="btn btn-outline-info">
+                        <a href="<?= base_url('branch-admin/reports') ?>" class="btn btn-outline-info">
                             <i class="bi bi-graph-up me-1"></i> Generate Report
                         </a>
                     </div>

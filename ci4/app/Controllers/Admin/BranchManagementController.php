@@ -105,8 +105,23 @@ class BranchManagementController extends BaseController
             ->get()
             ->getResultArray();
 
+        $pendingServiceCount = 0;
+        foreach ($pendingServices as $ps) {
+            if (($ps['status'] ?? '') === 'pending') {
+                $pendingServiceCount++;
+            }
+        }
+
+        $pendingPackageCount = 0;
+        foreach ($pendingPackages as $pp) {
+            if (($pp['status'] ?? '') === 'pending') {
+                $pendingPackageCount++;
+            }
+        }
+
         return view('admin/branch_management/index', [
             'role_layout' => 'layouts/admin',
+            'page_title' => null,
             'tab' => $tab,
             'approval_tab' => $approvalTab,
             'branches' => $branches,
@@ -118,6 +133,8 @@ class BranchManagementController extends BaseController
             'contributions' => $contributions,
             'pending_services' => $pendingServices,
             'pending_packages' => $pendingPackages,
+            'pending_service_count' => $pendingServiceCount,
+            'pending_package_count' => $pendingPackageCount,
         ]);
     }
 

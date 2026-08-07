@@ -127,6 +127,232 @@ class Reports extends BaseController
         return $db->query($sql)->getResultArray();
     }
 
+    // ─── Remittance Report ──────────────────────────────────────
+
+    public function remittance()
+    {
+        $filters = $this->buildRemittanceFilters();
+
+        $mode = (string) $this->request->getGet('mode');
+        if ($mode === 'csv') {
+            return $this->exportCsv($filters);
+        }
+        if ($mode === 'pdf') {
+            return $this->exportPdf($filters);
+        }
+        if ($mode === 'print') {
+            return view('admin/reports/remittance_export', $this->buildExportViewData($filters, true));
+        }
+
+        return view('admin/reports/remittance', $this->buildRemittanceViewData($filters));
+    }
+
+    public function generate()
+    {
+        $filters = $this->buildRemittanceFilters(true);
+
+        $action = (string) $this->request->getPost('action');
+        if ($action === 'csv') {
+            return $this->exportCsv($filters);
+        }
+        if ($action === 'pdf') {
+            return $this->exportPdf($filters);
+        }
+        if ($action === 'print') {
+            return view('admin/reports/remittance_export', $this->buildExportViewData($filters, true));
+        }
+
+        return view('admin/reports/remittance', $this->buildRemittanceViewData($filters));
+    }
+
+    private function buildRemittanceViewData(array $filters): array
+    {
+        $reportService = new ReportService();
+        $rows = $reportService->getRemittanceReport($filters);
+        $breakdown = $reportService->getPaymentBreakdown($filters);
+        $totalRemittance = $reportService->getTotalRemittance($filters);
+        $staffOptions = $reportService->getBranchPaymentStaff((int) ($filters['branch_id'] ?? 0));
+        $branches = db_connect()->table('branches')->orderBy('branch_name', 'ASC')->get()->getResultArray();
+
+        return [
+            'role_layout' => 'layouts/admin',
+            'filters' => $filters,
+            'report_rows' => $rows,
+            'summary' => $breakdown,
+            'total_remittance' => $totalRemittance,
+            'staff_options' => $staffOptions,
+            'branches' => $branches,
+        ];
+    }
+
+    private function buildExportViewData(array $filters, bool $autoPrint): array
+    {
+        $reportService = new ReportService();
+        $rows = $reportService->getRemittanceReport($filters);
+        $staffOptions = $reportService->getBranchPaymentStaff((int) ($filters['branch_id'] ?? 0));
+
+        $branchId = (int) ($filters['branch_id'] ?? 0);
+        $branch = $branchId > 0 ? $reportService->getBranchInfo($branchId) : null;
+
+        $coordinatorName = '';
+        $coordinatorContact = '';
+        if ((int) ($filters['received_by'] ?? 0) > 0) {
+            foreach ($staffOptions as $staff) {
+                if ((int) $staff['user_id'] === (int) $filters['received_by']) {
+                    $coordinatorName = trim(((string) ($staff['first_name'] ?? '')) . ' ' . ((string) ($staff['last_name'] ?? '')));
+                    $coordinatorContact = (string) ($staff['contact_number'] ?? '');
+                    break;
+                }
+            }
+        }
+
+        $exportRows = [];
+        $maxRows = 30;
+        $index = 1;
+
+        foreach ($rows as $row) {
+            if ($index > $maxRows) {
+                break;
+            }
+            $monthMap = array_fill(1, 12, '');
+            $monthNumber = (int) date('n', strtotime((string) ($row['payment_date'] ?? date('Y-m-d'))));
+            if ($monthNumber >= 1 && $monthNumber <= 12) {
+                $monthMap[$monthNumber] = number_format((float) ($row['amount'] ?? 0), 2);
+            }
+            $exportRows[] = [
+                'no' => $index,
+                'plan_holder_name' => trim(((string) ($row['client_first'] ?? '')) . ' ' . ((string) ($row['client_last'] ?? ''))),
+                'control_no' => (string) ($row['unique_identifier'] ?? ''),
+                'date_started' => (string) ($row['start_date'] ?? ''),
+                'months' => $monthMap,
+            ];
+            $index++;
+        }
+
+        while (count($exportRows) < $maxRows) {
+            $exportRows[] = [
+                'no' => count($exportRows) + 1,
+                'plan_holder_name' => '',
+                'control_no' => '',
+                'date_started' => '',
+                'months' => array_fill(1, 12, ''),
+            ];
+        }
+
+        $location = '';
+        if ($branch) {
+            $parts = array_filter([
+                (string) ($branch['branch_name'] ?? ''),
+                (string) ($branch['address_barangay'] ?? ''),
+                (string) ($branch['address_city'] ?? ''),
+                (string) ($branch['address_province'] ?? ''),
+            ]);
+            $location = implode(', ', $parts);
+        }
+
+        return [
+            'export_rows' => $exportRows,
+            'export_date' => date('Y-m-d'),
+            'coordinator_name' => $coordinatorName,
+            'coordinator_contact' => $coordinatorContact,
+            'location_area' => $location,
+            'auto_print' => $autoPrint,
+        ];
+    }
+
+    private function exportPdf(array $filters)
+    {
+        $html = view('admin/reports/remittance_export', $this->buildExportViewData($filters, false));
+
+        $options = new \Dompdf\Options();
+        $options->set('isRemoteEnabled', true);
+        $options->set('isHtml5ParserEnabled', true);
+
+        $dompdf = new \Dompdf\Dompdf($options);
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
+
+        $filename = 'remittance_report_' . date('Ymd_His') . '.pdf';
+
+        return $this->response
+            ->setHeader('Content-Type', 'application/pdf')
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
+            ->setBody($dompdf->output());
+    }
+
+    private function exportCsv(array $filters)
+    {
+        $reportService = new ReportService();
+        $rows = $reportService->getRemittanceReport($filters);
+
+        $filename = 'remittance_report_' . date('Ymd_His') . '.csv';
+
+        $stream = fopen('php://temp', 'w+');
+        fputcsv($stream, ['Date', 'Client Name', 'Amount', 'Method', 'Reference', 'Received By']);
+
+        foreach ($rows as $row) {
+            fputcsv($stream, [
+                (string) ($row['payment_date'] ?? ''),
+                trim(((string) ($row['client_first'] ?? '')) . ' ' . ((string) ($row['client_last'] ?? ''))),
+                number_format((float) ($row['amount'] ?? 0), 2, '.', ''),
+                (string) ($row['payment_method'] ?? ''),
+                (string) ($row['reference_number'] ?? ''),
+                trim(((string) ($row['staff_first'] ?? '')) . ' ' . ((string) ($row['staff_last'] ?? ''))),
+            ]);
+        }
+
+        rewind($stream);
+        $csv = stream_get_contents($stream);
+        fclose($stream);
+
+        return $this->response
+            ->setHeader('Content-Type', 'text/csv; charset=UTF-8')
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
+            ->setBody((string) $csv);
+    }
+
+    private function buildRemittanceFilters(bool $fromPost = false): array
+    {
+        $today = date('Y-m-d');
+        $startOfMonth = date('Y-m-01');
+
+        if ($fromPost) {
+            $dateFrom = trim((string) ($this->request->getPost('date_from') ?? ''));
+            $dateTo = trim((string) ($this->request->getPost('date_to') ?? ''));
+            $method = strtolower(trim((string) ($this->request->getPost('payment_method') ?? '')));
+            $receivedBy = (int) $this->request->getPost('received_by');
+            $branchId = (int) $this->request->getPost('branch_id');
+        } else {
+            $dateFrom = trim((string) ($this->request->getGet('date_from') ?? ''));
+            $dateTo = trim((string) ($this->request->getGet('date_to') ?? ''));
+            $method = strtolower(trim((string) ($this->request->getGet('payment_method') ?? '')));
+            $receivedBy = (int) $this->request->getGet('received_by');
+            $branchId = (int) $this->request->getGet('branch_id');
+        }
+
+        if ($dateFrom === '' || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFrom)) {
+            $dateFrom = $startOfMonth;
+        }
+        if ($dateTo === '' || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateTo)) {
+            $dateTo = $today;
+        }
+        if ($dateFrom > $dateTo) {
+            [$dateFrom, $dateTo] = [$dateTo, $dateFrom];
+        }
+        if (! in_array($method, ['', 'cash', 'gcash'], true)) {
+            $method = '';
+        }
+
+        return [
+            'branch_id' => $branchId,
+            'date_from' => $dateFrom,
+            'date_to' => $dateTo,
+            'payment_method' => $method,
+            'received_by' => $receivedBy,
+        ];
+    }
+
     private function resolveLayoutView(): string
     {
         $role = (int) session()->get('role_id');

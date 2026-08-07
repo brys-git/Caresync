@@ -1,125 +1,209 @@
 <?= $this->extend($role_layout) ?>
 
 <?= $this->section('content') ?>
-<div class="container-fluid">
-    <div class="mb-3">
-        <h1 class="h3 mb-1">Payment Management</h1>
-        <p class="text-muted mb-0">Record cash payments and monitor transaction statuses.</p>
-    </div>
+<link rel="stylesheet" href="<?= base_url('assets/css/payments.css') ?>">
 
-    <?php if (session()->getFlashdata('error')): ?>
-        <div class="alert alert-danger"><?= esc(session()->getFlashdata('error')) ?></div>
-    <?php endif; ?>
-    <?php if (session()->getFlashdata('success')): ?>
-        <div class="alert alert-success"><?= esc(session()->getFlashdata('success')) ?></div>
-    <?php endif; ?>
+<div class="pm">
 
-    <div class="card mb-3">
-        <div class="card-body">
-            <h5 class="mb-3">Cash Advance Payment Entry</h5>
-            <form method="post" action="<?= base_url('staff/payment-management/record-cash') ?>">
-                <?= csrf_field() ?>
-                <input type="hidden" name="payment_method" value="cash">
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label" for="plan_id">Plan Holder</label>
-                        <select id="plan_id" name="plan_id" class="form-select" required>
-                            <option value="">Select plan holder</option>
-                            <?php foreach ($plan_options as $plan): ?>
-                                <option value="<?= (int) $plan['plan_id'] ?>" data-monthly-fee="<?= esc((string) $plan['monthly_fee']) ?>">
-                                    <?= esc((string) ($plan['first_name'] . ' ' . $plan['last_name'])) ?> (<?= esc((string) ($plan['unique_identifier'] ?: 'No ID')) ?>)
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label" for="months_covered">Months Covered</label>
-                        <select id="months_covered" name="months_covered" class="form-select" required>
-                            <option value="1">1 Month</option>
-                            <option value="3">3 Months</option>
-                            <option value="6">6 Months</option>
-                            <option value="12">12 Months</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label" for="amount">Amount</label>
-                        <input id="amount" name="amount" type="number" step="0.01" class="form-control" required>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label" for="payment_date">Payment Date</label>
-                        <input id="payment_date" name="payment_date" type="date" class="form-control" value="<?= date('Y-m-d') ?>" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label" for="official_receipt_number">Temporary Receipt Number</label>
-                        <input id="official_receipt_number" name="official_receipt_number" class="form-control">
-                    </div>
-                </div>
-                <button type="submit" class="btn btn-primary mt-3">Record Advance Payment</button>
-            </form>
+    <!-- ====== Header ====== -->
+    <div class="pm-header">
+        <div>
+            <h1 class="pm-header__title">Payment Records</h1>
+            <p class="pm-header__sub">View all payment records for this branch in a single table.</p>
         </div>
     </div>
 
-    <div class="card">
-        <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">Payment Records</h5>
-                <form method="get" action="<?= base_url('staff/payment-management') ?>">
-                    <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
-                        <option value="" <?= ($selected_status ?? '') === '' ? 'selected' : '' ?>>All</option>
-                        <option value="pending" <?= ($selected_status ?? '') === 'pending' ? 'selected' : '' ?>>Pending</option>
-                        <option value="paid" <?= ($selected_status ?? '') === 'paid' ? 'selected' : '' ?>>Paid</option>
-                        <option value="cancelled" <?= ($selected_status ?? '') === 'cancelled' ? 'selected' : '' ?>>Cancelled</option>
-                    </select>
-                </form>
+    <!-- ====== Flash Messages ====== -->
+    <?php if (session()->getFlashdata('error')): ?>
+        <div class="pm-alert pm-alert--error">
+            <i class="mdi mdi-alert-circle-outline"></i>
+            <?= esc(session()->getFlashdata('error')) ?>
+        </div>
+    <?php endif; ?>
+    <?php if (session()->getFlashdata('success')): ?>
+        <div class="pm-alert pm-alert--success">
+            <i class="mdi mdi-check-circle-outline"></i>
+            <?= esc(session()->getFlashdata('success')) ?>
+        </div>
+    <?php endif; ?>
+
+    <!-- ====== KPI Cards ====== -->
+    <div class="pm-kpis">
+        <div class="pm-kpi">
+            <div class="pm-kpi__label">Total Collections</div>
+            <div class="pm-kpi__value">₱<?= esc(number_format((float) ($total_collections ?? 0), 2)) ?></div>
+        </div>
+        <div class="pm-kpi">
+            <div class="pm-kpi__label">Completed Transactions</div>
+            <div class="pm-kpi__value"><?= (int) ($completed_count ?? 0) ?></div>
+        </div>
+        <div class="pm-kpi pm-kpi--warning">
+            <div class="pm-kpi__label">Pending Verification</div>
+            <i class="mdi mdi-alert-circle pm-kpi__icon"></i>
+            <div class="pm-kpi__value"><?= (int) ($pending_count ?? 0) ?></div>
+        </div>
+        <div class="pm-kpi">
+            <div class="pm-kpi__label">Primary Method</div>
+            <div class="pm-kpi__chart">
+                <div class="pm-kpi__donut" style="background:conic-gradient(var(--pm-blue) 0% <?= (int) ($primary_method_pct ?? 0) ?>%, #edf2f7 <?= (int) ($primary_method_pct ?? 0) ?>% 100%);"></div>
+                <div class="pm-kpi__legend"><strong><?= esc($primary_method ?? 'N/A') ?>:</strong> <?= (int) ($primary_method_pct ?? 0) ?>%</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====== Filter Bar ====== -->
+    <div class="pm-filter-card">
+        <form method="get" action="<?= site_url('staff/payment-management') ?>" class="pm-filters">
+            <div class="pm-filter-group pm-filter-group--status">
+                <label class="pm-filter-label" for="pm-status">Status</label>
+                <select id="pm-status" name="status" class="pm-select">
+                    <option value="" <?= ($selected_status ?? '') === '' ? 'selected' : '' ?>>All</option>
+                    <option value="pending" <?= ($selected_status ?? '') === 'pending' ? 'selected' : '' ?>>Pending</option>
+                    <option value="paid" <?= ($selected_status ?? '') === 'paid' ? 'selected' : '' ?>>Paid</option>
+                    <option value="cancelled" <?= ($selected_status ?? '') === 'cancelled' ? 'selected' : '' ?>>Cancelled</option>
+                </select>
             </div>
 
-            <div class="table-responsive">
-                <table class="table align-middle">
-                    <thead><tr><th>Plan Holder</th><th>Months</th><th>Amount</th><th>Date</th><th>Method</th><th>Reference / OR</th><th>Status</th></tr></thead>
-                    <tbody>
-                        <?php foreach ($rows as $row): ?>
-                            <?php $status = strtolower((string) ($row['status'] ?? 'pending')); ?>
-                            <tr>
-                                <td><?= esc((string) ($row['first_name'] . ' ' . $row['last_name'])) ?><br><small class="text-muted"><?= esc((string) ($row['unique_identifier'] ?: 'No ID')) ?></small></td>
-                                <td><?= esc((string) ((int) ($row['months_covered'] ?? 1))) ?></td>
-                                <td>P<?= esc(number_format((float) $row['amount'], 2)) ?></td>
-                                <td><?= esc((string) $row['payment_date']) ?></td>
-                                <td><?= esc(strtoupper((string) $row['payment_method'])) ?></td>
-                                <td><?= esc((string) ($row['reference_number'] ?: ($row['official_receipt_number'] ?: '-'))) ?></td>
-                                <td><span class="badge text-bg-<?= $status === 'paid' ? 'success' : ($status === 'pending' ? 'warning' : 'danger') ?>"><?= esc(ucfirst($status)) ?></span></td>
-                            </tr>
-                        <?php endforeach; ?>
-                        <?php if (empty($rows)): ?>
-                            <tr><td colspan="7" class="text-center text-muted py-4">No payment records found.</td></tr>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
+            <div class="pm-filter-group pm-filter-group--method">
+                <label class="pm-filter-label">&nbsp;</label>
+                <select class="pm-select" disabled style="opacity:0.5;">
+                    <option>All Methods</option>
+                </select>
             </div>
+
+            <div class="pm-filter-group pm-filter-group--branch">
+                <label class="pm-filter-label">&nbsp;</label>
+                <input type="text" class="pm-input" value="<?= esc(session('branch_name') ?? 'Current Branch') ?>" disabled style="opacity:0.5;">
+            </div>
+
+            <div class="pm-filter-actions">
+                <button type="submit" class="pm-btn pm-btn--purple pm-btn--sm">
+                    <i class="mdi mdi-check"></i> Apply
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- ====== Table ====== -->
+    <div class="pm-card">
+        <div class="pm-table-wrap">
+            <table class="pm-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Plan Holder</th>
+                        <th>Branch</th>
+                        <th>Months</th>
+                        <th>Amount</th>
+                        <th>Date</th>
+                        <th>Method</th>
+                        <th>Reference / OR</th>
+                        <th>Status</th>
+                        <th>Proof</th>
+                        <th>Remarks</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (empty($rows)): ?>
+                        <tr>
+                            <td colspan="12">
+                                <div class="pm-empty">
+                                    <i class="mdi mdi-credit-card-outline"></i>
+                                    No payment records found.
+                                </div>
+                            </td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach ($rows as $row):
+                            $status = strtolower((string) ($row['status'] ?? 'pending'));
+                            $method = strtolower((string) ($row['payment_method'] ?? 'cash'));
+                            $refNumber = (string) ($row['reference_number'] ?? ($row['official_receipt_number'] ?? '-'));
+                            $proofImage = (string) ($row['proof_image'] ?? '');
+                            $remarks = (string) ($row['remarks'] ?? '-');
+                            $paymentId = (int) ($row['payment_id'] ?? 0);
+                        ?>
+                        <tr>
+                            <td><strong>#<?= esc((string) $paymentId) ?></strong></td>
+                            <td>
+                                <div class="pm-holder">
+                                    <span class="pm-holder__name"><?= esc(trim((string) ($row['first_name'] ?? '')) . ' ' . esc((string) ($row['last_name'] ?? ''))) ?></span>
+                                    <span class="pm-holder__id"><?= esc((string) ($row['unique_identifier'] ?: 'No ID')) ?></span>
+                                </div>
+                            </td>
+                            <td><?= esc((string) ($row['branch_name'] ?? '-')) ?></td>
+                            <td><?= esc((string) ((int) ($row['months_covered'] ?? 1))) ?></td>
+                            <td><strong>₱<?= esc(number_format((float) ($row['amount'] ?? 0), 2)) ?></strong></td>
+                            <td><?= esc((string) ($row['payment_date'] ?? '-')) ?></td>
+                            <td>
+                                <span class="pm-method pm-method--<?= $method ?>">
+                                    <i class="mdi <?= $method === 'gcash' ? 'mdi-cash' : 'mdi-cash-multiple' ?>"></i>
+                                    <?= strtoupper($method) ?>
+                                </span>
+                            </td>
+                            <td><?= esc($refNumber) ?></td>
+                            <td>
+                                <span class="pm-status pm-status--<?= $status ?>"><?= esc(ucfirst($status)) ?></span>
+                            </td>
+                            <td>
+                                <?php if (! empty($proofImage)): ?>
+                                    <a href="<?= site_url('uploads/payment-proofs/' . $proofImage) ?>" target="_blank" class="pm-proof-link">View Proof</a>
+                                <?php else: ?>
+                                    <span style="color:var(--pm-ink-faint);">-</span>
+                                <?php endif; ?>
+                            </td>
+                            <td style="max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="<?= esc($remarks) ?>"><?= esc($remarks) ?></td>
+                            <td>
+                                <div class="pm-actions">
+                                    <div class="pm-dropdown">
+                                        <button class="pm-action-icon" onclick="pmToggleDropdown(this)" title="Actions" style="cursor:pointer;">
+                                            <i class="mdi mdi-dots-horizontal"></i>
+                                        </button>
+                                        <div class="pm-dropdown__menu">
+                                            <button class="pm-dropdown__item" onclick="pmCloseAllDropdowns()">
+                                                <i class="mdi mdi-receipt-text-outline"></i> Print Receipt
+                                            </button>
+                                            <button class="pm-dropdown__item" onclick="pmCloseAllDropdowns()">
+                                                <i class="mdi mdi-eye-outline"></i> View Details
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
 
+<!-- ====== Scripts ====== -->
 <script>
-    (function () {
-        const plan = document.getElementById('plan_id');
-        const amount = document.getElementById('amount');
-        const months = document.getElementById('months_covered');
-        if (!plan || !amount) {
-            return;
-        }
-        function updateAmount() {
-            const selected = plan.options[plan.selectedIndex];
-            const fee = selected ? Number(selected.getAttribute('data-monthly-fee') || 0) : 0;
-            const monthsValue = months ? Number(months.value || 1) : 1;
-            if (fee > 0) {
-                amount.value = (fee * monthsValue).toFixed(2);
-            }
-        }
-        plan.addEventListener('change', updateAmount);
-        if (months) {
-            months.addEventListener('change', updateAmount);
-        }
-        updateAmount();
-    })();
+(function () {
+    'use strict';
+
+    window.pmToggleDropdown = function (btn) {
+        var menu = btn.nextElementSibling;
+        var isOpen = menu.classList.contains('show');
+        pmCloseAllDropdowns();
+        if (!isOpen) menu.classList.add('show');
+    };
+
+    window.pmCloseAllDropdowns = function () {
+        document.querySelectorAll('.pm-dropdown__menu.show').forEach(function (m) {
+            m.classList.remove('show');
+        });
+    };
+
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('.pm-dropdown')) pmCloseAllDropdowns();
+    });
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') pmCloseAllDropdowns();
+    });
+})();
 </script>
 <?= $this->endSection() ?>

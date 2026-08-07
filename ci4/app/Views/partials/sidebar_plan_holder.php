@@ -1,20 +1,55 @@
-<aside class="sidebar-wrapper app-sidebar p-3">
-    <a href="<?= base_url('dashboard') ?>" class="d-flex align-items-center gap-3 mb-4 text-decoration-none text-white">
-        <span class="rounded-4 d-inline-flex align-items-center justify-content-center" style="width: 3rem; height: 3rem; background: linear-gradient(135deg, rgba(255,255,255,.18), rgba(255,255,255,.08));">
-            <img src="<?= base_url('assets/images/logo-icon.svg') ?>" alt="Logo" width="28">
-        </span>
-        <span>
-            <span class="d-block fw-bold lh-1">Plan Holder</span>
-            <small class="text-white-50">Service dashboard</small>
-        </span>
-    </a>
-    <nav class="nav flex-column gap-2">
-        <a class="nav-link text-white rounded-4 px-3 py-2" href="<?= base_url('client/dashboard') ?>"><i class="ti ti-layout-dashboard me-2"></i>Dashboard</a>
-        <a class="nav-link text-white rounded-4 px-3 py-2" href="<?= base_url('client/profile') ?>"><i class="ti ti-user-circle me-2"></i>My Profile</a>
-        <a class="nav-link text-white rounded-4 px-3 py-2" href="<?= base_url('client/payment') ?>"><i class="ti ti-receipt me-2"></i>Payment</a>
-        <a class="nav-link text-white rounded-4 px-3 py-2" href="<?= base_url('client/service') ?>"><i class="ti ti-clipboard-list me-2"></i>Service</a>
-        <a class="nav-link text-white rounded-4 px-3 py-2" href="<?= base_url('client/membership') ?>"><i class="ti ti-certificate me-2"></i>Membership Details</a>
-        <a class="nav-link text-white rounded-4 px-3 py-2" href="<?= base_url('client/notification') ?>"><i class="ti ti-bell me-2"></i>Notification</a>
-        <a class="nav-link text-danger rounded-4 px-3 py-2 mt-2" href="<?= base_url('logout') ?>"><i class="ti ti-logout me-2"></i>Logout</a>
-    </nav>
-</aside>
+<nav class="sidebar sidebar-offcanvas" id="sidebar">
+  <ul class="nav">
+    <li class="nav-item nav-profile">
+      <a href="#" class="nav-link">
+        <div class="nav-profile-image">
+          <img src="<?= esc(session()->get('avatar') ? base_url('uploads/avatars/' . session()->get('avatar')) : base_url('purpleadmin/assets/images/faces/face1.jpg')) ?>" alt="profile" />
+          <span class="login-status online"></span>
+        </div>
+        <div class="nav-profile-text d-flex flex-column">
+          <span class="font-weight-bold mb-2"><?= esc(trim((string) (session()->get('first_name') . ' ' . session()->get('last_name'))) ?: ($plan_holder_name ?? 'Plan Holder')) ?></span>
+          <span class="text-secondary text-small">Plan Holder</span>
+        </div>
+        <i class="mdi mdi-bookmark-check text-success nav-profile-badge"></i>
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="<?= base_url('client/dashboard') ?>">
+        <span class="menu-title">Dashboard</span>
+        <i class="mdi mdi-home menu-icon"></i>
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" data-bs-toggle="collapse" href="#client-payments" aria-expanded="false" aria-controls="client-payments">
+        <span class="menu-title">Payments</span>
+        <i class="menu-arrow"></i>
+        <i class="mdi mdi-credit-card menu-icon"></i>
+      </a>
+      <div class="collapse" id="client-payments">
+        <ul class="nav flex-column sub-menu">
+          <li class="nav-item"><a class="nav-link" href="<?= base_url('client/payment') ?>">Payment History</a></li>
+          <li class="nav-item"><a class="nav-link" href="<?= base_url('client/payment/advance') ?>#advance-payment-section">Advance Payment</a></li>
+        </ul>
+      </div>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" data-bs-toggle="collapse" href="#client-services" aria-expanded="false" aria-controls="client-services">
+        <span class="menu-title">Package / Service</span>
+        <i class="menu-arrow"></i>
+        <i class="mdi mdi-package-variant menu-icon"></i>
+      </a>
+      <div class="collapse" id="client-services">
+        <ul class="nav flex-column sub-menu">
+          <li class="nav-item"><a class="nav-link" href="<?= base_url('client/service') ?>">Packages</a></li>
+          <li class="nav-item"><a class="nav-link" href="<?= base_url('client/service') ?>">Services</a></li>
+        </ul>
+      </div>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="<?= base_url('client/membership') ?>">
+        <span class="menu-title">Membership</span>
+        <i class="mdi mdi-account-check menu-icon"></i>
+      </a>
+    </li>
+  </ul>
+</nav>

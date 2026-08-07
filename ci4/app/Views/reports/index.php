@@ -50,7 +50,7 @@
                             <tr>
                                 <td><?= esc($payment['payment_date']) ?></td>
                                 <td><?= esc($payment['branch_name']) ?></td>
-                                <td><?= esc($payment['first_name'] . ' ' . $payment['last_name']) ?></td>
+                                <td><?= esc($payment['client_first'] . ' ' . $payment['client_last']) ?></td>
                                 <td><?= esc((string) ((int) ($payment['months_covered'] ?? 1))) ?></td>
                                 <td><?= esc((string) $payment['amount']) ?></td>
                                 <td><?= esc(strtoupper((string) $payment['payment_method'])) ?></td>

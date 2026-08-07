@@ -45,9 +45,9 @@ class SettingsService
      */
     public function getAll(): array
     {
-        // Try to get from cache first
+        // Try to get from cache first (cache returns null on a miss)
         $cached = $this->cache->get($this->cacheKey);
-        if ($cached !== false) {
+        if (is_array($cached)) {
             return $cached;
         }
 

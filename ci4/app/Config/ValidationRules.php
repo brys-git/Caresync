@@ -48,8 +48,8 @@ class ValidationRules
             'contact_number' => 'required|regex_match[/^[0-9+\-()\s]+$/]|min_length[10]|max_length[20]',
             'address_barangay' => 'required|max_length[100]',
             'address_city' => 'required|max_length[100]',
-            'civil_status' => 'required|in_list[Single,Married,Divorced,Widowed]',
-            'citizenship' => 'required|max_length[50]',
+            'civil_status' => 'permit_empty|in_list[Single,Married,Divorced,Widowed]',
+            'citizenship' => 'permit_empty|max_length[50]',
             'branch_id' => 'required|numeric',
             'package_id' => 'required|numeric',
         ];

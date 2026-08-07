@@ -1,270 +1,257 @@
 <?= $this->extend($role_layout) ?>
 
 <?= $this->section('content') ?>
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1 class="h4 mb-0">Client Management</h1>
+<link rel="stylesheet" href="<?= base_url('assets/css/clients.css') ?>">
+
+<?php
+    $currentSearch = '';
+    $currentStatus = '';
+    $perPage = 10;
+    $totalItems = count($clients ?? []);
+    $currentPage = max(1, (int) ($_GET['page'] ?? 1));
+    $totalPages = max(1, (int) ceil($totalItems / $perPage));
+    $offset = ($currentPage - 1) * $perPage;
+    $pageClients = array_slice($clients ?? [], $offset, $perPage);
+?>
+
+<div class="cm">
+
+    <!-- ====== Header ====== -->
+    <div class="cm-header">
+        <div class="cm-header__text">
+            <h1 class="cm-header__title">Clients</h1>
+            <p class="cm-header__sub">Manage and view all registered system clients.</p>
+        </div>
     </div>
 
-    <?php if (session()->getFlashdata('error')): ?>
-        <div class="alert alert-danger"><?= esc(session()->getFlashdata('error')) ?></div>
-    <?php endif; ?>
-
-    <?php if (session()->getFlashdata('success')): ?>
-        <div class="alert alert-success"><?= esc(session()->getFlashdata('success')) ?></div>
-    <?php endif; ?>
-
+    <!-- ====== Flash Messages ====== -->
     <?php if (! empty($branch_issue)): ?>
-        <div class="alert alert-warning"><?= esc($branch_issue) ?></div>
+        <div style="background:#fff5f5;border:1px solid #fed7d7;color:#e53e3e;padding:12px 16px;border-radius:10px;font-size:0.86rem;font-weight:600;">
+            <i class="mdi mdi-alert-circle-outline"></i>
+            <?= esc($branch_issue) ?>
+        </div>
+    <?php endif; ?>
+    <?php if (session()->getFlashdata('error')): ?>
+        <div style="background:#fff5f5;border:1px solid #fed7d7;color:#e53e3e;padding:12px 16px;border-radius:10px;font-size:0.86rem;font-weight:600;">
+            <i class="mdi mdi-alert-circle-outline"></i>
+            <?= esc(session()->getFlashdata('error')) ?>
+        </div>
+    <?php endif; ?>
+    <?php if (session()->getFlashdata('success')): ?>
+        <div style="background:#f0fff4;border:1px solid #c6f6d5;color:#38a169;padding:12px 16px;border-radius:10px;font-size:0.86rem;font-weight:600;">
+            <i class="mdi mdi-check-circle-outline"></i>
+            <?= esc(session()->getFlashdata('success')) ?>
+        </div>
     <?php endif; ?>
 
-    <div class="card">
-        <div class="card-body">
-            <!-- Navigation Tabs -->
-            <ul class="nav nav-tabs" id="clientTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button 
-                        class="nav-link active" 
-                        id="holders-tab" 
-                        data-bs-toggle="tab" 
-                        data-bs-target="#holders-panel" 
-                        type="button" 
-                        role="tab" 
-                        aria-controls="holders-panel" 
-                        aria-selected="true"
-                    >
-                        Branch Plan Holders
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button 
-                        class="nav-link" 
-                        id="register-tab" 
-                        data-bs-toggle="tab" 
-                        data-bs-target="#register-panel" 
-                        type="button" 
-                        role="tab" 
-                        aria-controls="register-panel" 
-                        aria-selected="false"
-                    >
-                        Register Plan Holder
-                    </button>
-                </li>
-            </ul>
+    <!-- ====== Filter Bar ====== -->
+    <div class="cm-filter-bar">
+        <div class="cm-search">
+            <i class="mdi mdi-magnify"></i>
+            <input type="text" id="st-cm-search" placeholder="Search clients by name, ID, or contact..." oninput="cmFilterTable()">
+        </div>
 
-            <!-- Tab Content -->
-            <div class="tab-content pt-3" id="clientTabsContent">
-                <!-- TAB 1: Branch Plan Holders -->
-                <div 
-                    class="tab-pane fade show active" 
-                    id="holders-panel" 
-                    role="tabpanel" 
-                    aria-labelledby="holders-tab" 
-                    tabindex="0"
-                >
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="mb-0">View and manage all registered plan holders in your branch</h5>
-                    </div>
-                    
-                    <div class="table-responsive">
-                        <table class="table table-striped align-middle">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Email</th>
-                                    <th>Contact</th>
-                                    <th>Status</th>
-                                    <th class="text-end">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php if (empty($clients)): ?>
-                                    <tr>
-                                        <td colspan="5" class="text-center text-muted py-4">
-                                            No plan holders found for this branch.
-                                        </td>
-                                    </tr>
-                                <?php endif; ?>
+        <div class="cm-status-tabs">
+            <button type="button" class="cm-tab cm-tab--active" data-filter="all" onclick="cmSetTabStatus(this)">All</button>
+            <button type="button" class="cm-tab" data-filter="active" onclick="cmSetTabStatus(this)">Active</button>
+            <button type="button" class="cm-tab" data-filter="inactive" onclick="cmSetTabStatus(this)">Inactive</button>
+        </div>
 
-                                <?php foreach ($clients as $client): ?>
-                                    <tr>
-                                        <td>
-                                            <a 
-                                                href="<?= base_url('staff/client/view/' . $client['plan_holder_id']) ?>" 
-                                                class="text-decoration-none fw-semibold"
-                                            >
-                                                <?= esc($client['first_name'] . ' ' . $client['last_name']) ?>
-                                            </a>
-                                        </td>
-                                        <td><?= esc((string) ($client['email'] ?? '-')) ?></td>
-                                        <td><?= esc((string) ($client['contact_number'] ?? '-')) ?></td>
-                                        <td>
-                                            <span class="badge text-bg-<?= $client['status'] === 'active' ? 'success' : 'secondary' ?>">
-                                                <?= esc(ucfirst((string) $client['status'])) ?>
-                                            </span>
-                                        </td>
-                                        <td class="text-end">
-                                            <a 
-                                                href="<?= base_url('staff/client/edit/' . $client['plan_holder_id']) ?>" 
-                                                class="btn btn-sm btn-outline-primary"
-                                                title="Edit client"
-                                            >
-                                                Edit
-                                            </a>
-                                            <a 
-                                                href="<?= base_url('staff/client/view/' . $client['plan_holder_id']) ?>" 
-                                                class="btn btn-sm btn-primary"
-                                                title="View full details"
-                                            >
-                                                View
-                                            </a>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+        <a href="<?= site_url('staff/client-management/register') ?>" class="cm-btn cm-btn--purple">
+            <i class="mdi mdi-plus"></i> Register New Client
+        </a>
+    </div>
 
-                <!-- TAB 2: Register Plan Holder -->
-                <div 
-                    class="tab-pane fade" 
-                    id="register-panel" 
-                    role="tabpanel" 
-                    aria-labelledby="register-tab" 
-                    tabindex="0"
-                >
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="mb-0">Register a new plan holder in your branch</h5>
-                    </div>
+    <!-- ====== Main layout: Table + Sidebar ====== -->
+    <div class="cm-layout">
 
-                    <div class="alert alert-info mb-3">
-                        <strong>Heads up!</strong> You can register a walk-in client or link an existing user account to a new plan holder.
-                    </div>
+        <!-- Table -->
+        <div class="cm-card">
+            <div class="cm-table-wrap">
+                <table class="cm-table" id="st-cm-table">
+                    <thead>
+                        <tr>
+                            <th>Client Name</th>
+                            <th>Client ID</th>
+                            <th>Contact Number</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($pageClients)): ?>
+                            <tr>
+                                <td colspan="5">
+                                    <div class="cm-empty">
+                                        <i class="mdi mdi-account-outline"></i>
+                                        No clients found.
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php else: ?>
+                            <?php foreach ($pageClients as $client):
+                                $holderStatus = strtolower((string) ($client['plan_holder_status'] ?? $client['status'] ?? 'inactive'));
+                                $clientId = (int) ($client['plan_holder_id'] ?? 0);
+                                $fullName = trim((string) ($client['first_name'] ?? '') . ' ' . (string) ($client['last_name'] ?? ''));
+                                $initials = strtoupper(mb_substr($client['first_name'] ?? '', 0, 1) . mb_substr($client['last_name'] ?? '', 0, 1));
+                                $contact = (string) ($client['contact_number'] ?? '-');
+                                $viewUrl = site_url('staff/client-management/view/' . $clientId);
+                                $editUrl = site_url('staff/client-management/edit/' . $clientId);
+                            ?>
+                            <tr data-status="<?= esc($holderStatus) ?>"
+                                data-search="<?= esc(strtolower($fullName . ' ' . $clientId . ' ' . $contact)) ?>">
+                                <td>
+                                    <div class="cm-client">
+                                        <div class="cm-avatar"><?= esc($initials ?: '?') ?></div>
+                                        <div>
+                                            <div class="cm-client__name"><?= esc($fullName ?: 'Unknown') ?></div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>CL-<?= esc((string) $clientId) ?></td>
+                                <td><?= esc($contact) ?></td>
+                                <td>
+                                    <span class="cm-badge <?= $holderStatus === 'active' ? 'cm-badge--active' : 'cm-badge--inactive' ?>">
+                                        <?= $holderStatus === 'active' ? 'Active' : 'Inactive' ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="cm-actions">
+                                        <a href="<?= $viewUrl ?>" class="cm-action-icon" title="View client">
+                                            <i class="mdi mdi-magnify"></i>
+                                        </a>
+                                        <div class="cm-dropdown">
+                                            <button class="cm-action-icon" onclick="cmToggleDropdown(this)" title="More actions" style="cursor:pointer;">
+                                                <i class="mdi mdi-dots-horizontal"></i>
+                                            </button>
+                                            <div class="cm-dropdown__menu">
+                                                <a href="<?= $viewUrl ?>" class="cm-dropdown__item">
+                                                    <i class="mdi mdi-eye-outline"></i> View Details
+                                                </a>
+                                                <a href="<?= $editUrl ?>" class="cm-dropdown__item">
+                                                    <i class="mdi mdi-pencil-outline"></i> Edit Client
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
 
-                    <!-- Quick Form - Minimal fields for registration -->
-                    <form method="post" action="<?= base_url('staff/client/store') ?>" novalidate>
-                        <?= csrf_field() ?>
+            <!-- Pagination -->
+            <?php if ($totalPages > 1): ?>
+            <div class="cm-pagination">
+                <?php if ($currentPage > 1): ?>
+                    <a href="?page=<?= ($currentPage - 1) ?>" class="cm-page-btn cm-page-btn--nav" title="Previous">
+                        <i class="mdi mdi-chevron-left"></i>
+                    </a>
+                <?php endif; ?>
 
-                        <div class="row g-3">
-                            <!-- Basic Personal Info -->
-                            <div class="col-md-6">
-                                <label for="quick_first_name" class="form-label">First Name <span class="text-danger">*</span></label>
-                                <input 
-                                    type="text" 
-                                    class="form-control" 
-                                    id="quick_first_name" 
-                                    name="first_name" 
-                                    required
-                                >
-                            </div>
-                            <div class="col-md-6">
-                                <label for="quick_last_name" class="form-label">Last Name <span class="text-danger">*</span></label>
-                                <input 
-                                    type="text" 
-                                    class="form-control" 
-                                    id="quick_last_name" 
-                                    name="last_name" 
-                                    required
-                                >
-                            </div>
-                            <div class="col-md-6">
-                                <label for="quick_email" class="form-label">Email <span class="text-danger">*</span></label>
-                                <input 
-                                    type="email" 
-                                    class="form-control" 
-                                    id="quick_email" 
-                                    name="email" 
-                                    required
-                                >
-                            </div>
-                            <div class="col-md-6">
-                                <label for="quick_contact" class="form-label">Contact Number</label>
-                                <input 
-                                    type="tel" 
-                                    class="form-control" 
-                                    id="quick_contact" 
-                                    name="contact_number"
-                                >
-                            </div>
+                <?php
+                    $startPage = max(1, $currentPage - 2);
+                    $endPage = min($totalPages, $currentPage + 2);
+                    if ($startPage > 1): ?>
+                        <a href="?page=1" class="cm-page-btn">1</a>
+                        <?php if ($startPage > 2): ?><span style="padding:0 4px;color:#a0aec0;">…</span><?php endif; ?>
+                    <?php endif; ?>
 
-                            <!-- City/Address -->
-                            <div class="col-md-6">
-                                <label for="quick_city" class="form-label">City/Municipality</label>
-                                <input 
-                                    type="text" 
-                                    class="form-control" 
-                                    id="quick_city" 
-                                    name="address_city"
-                                >
-                            </div>
-                            <div class="col-md-6">
-                                <label for="quick_barangay" class="form-label">Barangay</label>
-                                <input 
-                                    type="text" 
-                                    class="form-control" 
-                                    id="quick_barangay" 
-                                    name="address_barangay"
-                                >
-                            </div>
+                    <?php for ($p = $startPage; $p <= $endPage; $p++): ?>
+                        <a href="?page=<?= $p ?>" class="cm-page-btn <?= $p === $currentPage ? 'cm-page-btn--active' : '' ?>"><?= $p ?></a>
+                    <?php endfor; ?>
 
-                            <!-- Membership Program -->
-                            <div class="col-md-6">
-                                <label class="form-label">Program</label>
-                                <div class="form-control-plaintext fw-semibold">
-                                    <?= esc((string) (($program['name'] ?? '') ?: 'Damayan Burial Program')) ?>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Monthly Fee</label>
-                                <div class="form-control-plaintext fw-semibold">
-                                    P<?= number_format((float) ($program['monthly_fee'] ?? 240), 2) ?>
-                                </div>
-                            </div>
+                    <?php if ($endPage < $totalPages): ?>
+                        <?php if ($endPage < $totalPages - 1): ?><span style="padding:0 4px;color:#a0aec0;">…</span><?php endif; ?>
+                        <a href="?page=<?= $totalPages ?>" class="cm-page-btn"><?= $totalPages ?></a>
+                    <?php endif; ?>
 
-                            <!-- Hidden Fields for unused optional fields -->
-                            <input type="hidden" name="middle_name" value="">
-                            <input type="hidden" name="date_of_birth" value="">
-                            <input type="hidden" name="place_of_birth" value="">
-                            <input type="hidden" name="age" value="">
-                            <input type="hidden" name="gender" value="">
-                            <input type="hidden" name="civil_status" value="">
-                            <input type="hidden" name="citizenship" value="">
-                            <input type="hidden" name="height" value="">
-                            <input type="hidden" name="weight" value="">
-                            <input type="hidden" name="address_no" value="">
-                            <input type="hidden" name="address_street" value="">
-                            <input type="hidden" name="spouse_name" value="">
-                            <input type="hidden" name="spouse_birthdate" value="">
-                            <input type="hidden" name="spouse_occupation" value="">
-                            <input type="hidden" name="senior_citizen_id" value="">
-                            <input type="hidden" name="organization_affiliation" value="">
-                        </div>
+                <?php if ($currentPage < $totalPages): ?>
+                    <a href="?page=<?= ($currentPage + 1) ?>" class="cm-page-btn cm-page-btn--nav" title="Next">
+                        <i class="mdi mdi-chevron-right"></i>
+                    </a>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
+        </div>
 
-                        <div class="d-flex gap-2 mt-4 justify-content-end">
-                            <a href="<?= base_url('staff/client') ?>" class="btn btn-outline-secondary">Clear</a>
-                            <a 
-                                href="<?= base_url('staff/client/create') ?>" 
-                                class="btn btn-outline-info me-2"
-                                title="Open full registration form"
-                            >
-                                Full Form
-                            </a>
-                            <button type="submit" class="btn btn-success">Quick Register</button>
-                        </div>
-
-                        <div class="alert alert-light mt-3">
-                            <small class="text-muted">
-                                <strong>Quick Register:</strong> Minimal fields for fast registration. <br>
-                                <strong>Full Form:</strong> Complete form for detailed information including personal details, address, beneficiaries, and more.
-                            </small>
-                        </div>
-                    </form>
-                </div>
+        <!-- Sidebar KPIs -->
+        <div class="cm-sidebar">
+            <div class="cm-kpi">
+                <div class="cm-kpi__label">Total Clients:</div>
+                <div class="cm-kpi__value"><?= (int) ($total_clients ?? 0) ?></div>
+            </div>
+            <div class="cm-kpi">
+                <div class="cm-kpi__label">Active Clients:</div>
+                <div class="cm-kpi__value"><?= (int) ($active_clients ?? 0) ?></div>
+            </div>
+            <div class="cm-kpi">
+                <div class="cm-kpi__label">New Clients (This Month):</div>
+                <div class="cm-kpi__value"><?= (int) ($new_clients_month ?? 0) ?></div>
             </div>
         </div>
     </div>
 </div>
 
-<?= $this->endSection() ?>
+<!-- ====== Scripts ====== -->
+<script>
+(function () {
+    'use strict';
 
+    var currentFilter = 'all';
+
+    /* --- Tab status filter --- */
+    window.cmSetTabStatus = function (btn) {
+        document.querySelectorAll('.cm-status-tabs .cm-tab').forEach(function (t) {
+            t.classList.remove('cm-tab--active');
+        });
+        btn.classList.add('cm-tab--active');
+        currentFilter = btn.getAttribute('data-filter');
+        cmFilterTable();
+    };
+
+    /* --- Client-side table filter --- */
+    window.cmFilterTable = function () {
+        var searchVal = (document.getElementById('st-cm-search').value || '').toLowerCase().trim();
+        var rows = document.querySelectorAll('#st-cm-table tbody tr[data-status]');
+        var visible = 0;
+
+        rows.forEach(function (row) {
+            var matchStatus = currentFilter === 'all' || row.getAttribute('data-status') === currentFilter;
+            var matchSearch = !searchVal || (row.getAttribute('data-search') || '').indexOf(searchVal) !== -1;
+
+            if (matchStatus && matchSearch) {
+                row.style.display = '';
+                visible++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    };
+
+    /* --- Dropdown --- */
+    window.cmToggleDropdown = function (btn) {
+        var menu = btn.nextElementSibling;
+        var isOpen = menu.classList.contains('show');
+        cmCloseAllDropdowns();
+        if (!isOpen) menu.classList.add('show');
+    };
+
+    function cmCloseAllDropdowns() {
+        document.querySelectorAll('.cm-dropdown__menu.show').forEach(function (m) {
+            m.classList.remove('show');
+        });
+    }
+
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('.cm-dropdown')) cmCloseAllDropdowns();
+    });
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') cmCloseAllDropdowns();
+    });
+})();
+</script>
+<?= $this->endSection() ?>

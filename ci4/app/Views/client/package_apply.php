@@ -4,6 +4,11 @@
 <?php
     $state = (string) ($access['state'] ?? 'new');
     $canApply = (bool) ($can_apply ?? false);
+    $applicationContext = $application_context ?? [];
+    $planHolderName = (string) ($applicationContext['plan_holder_name'] ?? trim((string) (($access['user']['first_name'] ?? '') . ' ' . ($access['user']['middle_name'] ?? '') . ' ' . ($access['user']['last_name'] ?? ''))));
+    $planHolderAddress = (string) ($applicationContext['plan_holder_address'] ?? '-');
+    $deceasedNameOptions = (array) ($applicationContext['deceased_name_options'] ?? []);
+    $selectedDeceasedName = (string) old('deceased_name', $planHolderName);
 ?>
 <div class="container-fluid">
     <div class="d-flex align-items-start justify-content-between mb-3">
@@ -39,7 +44,13 @@
         <?= csrf_field() ?>
         <div class="mb-3">
             <label class="form-label">Deceased full name</label>
-            <input type="text" name="deceased_name" class="form-control" value="<?= old('deceased_name') ?>" required />
+            <select name="deceased_name" class="form-select" required>
+                <option value="">Select a name</option>
+                <?php foreach ($deceasedNameOptions as $option): ?>
+                    <option value="<?= esc($option) ?>" <?= $selectedDeceasedName === $option ? 'selected' : '' ?>><?= esc($option) ?></option>
+                <?php endforeach; ?>
+            </select>
+            <div class="form-text">Choose the plan holder or one of the registered beneficiaries.</div>
         </div>
         <div class="mb-3 row">
             <div class="col-md-6">
@@ -53,12 +64,11 @@
         </div>
         <div class="mb-3">
             <label class="form-label">Deceased address</label>
-            <input type="text" name="deceased_address" class="form-control" value="<?= old('deceased_address') ?>" />
+            <input type="text" name="deceased_address" class="form-control" value="<?= esc(old('deceased_address', $planHolderAddress)) ?>" readonly />
+            <div class="form-text">This now uses the plan holder's registered address to keep the process simple.</div>
         </div>
-        <div class="mb-3">
-            <label class="form-label">Beneficiary name</label>
-            <input type="text" name="beneficiary_name" class="form-control" value="<?= old('beneficiary_name') ?>" />
-        </div>
+        <input type="hidden" name="beneficiary_name" value="<?= esc($planHolderName) ?>" />
+        <div class="form-text mb-3">Applicant details are automatically filled from the plan holder profile.</div>
         <div class="mb-3">
             <label class="form-label">Beneficiary contact number</label>
             <input type="text" name="beneficiary_contact" class="form-control" value="<?= old('beneficiary_contact') ?>" />

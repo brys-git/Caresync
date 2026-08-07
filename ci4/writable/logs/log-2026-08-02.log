@@ -1,0 +1,1454 @@
+DEBUG - 2026-08-02 08:46:20 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 08:46:23 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 08:48:39 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 08:48:44 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 08:49:17 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 08:49:18 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+CRITICAL - 2026-08-02 10:55:32 --> TypeError: App\Services\SettingsService::getAll(): Return value must be of type array, null returned
+[Method: GET, Route: /]
+in APPPATH\Services\SettingsService.php on line 51.
+ 1 APPPATH\Services\SettingsService.php(37): App\Services\SettingsService->getAll()
+ 2 ROOTPATH\_tmp_settings_test.php(24): App\Services\SettingsService->get('company_name', 'MISSING')
+DEBUG - 2026-08-02 08:56:42 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 08:56:45 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 08:56:46 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 08:56:48 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+ERROR - 2026-08-02 08:56:48 --> Unknown column 'sa.application_no' in 'field list'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = \'pending\'
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = \'pending\'
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = \'pending\'
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = :sa.status:
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10', [...], false)
+ 5 APPPATH\Controllers\Dashboard.php(129): CodeIgniter\Database\BaseBuilder->get()
+ 6 APPPATH\Controllers\Dashboard.php(49): App\Controllers\Dashboard->buildAdminDashboardData()
+ 7 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Dashboard->adminData()
+ 8 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Dashboard))
+ 9 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+10 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+11 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+12 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-08-02 08:56:48 --> CodeIgniter\Database\Exceptions\DatabaseException: Unknown column 'sa.application_no' in 'field list'
+[Method: GET, Route: admin/dashboard/data]
+in SYSTEMPATH\Database\BaseConnection.php on line 865.
+ 1 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = :sa.status:
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10', [...], false)
+ 2 APPPATH\Controllers\Dashboard.php(129): CodeIgniter\Database\BaseBuilder->get()
+ 3 APPPATH\Controllers\Dashboard.php(49): App\Controllers\Dashboard->buildAdminDashboardData()
+ 4 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Dashboard->adminData()
+ 5 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Dashboard))
+ 6 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 7 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+ 8 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 9 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-08-02 08:56:48 --> [Caused by] CodeIgniter\Database\Exceptions\DatabaseException: Unknown column 'sa.application_no' in 'field list'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 310.
+ 1 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = \'pending\'
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10')
+ 2 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = \'pending\'
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10')
+ 3 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = :sa.status:
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10', [...], false)
+ 4 APPPATH\Controllers\Dashboard.php(129): CodeIgniter\Database\BaseBuilder->get()
+ 5 APPPATH\Controllers\Dashboard.php(49): App\Controllers\Dashboard->buildAdminDashboardData()
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Dashboard->adminData()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Dashboard))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-08-02 08:56:48 --> [Caused by] mysqli_sql_exception: Unknown column 'sa.application_no' in 'field list'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = \'pending\'
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = \'pending\'
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = \'pending\'
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = :sa.status:
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10', [...], false)
+ 5 APPPATH\Controllers\Dashboard.php(129): CodeIgniter\Database\BaseBuilder->get()
+ 6 APPPATH\Controllers\Dashboard.php(49): App\Controllers\Dashboard->buildAdminDashboardData()
+ 7 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Dashboard->adminData()
+ 8 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Dashboard))
+ 9 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+10 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+11 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+12 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-08-02 08:56:53 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 08:56:56 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 08:57:00 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 08:57:00 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 08:57:06 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 08:57:07 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 08:57:12 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 08:57:15 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 08:57:20 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 08:57:24 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:01:05 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:01:07 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:01:35 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:01:36 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:01:37 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+ERROR - 2026-08-02 09:01:37 --> Unknown column 'sa.application_no' in 'field list'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = \'pending\'
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = \'pending\'
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = \'pending\'
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = :sa.status:
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10', [...], false)
+ 5 APPPATH\Controllers\Dashboard.php(129): CodeIgniter\Database\BaseBuilder->get()
+ 6 APPPATH\Controllers\Dashboard.php(49): App\Controllers\Dashboard->buildAdminDashboardData()
+ 7 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Dashboard->adminData()
+ 8 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Dashboard))
+ 9 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+10 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+11 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+12 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-08-02 09:01:37 --> CodeIgniter\Database\Exceptions\DatabaseException: Unknown column 'sa.application_no' in 'field list'
+[Method: GET, Route: admin/dashboard/data]
+in SYSTEMPATH\Database\BaseConnection.php on line 865.
+ 1 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = :sa.status:
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10', [...], false)
+ 2 APPPATH\Controllers\Dashboard.php(129): CodeIgniter\Database\BaseBuilder->get()
+ 3 APPPATH\Controllers\Dashboard.php(49): App\Controllers\Dashboard->buildAdminDashboardData()
+ 4 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Dashboard->adminData()
+ 5 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Dashboard))
+ 6 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 7 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+ 8 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 9 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-08-02 09:01:37 --> [Caused by] CodeIgniter\Database\Exceptions\DatabaseException: Unknown column 'sa.application_no' in 'field list'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 310.
+ 1 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = \'pending\'
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10')
+ 2 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = \'pending\'
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10')
+ 3 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = :sa.status:
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10', [...], false)
+ 4 APPPATH\Controllers\Dashboard.php(129): CodeIgniter\Database\BaseBuilder->get()
+ 5 APPPATH\Controllers\Dashboard.php(49): App\Controllers\Dashboard->buildAdminDashboardData()
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Dashboard->adminData()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Dashboard))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-08-02 09:01:37 --> [Caused by] mysqli_sql_exception: Unknown column 'sa.application_no' in 'field list'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = \'pending\'
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = \'pending\'
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = \'pending\'
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = :sa.status:
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10', [...], false)
+ 5 APPPATH\Controllers\Dashboard.php(129): CodeIgniter\Database\BaseBuilder->get()
+ 6 APPPATH\Controllers\Dashboard.php(49): App\Controllers\Dashboard->buildAdminDashboardData()
+ 7 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Dashboard->adminData()
+ 8 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Dashboard))
+ 9 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+10 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+11 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+12 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-08-02 09:07:46 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:07:48 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+ERROR - 2026-08-02 09:07:48 --> Unknown column 'sa.application_no' in 'field list'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = \'pending\'
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = \'pending\'
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = \'pending\'
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = :sa.status:
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10', [...], false)
+ 5 APPPATH\Controllers\Dashboard.php(129): CodeIgniter\Database\BaseBuilder->get()
+ 6 APPPATH\Controllers\Dashboard.php(49): App\Controllers\Dashboard->buildAdminDashboardData()
+ 7 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Dashboard->adminData()
+ 8 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Dashboard))
+ 9 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+10 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+11 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+12 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-08-02 09:07:48 --> CodeIgniter\Database\Exceptions\DatabaseException: Unknown column 'sa.application_no' in 'field list'
+[Method: GET, Route: admin/dashboard/data]
+in SYSTEMPATH\Database\BaseConnection.php on line 865.
+ 1 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = :sa.status:
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10', [...], false)
+ 2 APPPATH\Controllers\Dashboard.php(129): CodeIgniter\Database\BaseBuilder->get()
+ 3 APPPATH\Controllers\Dashboard.php(49): App\Controllers\Dashboard->buildAdminDashboardData()
+ 4 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Dashboard->adminData()
+ 5 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Dashboard))
+ 6 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 7 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+ 8 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 9 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-08-02 09:07:48 --> [Caused by] CodeIgniter\Database\Exceptions\DatabaseException: Unknown column 'sa.application_no' in 'field list'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 310.
+ 1 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = \'pending\'
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10')
+ 2 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = \'pending\'
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10')
+ 3 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = :sa.status:
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10', [...], false)
+ 4 APPPATH\Controllers\Dashboard.php(129): CodeIgniter\Database\BaseBuilder->get()
+ 5 APPPATH\Controllers\Dashboard.php(49): App\Controllers\Dashboard->buildAdminDashboardData()
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Dashboard->adminData()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Dashboard))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-08-02 09:07:48 --> [Caused by] mysqli_sql_exception: Unknown column 'sa.application_no' in 'field list'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = \'pending\'
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = \'pending\'
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = \'pending\'
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT `sa`.`application_id`, `sa`.`application_no`, `sa`.`plan_holder_id`, `sa`.`beneficiary_name`, `sa`.`created_at`, `ph`.`branch_id`, `ph`.`unique_identifier`, `u`.`first_name`, `u`.`last_name`, `b`.`branch_name`
+FROM `service_applications` `sa`
+LEFT JOIN `plan_holders` `ph` ON `ph`.`plan_holder_id` = `sa`.`plan_holder_id`
+LEFT JOIN `users` `u` ON `u`.`user_id` = `ph`.`user_id`
+LEFT JOIN `branches` `b` ON `b`.`branch_id` = `ph`.`branch_id`
+WHERE `sa`.`status` = :sa.status:
+ORDER BY `sa`.`created_at` DESC
+ LIMIT 10', [...], false)
+ 5 APPPATH\Controllers\Dashboard.php(129): CodeIgniter\Database\BaseBuilder->get()
+ 6 APPPATH\Controllers\Dashboard.php(49): App\Controllers\Dashboard->buildAdminDashboardData()
+ 7 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Dashboard->adminData()
+ 8 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Dashboard))
+ 9 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+10 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+11 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+12 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-08-02 09:10:54 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:11:43 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:18:24 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:18:25 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:18:46 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:18:47 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:18:49 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:23:57 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:23:58 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:24:13 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:24:17 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:24:18 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:24:45 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+ERROR - 2026-08-02 09:24:45 --> You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '\"%Y-%m\")
+ORDER BY `month_key` ASC' at line 4
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT DATE_FORMAT(p.payment_date, \'%Y-%m\') AS month_key, DATE_FORMAT(p.payment_date, \'%b %Y\') AS month_label, COUNT(*) AS total_transactions, COALESCE(SUM(p.amount), 0) AS total_amount
+FROM `payments` `p`
+WHERE YEAR(p.payment_date) = 2026
+GROUP BY DATE_FORMAT(p.payment_date, \\"%Y-%m\\")
+ORDER BY `month_key` ASC', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT DATE_FORMAT(p.payment_date, \'%Y-%m\') AS month_key, DATE_FORMAT(p.payment_date, \'%b %Y\') AS month_label, COUNT(*) AS total_transactions, COALESCE(SUM(p.amount), 0) AS total_amount
+FROM `payments` `p`
+WHERE YEAR(p.payment_date) = 2026
+GROUP BY DATE_FORMAT(p.payment_date, \\"%Y-%m\\")
+ORDER BY `month_key` ASC')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT DATE_FORMAT(p.payment_date, \'%Y-%m\') AS month_key, DATE_FORMAT(p.payment_date, \'%b %Y\') AS month_label, COUNT(*) AS total_transactions, COALESCE(SUM(p.amount), 0) AS total_amount
+FROM `payments` `p`
+WHERE YEAR(p.payment_date) = 2026
+GROUP BY DATE_FORMAT(p.payment_date, \\"%Y-%m\\")
+ORDER BY `month_key` ASC')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT DATE_FORMAT(p.payment_date, \'%Y-%m\') AS month_key, DATE_FORMAT(p.payment_date, \'%b %Y\') AS month_label, COUNT(*) AS total_transactions, COALESCE(SUM(p.amount), 0) AS total_amount
+FROM `payments` `p`
+WHERE YEAR(p.payment_date) = :YEAR(p.payment_date):
+GROUP BY DATE_FORMAT(p.payment_date, \\"%Y-%m\\")
+ORDER BY `month_key` ASC', [...], false)
+ 5 APPPATH\Services\ReportService.php(95): CodeIgniter\Database\BaseBuilder->get()
+ 6 APPPATH\Services\ReportService.php(10): App\Services\ReportService->getMonthlyCollections([...])
+ 7 APPPATH\Controllers\Reports.php(26): App\Services\ReportService->getDashboardSummary([...])
+ 8 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Reports->index()
+ 9 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Reports))
+10 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+11 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+12 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+13 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-08-02 09:24:45 --> CodeIgniter\Database\Exceptions\DatabaseException: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '\"%Y-%m\")
+ORDER BY `month_key` ASC' at line 4
+[Method: GET, Route: admin/reports]
+in SYSTEMPATH\Database\BaseConnection.php on line 865.
+ 1 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT DATE_FORMAT(p.payment_date, \'%Y-%m\') AS month_key, DATE_FORMAT(p.payment_date, \'%b %Y\') AS month_label, COUNT(*) AS total_transactions, COALESCE(SUM(p.amount), 0) AS total_amount
+FROM `payments` `p`
+WHERE YEAR(p.payment_date) = :YEAR(p.payment_date):
+GROUP BY DATE_FORMAT(p.payment_date, \\"%Y-%m\\")
+ORDER BY `month_key` ASC', [...], false)
+ 2 APPPATH\Services\ReportService.php(95): CodeIgniter\Database\BaseBuilder->get()
+ 3 APPPATH\Services\ReportService.php(10): App\Services\ReportService->getMonthlyCollections([...])
+ 4 APPPATH\Controllers\Reports.php(26): App\Services\ReportService->getDashboardSummary([...])
+ 5 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Reports->index()
+ 6 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Reports))
+ 7 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 8 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+ 9 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+10 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-08-02 09:24:45 --> [Caused by] CodeIgniter\Database\Exceptions\DatabaseException: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '\"%Y-%m\")
+ORDER BY `month_key` ASC' at line 4
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 310.
+ 1 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT DATE_FORMAT(p.payment_date, \'%Y-%m\') AS month_key, DATE_FORMAT(p.payment_date, \'%b %Y\') AS month_label, COUNT(*) AS total_transactions, COALESCE(SUM(p.amount), 0) AS total_amount
+FROM `payments` `p`
+WHERE YEAR(p.payment_date) = 2026
+GROUP BY DATE_FORMAT(p.payment_date, \\"%Y-%m\\")
+ORDER BY `month_key` ASC')
+ 2 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT DATE_FORMAT(p.payment_date, \'%Y-%m\') AS month_key, DATE_FORMAT(p.payment_date, \'%b %Y\') AS month_label, COUNT(*) AS total_transactions, COALESCE(SUM(p.amount), 0) AS total_amount
+FROM `payments` `p`
+WHERE YEAR(p.payment_date) = 2026
+GROUP BY DATE_FORMAT(p.payment_date, \\"%Y-%m\\")
+ORDER BY `month_key` ASC')
+ 3 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT DATE_FORMAT(p.payment_date, \'%Y-%m\') AS month_key, DATE_FORMAT(p.payment_date, \'%b %Y\') AS month_label, COUNT(*) AS total_transactions, COALESCE(SUM(p.amount), 0) AS total_amount
+FROM `payments` `p`
+WHERE YEAR(p.payment_date) = :YEAR(p.payment_date):
+GROUP BY DATE_FORMAT(p.payment_date, \\"%Y-%m\\")
+ORDER BY `month_key` ASC', [...], false)
+ 4 APPPATH\Services\ReportService.php(95): CodeIgniter\Database\BaseBuilder->get()
+ 5 APPPATH\Services\ReportService.php(10): App\Services\ReportService->getMonthlyCollections([...])
+ 6 APPPATH\Controllers\Reports.php(26): App\Services\ReportService->getDashboardSummary([...])
+ 7 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Reports->index()
+ 8 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Reports))
+ 9 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+10 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+11 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+12 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-08-02 09:24:45 --> [Caused by] mysqli_sql_exception: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '\"%Y-%m\")
+ORDER BY `month_key` ASC' at line 4
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT DATE_FORMAT(p.payment_date, \'%Y-%m\') AS month_key, DATE_FORMAT(p.payment_date, \'%b %Y\') AS month_label, COUNT(*) AS total_transactions, COALESCE(SUM(p.amount), 0) AS total_amount
+FROM `payments` `p`
+WHERE YEAR(p.payment_date) = 2026
+GROUP BY DATE_FORMAT(p.payment_date, \\"%Y-%m\\")
+ORDER BY `month_key` ASC', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT DATE_FORMAT(p.payment_date, \'%Y-%m\') AS month_key, DATE_FORMAT(p.payment_date, \'%b %Y\') AS month_label, COUNT(*) AS total_transactions, COALESCE(SUM(p.amount), 0) AS total_amount
+FROM `payments` `p`
+WHERE YEAR(p.payment_date) = 2026
+GROUP BY DATE_FORMAT(p.payment_date, \\"%Y-%m\\")
+ORDER BY `month_key` ASC')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT DATE_FORMAT(p.payment_date, \'%Y-%m\') AS month_key, DATE_FORMAT(p.payment_date, \'%b %Y\') AS month_label, COUNT(*) AS total_transactions, COALESCE(SUM(p.amount), 0) AS total_amount
+FROM `payments` `p`
+WHERE YEAR(p.payment_date) = 2026
+GROUP BY DATE_FORMAT(p.payment_date, \\"%Y-%m\\")
+ORDER BY `month_key` ASC')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT DATE_FORMAT(p.payment_date, \'%Y-%m\') AS month_key, DATE_FORMAT(p.payment_date, \'%b %Y\') AS month_label, COUNT(*) AS total_transactions, COALESCE(SUM(p.amount), 0) AS total_amount
+FROM `payments` `p`
+WHERE YEAR(p.payment_date) = :YEAR(p.payment_date):
+GROUP BY DATE_FORMAT(p.payment_date, \\"%Y-%m\\")
+ORDER BY `month_key` ASC', [...], false)
+ 5 APPPATH\Services\ReportService.php(95): CodeIgniter\Database\BaseBuilder->get()
+ 6 APPPATH\Services\ReportService.php(10): App\Services\ReportService->getMonthlyCollections([...])
+ 7 APPPATH\Controllers\Reports.php(26): App\Services\ReportService->getDashboardSummary([...])
+ 8 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Reports->index()
+ 9 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Reports))
+10 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+11 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+12 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+13 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-08-02 09:24:56 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:24:57 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:25:07 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+ERROR - 2026-08-02 09:25:07 --> You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '\"%Y-%m\")
+ORDER BY `month_key` ASC' at line 4
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT DATE_FORMAT(p.payment_date, \'%Y-%m\') AS month_key, DATE_FORMAT(p.payment_date, \'%b %Y\') AS month_label, COUNT(*) AS total_transactions, COALESCE(SUM(p.amount), 0) AS total_amount
+FROM `payments` `p`
+WHERE YEAR(p.payment_date) = 2026
+GROUP BY DATE_FORMAT(p.payment_date, \\"%Y-%m\\")
+ORDER BY `month_key` ASC', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT DATE_FORMAT(p.payment_date, \'%Y-%m\') AS month_key, DATE_FORMAT(p.payment_date, \'%b %Y\') AS month_label, COUNT(*) AS total_transactions, COALESCE(SUM(p.amount), 0) AS total_amount
+FROM `payments` `p`
+WHERE YEAR(p.payment_date) = 2026
+GROUP BY DATE_FORMAT(p.payment_date, \\"%Y-%m\\")
+ORDER BY `month_key` ASC')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT DATE_FORMAT(p.payment_date, \'%Y-%m\') AS month_key, DATE_FORMAT(p.payment_date, \'%b %Y\') AS month_label, COUNT(*) AS total_transactions, COALESCE(SUM(p.amount), 0) AS total_amount
+FROM `payments` `p`
+WHERE YEAR(p.payment_date) = 2026
+GROUP BY DATE_FORMAT(p.payment_date, \\"%Y-%m\\")
+ORDER BY `month_key` ASC')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT DATE_FORMAT(p.payment_date, \'%Y-%m\') AS month_key, DATE_FORMAT(p.payment_date, \'%b %Y\') AS month_label, COUNT(*) AS total_transactions, COALESCE(SUM(p.amount), 0) AS total_amount
+FROM `payments` `p`
+WHERE YEAR(p.payment_date) = :YEAR(p.payment_date):
+GROUP BY DATE_FORMAT(p.payment_date, \\"%Y-%m\\")
+ORDER BY `month_key` ASC', [...], false)
+ 5 APPPATH\Services\ReportService.php(95): CodeIgniter\Database\BaseBuilder->get()
+ 6 APPPATH\Services\ReportService.php(10): App\Services\ReportService->getMonthlyCollections([...])
+ 7 APPPATH\Controllers\Reports.php(26): App\Services\ReportService->getDashboardSummary([...])
+ 8 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Reports->index()
+ 9 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Reports))
+10 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+11 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+12 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+13 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-08-02 09:25:07 --> CodeIgniter\Database\Exceptions\DatabaseException: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '\"%Y-%m\")
+ORDER BY `month_key` ASC' at line 4
+[Method: GET, Route: admin/reports]
+in SYSTEMPATH\Database\BaseConnection.php on line 865.
+ 1 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT DATE_FORMAT(p.payment_date, \'%Y-%m\') AS month_key, DATE_FORMAT(p.payment_date, \'%b %Y\') AS month_label, COUNT(*) AS total_transactions, COALESCE(SUM(p.amount), 0) AS total_amount
+FROM `payments` `p`
+WHERE YEAR(p.payment_date) = :YEAR(p.payment_date):
+GROUP BY DATE_FORMAT(p.payment_date, \\"%Y-%m\\")
+ORDER BY `month_key` ASC', [...], false)
+ 2 APPPATH\Services\ReportService.php(95): CodeIgniter\Database\BaseBuilder->get()
+ 3 APPPATH\Services\ReportService.php(10): App\Services\ReportService->getMonthlyCollections([...])
+ 4 APPPATH\Controllers\Reports.php(26): App\Services\ReportService->getDashboardSummary([...])
+ 5 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Reports->index()
+ 6 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Reports))
+ 7 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 8 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+ 9 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+10 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-08-02 09:25:07 --> [Caused by] CodeIgniter\Database\Exceptions\DatabaseException: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '\"%Y-%m\")
+ORDER BY `month_key` ASC' at line 4
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 310.
+ 1 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT DATE_FORMAT(p.payment_date, \'%Y-%m\') AS month_key, DATE_FORMAT(p.payment_date, \'%b %Y\') AS month_label, COUNT(*) AS total_transactions, COALESCE(SUM(p.amount), 0) AS total_amount
+FROM `payments` `p`
+WHERE YEAR(p.payment_date) = 2026
+GROUP BY DATE_FORMAT(p.payment_date, \\"%Y-%m\\")
+ORDER BY `month_key` ASC')
+ 2 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT DATE_FORMAT(p.payment_date, \'%Y-%m\') AS month_key, DATE_FORMAT(p.payment_date, \'%b %Y\') AS month_label, COUNT(*) AS total_transactions, COALESCE(SUM(p.amount), 0) AS total_amount
+FROM `payments` `p`
+WHERE YEAR(p.payment_date) = 2026
+GROUP BY DATE_FORMAT(p.payment_date, \\"%Y-%m\\")
+ORDER BY `month_key` ASC')
+ 3 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT DATE_FORMAT(p.payment_date, \'%Y-%m\') AS month_key, DATE_FORMAT(p.payment_date, \'%b %Y\') AS month_label, COUNT(*) AS total_transactions, COALESCE(SUM(p.amount), 0) AS total_amount
+FROM `payments` `p`
+WHERE YEAR(p.payment_date) = :YEAR(p.payment_date):
+GROUP BY DATE_FORMAT(p.payment_date, \\"%Y-%m\\")
+ORDER BY `month_key` ASC', [...], false)
+ 4 APPPATH\Services\ReportService.php(95): CodeIgniter\Database\BaseBuilder->get()
+ 5 APPPATH\Services\ReportService.php(10): App\Services\ReportService->getMonthlyCollections([...])
+ 6 APPPATH\Controllers\Reports.php(26): App\Services\ReportService->getDashboardSummary([...])
+ 7 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Reports->index()
+ 8 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Reports))
+ 9 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+10 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+11 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+12 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-08-02 09:25:07 --> [Caused by] mysqli_sql_exception: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '\"%Y-%m\")
+ORDER BY `month_key` ASC' at line 4
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT DATE_FORMAT(p.payment_date, \'%Y-%m\') AS month_key, DATE_FORMAT(p.payment_date, \'%b %Y\') AS month_label, COUNT(*) AS total_transactions, COALESCE(SUM(p.amount), 0) AS total_amount
+FROM `payments` `p`
+WHERE YEAR(p.payment_date) = 2026
+GROUP BY DATE_FORMAT(p.payment_date, \\"%Y-%m\\")
+ORDER BY `month_key` ASC', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT DATE_FORMAT(p.payment_date, \'%Y-%m\') AS month_key, DATE_FORMAT(p.payment_date, \'%b %Y\') AS month_label, COUNT(*) AS total_transactions, COALESCE(SUM(p.amount), 0) AS total_amount
+FROM `payments` `p`
+WHERE YEAR(p.payment_date) = 2026
+GROUP BY DATE_FORMAT(p.payment_date, \\"%Y-%m\\")
+ORDER BY `month_key` ASC')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT DATE_FORMAT(p.payment_date, \'%Y-%m\') AS month_key, DATE_FORMAT(p.payment_date, \'%b %Y\') AS month_label, COUNT(*) AS total_transactions, COALESCE(SUM(p.amount), 0) AS total_amount
+FROM `payments` `p`
+WHERE YEAR(p.payment_date) = 2026
+GROUP BY DATE_FORMAT(p.payment_date, \\"%Y-%m\\")
+ORDER BY `month_key` ASC')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT DATE_FORMAT(p.payment_date, \'%Y-%m\') AS month_key, DATE_FORMAT(p.payment_date, \'%b %Y\') AS month_label, COUNT(*) AS total_transactions, COALESCE(SUM(p.amount), 0) AS total_amount
+FROM `payments` `p`
+WHERE YEAR(p.payment_date) = :YEAR(p.payment_date):
+GROUP BY DATE_FORMAT(p.payment_date, \\"%Y-%m\\")
+ORDER BY `month_key` ASC', [...], false)
+ 5 APPPATH\Services\ReportService.php(95): CodeIgniter\Database\BaseBuilder->get()
+ 6 APPPATH\Services\ReportService.php(10): App\Services\ReportService->getMonthlyCollections([...])
+ 7 APPPATH\Controllers\Reports.php(26): App\Services\ReportService->getDashboardSummary([...])
+ 8 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Reports->index()
+ 9 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Reports))
+10 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+11 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+12 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+13 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-08-02 09:26:59 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+ERROR - 2026-08-02 09:26:59 --> You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '\"Unknown\") AS service_name, COUNT(*) AS total_services, SUM(CASE WHEN s.sta...' at line 1
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT COALESCE(sl.service_name, \\"Unknown\\") AS service_name, COUNT(*) AS total_services, SUM(CASE WHEN s.status = \\"completed\\" THEN 1 ELSE 0 END) AS completed_services, SUM(CASE WHEN s.status = \\"cancelled\\" THEN 1 ELSE 0 END) AS cancelled_services
+FROM `services` `s`
+LEFT JOIN `service_list` `sl` ON `sl`.`service_list_id` = `s`.`service_list_id`
+GROUP BY COALESCE(sl.service_name, \\"Unknown\\")
+ORDER BY `total_services` DESC
+ LIMIT 10', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT COALESCE(sl.service_name, \\"Unknown\\") AS service_name, COUNT(*) AS total_services, SUM(CASE WHEN s.status = \\"completed\\" THEN 1 ELSE 0 END) AS completed_services, SUM(CASE WHEN s.status = \\"cancelled\\" THEN 1 ELSE 0 END) AS cancelled_services
+FROM `services` `s`
+LEFT JOIN `service_list` `sl` ON `sl`.`service_list_id` = `s`.`service_list_id`
+GROUP BY COALESCE(sl.service_name, \\"Unknown\\")
+ORDER BY `total_services` DESC
+ LIMIT 10')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT COALESCE(sl.service_name, \\"Unknown\\") AS service_name, COUNT(*) AS total_services, SUM(CASE WHEN s.status = \\"completed\\" THEN 1 ELSE 0 END) AS completed_services, SUM(CASE WHEN s.status = \\"cancelled\\" THEN 1 ELSE 0 END) AS cancelled_services
+FROM `services` `s`
+LEFT JOIN `service_list` `sl` ON `sl`.`service_list_id` = `s`.`service_list_id`
+GROUP BY COALESCE(sl.service_name, \\"Unknown\\")
+ORDER BY `total_services` DESC
+ LIMIT 10')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT COALESCE(sl.service_name, \\"Unknown\\") AS service_name, COUNT(*) AS total_services, SUM(CASE WHEN s.status = \\"completed\\" THEN 1 ELSE 0 END) AS completed_services, SUM(CASE WHEN s.status = \\"cancelled\\" THEN 1 ELSE 0 END) AS cancelled_services
+FROM `services` `s`
+LEFT JOIN `service_list` `sl` ON `sl`.`service_list_id` = `s`.`service_list_id`
+GROUP BY COALESCE(sl.service_name, \\"Unknown\\")
+ORDER BY `total_services` DESC
+ LIMIT 10', [], false)
+ 5 APPPATH\Services\ReportService.php(156): CodeIgniter\Database\BaseBuilder->get()
+ 6 APPPATH\Services\ReportService.php(14): App\Services\ReportService->getServiceUsageStatistics([...])
+ 7 APPPATH\Controllers\Reports.php(26): App\Services\ReportService->getDashboardSummary([...])
+ 8 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Reports->index()
+ 9 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Reports))
+10 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+11 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+12 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+13 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-08-02 09:26:59 --> CodeIgniter\Database\Exceptions\DatabaseException: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '\"Unknown\") AS service_name, COUNT(*) AS total_services, SUM(CASE WHEN s.sta...' at line 1
+[Method: GET, Route: admin/reports]
+in SYSTEMPATH\Database\BaseConnection.php on line 865.
+ 1 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT COALESCE(sl.service_name, \\"Unknown\\") AS service_name, COUNT(*) AS total_services, SUM(CASE WHEN s.status = \\"completed\\" THEN 1 ELSE 0 END) AS completed_services, SUM(CASE WHEN s.status = \\"cancelled\\" THEN 1 ELSE 0 END) AS cancelled_services
+FROM `services` `s`
+LEFT JOIN `service_list` `sl` ON `sl`.`service_list_id` = `s`.`service_list_id`
+GROUP BY COALESCE(sl.service_name, \\"Unknown\\")
+ORDER BY `total_services` DESC
+ LIMIT 10', [], false)
+ 2 APPPATH\Services\ReportService.php(156): CodeIgniter\Database\BaseBuilder->get()
+ 3 APPPATH\Services\ReportService.php(14): App\Services\ReportService->getServiceUsageStatistics([...])
+ 4 APPPATH\Controllers\Reports.php(26): App\Services\ReportService->getDashboardSummary([...])
+ 5 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Reports->index()
+ 6 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Reports))
+ 7 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 8 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+ 9 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+10 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-08-02 09:26:59 --> [Caused by] CodeIgniter\Database\Exceptions\DatabaseException: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '\"Unknown\") AS service_name, COUNT(*) AS total_services, SUM(CASE WHEN s.sta...' at line 1
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 310.
+ 1 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT COALESCE(sl.service_name, \\"Unknown\\") AS service_name, COUNT(*) AS total_services, SUM(CASE WHEN s.status = \\"completed\\" THEN 1 ELSE 0 END) AS completed_services, SUM(CASE WHEN s.status = \\"cancelled\\" THEN 1 ELSE 0 END) AS cancelled_services
+FROM `services` `s`
+LEFT JOIN `service_list` `sl` ON `sl`.`service_list_id` = `s`.`service_list_id`
+GROUP BY COALESCE(sl.service_name, \\"Unknown\\")
+ORDER BY `total_services` DESC
+ LIMIT 10')
+ 2 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT COALESCE(sl.service_name, \\"Unknown\\") AS service_name, COUNT(*) AS total_services, SUM(CASE WHEN s.status = \\"completed\\" THEN 1 ELSE 0 END) AS completed_services, SUM(CASE WHEN s.status = \\"cancelled\\" THEN 1 ELSE 0 END) AS cancelled_services
+FROM `services` `s`
+LEFT JOIN `service_list` `sl` ON `sl`.`service_list_id` = `s`.`service_list_id`
+GROUP BY COALESCE(sl.service_name, \\"Unknown\\")
+ORDER BY `total_services` DESC
+ LIMIT 10')
+ 3 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT COALESCE(sl.service_name, \\"Unknown\\") AS service_name, COUNT(*) AS total_services, SUM(CASE WHEN s.status = \\"completed\\" THEN 1 ELSE 0 END) AS completed_services, SUM(CASE WHEN s.status = \\"cancelled\\" THEN 1 ELSE 0 END) AS cancelled_services
+FROM `services` `s`
+LEFT JOIN `service_list` `sl` ON `sl`.`service_list_id` = `s`.`service_list_id`
+GROUP BY COALESCE(sl.service_name, \\"Unknown\\")
+ORDER BY `total_services` DESC
+ LIMIT 10', [], false)
+ 4 APPPATH\Services\ReportService.php(156): CodeIgniter\Database\BaseBuilder->get()
+ 5 APPPATH\Services\ReportService.php(14): App\Services\ReportService->getServiceUsageStatistics([...])
+ 6 APPPATH\Controllers\Reports.php(26): App\Services\ReportService->getDashboardSummary([...])
+ 7 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Reports->index()
+ 8 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Reports))
+ 9 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+10 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+11 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+12 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-08-02 09:26:59 --> [Caused by] mysqli_sql_exception: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '\"Unknown\") AS service_name, COUNT(*) AS total_services, SUM(CASE WHEN s.sta...' at line 1
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT COALESCE(sl.service_name, \\"Unknown\\") AS service_name, COUNT(*) AS total_services, SUM(CASE WHEN s.status = \\"completed\\" THEN 1 ELSE 0 END) AS completed_services, SUM(CASE WHEN s.status = \\"cancelled\\" THEN 1 ELSE 0 END) AS cancelled_services
+FROM `services` `s`
+LEFT JOIN `service_list` `sl` ON `sl`.`service_list_id` = `s`.`service_list_id`
+GROUP BY COALESCE(sl.service_name, \\"Unknown\\")
+ORDER BY `total_services` DESC
+ LIMIT 10', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT COALESCE(sl.service_name, \\"Unknown\\") AS service_name, COUNT(*) AS total_services, SUM(CASE WHEN s.status = \\"completed\\" THEN 1 ELSE 0 END) AS completed_services, SUM(CASE WHEN s.status = \\"cancelled\\" THEN 1 ELSE 0 END) AS cancelled_services
+FROM `services` `s`
+LEFT JOIN `service_list` `sl` ON `sl`.`service_list_id` = `s`.`service_list_id`
+GROUP BY COALESCE(sl.service_name, \\"Unknown\\")
+ORDER BY `total_services` DESC
+ LIMIT 10')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT COALESCE(sl.service_name, \\"Unknown\\") AS service_name, COUNT(*) AS total_services, SUM(CASE WHEN s.status = \\"completed\\" THEN 1 ELSE 0 END) AS completed_services, SUM(CASE WHEN s.status = \\"cancelled\\" THEN 1 ELSE 0 END) AS cancelled_services
+FROM `services` `s`
+LEFT JOIN `service_list` `sl` ON `sl`.`service_list_id` = `s`.`service_list_id`
+GROUP BY COALESCE(sl.service_name, \\"Unknown\\")
+ORDER BY `total_services` DESC
+ LIMIT 10')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1649): CodeIgniter\Database\BaseConnection->query('SELECT COALESCE(sl.service_name, \\"Unknown\\") AS service_name, COUNT(*) AS total_services, SUM(CASE WHEN s.status = \\"completed\\" THEN 1 ELSE 0 END) AS completed_services, SUM(CASE WHEN s.status = \\"cancelled\\" THEN 1 ELSE 0 END) AS cancelled_services
+FROM `services` `s`
+LEFT JOIN `service_list` `sl` ON `sl`.`service_list_id` = `s`.`service_list_id`
+GROUP BY COALESCE(sl.service_name, \\"Unknown\\")
+ORDER BY `total_services` DESC
+ LIMIT 10', [], false)
+ 5 APPPATH\Services\ReportService.php(156): CodeIgniter\Database\BaseBuilder->get()
+ 6 APPPATH\Services\ReportService.php(14): App\Services\ReportService->getServiceUsageStatistics([...])
+ 7 APPPATH\Controllers\Reports.php(26): App\Services\ReportService->getDashboardSummary([...])
+ 8 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Reports->index()
+ 9 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Reports))
+10 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+11 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+12 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+13 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-08-02 09:31:14 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:31:23 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:31:37 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:31:50 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:31:56 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:31:56 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:32:00 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:32:00 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:32:05 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:36:43 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+CRITICAL - 2026-08-02 09:36:43 --> ErrorException: Undefined array key "branch_name"
+[Method: GET, Route: admin/reports]
+in APPPATH\Views\reports\index.php on line 52.
+ 1 APPPATH\Views\reports\index.php(52): CodeIgniter\Debug\Exceptions->errorHandler(2, 'Undefined array key "branch_name"', 'C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\reports\\index.php', 52)
+ 2 SYSTEMPATH\View\View.php(240): include('C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\reports\\index.php')
+ 3 SYSTEMPATH\View\View.php(243): CodeIgniter\View\View->CodeIgniter\View\{closure}()
+ 4 SYSTEMPATH\Common.php(1250): CodeIgniter\View\View->render('reports/index', [], true)
+ 5 APPPATH\Controllers\Reports.php(44): view('reports/index', [...])
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Reports->index()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Reports))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-08-02 09:39:22 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+CRITICAL - 2026-08-02 09:39:22 --> ErrorException: Undefined array key "branch_name"
+[Method: GET, Route: admin/reports]
+in APPPATH\Views\reports\index.php on line 52.
+ 1 APPPATH\Views\reports\index.php(52): CodeIgniter\Debug\Exceptions->errorHandler(2, 'Undefined array key "branch_name"', 'C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\reports\\index.php', 52)
+ 2 SYSTEMPATH\View\View.php(240): include('C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\reports\\index.php')
+ 3 SYSTEMPATH\View\View.php(243): CodeIgniter\View\View->CodeIgniter\View\{closure}()
+ 4 SYSTEMPATH\Common.php(1250): CodeIgniter\View\View->render('reports/index', [], true)
+ 5 APPPATH\Controllers\Reports.php(44): view('reports/index', [...])
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Reports->index()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Reports))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-08-02 09:39:25 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+CRITICAL - 2026-08-02 09:39:25 --> ErrorException: Undefined array key "branch_name"
+[Method: GET, Route: admin/reports]
+in APPPATH\Views\reports\index.php on line 52.
+ 1 APPPATH\Views\reports\index.php(52): CodeIgniter\Debug\Exceptions->errorHandler(2, 'Undefined array key "branch_name"', 'C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\reports\\index.php', 52)
+ 2 SYSTEMPATH\View\View.php(240): include('C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\reports\\index.php')
+ 3 SYSTEMPATH\View\View.php(243): CodeIgniter\View\View->CodeIgniter\View\{closure}()
+ 4 SYSTEMPATH\Common.php(1250): CodeIgniter\View\View->render('reports/index', [], true)
+ 5 APPPATH\Controllers\Reports.php(44): view('reports/index', [...])
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Reports->index()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Reports))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-08-02 09:41:57 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+CRITICAL - 2026-08-02 09:41:57 --> ErrorException: Undefined array key "branch_name"
+[Method: GET, Route: admin/reports]
+in APPPATH\Views\reports\index.php on line 52.
+ 1 APPPATH\Views\reports\index.php(52): CodeIgniter\Debug\Exceptions->errorHandler(2, 'Undefined array key "branch_name"', 'C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\reports\\index.php', 52)
+ 2 SYSTEMPATH\View\View.php(240): include('C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\reports\\index.php')
+ 3 SYSTEMPATH\View\View.php(243): CodeIgniter\View\View->CodeIgniter\View\{closure}()
+ 4 SYSTEMPATH\Common.php(1250): CodeIgniter\View\View->render('reports/index', [], true)
+ 5 APPPATH\Controllers\Reports.php(44): view('reports/index', [...])
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Reports->index()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Reports))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-08-02 09:42:53 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+CRITICAL - 2026-08-02 09:42:53 --> ErrorException: Undefined array key "branch_name"
+[Method: GET, Route: admin/reports]
+in APPPATH\Views\reports\index.php on line 52.
+ 1 APPPATH\Views\reports\index.php(52): CodeIgniter\Debug\Exceptions->errorHandler(2, 'Undefined array key "branch_name"', 'C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\reports\\index.php', 52)
+ 2 SYSTEMPATH\View\View.php(240): include('C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\reports\\index.php')
+ 3 SYSTEMPATH\View\View.php(243): CodeIgniter\View\View->CodeIgniter\View\{closure}()
+ 4 SYSTEMPATH\Common.php(1250): CodeIgniter\View\View->render('reports/index', [], true)
+ 5 APPPATH\Controllers\Reports.php(44): view('reports/index', [...])
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Reports->index()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Reports))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-08-02 09:42:59 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+CRITICAL - 2026-08-02 09:42:59 --> ErrorException: Undefined array key "branch_name"
+[Method: GET, Route: admin/reports]
+in APPPATH\Views\reports\index.php on line 52.
+ 1 APPPATH\Views\reports\index.php(52): CodeIgniter\Debug\Exceptions->errorHandler(2, 'Undefined array key "branch_name"', 'C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\reports\\index.php', 52)
+ 2 SYSTEMPATH\View\View.php(240): include('C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\reports\\index.php')
+ 3 SYSTEMPATH\View\View.php(243): CodeIgniter\View\View->CodeIgniter\View\{closure}()
+ 4 SYSTEMPATH\Common.php(1250): CodeIgniter\View\View->render('reports/index', [], true)
+ 5 APPPATH\Controllers\Reports.php(44): view('reports/index', [...])
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Reports->index()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Reports))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-08-02 09:43:02 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+CRITICAL - 2026-08-02 09:43:02 --> ErrorException: Undefined array key "branch_name"
+[Method: GET, Route: admin/reports]
+in APPPATH\Views\reports\index.php on line 52.
+ 1 APPPATH\Views\reports\index.php(52): CodeIgniter\Debug\Exceptions->errorHandler(2, 'Undefined array key "branch_name"', 'C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\reports\\index.php', 52)
+ 2 SYSTEMPATH\View\View.php(240): include('C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\reports\\index.php')
+ 3 SYSTEMPATH\View\View.php(243): CodeIgniter\View\View->CodeIgniter\View\{closure}()
+ 4 SYSTEMPATH\Common.php(1250): CodeIgniter\View\View->render('reports/index', [], true)
+ 5 APPPATH\Controllers\Reports.php(44): view('reports/index', [...])
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Reports->index()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Reports))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-08-02 09:43:03 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+CRITICAL - 2026-08-02 09:43:03 --> ErrorException: Undefined array key "branch_name"
+[Method: GET, Route: admin/reports]
+in APPPATH\Views\reports\index.php on line 52.
+ 1 APPPATH\Views\reports\index.php(52): CodeIgniter\Debug\Exceptions->errorHandler(2, 'Undefined array key "branch_name"', 'C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\reports\\index.php', 52)
+ 2 SYSTEMPATH\View\View.php(240): include('C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\reports\\index.php')
+ 3 SYSTEMPATH\View\View.php(243): CodeIgniter\View\View->CodeIgniter\View\{closure}()
+ 4 SYSTEMPATH\Common.php(1250): CodeIgniter\View\View->render('reports/index', [], true)
+ 5 APPPATH\Controllers\Reports.php(44): view('reports/index', [...])
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Reports->index()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Reports))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-08-02 09:48:50 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+CRITICAL - 2026-08-02 09:48:50 --> ErrorException: Undefined array key "first_name"
+[Method: GET, Route: admin/reports]
+in APPPATH\Views\reports\index.php on line 53.
+ 1 APPPATH\Views\reports\index.php(53): CodeIgniter\Debug\Exceptions->errorHandler(2, 'Undefined array key "first_name"', 'C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\reports\\index.php', 53)
+ 2 SYSTEMPATH\View\View.php(240): include('C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\reports\\index.php')
+ 3 SYSTEMPATH\View\View.php(243): CodeIgniter\View\View->CodeIgniter\View\{closure}()
+ 4 SYSTEMPATH\Common.php(1250): CodeIgniter\View\View->render('reports/index', [], true)
+ 5 APPPATH\Controllers\Reports.php(44): view('reports/index', [...])
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Reports->index()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Reports))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-08-02 09:48:53 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+CRITICAL - 2026-08-02 09:48:53 --> ErrorException: Undefined array key "first_name"
+[Method: GET, Route: admin/reports]
+in APPPATH\Views\reports\index.php on line 53.
+ 1 APPPATH\Views\reports\index.php(53): CodeIgniter\Debug\Exceptions->errorHandler(2, 'Undefined array key "first_name"', 'C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\reports\\index.php', 53)
+ 2 SYSTEMPATH\View\View.php(240): include('C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\reports\\index.php')
+ 3 SYSTEMPATH\View\View.php(243): CodeIgniter\View\View->CodeIgniter\View\{closure}()
+ 4 SYSTEMPATH\Common.php(1250): CodeIgniter\View\View->render('reports/index', [], true)
+ 5 APPPATH\Controllers\Reports.php(44): view('reports/index', [...])
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Reports->index()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Reports))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-08-02 09:48:54 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+CRITICAL - 2026-08-02 09:48:54 --> ErrorException: Undefined array key "first_name"
+[Method: GET, Route: admin/reports]
+in APPPATH\Views\reports\index.php on line 53.
+ 1 APPPATH\Views\reports\index.php(53): CodeIgniter\Debug\Exceptions->errorHandler(2, 'Undefined array key "first_name"', 'C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\reports\\index.php', 53)
+ 2 SYSTEMPATH\View\View.php(240): include('C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\reports\\index.php')
+ 3 SYSTEMPATH\View\View.php(243): CodeIgniter\View\View->CodeIgniter\View\{closure}()
+ 4 SYSTEMPATH\Common.php(1250): CodeIgniter\View\View->render('reports/index', [], true)
+ 5 APPPATH\Controllers\Reports.php(44): view('reports/index', [...])
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Reports->index()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Reports))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-08-02 09:48:54 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+CRITICAL - 2026-08-02 09:48:54 --> ErrorException: Undefined array key "first_name"
+[Method: GET, Route: admin/reports]
+in APPPATH\Views\reports\index.php on line 53.
+ 1 APPPATH\Views\reports\index.php(53): CodeIgniter\Debug\Exceptions->errorHandler(2, 'Undefined array key "first_name"', 'C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\reports\\index.php', 53)
+ 2 SYSTEMPATH\View\View.php(240): include('C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\reports\\index.php')
+ 3 SYSTEMPATH\View\View.php(243): CodeIgniter\View\View->CodeIgniter\View\{closure}()
+ 4 SYSTEMPATH\Common.php(1250): CodeIgniter\View\View->render('reports/index', [], true)
+ 5 APPPATH\Controllers\Reports.php(44): view('reports/index', [...])
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Reports->index()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Reports))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-08-02 09:49:16 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:49:19 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:49:22 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:49:33 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:49:34 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:49:37 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:49:38 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:49:39 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:49:46 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+CRITICAL - 2026-08-02 09:49:46 --> ErrorException: Undefined array key "first_name"
+[Method: GET, Route: admin/reports]
+in APPPATH\Views\reports\index.php on line 53.
+ 1 APPPATH\Views\reports\index.php(53): CodeIgniter\Debug\Exceptions->errorHandler(2, 'Undefined array key "first_name"', 'C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\reports\\index.php', 53)
+ 2 SYSTEMPATH\View\View.php(240): include('C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\reports\\index.php')
+ 3 SYSTEMPATH\View\View.php(243): CodeIgniter\View\View->CodeIgniter\View\{closure}()
+ 4 SYSTEMPATH\Common.php(1250): CodeIgniter\View\View->render('reports/index', [], true)
+ 5 APPPATH\Controllers\Reports.php(44): view('reports/index', [...])
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Reports->index()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Reports))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-08-02 09:49:49 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:49:50 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:49:53 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+CRITICAL - 2026-08-02 09:49:53 --> ErrorException: Undefined array key "first_name"
+[Method: GET, Route: admin/reports]
+in APPPATH\Views\reports\index.php on line 53.
+ 1 APPPATH\Views\reports\index.php(53): CodeIgniter\Debug\Exceptions->errorHandler(2, 'Undefined array key "first_name"', 'C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\reports\\index.php', 53)
+ 2 SYSTEMPATH\View\View.php(240): include('C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\reports\\index.php')
+ 3 SYSTEMPATH\View\View.php(243): CodeIgniter\View\View->CodeIgniter\View\{closure}()
+ 4 SYSTEMPATH\Common.php(1250): CodeIgniter\View\View->render('reports/index', [], true)
+ 5 APPPATH\Controllers\Reports.php(44): view('reports/index', [...])
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Reports->index()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Reports))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-08-02 09:52:32 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 09:52:45 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:04:54 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:06:02 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:06:09 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:06:10 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:06:24 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:06:26 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:06:32 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:07:08 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:07:14 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:07:14 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:07:15 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:07:21 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:07:26 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:07:26 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:07:30 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:07:31 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:07:34 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:07:46 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:15:53 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:15:55 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:19:47 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:19:47 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:19:49 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:28:03 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:28:06 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:31:50 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:31:51 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:32:03 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:32:04 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:34:28 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:34:28 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:45:54 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:45:56 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:45:59 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:46:01 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:52:05 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:52:15 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:53:43 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:54:13 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:54:13 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:54:15 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:54:25 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:55:16 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:55:18 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:59:27 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:59:36 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:59:40 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:59:42 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:59:45 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:59:48 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 10:59:52 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:00:03 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:00:04 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:00:06 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:00:08 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:00:25 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:00:27 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:00:33 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:00:37 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:03:51 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:09:35 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:11:04 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:11:09 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:11:16 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:11:18 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:11:33 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:11:35 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+CRITICAL - 2026-08-02 11:11:35 --> Error: Call to undefined method CodeIgniter\Database\MySQLi\Builder::modifyWhere()
+[Method: GET, Route: admin/dashboard/data]
+in APPPATH\Controllers\Dashboard.php on line 344.
+ 1 APPPATH\Controllers\Dashboard.php(113): App\Controllers\Dashboard->computeKpiTrend(Object(CodeIgniter\Database\MySQLi\Connection), 'plan_holders', 'created_at', '2026-08', '2026-07')
+ 2 APPPATH\Controllers\Dashboard.php(51): App\Controllers\Dashboard->buildAdminDashboardData()
+ 3 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Dashboard->adminData()
+ 4 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Dashboard))
+ 5 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 6 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+ 7 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 8 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-08-02 11:12:11 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:12:13 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+CRITICAL - 2026-08-02 11:12:13 --> Error: Call to undefined method CodeIgniter\Database\MySQLi\Builder::modifyWhere()
+[Method: GET, Route: admin/dashboard/data]
+in APPPATH\Controllers\Dashboard.php on line 344.
+ 1 APPPATH\Controllers\Dashboard.php(113): App\Controllers\Dashboard->computeKpiTrend(Object(CodeIgniter\Database\MySQLi\Connection), 'plan_holders', 'created_at', '2026-08', '2026-07')
+ 2 APPPATH\Controllers\Dashboard.php(51): App\Controllers\Dashboard->buildAdminDashboardData()
+ 3 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Dashboard->adminData()
+ 4 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Dashboard))
+ 5 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 6 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+ 7 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 8 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-08-02 11:16:39 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:16:40 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+ERROR - 2026-08-02 11:16:40 --> Unknown column 'created_at' in 'where clause'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT COUNT(*) AS `numrows`
+FROM `beneficiaries`
+WHERE `created_at` >= \'2026-08-01\'
+AND `created_at` <= \'2026-08-31\'', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT COUNT(*) AS `numrows`
+FROM `beneficiaries`
+WHERE `created_at` >= \'2026-08-01\'
+AND `created_at` <= \'2026-08-31\'')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT COUNT(*) AS `numrows`
+FROM `beneficiaries`
+WHERE `created_at` >= \'2026-08-01\'
+AND `created_at` <= \'2026-08-31\'')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1733): CodeIgniter\Database\BaseConnection->query('SELECT COUNT(*) AS `numrows`
+FROM `beneficiaries`
+WHERE `created_at` >= :created_at:
+AND `created_at` <= :created_at.1:', [...], false)
+ 5 APPPATH\Controllers\Dashboard.php(347): CodeIgniter\Database\BaseBuilder->countAllResults()
+ 6 APPPATH\Controllers\Dashboard.php(116): App\Controllers\Dashboard->computeKpiTrend(Object(CodeIgniter\Database\MySQLi\Connection), 'beneficiaries', 'created_at', '2026-08', '2026-07')
+ 7 APPPATH\Controllers\Dashboard.php(51): App\Controllers\Dashboard->buildAdminDashboardData()
+ 8 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Dashboard->adminData()
+ 9 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Dashboard))
+10 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+11 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+12 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+13 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-08-02 11:16:41 --> CodeIgniter\Database\Exceptions\DatabaseException: Unknown column 'created_at' in 'where clause'
+[Method: GET, Route: admin/dashboard/data]
+in SYSTEMPATH\Database\BaseConnection.php on line 865.
+ 1 SYSTEMPATH\Database\BaseBuilder.php(1733): CodeIgniter\Database\BaseConnection->query('SELECT COUNT(*) AS `numrows`
+FROM `beneficiaries`
+WHERE `created_at` >= :created_at:
+AND `created_at` <= :created_at.1:', [...], false)
+ 2 APPPATH\Controllers\Dashboard.php(347): CodeIgniter\Database\BaseBuilder->countAllResults()
+ 3 APPPATH\Controllers\Dashboard.php(116): App\Controllers\Dashboard->computeKpiTrend(Object(CodeIgniter\Database\MySQLi\Connection), 'beneficiaries', 'created_at', '2026-08', '2026-07')
+ 4 APPPATH\Controllers\Dashboard.php(51): App\Controllers\Dashboard->buildAdminDashboardData()
+ 5 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Dashboard->adminData()
+ 6 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Dashboard))
+ 7 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 8 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+ 9 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+10 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-08-02 11:16:41 --> [Caused by] CodeIgniter\Database\Exceptions\DatabaseException: Unknown column 'created_at' in 'where clause'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 310.
+ 1 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT COUNT(*) AS `numrows`
+FROM `beneficiaries`
+WHERE `created_at` >= \'2026-08-01\'
+AND `created_at` <= \'2026-08-31\'')
+ 2 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT COUNT(*) AS `numrows`
+FROM `beneficiaries`
+WHERE `created_at` >= \'2026-08-01\'
+AND `created_at` <= \'2026-08-31\'')
+ 3 SYSTEMPATH\Database\BaseBuilder.php(1733): CodeIgniter\Database\BaseConnection->query('SELECT COUNT(*) AS `numrows`
+FROM `beneficiaries`
+WHERE `created_at` >= :created_at:
+AND `created_at` <= :created_at.1:', [...], false)
+ 4 APPPATH\Controllers\Dashboard.php(347): CodeIgniter\Database\BaseBuilder->countAllResults()
+ 5 APPPATH\Controllers\Dashboard.php(116): App\Controllers\Dashboard->computeKpiTrend(Object(CodeIgniter\Database\MySQLi\Connection), 'beneficiaries', 'created_at', '2026-08', '2026-07')
+ 6 APPPATH\Controllers\Dashboard.php(51): App\Controllers\Dashboard->buildAdminDashboardData()
+ 7 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Dashboard->adminData()
+ 8 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Dashboard))
+ 9 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+10 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+11 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+12 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-08-02 11:16:41 --> [Caused by] mysqli_sql_exception: Unknown column 'created_at' in 'where clause'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT COUNT(*) AS `numrows`
+FROM `beneficiaries`
+WHERE `created_at` >= \'2026-08-01\'
+AND `created_at` <= \'2026-08-31\'', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT COUNT(*) AS `numrows`
+FROM `beneficiaries`
+WHERE `created_at` >= \'2026-08-01\'
+AND `created_at` <= \'2026-08-31\'')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT COUNT(*) AS `numrows`
+FROM `beneficiaries`
+WHERE `created_at` >= \'2026-08-01\'
+AND `created_at` <= \'2026-08-31\'')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1733): CodeIgniter\Database\BaseConnection->query('SELECT COUNT(*) AS `numrows`
+FROM `beneficiaries`
+WHERE `created_at` >= :created_at:
+AND `created_at` <= :created_at.1:', [...], false)
+ 5 APPPATH\Controllers\Dashboard.php(347): CodeIgniter\Database\BaseBuilder->countAllResults()
+ 6 APPPATH\Controllers\Dashboard.php(116): App\Controllers\Dashboard->computeKpiTrend(Object(CodeIgniter\Database\MySQLi\Connection), 'beneficiaries', 'created_at', '2026-08', '2026-07')
+ 7 APPPATH\Controllers\Dashboard.php(51): App\Controllers\Dashboard->buildAdminDashboardData()
+ 8 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Dashboard->adminData()
+ 9 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Dashboard))
+10 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+11 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+12 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+13 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-08-02 11:16:45 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:16:46 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+ERROR - 2026-08-02 11:16:46 --> Unknown column 'created_at' in 'where clause'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT COUNT(*) AS `numrows`
+FROM `beneficiaries`
+WHERE `created_at` >= \'2026-08-01\'
+AND `created_at` <= \'2026-08-31\'', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT COUNT(*) AS `numrows`
+FROM `beneficiaries`
+WHERE `created_at` >= \'2026-08-01\'
+AND `created_at` <= \'2026-08-31\'')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT COUNT(*) AS `numrows`
+FROM `beneficiaries`
+WHERE `created_at` >= \'2026-08-01\'
+AND `created_at` <= \'2026-08-31\'')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1733): CodeIgniter\Database\BaseConnection->query('SELECT COUNT(*) AS `numrows`
+FROM `beneficiaries`
+WHERE `created_at` >= :created_at:
+AND `created_at` <= :created_at.1:', [...], false)
+ 5 APPPATH\Controllers\Dashboard.php(347): CodeIgniter\Database\BaseBuilder->countAllResults()
+ 6 APPPATH\Controllers\Dashboard.php(116): App\Controllers\Dashboard->computeKpiTrend(Object(CodeIgniter\Database\MySQLi\Connection), 'beneficiaries', 'created_at', '2026-08', '2026-07')
+ 7 APPPATH\Controllers\Dashboard.php(51): App\Controllers\Dashboard->buildAdminDashboardData()
+ 8 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Dashboard->adminData()
+ 9 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Dashboard))
+10 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+11 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+12 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+13 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-08-02 11:16:46 --> CodeIgniter\Database\Exceptions\DatabaseException: Unknown column 'created_at' in 'where clause'
+[Method: GET, Route: admin/dashboard/data]
+in SYSTEMPATH\Database\BaseConnection.php on line 865.
+ 1 SYSTEMPATH\Database\BaseBuilder.php(1733): CodeIgniter\Database\BaseConnection->query('SELECT COUNT(*) AS `numrows`
+FROM `beneficiaries`
+WHERE `created_at` >= :created_at:
+AND `created_at` <= :created_at.1:', [...], false)
+ 2 APPPATH\Controllers\Dashboard.php(347): CodeIgniter\Database\BaseBuilder->countAllResults()
+ 3 APPPATH\Controllers\Dashboard.php(116): App\Controllers\Dashboard->computeKpiTrend(Object(CodeIgniter\Database\MySQLi\Connection), 'beneficiaries', 'created_at', '2026-08', '2026-07')
+ 4 APPPATH\Controllers\Dashboard.php(51): App\Controllers\Dashboard->buildAdminDashboardData()
+ 5 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Dashboard->adminData()
+ 6 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Dashboard))
+ 7 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 8 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+ 9 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+10 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-08-02 11:16:46 --> [Caused by] CodeIgniter\Database\Exceptions\DatabaseException: Unknown column 'created_at' in 'where clause'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 310.
+ 1 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT COUNT(*) AS `numrows`
+FROM `beneficiaries`
+WHERE `created_at` >= \'2026-08-01\'
+AND `created_at` <= \'2026-08-31\'')
+ 2 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT COUNT(*) AS `numrows`
+FROM `beneficiaries`
+WHERE `created_at` >= \'2026-08-01\'
+AND `created_at` <= \'2026-08-31\'')
+ 3 SYSTEMPATH\Database\BaseBuilder.php(1733): CodeIgniter\Database\BaseConnection->query('SELECT COUNT(*) AS `numrows`
+FROM `beneficiaries`
+WHERE `created_at` >= :created_at:
+AND `created_at` <= :created_at.1:', [...], false)
+ 4 APPPATH\Controllers\Dashboard.php(347): CodeIgniter\Database\BaseBuilder->countAllResults()
+ 5 APPPATH\Controllers\Dashboard.php(116): App\Controllers\Dashboard->computeKpiTrend(Object(CodeIgniter\Database\MySQLi\Connection), 'beneficiaries', 'created_at', '2026-08', '2026-07')
+ 6 APPPATH\Controllers\Dashboard.php(51): App\Controllers\Dashboard->buildAdminDashboardData()
+ 7 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Dashboard->adminData()
+ 8 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Dashboard))
+ 9 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+10 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+11 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+12 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+CRITICAL - 2026-08-02 11:16:46 --> [Caused by] mysqli_sql_exception: Unknown column 'created_at' in 'where clause'
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('SELECT COUNT(*) AS `numrows`
+FROM `beneficiaries`
+WHERE `created_at` >= \'2026-08-01\'
+AND `created_at` <= \'2026-08-31\'', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('SELECT COUNT(*) AS `numrows`
+FROM `beneficiaries`
+WHERE `created_at` >= \'2026-08-01\'
+AND `created_at` <= \'2026-08-31\'')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('SELECT COUNT(*) AS `numrows`
+FROM `beneficiaries`
+WHERE `created_at` >= \'2026-08-01\'
+AND `created_at` <= \'2026-08-31\'')
+ 4 SYSTEMPATH\Database\BaseBuilder.php(1733): CodeIgniter\Database\BaseConnection->query('SELECT COUNT(*) AS `numrows`
+FROM `beneficiaries`
+WHERE `created_at` >= :created_at:
+AND `created_at` <= :created_at.1:', [...], false)
+ 5 APPPATH\Controllers\Dashboard.php(347): CodeIgniter\Database\BaseBuilder->countAllResults()
+ 6 APPPATH\Controllers\Dashboard.php(116): App\Controllers\Dashboard->computeKpiTrend(Object(CodeIgniter\Database\MySQLi\Connection), 'beneficiaries', 'created_at', '2026-08', '2026-07')
+ 7 APPPATH\Controllers\Dashboard.php(51): App\Controllers\Dashboard->buildAdminDashboardData()
+ 8 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Dashboard->adminData()
+ 9 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Dashboard))
+10 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+11 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+12 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+13 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-08-02 11:20:45 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:20:47 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:20:52 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:20:53 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:21:09 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:21:11 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:21:13 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:21:38 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:24:15 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:24:17 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:24:20 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:24:24 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:24:32 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:24:34 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:24:36 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:24:39 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:24:46 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:24:53 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:25:01 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:30:36 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:30:43 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:30:51 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:31:56 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:33:09 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:33:10 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:33:18 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 11:34:15 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 12:37:33 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 12:38:00 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 12:39:45 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 12:45:13 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+CRITICAL - 2026-08-02 12:45:13 --> ErrorException: Undefined property: CodeIgniter\View\View::$request
+[Method: GET, Route: admin/client-management]
+in APPPATH\Views\admin\client_management\index.php on line 12.
+ 1 APPPATH\Views\admin\client_management\index.php(12): CodeIgniter\Debug\Exceptions->errorHandler(2, 'Undefined property: CodeIgniter\\View\\View::$request', 'C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\admin\\client_management\\index.php', 12)
+ 2 SYSTEMPATH\View\View.php(240): include('C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\admin\\client_management\\index.php')
+ 3 SYSTEMPATH\View\View.php(243): CodeIgniter\View\View->CodeIgniter\View\{closure}()
+ 4 SYSTEMPATH\Common.php(1250): CodeIgniter\View\View->render('admin/client_management/index', [], true)
+ 5 APPPATH\Controllers\Admin\ClientManagementController.php(80): view('admin/client_management/index', [...])
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Admin\ClientManagementController->index()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Admin\ClientManagementController))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-08-02 13:16:21 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+CRITICAL - 2026-08-02 13:16:21 --> ErrorException: Undefined property: CodeIgniter\View\View::$request
+[Method: GET, Route: admin/client-management]
+in APPPATH\Views\admin\client_management\index.php on line 12.
+ 1 APPPATH\Views\admin\client_management\index.php(12): CodeIgniter\Debug\Exceptions->errorHandler(2, 'Undefined property: CodeIgniter\\View\\View::$request', 'C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\admin\\client_management\\index.php', 12)
+ 2 SYSTEMPATH\View\View.php(240): include('C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\admin\\client_management\\index.php')
+ 3 SYSTEMPATH\View\View.php(243): CodeIgniter\View\View->CodeIgniter\View\{closure}()
+ 4 SYSTEMPATH\Common.php(1250): CodeIgniter\View\View->render('admin/client_management/index', [], true)
+ 5 APPPATH\Controllers\Admin\ClientManagementController.php(80): view('admin/client_management/index', [...])
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Admin\ClientManagementController->index()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Admin\ClientManagementController))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-08-02 13:18:05 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+CRITICAL - 2026-08-02 13:18:05 --> ErrorException: Undefined property: CodeIgniter\View\View::$request
+[Method: GET, Route: admin/client-management]
+in APPPATH\Views\admin\client_management\index.php on line 12.
+ 1 APPPATH\Views\admin\client_management\index.php(12): CodeIgniter\Debug\Exceptions->errorHandler(2, 'Undefined property: CodeIgniter\\View\\View::$request', 'C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\admin\\client_management\\index.php', 12)
+ 2 SYSTEMPATH\View\View.php(240): include('C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\admin\\client_management\\index.php')
+ 3 SYSTEMPATH\View\View.php(243): CodeIgniter\View\View->CodeIgniter\View\{closure}()
+ 4 SYSTEMPATH\Common.php(1250): CodeIgniter\View\View->render('admin/client_management/index', [], true)
+ 5 APPPATH\Controllers\Admin\ClientManagementController.php(80): view('admin/client_management/index', [...])
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Admin\ClientManagementController->index()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Admin\ClientManagementController))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-08-02 13:18:23 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 13:18:24 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 13:18:26 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 13:18:30 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+CRITICAL - 2026-08-02 13:18:30 --> ErrorException: Undefined property: CodeIgniter\View\View::$request
+[Method: GET, Route: admin/client-management]
+in APPPATH\Views\admin\client_management\index.php on line 12.
+ 1 APPPATH\Views\admin\client_management\index.php(12): CodeIgniter\Debug\Exceptions->errorHandler(2, 'Undefined property: CodeIgniter\\View\\View::$request', 'C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\admin\\client_management\\index.php', 12)
+ 2 SYSTEMPATH\View\View.php(240): include('C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\admin\\client_management\\index.php')
+ 3 SYSTEMPATH\View\View.php(243): CodeIgniter\View\View->CodeIgniter\View\{closure}()
+ 4 SYSTEMPATH\Common.php(1250): CodeIgniter\View\View->render('admin/client_management/index', [], true)
+ 5 APPPATH\Controllers\Admin\ClientManagementController.php(80): view('admin/client_management/index', [...])
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Admin\ClientManagementController->index()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Admin\ClientManagementController))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-08-02 13:19:37 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 13:19:38 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 13:21:11 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+CRITICAL - 2026-08-02 13:21:11 --> ErrorException: Undefined property: CodeIgniter\View\View::$request
+[Method: GET, Route: admin/client-management]
+in APPPATH\Views\admin\client_management\index.php on line 12.
+ 1 APPPATH\Views\admin\client_management\index.php(12): CodeIgniter\Debug\Exceptions->errorHandler(2, 'Undefined property: CodeIgniter\\View\\View::$request', 'C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\admin\\client_management\\index.php', 12)
+ 2 SYSTEMPATH\View\View.php(240): include('C:\\xampp\\htdocs\\caresync\\ci4\\app\\Views\\admin\\client_management\\index.php')
+ 3 SYSTEMPATH\View\View.php(243): CodeIgniter\View\View->CodeIgniter\View\{closure}()
+ 4 SYSTEMPATH\Common.php(1250): CodeIgniter\View\View->render('admin/client_management/index', [], true)
+ 5 APPPATH\Controllers\Admin\ClientManagementController.php(80): view('admin/client_management/index', [...])
+ 6 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Admin\ClientManagementController->index()
+ 7 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Admin\ClientManagementController))
+ 8 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 9 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+10 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+11 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+DEBUG - 2026-08-02 13:24:56 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 13:27:06 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 13:31:14 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 13:38:07 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 13:47:46 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 13:47:53 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 13:48:19 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 13:48:36 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 13:51:34 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 14:09:25 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 14:09:38 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 14:09:41 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 14:09:58 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 14:10:10 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 14:10:17 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 14:10:22 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 14:11:57 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 14:11:57 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 14:12:02 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 14:12:03 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 14:12:09 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 14:22:36 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 14:22:37 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 14:22:54 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 14:22:54 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 14:24:46 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 14:24:48 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 14:24:54 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 14:24:55 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 14:25:00 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 14:25:01 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 14:25:02 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 14:25:19 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 14:25:24 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 14:25:33 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 14:25:36 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-02 14:25:40 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.

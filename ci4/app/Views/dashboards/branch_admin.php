@@ -1,311 +1,445 @@
 <?= $this->extend($role_layout) ?>
 
 <?= $this->section('content') ?>
-<div class="container-fluid">
-    <div class="mb-3">
-        <h1 class="h3 mb-1"><?= esc((string) ($page_title ?? 'Branch Operations Control Center')) ?></h1>
-        <p class="text-muted mb-0">Operational dashboard for branch performance, approvals, payments, and service readiness.</p>
-    </div>
+<link rel="stylesheet" href="<?= base_url('assets/css/branch-dashboard.css') ?>">
 
-    <nav aria-label="breadcrumb" class="mb-3">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="<?= base_url('dashboard') ?>">Dashboard</a></li>
-            <li class="breadcrumb-item active" aria-current="page">Branch Operations</li>
-        </ol>
-    </nav>
+<?php
+    $activeMembers = (int) ($member_stats['total_active'] ?? 0);
+    $pendingMembers = (int) ($member_stats['total_pending'] ?? 0);
+    $suspendedMembers = (int) ($member_stats['total_suspended'] ?? 0);
+    $totalMembers = max(1, $activeMembers + $pendingMembers + $suspendedMembers);
+    $pendingReview = (int) ($service_request_counts['pending'] ?? 0);
+    $pendingCount = count($payment_alerts ?? []);
+?>
 
-    <div class="row g-3 mb-4">
-        <div class="col-12 col-lg-8">
-            <div class="card border-primary">
-                <div class="card-body">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <h5 class="card-title mb-1"><?= esc($branch_name) ?></h5>
-                            <p class="text-muted mb-0">Welcome back, <?= esc($operator_name) ?>. Last updated <?= esc($current_time) ?>.</p>
-                        </div>
-                        <div class="text-end">
-                            <span class="badge bg-primary">Branch Admin</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-12 col-lg-4">
-            <div class="card bg-light border-0">
-                <div class="card-body">
-                    <h6 class="text-uppercase text-muted mb-3">Quick actions</h6>
-                    <div class="list-group list-group-flush">
-                        <a href="<?= base_url('branch-admin/service-package/requests') ?>" class="list-group-item list-group-item-action px-0 py-2">Review pending service applications</a>
-                        <a href="<?= base_url('branch-admin/payment-tracking') ?>" class="list-group-item list-group-item-action px-0 py-2">Verify branch payments</a>
-                        <a href="<?= base_url('branch-admin/service-package/ongoing') ?>" class="list-group-item list-group-item-action px-0 py-2">Monitor ongoing operations</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+<div class="bd">
 
-    <div class="row g-3 mb-4">
-        <div class="col-6 col-xl-3">
-            <div class="card h-100 shadow-sm">
-                <div class="card-body">
-                    <h6 class="text-uppercase text-muted mb-2">Active Members</h6>
-                    <h2 class="mb-0"><?= esc(number_format((int) ($member_stats['total_active'] ?? 0))) ?></h2>
-                </div>
+    <!-- ====== KPI Cards ====== -->
+    <div class="bd-kpis">
+        <div class="bd-kpi">
+            <div class="bd-kpi__icon bd-kpi__icon--blue"><i class="mdi mdi-account-group"></i></div>
+            <div>
+                <div class="bd-kpi__label">Active Members</div>
+                <div class="bd-kpi__value"><?= esc(number_format($activeMembers)) ?></div>
             </div>
         </div>
-        <div class="col-6 col-xl-3">
-            <div class="card h-100 shadow-sm">
-                <div class="card-body">
-                    <h6 class="text-uppercase text-muted mb-2">Pending Registrations</h6>
-                    <h2 class="mb-0"><?= esc(number_format((int) ($pending_approvals ?? 0))) ?></h2>
-                </div>
+        <div class="bd-kpi">
+            <div class="bd-kpi__icon bd-kpi__icon--teal"><i class="mdi mdi-file-document-check"></i></div>
+            <div>
+                <div class="bd-kpi__label">Pending Registrations</div>
+                <div class="bd-kpi__value"><?= esc(number_format((int) ($pending_approvals ?? 0))) ?></div>
             </div>
         </div>
-        <div class="col-6 col-xl-3">
-            <div class="card h-100 shadow-sm">
-                <div class="card-body">
-                    <h6 class="text-uppercase text-muted mb-2">Collections This Month</h6>
-                    <h2 class="mb-0">₱<?= esc(number_format((float) $collections_this_month, 2)) ?></h2>
-                </div>
+        <div class="bd-kpi">
+            <div class="bd-kpi__icon bd-kpi__icon--orange"><i class="mdi mdi-cash-multiple"></i></div>
+            <div>
+                <div class="bd-kpi__label">Collections This Month</div>
+                <div class="bd-kpi__value">₱<?= esc(number_format((float) ($collections_this_month ?? 0), 2)) ?></div>
             </div>
         </div>
-        <div class="col-6 col-xl-3">
-            <div class="card h-100 shadow-sm">
-                <div class="card-body">
-                    <h6 class="text-uppercase text-muted mb-2">Ongoing Services</h6>
-                    <h2 class="mb-0"><?= esc(number_format((int) $ongoing_services)) ?></h2>
-                </div>
+        <div class="bd-kpi">
+            <div class="bd-kpi__icon bd-kpi__icon--green"><i class="mdi mdi-briefcase-outline"></i></div>
+            <div>
+                <div class="bd-kpi__label">Ongoing Services</div>
+                <div class="bd-kpi__value"><?= esc(number_format((int) ($ongoing_services ?? 0))) ?></div>
             </div>
         </div>
     </div>
 
-    <div class="row g-3 mb-4">
-        <div class="col-lg-4">
-            <div class="card h-100 shadow-sm">
-                <div class="card-body">
-                    <h6 class="text-uppercase text-muted mb-3">Service Request Monitoring</h6>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span>Pending review</span>
-                        <strong><?= esc(number_format((int) ($service_request_counts['pending'] ?? 0))) ?></strong>
-                    </div>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span>Approved requests</span>
-                        <strong><?= esc(number_format((int) ($service_request_counts['approved'] ?? 0))) ?></strong>
-                    </div>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span>Rejected / returned</span>
-                        <strong><?= esc(number_format((int) ($service_request_counts['rejected'] ?? 0))) ?></strong>
-                    </div>
-                    <div class="d-grid mt-3">
-                        <a href="<?= base_url('branch-admin/service-package/requests') ?>" class="btn btn-outline-primary btn-sm">Open requests dashboard</a>
-                    </div>
-                </div>
+    <!-- ====== Quick Actions + Alert Feed ====== -->
+    <div class="bd-quick-bar">
+        <div class="bd-quick-actions">
+            <h3 class="bd-quick-actions__title">Quick Actions</h3>
+            <div class="bd-quick-actions__list">
+                <a href="<?= site_url('branch-admin/payment-tracking') ?>" class="bd-qa-btn">
+                    <i class="mdi mdi-credit-card-check"></i> Verify Payment
+                </a>
+                <a href="<?= site_url('branch-admin/client-management') ?>" class="bd-qa-btn">
+                    <i class="mdi mdi-account-plus"></i> Record Member
+                </a>
+                <a href="<?= site_url('branch-admin/reports') ?>" class="bd-qa-btn">
+                    <i class="mdi mdi-chart-bar"></i> Generate Report
+                </a>
+                <a href="<?= site_url('branch-admin/payment-tracking') ?>" class="bd-qa-btn">
+                    <i class="mdi mdi-cash-check"></i> Verify Branch Payments
+                </a>
             </div>
         </div>
-        <div class="col-lg-4">
-            <div class="card h-100 shadow-sm">
-                <div class="card-body">
-                    <h6 class="text-uppercase text-muted mb-3">Operational Readiness</h6>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span>Staff on duty</span>
-                        <strong><?= esc(number_format((int) $staff_on_duty)) ?></strong>
-                    </div>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span>Upcoming events</span>
-                        <strong><?= esc(number_format((int) $upcoming_services)) ?></strong>
-                    </div>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span>Delinquent members</span>
-                        <strong><?= esc(number_format((int) ($member_stats['total_delinquent'] ?? 0))) ?></strong>
-                    </div>
+        <div class="bd-alert-feed">
+            <h3 class="bd-alert-feed__title">Alert Feed</h3>
+            <?php if ($pendingCount > 0): ?>
+                <div class="bd-alert-item">
+                    <i class="mdi mdi-bell-ring-outline"></i>
+                    <span>Alert: <?= $pendingCount ?> Pending Service Application<?= $pendingCount > 1 ? 's' : '' ?></span>
                 </div>
-            </div>
-        </div>
-        <div class="col-lg-4">
-            <div class="card h-100 shadow-sm">
-                <div class="card-body">
-                    <h6 class="text-uppercase text-muted mb-3">Membership Health</h6>
-                    <div class="mb-3">
-                        <span class="text-muted">Active</span>
-                        <div class="progress" style="height: 8px;">
-                            <div class="progress-bar bg-success" role="progressbar" style="width: <?= esc(min(100, ($member_stats['total_active'] ?? 0) > 0 ? 100 : 0)) ?>%"></div>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <span class="text-muted">Pending</span>
-                        <div class="progress" style="height: 8px;">
-                            <div class="progress-bar bg-warning" role="progressbar" style="width: <?= esc(min(100, ($member_stats['total_pending'] ?? 0) > 0 ? 100 : 0)) ?>%"></div>
-                        </div>
-                    </div>
-                    <div>
-                        <span class="text-muted">Suspended</span>
-                        <div class="progress" style="height: 8px;">
-                            <div class="progress-bar bg-danger" role="progressbar" style="width: <?= esc(min(100, ($member_stats['total_suspended'] ?? 0) > 0 ? 100 : 0)) ?>%"></div>
-                        </div>
-                    </div>
+            <?php elseif ($pendingReview > 0): ?>
+                <div class="bd-alert-item">
+                    <i class="mdi mdi-bell-ring-outline"></i>
+                    <span>Alert: <?= $pendingReview ?> service request<?= $pendingReview > 1 ? 's' : '' ?> pending review</span>
                 </div>
-            </div>
+            <?php else: ?>
+                <div class="bd-alert-item" style="color:var(--bd-green);">
+                    <i class="mdi mdi-check-circle-outline" style="color:var(--bd-green);"></i>
+                    <span>All clear. No pending alerts.</span>
+                </div>
+            <?php endif; ?>
         </div>
     </div>
 
-    <div class="row g-3 mb-4">
-        <div class="col-12">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <h5 class="card-title mb-3">Operational Alert Feed</h5>
-                    <?php if (! empty($payment_alerts)): ?>
-                        <?php foreach ($payment_alerts as $alert): ?>
-                            <div class="alert alert-<?= esc($alert['type']) ?> d-flex justify-content-between align-items-center" role="alert">
-                                <div>
-                                    <strong><?= esc($alert['title']) ?>:</strong> <?= esc($alert['detail']) ?>
-                                </div>
+    <!-- ====== Tabs ====== -->
+    <div class="bd-tabs" id="bd-tabs">
+        <button class="bd-tab bd-tab--active" data-tab="readiness" onclick="bdSwitchTab(this)">Operational Readiness</button>
+        <button class="bd-tab" data-tab="financials" onclick="bdSwitchTab(this)">Financials</button>
+        <button class="bd-tab" data-tab="operations" onclick="bdSwitchTab(this)">Operations</button>
+        <button class="bd-tab" data-tab="membership" onclick="bdSwitchTab(this)">Membership</button>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- TAB: Operational Readiness                                       -->
+    <!-- ================================================================ -->
+    <div class="bd-panel" id="bd-tab-readiness">
+        <!-- Membership Health (Donut) -->
+        <div class="bd-card">
+            <div class="bd-card__header">
+                <h3 class="bd-card__title">Membership Health</h3>
+            </div>
+            <div class="bd-card__body">
+                <div class="bd-donut-wrap">
+                    <div class="bd-donut">
+                        <canvas id="bd-chart-membership"></canvas>
+                    </div>
+                    <div class="bd-legend">
+                        <div class="bd-legend__item"><span class="bd-legend__dot" style="background:#38a169;"></span> Active</div>
+                        <div class="bd-legend__item"><span class="bd-legend__dot" style="background:#f59e0b;"></span> Pending</div>
+                        <div class="bd-legend__item"><span class="bd-legend__dot" style="background:#a0aec0;"></span> Suspended</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delinquent Members -->
+        <div class="bd-card">
+            <div class="bd-card__header">
+                <h3 class="bd-card__title">Delinquent Members</h3>
+            </div>
+            <div class="bd-card__body">
+                <table class="bd-mini-table">
+                    <thead>
+                        <tr>
+                            <th>Active</th>
+                            <th>Pending</th>
+                            <th>Suspended</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><?= $activeMembers ?></td>
+                            <td><?= $pendingMembers ?></td>
+                            <td><?= $suspendedMembers ?></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Operational Alerts -->
+        <div class="bd-card">
+            <div class="bd-card__header">
+                <h3 class="bd-card__title">Operational Alerts</h3>
+            </div>
+            <div class="bd-card__body">
+                <?php if ($pendingReview > 0): ?>
+                    <a href="<?= site_url('branch-admin/service-package/requests') ?>" class="bd-alert-link">
+                        <?= $pendingReview ?> pending review
+                    </a>
+                <?php else: ?>
+                    <div class="bd-empty">No operational alerts.</div>
+                <?php endif; ?>
+
+                <?php if (! empty($payment_alerts)): ?>
+                    <div class="bd-alerts-list" style="margin-top:14px;">
+                        <?php foreach (array_slice($payment_alerts, 0, 3) as $alert): ?>
+                            <div class="bd-alert-card bd-alert-card--<?= esc($alert['type'] ?? 'info') ?>">
+                                <i class="mdi mdi-alert-circle-outline"></i>
+                                <span><strong><?= esc($alert['title'] ?? '') ?>:</strong> <?= esc($alert['detail'] ?? '') ?></span>
                             </div>
-                        <?php endforeach ?>
-                    <?php else: ?>
-                        <div class="alert alert-success mb-0" role="alert">
-                            No critical operational flags. Branch workflows are stable.
-                        </div>
-                    <?php endif ?>
-                </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
     </div>
 
-    <div class="row g-3">
-        <div class="col-xl-8">
-            <div class="card shadow-sm mb-3">
-                <div class="card-header d-flex align-items-center justify-content-between">
-                    <h6 class="mb-0">Today's Service Agenda</h6>
-                    <a href="<?= base_url('branch-admin/service-package/ongoing') ?>" class="text-decoration-none">View all</a>
-                </div>
-                <div class="card-body p-0">
-                    <?php if (empty($today_operations)): ?>
-                        <div class="p-4 text-center text-muted">No scheduled services for today.</div>
-                    <?php else: ?>
-                        <div class="table-responsive">
-                            <table class="table table-sm mb-0">
-                                <thead>
+    <!-- ================================================================ -->
+    <!-- TAB: Financials                                                  -->
+    <!-- ================================================================ -->
+    <div class="bd-panel" id="bd-tab-financials" style="display:none;">
+        <div class="bd-card">
+            <div class="bd-card__header"><h3 class="bd-card__title">Collections Trend</h3></div>
+            <div class="bd-card__body">
+                <?php if (! empty($payment_analytics['months'])): ?>
+                    <?php foreach ($payment_analytics['months'] as $key => $label): ?>
+                        <?php $value = $payment_analytics['totals'][$key] ?? 0; ?>
+                        <div class="bd-stat-row">
+                            <span class="bd-stat-row__label"><?= esc($label) ?></span>
+                            <span class="bd-stat-row__value">₱<?= esc(number_format($value, 2)) ?></span>
+                        </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <div class="bd-empty">No collections data.</div>
+                <?php endif; ?>
+            </div>
+        </div>
+        <div class="bd-card">
+            <div class="bd-card__header"><h3 class="bd-card__title">Payment Method Mix</h3></div>
+            <div class="bd-card__body">
+                <?php if (! empty($payment_analytics['method_breakdown'])): ?>
+                    <?php foreach ($payment_analytics['method_breakdown'] as $method): ?>
+                        <div class="bd-stat-row">
+                            <span class="bd-stat-row__label"><?= esc($method['method']) ?></span>
+                            <span class="bd-stat-row__value"><?= esc($method['share']) ?>%</span>
+                        </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <div class="bd-empty">No payment method data.</div>
+                <?php endif; ?>
+            </div>
+        </div>
+        <div class="bd-card">
+            <div class="bd-card__header"><h3 class="bd-card__title">Recent Payments</h3></div>
+            <div class="bd-card__body">
+                <?php if (empty($recent_payments)): ?>
+                    <div class="bd-empty">No recent payments.</div>
+                <?php else: ?>
+                    <?php foreach (array_slice($recent_payments, 0, 5) as $payment): ?>
+                        <div class="bd-stat-row">
+                            <span class="bd-stat-row__label"><?= esc(trim(($payment['first_name'] ?? '') . ' ' . ($payment['last_name'] ?? ''))) ?></span>
+                            <span class="bd-stat-row__value">₱<?= esc(number_format((float) ($payment['amount'] ?? 0), 2)) ?></span>
+                        </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- TAB: Operations                                                  -->
+    <!-- ================================================================ -->
+    <div class="bd-panel" id="bd-tab-operations" style="display:none;">
+        <div class="bd-card" style="grid-column:1/-1;">
+            <div class="bd-card__header">
+                <h3 class="bd-card__title">Today's Service Agenda</h3>
+                <a href="<?= site_url('branch-admin/service-package/ongoing') ?>" class="bd-card__link">View all</a>
+            </div>
+            <div class="bd-card__body" style="padding-top:4px;">
+                <?php if (empty($today_operations)): ?>
+                    <div class="bd-empty">No scheduled services for today.</div>
+                <?php else: ?>
+                    <div style="overflow-x:auto;">
+                        <table class="bd-table">
+                            <thead>
+                                <tr><th>Time</th><th>Service</th><th>Client</th><th>Status</th></tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($today_operations as $op): ?>
                                     <tr>
-                                        <th scope="col">Time</th>
-                                        <th scope="col">Service</th>
-                                        <th scope="col">Client</th>
-                                        <th scope="col">Status</th>
+                                        <td><?= esc($op['event_time'] ?: 'TBD') ?></td>
+                                        <td><strong><?= esc($op['event_name']) ?></strong></td>
+                                        <td><?= esc(trim(($op['first_name'] ?? '') . ' ' . ($op['last_name'] ?? ''))) ?: esc($op['unique_identifier'] ?? 'N/A') ?></td>
+                                        <td>
+                                            <span class="bd-badge <?= $op['status'] === 'in-progress' ? 'bd-badge--green' : 'bd-badge--slate' ?>">
+                                                <?= esc(ucfirst($op['status'])) ?>
+                                            </span>
+                                        </td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($today_operations as $operation): ?>
-                                        <tr>
-                                            <td><?= esc($operation['event_time'] ?: 'TBD') ?></td>
-                                            <td><?= esc($operation['event_name']) ?></td>
-                                            <td><?= esc(trim(($operation['first_name'] ?? '') . ' ' . ($operation['last_name'] ?? ''))) ?: esc($operation['unique_identifier'] ?? 'N/A') ?></td>
-                                            <td><span class="badge bg-<?= $operation['status'] === 'in-progress' ? 'success' : 'secondary' ?>"><?= esc(ucfirst($operation['status'])) ?></span></td>
-                                        </tr>
-                                    <?php endforeach ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    <?php endif ?>
-                </div>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
             </div>
-
-            <div class="card shadow-sm">
-                <div class="card-header d-flex align-items-center justify-content-between">
-                    <h6 class="mb-0">Recent Payments</h6>
-                    <a href="<?= base_url('branch-admin/payment-tracking') ?>" class="text-decoration-none">All payments</a>
+        </div>
+        <div class="bd-card">
+            <div class="bd-card__header"><h3 class="bd-card__title">Service Requests</h3></div>
+            <div class="bd-card__body">
+                <div class="bd-stat-row">
+                    <span class="bd-stat-row__label">Pending review</span>
+                    <span class="bd-stat-row__value"><?= esc(number_format((int) ($service_request_counts['pending'] ?? 0))) ?></span>
                 </div>
-                <div class="card-body p-0">
-                    <?php if (empty($recent_payments)): ?>
-                        <div class="p-4 text-center text-muted">No recent branch payments available.</div>
-                    <?php else: ?>
-                        <div class="table-responsive">
-                            <table class="table table-sm mb-0">
-                                <thead>
-                                    <tr>
-                                        <th scope="col">Date</th>
-                                        <th scope="col">Member</th>
-                                        <th scope="col">Amount</th>
-                                        <th scope="col">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($recent_payments as $payment): ?>
-                                        <tr>
-                                            <td><?= esc(date('M d', strtotime($payment['payment_date'] ?? ''))) ?></td>
-                                            <td><?= esc(trim(($payment['first_name'] ?? '') . ' ' . ($payment['last_name'] ?? ''))) ?></td>
-                                            <td>₱<?= esc(number_format((float) ($payment['amount'] ?? 0), 2)) ?></td>
-                                            <td><span class="badge bg-<?= $payment['status'] === 'approved' ? 'success' : ($payment['status'] === 'pending' ? 'warning' : 'secondary') ?>"><?= esc(ucfirst($payment['status'] ?? 'unknown')) ?></span></td>
-                                        </tr>
-                                    <?php endforeach ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    <?php endif ?>
+                <div class="bd-stat-row">
+                    <span class="bd-stat-row__label">Approved</span>
+                    <span class="bd-stat-row__value"><?= esc(number_format((int) ($service_request_counts['approved'] ?? 0))) ?></span>
+                </div>
+                <div class="bd-stat-row">
+                    <span class="bd-stat-row__label">Rejected</span>
+                    <span class="bd-stat-row__value"><?= esc(number_format((int) ($service_request_counts['rejected'] ?? 0))) ?></span>
                 </div>
             </div>
         </div>
-
-        <div class="col-xl-4">
-            <div class="card shadow-sm mb-3">
-                <div class="card-body">
-                    <h6 class="card-title mb-3">Collections Trend</h6>
-                    <?php if (! empty($payment_analytics['months'])): ?>
-                        <?php foreach ($payment_analytics['months'] as $key => $label): ?>
-                            <?php $value = $payment_analytics['totals'][$key] ?? 0; ?>
-                            <div class="mb-3">
-                                <div class="d-flex justify-content-between mb-1">
-                                    <small><?= esc($label) ?></small>
-                                    <strong>₱<?= esc(number_format($value, 2)) ?></strong>
-                                </div>
-                                <div class="progress" style="height: 8px;">
-                                    <div class="progress-bar bg-primary" role="progressbar" style="width: <?= esc($value > 0 ? min(100, ($value / max(array_values($payment_analytics['totals']) ?: [1])) * 100) : 2) ?>%"></div>
-                                </div>
-                            </div>
-                        <?php endforeach ?>
-                    <?php else: ?>
-                        <div class="text-muted">No approved collections recorded yet.</div>
-                    <?php endif ?>
+        <div class="bd-card">
+            <div class="bd-card__header"><h3 class="bd-card__title">Staff On Duty</h3></div>
+            <div class="bd-card__body">
+                <div class="bd-kpi__value" style="font-size:2.2rem;text-align:center;padding:16px 0;">
+                    <?= esc(number_format((int) ($staff_on_duty ?? 0))) ?>
+                </div>
+                <div class="bd-stat-row">
+                    <span class="bd-stat-row__label">Upcoming events</span>
+                    <span class="bd-stat-row__value"><?= esc(number_format((int) ($upcoming_services ?? 0))) ?></span>
                 </div>
             </div>
-
-            <div class="card shadow-sm mb-3">
-                <div class="card-body">
-                    <h6 class="card-title mb-3">Payment Method Mix</h6>
-                    <?php if (! empty($payment_analytics['method_breakdown'])): ?>
-                        <?php foreach ($payment_analytics['method_breakdown'] as $method): ?>
-                            <div class="mb-3">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <span><?= esc($method['method']) ?></span>
-                                    <small><?= esc($method['share']) ?>%</small>
-                                </div>
-                                <div class="progress" style="height: 8px;">
-                                    <div class="progress-bar bg-info" role="progressbar" style="width: <?= esc($method['share']) ?>%"></div>
-                                </div>
-                            </div>
-                        <?php endforeach ?>
-                    <?php else: ?>
-                        <div class="text-muted">No payment method breakdown available for the current month.</div>
-                    <?php endif ?>
-                </div>
-            </div>
-
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <h6 class="card-title mb-3">Recent Branch Activity</h6>
-                    <?php if (empty($activity_logs)): ?>
-                        <div class="text-muted">No activity log entries available.</div>
-                    <?php else: ?>
-                        <div class="list-group list-group-flush">
-                            <?php foreach ($activity_logs as $log): ?>
-                                <div class="list-group-item px-0 py-2 border-0">
-                                    <div class="small text-muted mb-1"><?= esc(date('M d H:i', strtotime($log['created_at'] ?? '')) ) ?></div>
-                                    <div><strong><?= esc(trim(($log['first_name'] ?? '') . ' ' . ($log['last_name'] ?? ''))) ?></strong> <?= esc($log['action']) ?> <?= esc($log['module']) ?></div>
-                                </div>
-                            <?php endforeach ?>
+        </div>
+        <div class="bd-card">
+            <div class="bd-card__header"><h3 class="bd-card__title">Recent Activity</h3></div>
+            <div class="bd-card__body">
+                <?php if (empty($activity_logs)): ?>
+                    <div class="bd-empty">No activity log entries.</div>
+                <?php else: ?>
+                    <?php foreach (array_slice($activity_logs, 0, 5) as $log): ?>
+                        <div class="bd-stat-row" style="flex-direction:column;align-items:flex-start;gap:4px;">
+                            <span class="bd-stat-row__value" style="font-size:0.82rem;">
+                                <?= esc(trim(($log['first_name'] ?? '') . ' ' . ($log['last_name'] ?? ''))) ?>
+                                <span style="font-weight:600;color:var(--bd-ink-soft);"> <?= esc($log['action']) ?> <?= esc($log['module']) ?></span>
+                            </span>
+                            <span style="font-size:0.72rem;color:var(--bd-ink-faint);">
+                                <?= esc(date('M d H:i', strtotime($log['created_at'] ?? ''))) ?>
+                            </span>
                         </div>
-                    <?php endif ?>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- TAB: Membership                                                  -->
+    <!-- ================================================================ -->
+    <div class="bd-panel" id="bd-tab-membership" style="display:none;">
+        <div class="bd-card">
+            <div class="bd-card__header"><h3 class="bd-card__title">Membership Overview</h3></div>
+            <div class="bd-card__body">
+                <div class="bd-stat-row">
+                    <span class="bd-stat-row__label">Total Active</span>
+                    <span class="bd-stat-row__value"><?= $activeMembers ?></span>
+                </div>
+                <div class="bd-stat-row">
+                    <span class="bd-stat-row__label">Total Pending</span>
+                    <span class="bd-stat-row__value"><?= $pendingMembers ?></span>
+                </div>
+                <div class="bd-stat-row">
+                    <span class="bd-stat-row__label">Total Suspended</span>
+                    <span class="bd-stat-row__value"><?= $suspendedMembers ?></span>
+                </div>
+                <div class="bd-stat-row" style="border-top:1px solid var(--bd-border);padding-top:12px;margin-top:4px;">
+                    <span class="bd-stat-row__label" style="font-weight:800;">Total Members</span>
+                    <span class="bd-stat-row__value" style="font-size:1.1rem;"><?= $activeMembers + $pendingMembers + $suspendedMembers ?></span>
+                </div>
+            </div>
+        </div>
+        <div class="bd-card">
+            <div class="bd-card__header"><h3 class="bd-card__title">Delinquent Accounts</h3></div>
+            <div class="bd-card__body">
+                <div class="bd-stat-row">
+                    <span class="bd-stat-row__label">Delinquent members</span>
+                    <span class="bd-stat-row__value" style="color:var(--bd-red);"><?= esc(number_format((int) ($member_stats['total_delinquent'] ?? 0))) ?></span>
+                </div>
+            </div>
+        </div>
+        <div class="bd-card">
+            <div class="bd-card__header"><h3 class="bd-card__title">Pending Approvals</h3></div>
+            <div class="bd-card__body">
+                <div class="bd-stat-row">
+                    <span class="bd-stat-row__label">Awaiting registration</span>
+                    <span class="bd-stat-row__value" style="color:var(--bd-orange);"><?= esc(number_format((int) ($pending_approvals ?? 0))) ?></span>
                 </div>
             </div>
         </div>
     </div>
+
 </div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+(function () {
+    'use strict';
+    var membershipChart = null;
+
+    /* --- Tab switching --- */
+    window.bdSwitchTab = function (btn) {
+        var tabId = btn.getAttribute('data-tab');
+        document.querySelectorAll('#bd-tabs .bd-tab').forEach(function (t) { t.classList.remove('bd-tab--active'); });
+        btn.classList.add('bd-tab--active');
+
+        document.querySelectorAll('.bd-panel').forEach(function (p) { p.style.display = 'none'; });
+        var panel = document.getElementById('bd-tab-' + tabId);
+        if (panel) panel.style.display = '';
+
+        if (tabId === 'readiness' && !membershipChart) renderDonut();
+    };
+
+    /* --- Donut chart --- */
+    var active = <?= json_encode($activeMembers) ?>;
+    var pending = <?= json_encode($pendingMembers) ?>;
+    var suspended = <?= json_encode($suspendedMembers) ?>;
+
+    function renderDonut() {
+        if (typeof Chart === 'undefined') return;
+        var ctx = document.getElementById('bd-chart-membership');
+        if (!ctx) return;
+        if (membershipChart) membershipChart.destroy();
+
+        membershipChart = new Chart(ctx.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Active', 'Pending', 'Suspended'],
+                datasets: [{
+                    data: [active, pending, suspended],
+                    backgroundColor: ['#38a169', '#f59e0b', '#a0aec0'],
+                    borderWidth: 0,
+                    hoverOffset: 6,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                cutout: '65%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                var total = active + pending + suspended;
+                                var pct = total > 0 ? Math.round((context.parsed / total) * 100) : 0;
+                                return context.label + ': ' + context.parsed + ' (' + pct + '%)';
+                            }
+                        }
+                    }
+                }
+            },
+            plugins: [{
+                id: 'centerText',
+                afterDraw: function (chart) {
+                    var total = active + pending + suspended;
+                    var ctx2 = chart.ctx;
+                    var area = chart.chartArea;
+                    var x = (area.left + area.right) / 2;
+                    var y = (area.top + area.bottom) / 2;
+                    ctx2.save();
+                    ctx2.textAlign = 'center';
+                    ctx2.textBaseline = 'middle';
+                    ctx2.fillStyle = '#4a5568';
+                    ctx2.font = '600 12px Manrope, sans-serif';
+                    ctx2.fillText('Total', x, y - 10);
+                    ctx2.fillStyle = '#1a202c';
+                    ctx2.font = '800 20px Manrope, sans-serif';
+                    ctx2.fillText(total, x, y + 12);
+                    ctx2.restore();
+                }
+            }]
+        });
+    }
+
+    renderDonut();
+})();
+</script>
 <?= $this->endSection() ?>

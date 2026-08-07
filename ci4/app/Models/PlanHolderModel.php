@@ -17,6 +17,7 @@ class PlanHolderModel extends Model
         'application_date',
         'address_no',
         'address_street',
+        'address_province',
         'address_barangay',
         'address_city',
         'date_of_birth',

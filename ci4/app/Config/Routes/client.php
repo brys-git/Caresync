@@ -22,6 +22,7 @@ $routes->group('client', ['filter' => 'auth'], static function (RouteCollection 
 
     // Payment Management
     $routes->get('payment', 'Client\ClientPaymentController::payment', ['filter' => 'role:4']);
+    $routes->get('payment/advance', 'Client\ClientPaymentController::advancePayment', ['filter' => 'role:4']);
     $routes->get('payment/download-receipt', 'Client\ClientPaymentController::downloadReceipt', ['filter' => 'role:4']);
     $routes->post('payment/submit-gcash', 'Client\ClientPaymentController::submitGcashPayment', ['filter' => 'role:4']);
 

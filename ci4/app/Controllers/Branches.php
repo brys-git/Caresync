@@ -21,10 +21,29 @@ class Branches extends BaseController
             ->orderBy('first_name', 'ASC')
             ->findAll();
 
+        $totalBranches = count($branches);
+        $activeBranches = 0;
+        foreach ($branches as $branch) {
+            if (strtolower((string) ($branch['status'] ?? '')) === 'active') {
+                $activeBranches++;
+            }
+        }
+
+        $totalManagers = 0;
+        foreach ($users as $user) {
+            if ((int) ($user['role_id'] ?? 0) === 2) {
+                $totalManagers++;
+            }
+        }
+
         return view('branches/index', [
             'branches' => $branches,
             'users' => $users,
             'role_layout' => $this->resolveLayoutView(),
+            'page_title' => null,
+            'total_branches' => $totalBranches,
+            'active_branches' => $activeBranches,
+            'total_managers' => $totalManagers,
         ]);
     }
 
@@ -133,7 +152,7 @@ class Branches extends BaseController
         ]);
     }
 
-    private function resolveLayoutView(): string
+    protected function resolveLayoutView(): string
     {
         $role = (int) session()->get('role_id');
 
@@ -152,7 +171,7 @@ class Branches extends BaseController
         return 'layouts/plan_holder';
     }
 
-    private function nullablePost(string $field): ?string
+    protected function nullablePost(string $field): ?string
     {
         $value = trim((string) $this->request->getPost($field));
 

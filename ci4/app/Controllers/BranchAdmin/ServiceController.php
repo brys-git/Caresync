@@ -88,8 +88,33 @@ class ServiceController extends BaseController
             ->get()
             ->getResultArray();
 
-        $packageServiceRows = [];
+        $planHolderPackageMap = [];
         $db = db_connect();
+        if ($branchId > 0 && $db->tableExists('plans')) {
+            $planHolderPackageRows = $db->table('plans p')
+                ->select('p.plan_holder_id, p.package_id, pk.package_name')
+                ->join('plan_holders ph', 'ph.plan_holder_id = p.plan_holder_id', 'inner')
+                ->join('packages pk', 'pk.package_id = p.package_id', 'left')
+                ->where('ph.branch_id', $branchId)
+                ->orderBy('p.plan_holder_id', 'ASC')
+                ->orderBy('p.plan_id', 'DESC')
+                ->get()
+                ->getResultArray();
+
+            foreach ($planHolderPackageRows as $row) {
+                $planHolderId = (int) ($row['plan_holder_id'] ?? 0);
+                if ($planHolderId <= 0 || isset($planHolderPackageMap[$planHolderId])) {
+                    continue;
+                }
+
+                $planHolderPackageMap[$planHolderId] = [
+                    'package_id' => (int) ($row['package_id'] ?? 0),
+                    'package_name' => (string) ($row['package_name'] ?? ''),
+                ];
+            }
+        }
+
+        $packageServiceRows = [];
         if ($db->tableExists('package_services') && $db->tableExists('service_list')) {
             $packageServiceFields = $db->getFieldNames('package_services');
             if (in_array('service_list_id', $packageServiceFields, true)) {
@@ -137,6 +162,7 @@ class ServiceController extends BaseController
             'packages' => $packages,
             'service_list' => $serviceList,
             'package_service_map' => $packageServiceMap,
+            'plan_holder_package_map' => $planHolderPackageMap,
             'role_layout' => 'layouts/branch_admin',
         ]);
     }

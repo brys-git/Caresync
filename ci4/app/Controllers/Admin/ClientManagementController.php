@@ -60,8 +60,26 @@ class ClientManagementController extends BaseController
 
         $clients = $builder->get()->getResultArray();
 
+        $totalClients = count($clients);
+        $activeClients = 0;
+        foreach ($clients as $client) {
+            if (strtolower((string) ($client['plan_holder_status'] ?? '')) === 'active') {
+                $activeClients++;
+            }
+        }
+
+        $newThisMonth = 0;
+        $currentMonth = date('Y-m');
+        foreach ($clients as $client) {
+            $createdAt = (string) ($client['created_at'] ?? '');
+            if ($createdAt !== '' && strpos($createdAt, $currentMonth) === 0) {
+                $newThisMonth++;
+            }
+        }
+
         return view('admin/client_management/index', [
             'role_layout' => 'layouts/admin',
+            'page_title' => null,
             'clients' => $clients,
             'branches' => $branches,
             'filters' => [
@@ -69,6 +87,9 @@ class ClientManagementController extends BaseController
                 'status' => $status,
                 'search' => $search,
             ],
+            'total_clients' => $totalClients,
+            'active_clients' => $activeClients,
+            'new_clients_month' => $newThisMonth,
         ]);
     }
 

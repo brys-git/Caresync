@@ -30,10 +30,47 @@ class PackageController extends BaseController
     {
         $this->ensureBranchAdminAccess();
 
+        $db = db_connect();
+        $activeTab = (string) $this->request->getGet('tab');
+        if (! in_array($activeTab, ['packages', 'services', 'requests', 'ongoing', 'schedule'], true)) {
+            $activeTab = 'packages';
+        }
+
+        $packages = $this->packageModel->orderBy('package_name', 'ASC')->findAll();
+
+        $services = $db->table('service_list')
+            ->select('service_list_id, service_name, description, base_price, status')
+            ->where('is_available', 1)
+            ->orderBy('service_name', 'ASC')
+            ->get()
+            ->getResultArray();
+
+        $pendingPackages = $db->table('pending_packages pp')
+            ->select('pp.pending_package_id, pp.package_name, pp.description, pp.base_price, pp.status, pp.created_at, u.first_name, u.last_name')
+            ->join('users u', 'u.user_id = pp.created_by', 'left')
+            ->where('pp.created_by', (int) session('user_id'))
+            ->orderBy('pp.created_at', 'DESC')
+            ->get()
+            ->getResultArray();
+
+        $pendingCount = 0;
+        $approvedCount = 0;
+        foreach ($pendingPackages as $pp) {
+            if (($pp['status'] ?? '') === 'pending') $pendingCount++;
+            if (($pp['status'] ?? '') === 'approved') $approvedCount++;
+        }
+
         return view('branch_admin/service_package/index', [
-            'active_tab' => 'packages',
-            'packages' => $this->packageModel->orderBy('package_name', 'ASC')->findAll(),
             'role_layout' => 'layouts/branch_admin',
+            'page_title' => null,
+            'active_tab' => $activeTab,
+            'packages' => $packages,
+            'services' => $services,
+            'pending_packages' => $pendingPackages,
+            'total_packages' => count($packages),
+            'total_services' => count($services),
+            'pending_count' => $pendingCount,
+            'approved_count' => $approvedCount,
         ]);
     }
 
@@ -272,7 +309,7 @@ class PackageController extends BaseController
             $notificationModel->insert([
                 'user_id' => (int) ($admin['user_id'] ?? 0),
                 'message' => $message,
-                'status' => 'unread',
+                'is_read' => 0,
             ]);
         }
     }

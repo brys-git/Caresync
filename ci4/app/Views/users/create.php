@@ -16,7 +16,7 @@
 
     <div class="card">
         <div class="card-body">
-            <form method="post" action="<?= base_url('users/create') ?>">
+            <form method="post" action="<?= site_url('/admin/users/store') ?>">
                 <?= csrf_field() ?>
 
                 <div class="row g-3">

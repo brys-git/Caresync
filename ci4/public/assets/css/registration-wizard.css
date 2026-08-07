@@ -1,0 +1,391 @@
+/* ==========================================================================
+   CareSync — Registration Wizard (Branch Admin / Client)
+   Scoped under `.rw` to avoid leaking into the PurpleAdmin theme.
+   ========================================================================== */
+
+.rw {
+  --rw-primary: #1e3a5f;
+  --rw-primary-hover: #162d4a;
+  --rw-primary-soft: #e8eef6;
+  --rw-teal: #1e3a5f;
+  --rw-teal-soft: #e8eef6;
+  --rw-green: #22a06b;
+  --rw-green-soft: #e6f9ee;
+  --rw-orange: #d4a843;
+  --rw-red: #dc2626;
+  --rw-ink: #1a202c;
+  --rw-ink-soft: #64748b;
+  --rw-ink-faint: #a0aec0;
+  --rw-surface: #ffffff;
+  --rw-bg: #f5f7fa;
+  --rw-border: #e2e8f0;
+  --rw-radius: 14px;
+  --rw-radius-sm: 10px;
+  --rw-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03);
+
+  font-family: "Manrope", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: var(--rw-ink);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.rw *, .rw *::before, .rw *::after { box-sizing: border-box; }
+
+/* --------------------------------------------------------- Progress Steps --- */
+.rw-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 20px 0;
+  background: var(--rw-surface);
+  border: 1px solid var(--rw-border);
+  border-radius: var(--rw-radius);
+  box-shadow: var(--rw-shadow);
+  margin-bottom: 4px;
+}
+
+.rw-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  position: relative;
+}
+
+.rw-step__circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 0.82rem;
+  font-weight: 800;
+  background: var(--rw-border);
+  color: var(--rw-ink-faint);
+  transition: all 0.3s ease;
+}
+
+.rw-step--active .rw-step__circle {
+  background: var(--rw-primary);
+  color: #fff;
+}
+
+.rw-step--completed .rw-step__circle {
+  background: var(--rw-green);
+  color: #fff;
+}
+
+.rw-step__label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--rw-ink-faint);
+  white-space: nowrap;
+  transition: color 0.3s ease;
+}
+
+.rw-step--active .rw-step__label { color: var(--rw-primary); }
+.rw-step--completed .rw-step__label { color: var(--rw-green); }
+
+.rw-step__line {
+  width: 60px;
+  height: 2px;
+  background: var(--rw-border);
+  flex-shrink: 0;
+  transition: background 0.3s ease;
+}
+
+.rw-step--completed .rw-step__line { background: var(--rw-green); }
+
+/* --------------------------------------------------------- Section Title --- */
+.rw-section-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--rw-ink);
+  margin: 0 0 4px;
+}
+
+.rw-section-sub {
+  font-size: 0.84rem;
+  color: var(--rw-ink-soft);
+  margin: 0 0 18px;
+}
+
+/* --------------------------------------------------------- Form Card --- */
+.rw-card {
+  background: var(--rw-surface);
+  border: 1px solid var(--rw-border);
+  border-radius: var(--rw-radius);
+  box-shadow: var(--rw-shadow);
+  padding: 22px;
+  margin-bottom: 16px;
+}
+
+.rw-card__title {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--rw-ink);
+  margin: 0 0 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--rw-border);
+}
+
+/* --------------------------------------------------------- Form Grid --- */
+.rw-form-row {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.rw-form-row--2 { grid-template-columns: 1fr 1fr; }
+.rw-form-row--3 { grid-template-columns: 1fr 1fr 1fr; }
+.rw-form-row--4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+.rw-form-row--2-1 { grid-template-columns: 1fr 1fr; }
+
+.rw-two-col {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+/* --------------------------------------------------------- Form Elements --- */
+.rw-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.rw-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--rw-ink-soft);
+}
+
+.rw-label span {
+  color: var(--rw-red);
+  font-weight: 800;
+}
+
+.rw-input,
+.rw-select,
+.rw-textarea {
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--rw-ink);
+  background: var(--rw-surface);
+  border: 1px solid var(--rw-border);
+  border-radius: var(--rw-radius-sm);
+  padding: 10px 12px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.rw-input:focus,
+.rw-select:focus,
+.rw-textarea:focus {
+  border-color: var(--rw-primary);
+  box-shadow: 0 0 0 3px rgba(30,58,95,0.18);
+}
+
+.rw-input[readonly],
+.rw-select[disabled] {
+  background: var(--rw-bg);
+  color: var(--rw-ink-faint);
+}
+
+.rw-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%234a5568' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 32px;
+  cursor: pointer;
+}
+
+.rw-textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.rw-input--check {
+  width: auto;
+  accent-color: var(--rw-primary);
+}
+
+/* --------------------------------------------------------- Buttons --- */
+.rw-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.84rem;
+  border-radius: var(--rw-radius-sm);
+  padding: 10px 22px;
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s, transform 0.12s;
+  white-space: nowrap;
+}
+
+.rw-btn:active { transform: scale(0.97); }
+
+.rw-btn--primary { background: var(--rw-primary); color: #fff; border-color: var(--rw-primary); }
+.rw-btn--primary:hover { background: var(--rw-primary-hover); border-color: var(--rw-primary-hover); text-decoration: none; }
+
+.rw-btn--outline { background: var(--rw-surface); color: var(--rw-ink); border-color: var(--rw-border); }
+.rw-btn--outline:hover { background: #f7fafc; text-decoration: none; }
+
+.rw-btn--ghost { background: transparent; color: var(--rw-primary); border-color: transparent; padding: 10px 12px; }
+.rw-btn--ghost:hover { background: var(--rw-primary-soft); text-decoration: none; }
+
+/* --------------------------------------------------------- Navigation --- */
+.rw-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  border-top: 1px solid var(--rw-border);
+}
+
+.rw-nav__left { display: flex; gap: 8px; }
+.rw-nav__right { display: flex; gap: 8px; align-items: center; }
+
+.rw-save-link {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--rw-ink-soft);
+  text-decoration: none;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: inherit;
+}
+
+.rw-save-link:hover { color: var(--rw-ink); }
+
+/* --------------------------------------------------------- Beneficiary Table --- */
+.rw-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--rw-border);
+  border-radius: var(--rw-radius-sm);
+}
+
+.rw-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+
+.rw-table thead th {
+  padding: 11px 12px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--rw-ink-faint);
+  text-align: left;
+  background: var(--rw-bg);
+  border-bottom: 1px solid var(--rw-border);
+}
+
+.rw-table tbody td {
+  padding: 8px;
+  border-bottom: 1px solid #f1f4f8;
+}
+
+.rw-table tbody tr:last-child td { border-bottom: 0; }
+
+.rw-table .rw-input { padding: 8px 10px; font-size: 0.82rem; }
+
+/* --------------------------------------------------------- Verification --- */
+.rw-upload-area {
+  border: 2px dashed var(--rw-border);
+  border-radius: var(--rw-radius);
+  padding: 30px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.rw-upload-area:hover {
+  border-color: var(--rw-primary);
+  background: var(--rw-primary-soft);
+}
+
+.rw-upload-area .mdi {
+  font-size: 2rem;
+  color: var(--rw-ink-faint);
+  margin-bottom: 8px;
+}
+
+.rw-upload-area p {
+  font-size: 0.84rem;
+  color: var(--rw-ink-soft);
+  margin: 0;
+}
+
+.rw-upload-area small {
+  font-size: 0.74rem;
+  color: var(--rw-ink-faint);
+}
+
+.rw-info-box {
+  background: var(--rw-bg);
+  border: 1px solid var(--rw-border);
+  border-radius: var(--rw-radius-sm);
+  padding: 16px;
+  font-size: 0.84rem;
+  color: var(--rw-ink-soft);
+}
+
+.rw-info-box h6 {
+  font-size: 0.84rem;
+  font-weight: 800;
+  color: var(--rw-ink);
+  margin: 0 0 8px;
+}
+
+.rw-info-box ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.rw-info-box li {
+  margin-bottom: 4px;
+}
+
+/* --------------------------------------------------------- Flash Messages --- */
+.rw-alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: var(--rw-radius-sm);
+  font-size: 0.86rem;
+  font-weight: 600;
+  border: 1px solid;
+}
+
+.rw-alert--error { background: #fff5f5; color: #e53e3e; border-color: #fed7d7; }
+.rw-alert--success { background: #f0fff4; color: #38a169; border-color: #c6f6d5; }
+
+/* --------------------------------------------------------- Responsive --- */
+@media (max-width: 992px) {
+  .rw-two-col { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+  .rw-steps { flex-wrap: wrap; gap: 8px; padding: 16px; }
+  .rw-step__line { width: 30px; }
+  .rw-step { padding: 6px 12px; }
+  .rw-step__label { font-size: 0.74rem; }
+  .rw-form-row--3 { grid-template-columns: 1fr; }
+  .rw-form-row--4 { grid-template-columns: 1fr 1fr; }
+  .rw-nav { flex-direction: column; gap: 10px; }
+}

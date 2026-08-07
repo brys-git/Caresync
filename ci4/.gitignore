@@ -1,0 +1,47 @@
+# CodeIgniter 4 .gitignore
+
+# Environment
+.env
+.env.*
+!env
+
+# Writable directories
+writable/uploads/*
+!writable/uploads/.gitkeep
+writable/cache/*
+!writable/cache/.gitkeep
+writable/logs/*
+!writable/logs/.gitkeep
+writable/session/*
+!writable/session/.gitkeep
+writable/debugbar/*
+!writable/debugbar/.gitkeep
+
+# Composer
+vendor/
+composer.lock
+
+# Node
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Debug
+*.log
+debug.log
+
+# Build artifacts
+*.zip
+*.tar.gz
+
+# Temporary
+ci4.zip

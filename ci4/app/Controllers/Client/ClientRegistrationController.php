@@ -153,6 +153,39 @@ class ClientRegistrationController extends BaseController
             $db = db_connect();
             $db->transStart();
 
+            $validIdFile = $this->request->getFile('valid_id');
+            $verificationDocument = null;
+            if ($validIdFile instanceof \CodeIgniter\HTTP\Files\UploadedFile && $validIdFile->isValid() && ! $validIdFile->hasMoved()) {
+                $allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf'];
+                $extension = strtolower($validIdFile->getClientExtension() ?: pathinfo($validIdFile->getClientName(), PATHINFO_EXTENSION));
+
+                if (! in_array($extension, $allowedExtensions, true)) {
+                    throw new \RuntimeException('Only JPG, PNG, or PDF files are allowed for the uploaded ID.');
+                }
+
+                $uploadDir = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'plan_registration_verification' . DIRECTORY_SEPARATOR . (int) $user['user_id'];
+                if (! is_dir($uploadDir) && ! mkdir($uploadDir, 0777, true) && ! is_dir($uploadDir)) {
+                    throw new \RuntimeException('Unable to create the upload directory for the verification document.');
+                }
+
+                $fileName = 'valid_id_' . time() . '_' . md5($validIdFile->getClientName() . microtime(true)) . '.' . $extension;
+                $validIdFile->move($uploadDir, $fileName);
+                $verificationDocument = [
+                    'path' => $uploadDir . DIRECTORY_SEPARATOR . $fileName,
+                    'name' => $validIdFile->getClientName(),
+                ];
+                session()->set('verification_document_path', $verificationDocument['path']);
+                session()->set('verification_document_name', $verificationDocument['name']);
+            }
+
+            $spouseName = trim((string) $this->request->getPost('spouse_name'));
+            if ($spouseName === '') {
+                $spouseFirstName = trim((string) $this->request->getPost('spouse_first_name'));
+                $spouseMiddleName = trim((string) $this->request->getPost('spouse_middle_name'));
+                $spouseLastName = trim((string) $this->request->getPost('spouse_last_name'));
+                $spouseName = trim(implode(' ', array_filter([$spouseFirstName, $spouseMiddleName, $spouseLastName], static fn ($value): bool => $value !== '')));
+            }
+
             $planHolderData = [
                 'user_id' => (int) $user['user_id'],
                 'id_control_no' => trim((string) $this->request->getPost('id_control_no')),
@@ -160,6 +193,7 @@ class ClientRegistrationController extends BaseController
                 'application_date' => $this->nullablePost('application_date'),
                 'address_no' => trim((string) $this->request->getPost('address_no')),
                 'address_street' => trim((string) $this->request->getPost('address_street')),
+                'address_province' => trim((string) $this->request->getPost('address_province')),
                 'address_barangay' => trim((string) $this->request->getPost('address_barangay')),
                 'address_city' => trim((string) $this->request->getPost('address_city')),
                 'date_of_birth' => $this->nullablePost('date_of_birth'),
@@ -170,7 +204,7 @@ class ClientRegistrationController extends BaseController
                 'citizenship' => trim((string) $this->request->getPost('citizenship')),
                 'height' => $this->nullableDecimalPost('height'),
                 'weight' => $this->nullableDecimalPost('weight'),
-                'spouse_name' => trim((string) $this->request->getPost('spouse_name')),
+                'spouse_name' => $spouseName,
                 'spouse_birthdate' => $this->nullablePost('spouse_birthdate'),
                 'spouse_occupation' => trim((string) $this->request->getPost('spouse_occupation')),
                 'senior_citizen_id' => trim((string) $this->request->getPost('senior_citizen_id')),
@@ -237,27 +271,48 @@ class ClientRegistrationController extends BaseController
 
             foreach ($beneficiariesInput as $row) {
                 $name = trim((string) ($row['name'] ?? ''));
-                $birthday = trim((string) ($row['birthday'] ?? ''));
+                $firstName = trim((string) ($row['first_name'] ?? ''));
+                $middleName = trim((string) ($row['middle_name'] ?? ''));
+                $lastName = trim((string) ($row['last_name'] ?? ''));
+                $birthday = trim((string) ($row['birthday'] ?? $row['date_of_birth'] ?? ''));
                 $relationship = trim((string) ($row['relationship'] ?? ''));
 
                 // Skip completely empty rows
-                if ($name === '' && $birthday === '' && $relationship === '') {
+                if ($name === '' && $firstName === '' && $middleName === '' && $lastName === '' && $birthday === '' && $relationship === '') {
                     continue;
                 }
 
-                // If any field is filled, require at least name and relationship
-                if ($name === '' || $relationship === '') {
-                    throw new \RuntimeException('All beneficiary fields must be filled if you provide any information. Please fill Name and Relationship for each beneficiary.');
+                if ($name === '' && $firstName === '' && $lastName === '') {
+                    throw new \RuntimeException('Beneficiary name is required. Please provide at least a first or last name for each beneficiary.');
                 }
 
-                $nameParts = $this->parseBeneficiaryName($name);
+                if ($relationship === '') {
+                    throw new \RuntimeException('Please enter the relationship for each beneficiary.');
+                }
+
+                if ($name !== '') {
+                    $nameParts = $this->parseBeneficiaryName($name);
+                } else {
+                    $nameParts = [
+                        'first_name' => $firstName,
+                        'middle_name' => $middleName,
+                        'last_name' => $lastName,
+                        'name_extension' => null,
+                    ];
+                }
+
+                if ($firstName !== '' || $middleName !== '' || $lastName !== '') {
+                    $nameParts['first_name'] = $firstName !== '' ? $firstName : ($nameParts['first_name'] ?? '');
+                    $nameParts['middle_name'] = $middleName !== '' ? $middleName : ($nameParts['middle_name'] ?? '');
+                    $nameParts['last_name'] = $lastName !== '' ? $lastName : ($nameParts['last_name'] ?? '');
+                }
 
                 $beneficiaries[] = $this->filterTableData('beneficiaries', [
                     'plan_holder_id' => $planHolderId,
-                    'first_name' => $nameParts['first_name'],
-                    'middle_name' => $nameParts['middle_name'],
-                    'last_name' => $nameParts['last_name'],
-                    'name_extension' => $nameParts['name_extension'],
+                    'first_name' => $nameParts['first_name'] ?? '',
+                    'middle_name' => $nameParts['middle_name'] ?? '',
+                    'last_name' => $nameParts['last_name'] ?? '',
+                    'name_extension' => $nameParts['name_extension'] ?? null,
                     'date_of_birth' => $birthday !== '' ? $birthday : null,
                     'relationship' => $relationship !== '' ? $relationship : 'N/A',
                     'is_primary' => $isPrimary ? 1 : 0,
@@ -311,8 +366,9 @@ class ClientRegistrationController extends BaseController
                 throw new \RuntimeException('Transaction failed. Please try again.');
             }
 
+            $verificationMessage = $verificationDocument ? ' Your uploaded ID is pending verification.' : '';
             return redirect()->to('/initial-payment')
-                ->with('success', 'Plan registration submitted successfully. Please make your initial payment to activate your membership.');
+                ->with('success', 'Plan registration submitted successfully. Please make your initial payment to activate your membership.' . $verificationMessage);
 
         } catch (\Throwable $e) {
             log_message('error', 'Plan registration failed: ' . $e->getMessage());

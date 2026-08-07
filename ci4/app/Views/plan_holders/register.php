@@ -144,11 +144,6 @@
                         </div>
                     </div>
 
-                    <div class="col-md-6">
-                        <label class="form-label" for="unique_identifier">Unique Identifier</label>
-                        <input id="unique_identifier" name="unique_identifier" type="text" class="form-control" value="<?= old('unique_identifier') ?>" required>
-                        <small class="text-muted">Required for safe client matching across modules.</small>
-                    </div>
                     <input type="hidden" id="status" name="status" value="inactive">
 
                     <div class="col-md-3">

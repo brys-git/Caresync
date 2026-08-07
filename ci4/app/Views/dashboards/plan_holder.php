@@ -1,336 +1,253 @@
 <?= $this->extend($role_layout) ?>
 
 <?= $this->section('content') ?>
+<link rel="stylesheet" href="<?= base_url('assets/css/branch-dashboard.css') ?>">
+
 <?php
-$isPlanHolder = (bool) ($is_plan_holder ?? true);
-$serviceStats = [
-    'services' => count($service_requests ?? []),
-    'payments' => count($payment_history ?? []),
-    'packages' => count($packages ?? []),
-];
+    $isPH = (bool) ($is_plan_holder ?? false);
+    $userName = esc(session()->get('first_name') ?? session()->get('user_name') ?? 'Client');
 ?>
 
-<style>
-    .plan-holder-shell {
-        position: relative;
-    }
+<div class="bd">
 
-    .plan-holder-hero {
-        background:
-            radial-gradient(circle at top left, rgba(15, 118, 110, 0.16), transparent 34%),
-            radial-gradient(circle at top right, rgba(37, 99, 235, 0.16), transparent 28%),
-            linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(247, 250, 252, 0.94));
-        border: 1px solid rgba(148, 163, 184, 0.25);
-        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
-        border-radius: 28px;
-        overflow: hidden;
-    }
+    <?php if (! $isPH): ?>
+        <!-- ====== NOT A PLAN HOLDER: Registration Prompt ====== -->
+        <div class="bd-kpis">
+            <div class="bd-kpi" style="grid-column:1/-1;background:linear-gradient(135deg,#1e3a5f 0%,#2a4f7a 100%);color:#fff;border:none;">
+                <div class="bd-kpi__icon" style="background:rgba(255,255,255,0.15);color:#fff;"><i class="mdi mdi-lock-outline"></i></div>
+                <div>
+                    <div class="bd-kpi__label" style="color:rgba(255,255,255,0.75);">Limited Access</div>
+                    <div class="bd-kpi__value" style="color:#fff;">Complete your plan holder registration first.</div>
+                    <div style="font-size:0.86rem;color:rgba(255,255,255,0.75);margin-top:6px;">Your account is active, but services, membership, and payment features are locked until you register as a plan holder.</div>
+                </div>
+            </div>
+        </div>
 
-    .plan-holder-hero__badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.45rem;
-        padding: 0.45rem 0.8rem;
-        border-radius: 999px;
-        background: rgba(15, 118, 110, 0.08);
-        color: #0f766e;
-        font-weight: 700;
-        font-size: 0.8rem;
-        letter-spacing: 0.03em;
-        text-transform: uppercase;
-    }
+        <?php if (! empty($pendingRegistration) && ($pendingRegistration['status'] ?? '') === 'pending'): ?>
+            <div style="background:var(--bd-blue-soft);border:1px solid #bee3f8;color:var(--bd-blue);padding:12px 16px;border-radius:10px;font-size:0.86rem;font-weight:600;">
+                <i class="mdi mdi-information-outline"></i>
+                Your registration was submitted on <?= esc((string) ($pendingRegistration['created_at'] ?? '-')) ?> and is pending approval.
+            </div>
+        <?php elseif (! empty($pendingRegistration) && ($pendingRegistration['status'] ?? '') === 'rejected'): ?>
+            <div style="background:var(--bd-orange-soft);border:1px solid var(--bd-orange-border);color:#c2760a;padding:12px 16px;border-radius:10px;font-size:0.86rem;font-weight:600;">
+                <i class="mdi mdi-alert-circle-outline"></i>
+                Your latest registration was rejected. Update your details and submit again.
+            </div>
+        <?php endif; ?>
 
-    .plan-holder-hero__panel {
-        background: linear-gradient(160deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.96));
-        color: rgba(255, 255, 255, 0.92);
-        border-radius: 24px;
-        padding: 1.5rem;
-        height: 100%;
-        position: relative;
-        overflow: hidden;
-    }
+        <div class="bd-quick-bar">
+            <div class="bd-quick-actions">
+                <h3 class="bd-quick-actions__title">Next Step</h3>
+                <div class="bd-quick-actions__list">
+                    <a href="<?= esc($registration_url ?? '#') ?>" class="bd-qa-btn" style="background:var(--bd-teal);color:#fff;border-color:var(--bd-teal);">
+                        <i class="mdi mdi-account-plus" style="color:#fff;"></i>
+                        <?= (! empty($pendingRegistration) && ($pendingRegistration['status'] ?? '') === 'pending') ? 'View Registration Status' : 'Register as Plan Holder' ?>
+                    </a>
+                </div>
+            </div>
+            <div class="bd-alert-feed">
+                <h3 class="bd-alert-feed__title">Account Status</h3>
+                <div class="bd-alert-item" style="color:var(--bd-orange);">
+                    <i class="mdi mdi-lock-outline"></i>
+                    <span>Features locked until registration is approved.</span>
+                </div>
+            </div>
+        </div>
 
-    .plan-holder-hero__panel::after {
-        content: '';
-        position: absolute;
-        inset: auto -3rem -3rem auto;
-        width: 10rem;
-        height: 10rem;
-        border-radius: 50%;
-        background: rgba(37, 99, 235, 0.28);
-        filter: blur(22px);
-    }
+        <div class="bd-panel">
+            <div class="bd-card">
+                <div class="bd-card__header"><h3 class="bd-card__title">Service Applications</h3></div>
+                <div class="bd-card__body"><div class="bd-empty" style="opacity:0.5;">Locked until registration</div></div>
+            </div>
+            <div class="bd-card">
+                <div class="bd-card__header"><h3 class="bd-card__title">Membership Details</h3></div>
+                <div class="bd-card__body"><div class="bd-empty" style="opacity:0.5;">Locked until registration</div></div>
+            </div>
+            <div class="bd-card">
+                <div class="bd-card__header"><h3 class="bd-card__title">Payments</h3></div>
+                <div class="bd-card__body"><div class="bd-empty" style="opacity:0.5;">Locked until registration</div></div>
+            </div>
+        </div>
 
-    .stat-pill {
-        border-radius: 20px;
-        background: rgba(255, 255, 255, 0.82);
-        border: 1px solid rgba(148, 163, 184, 0.18);
-        box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
-        padding: 1rem 1.1rem;
-        height: 100%;
-    }
+    <?php else: ?>
+        <!-- ====== IS A PLAN HOLDER: Full Dashboard ====== -->
+        <div class="bd-kpis">
+            <div class="bd-kpi">
+                <div class="bd-kpi__icon bd-kpi__icon--teal"><i class="mdi mdi-shield-check"></i></div>
+                <div>
+                    <div class="bd-kpi__label">Membership</div>
+                    <div class="bd-kpi__value"><?= esc(ucfirst((string) ($membership['membership_status'] ?? 'n/a'))) ?></div>
+                </div>
+            </div>
+            <div class="bd-kpi">
+                <div class="bd-kpi__icon bd-kpi__icon--blue"><i class="mdi mdi-clipboard-text-outline"></i></div>
+                <div>
+                    <div class="bd-kpi__label">Plan Status</div>
+                    <div class="bd-kpi__value"><?= esc(ucfirst((string) ($membership['plan_status'] ?? 'n/a'))) ?></div>
+                </div>
+            </div>
+            <div class="bd-kpi">
+                <div class="bd-kpi__icon bd-kpi__icon--orange"><i class="mdi mdi-cash-multiple"></i></div>
+                <div>
+                    <div class="bd-kpi__label">Remaining Balance</div>
+                    <div class="bd-kpi__value">₱<?= number_format((float) ($membership['remaining_balance'] ?? 0), 2) ?></div>
+                </div>
+            </div>
+            <div class="bd-kpi">
+                <div class="bd-kpi__icon bd-kpi__icon--green"><i class="mdi mdi-package-variant"></i></div>
+                <div>
+                    <div class="bd-kpi__label">Package</div>
+                    <div class="bd-kpi__value" style="font-size:1.1rem;"><?= esc((string) ($membership['package_name'] ?? 'n/a')) ?></div>
+                </div>
+            </div>
+        </div>
 
-    .service-card__icon {
-        width: 3rem;
-        height: 3rem;
-        border-radius: 18px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: linear-gradient(135deg, rgba(15, 118, 110, 0.12), rgba(37, 99, 235, 0.12));
-        color: #0f766e;
-    }
-</style>
+        <div class="bd-quick-bar">
+            <div class="bd-quick-actions">
+                <h3 class="bd-quick-actions__title">Quick Actions</h3>
+                <div class="bd-quick-actions__list">
+                    <a href="<?= site_url('plan-holder/payment-history') ?>" class="bd-qa-btn">
+                        <i class="mdi mdi-credit-card-check"></i> View Payments
+                    </a>
+                    <a href="<?= site_url('plan-holder/services') ?>" class="bd-qa-btn">
+                        <i class="mdi mdi-tools"></i> Service Requests
+                    </a>
+                    <a href="<?= site_url('plan-holder/profile') ?>" class="bd-qa-btn">
+                        <i class="mdi mdi-account-cog"></i> My Profile
+                    </a>
+                    <a href="<?= site_url('plan-holder/packages') ?>" class="bd-qa-btn">
+                        <i class="mdi mdi-package-variant"></i> View Packages
+                    </a>
+                </div>
+            </div>
+            <div class="bd-alert-feed">
+                <h3 class="bd-alert-feed__title">Account Info</h3>
+                <div class="bd-alert-item">
+                    <i class="mdi mdi-identifier"></i>
+                    <span><strong><?= esc((string) ($membership['unique_identifier'] ?? '-')) ?></strong></span>
+                </div>
+                <div class="bd-alert-item" style="margin-top:6px;">
+                    <i class="mdi mdi-office-building"></i>
+                    <span><?= esc((string) ($membership['branch_name'] ?? '-')) ?></span>
+                </div>
+            </div>
+        </div>
 
-<div class="container-fluid plan-holder-shell">
-    <?php if (! $isPlanHolder): ?>
-        <?php $pendingStatus = (string) ($pending_registration['status'] ?? ''); ?>
-        <div class="plan-holder-hero mb-4 p-4 p-lg-5">
-            <div class="row align-items-center g-4">
-                <div class="col-lg-8">
-                    <div class="plan-holder-hero__badge mb-3">
-                        <i class="ti ti-lock"></i>
-                        <span>Limited Access</span>
-                    </div>
-                    <h1 class="display-6 fw-bold mb-3">Complete your plan holder registration first.</h1>
-                    <p class="text-secondary mb-0" style="max-width: 44rem;">Your account is active, but service applications, membership management, and payment features are locked until you register as a plan holder.</p>
-                    <?php if ($pendingStatus === 'pending'): ?>
-                        <div class="alert alert-info mt-3 mb-0" style="max-width: 44rem;">
-                            Your registration was submitted on <?= esc((string) ($pending_registration['created_at'] ?? '-')) ?> and is pending approval.
-                        </div>
-                    <?php elseif ($pendingStatus === 'rejected'): ?>
-                        <div class="alert alert-warning mt-3 mb-0" style="max-width: 44rem;">
-                            Your latest registration was rejected. Update your details and submit again.
+        <!-- ====== Tabs ====== -->
+        <div class="bd-tabs" id="bd-tabs">
+            <button class="bd-tab bd-tab--active" data-tab="overview" onclick="bdSwitchTab(this)">Overview</button>
+            <button class="bd-tab" data-tab="payments" onclick="bdSwitchTab(this)">Payment History</button>
+            <button class="bd-tab" data-tab="services" onclick="bdSwitchTab(this)">Service Requests</button>
+        </div>
+
+        <!-- ================================================================ -->
+        <!-- TAB: Overview                                                    -->
+        <!-- ================================================================ -->
+        <div class="bd-panel" id="bd-tab-overview">
+            <div class="bd-card">
+                <div class="bd-card__header"><h3 class="bd-card__title">Membership Summary</h3></div>
+                <div class="bd-card__body">
+                    <div class="bd-stat-row"><span class="bd-stat-row__label">Plan Holder ID</span><span class="bd-stat-row__value"><?= esc((string) ($membership['unique_identifier'] ?? '-')) ?></span></div>
+                    <div class="bd-stat-row"><span class="bd-stat-row__label">Branch</span><span class="bd-stat-row__value"><?= esc((string) ($membership['branch_name'] ?? '-')) ?></span></div>
+                    <div class="bd-stat-row"><span class="bd-stat-row__label">Package</span><span class="bd-stat-row__value"><?= esc((string) ($membership['package_name'] ?? '-')) ?></span></div>
+                    <div class="bd-stat-row"><span class="bd-stat-row__label">Monthly Rate</span><span class="bd-stat-row__value">₱<?= number_format((float) ($membership['locked_price'] ?? 0), 2) ?></span></div>
+                    <div class="bd-stat-row"><span class="bd-stat-row__label">Start Date</span><span class="bd-stat-row__value"><?= esc((string) ($membership['effective_date'] ?? '-')) ?></span></div>
+                </div>
+            </div>
+            <div class="bd-card">
+                <div class="bd-card__header"><h3 class="bd-card__title">Payment Summary</h3></div>
+                <div class="bd-card__body">
+                    <div class="bd-stat-row"><span class="bd-stat-row__label">Total Payments</span><span class="bd-stat-row__value"><?= count($payment_history ?? []) ?></span></div>
+                    <div class="bd-stat-row"><span class="bd-stat-row__label">Remaining Balance</span><span class="bd-stat-row__value" style="color:var(--bd-orange);">₱<?= number_format((float) ($membership['remaining_balance'] ?? 0), 2) ?></span></div>
+                </div>
+            </div>
+            <div class="bd-card">
+                <div class="bd-card__header"><h3 class="bd-card__title">Service Requests</h3></div>
+                <div class="bd-card__body">
+                    <div class="bd-stat-row"><span class="bd-stat-row__label">Total Requests</span><span class="bd-stat-row__value"><?= count($service_requests ?? []) ?></span></div>
+                    <div class="bd-stat-row"><span class="bd-stat-row__label">Available Packages</span><span class="bd-stat-row__value"><?= count($packages ?? []) ?></span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================================================================ -->
+        <!-- TAB: Payment History                                             -->
+        <!-- ================================================================ -->
+        <div class="bd-panel" id="bd-tab-payments" style="display:none;">
+            <div class="bd-card" style="grid-column:1/-1;">
+                <div class="bd-card__header"><h3 class="bd-card__title">Payment History</h3></div>
+                <div class="bd-card__body" style="padding-top:4px;">
+                    <?php if (empty($payment_history ?? [])): ?>
+                        <div class="bd-empty">No payment history yet.</div>
+                    <?php else: ?>
+                        <div style="overflow-x:auto;">
+                            <table class="bd-table">
+                                <thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Status</th></tr></thead>
+                                <tbody>
+                                    <?php foreach ($payment_history as $payment): ?>
+                                        <tr>
+                                            <td><?= esc((string) ($payment['payment_date'] ?? '-')) ?></td>
+                                            <td><strong>₱<?= number_format((float) ($payment['amount'] ?? 0), 2) ?></strong></td>
+                                            <td><?= esc(strtoupper((string) ($payment['payment_method'] ?? '-'))) ?></td>
+                                            <td><span class="bd-badge <?= ($payment['status'] ?? '') === 'paid' ? 'bd-badge--green' : 'bd-badge--amber' ?>"><?= esc(ucfirst((string) ($payment['status'] ?? '-'))) ?></span></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
                         </div>
                     <?php endif; ?>
                 </div>
-                <div class="col-lg-4">
-                    <div class="plan-holder-hero__panel">
-                        <div class="position-relative" style="z-index: 1;">
-                            <div class="text-white-50 small text-uppercase fw-semibold mb-2">Next step</div>
-                            <h2 class="h3 fw-bold mb-3">Submit your registration details</h2>
-                            <p class="text-white-75 mb-4">Once submitted, your dashboard will unlock services, membership details, and payment tracking.</p>
-                            <a href="<?= esc((string) ($registration_url ?? base_url('plan-holder-registration'))) ?>" class="btn btn-light fw-semibold px-4">
-                                <?= $pendingStatus === 'pending' ? 'View Registration Status' : 'Register as Plan Holder' ?>
-                            </a>
+            </div>
+        </div>
+
+        <!-- ================================================================ -->
+        <!-- TAB: Service Requests                                            -->
+        <!-- ================================================================ -->
+        <div class="bd-panel" id="bd-tab-services" style="display:none;">
+            <div class="bd-card" style="grid-column:1/-1;">
+                <div class="bd-card__header"><h3 class="bd-card__title">Service Requests</h3></div>
+                <div class="bd-card__body" style="padding-top:4px;">
+                    <?php if (empty($service_requests ?? [])): ?>
+                        <div class="bd-empty">No service requests yet.</div>
+                    <?php else: ?>
+                        <div style="overflow-x:auto;">
+                            <table class="bd-table">
+                                <thead><tr><th>ID</th><th>Package</th><th>Status</th><th>Date</th></tr></thead>
+                                <tbody>
+                                    <?php foreach ($service_requests as $request): ?>
+                                        <tr>
+                                            <td><strong>#<?= esc((string) ($request['application_id'] ?? '-')) ?></strong></td>
+                                            <td><?= esc((string) ($request['package_name'] ?? '-')) ?></td>
+                                            <td><span class="bd-badge <?= ($request['status'] ?? '') === 'approved' || ($request['status'] ?? '') === 'completed' ? 'bd-badge--green' : 'bd-badge--teal' ?>"><?= esc(ucfirst((string) ($request['status'] ?? '-'))) ?></span></td>
+                                            <td><?= esc((string) ($request['created_at'] ?? '-')) ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
                         </div>
-                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
 
-        <div class="row g-3">
-            <div class="col-md-4">
-                <div class="card h-100">
-                    <div class="card-body d-flex align-items-center gap-3 opacity-75">
-                        <div class="service-card__icon"><i class="ti ti-clipboard-list"></i></div>
-                        <div>
-                            <div class="small text-muted fw-semibold">Service Applications</div>
-                            <div class="h6 mb-0">Locked until registration</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card h-100">
-                    <div class="card-body d-flex align-items-center gap-3 opacity-75">
-                        <div class="service-card__icon"><i class="ti ti-id-badge"></i></div>
-                        <div>
-                            <div class="small text-muted fw-semibold">Membership Details</div>
-                            <div class="h6 mb-0">Locked until registration</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card h-100">
-                    <div class="card-body d-flex align-items-center gap-3 opacity-75">
-                        <div class="service-card__icon"><i class="ti ti-receipt"></i></div>
-                        <div>
-                            <div class="small text-muted fw-semibold">Payments</div>
-                            <div class="h6 mb-0">Locked until registration</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    <?php else: ?>
-    <div class="plan-holder-hero mb-4 p-4 p-lg-5">
-        <div class="row g-4 align-items-stretch">
-            <div class="col-lg-7">
-                <div class="plan-holder-hero__badge mb-3">
-                    <i class="ti ti-stars"></i>
-                    <span>Plan Holder Dashboard</span>
-                </div>
-                <h1 class="display-6 fw-bold mb-3">Your membership at a glance.</h1>
-                <p class="text-secondary mb-4" style="max-width: 42rem;">Track your plan status, payments, and service requests from one dashboard. Service options are now available under the Services page.</p>
-
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <div class="stat-pill">
-                            <div class="small text-uppercase text-muted fw-semibold mb-1">Membership</div>
-                            <div class="h4 mb-0"><?= esc((string) ($membership['membership_status'] ?? 'n/a')) ?></div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="stat-pill">
-                            <div class="small text-uppercase text-muted fw-semibold mb-1">Plan Status</div>
-                            <div class="h4 mb-0"><?= esc((string) ($membership['plan_status'] ?? 'n/a')) ?></div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="stat-pill">
-                            <div class="small text-uppercase text-muted fw-semibold mb-1">Remaining Balance</div>
-                            <div class="h4 mb-0">P<?= number_format((float) ($membership['remaining_balance'] ?? 0), 2) ?></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-5">
-                <div class="plan-holder-hero__panel">
-                    <div class="position-relative" style="z-index: 1;">
-                        <div class="d-flex justify-content-between align-items-start mb-4">
-                            <div>
-                                <div class="text-white-50 small text-uppercase fw-semibold">Account summary</div>
-                                <div class="h3 fw-bold mb-0"><?= esc((string) ($membership['unique_identifier'] ?? '-')) ?></div>
-                            </div>
-                            <div class="rounded-circle bg-white bg-opacity-10 d-inline-flex align-items-center justify-content-center" style="width: 3.25rem; height: 3.25rem;">
-                                <i class="ti ti-layout-dashboard fs-4"></i>
-                            </div>
-                        </div>
-
-                        <div class="d-grid gap-3">
-                            <div class="d-flex align-items-center justify-content-between p-3 rounded-4" style="background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.08);">
-                                <div>
-                                    <div class="text-white-50 small">Branch</div>
-                                    <div class="fw-semibold"><?= esc((string) ($membership['branch_name'] ?? '-')) ?></div>
-                                </div>
-                                <i class="ti ti-building text-white-50 fs-4"></i>
-                            </div>
-                            <div class="d-flex align-items-center justify-content-between p-3 rounded-4" style="background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.08);">
-                                <div>
-                                    <div class="text-white-50 small">Locked Price</div>
-                                    <div class="fw-semibold">P<?= number_format((float) ($membership['locked_price'] ?? 0), 2) ?></div>
-                                </div>
-                                <i class="ti ti-currency-peso text-white-50 fs-4"></i>
-                            </div>
-                            <div class="d-flex align-items-center justify-content-between p-3 rounded-4" style="background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.08);">
-                                <div>
-                                    <div class="text-white-50 small">Start Date</div>
-                                    <div class="fw-semibold"><?= esc((string) ($membership['effective_date'] ?? '-')) ?></div>
-                                </div>
-                                <i class="ti ti-calendar-event text-white-50 fs-4"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row g-3 mb-4">
-        <div class="col-md-4">
-            <div class="card h-100">
-                <div class="card-body d-flex align-items-center gap-3">
-                    <div class="service-card__icon"><i class="ti ti-package"></i></div>
-                    <div>
-                        <div class="small text-muted fw-semibold">Packages Available</div>
-                        <div class="h3 mb-0"><?= esc((string) $serviceStats['packages']) ?></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card h-100">
-                <div class="card-body d-flex align-items-center gap-3">
-                    <div class="service-card__icon"><i class="ti ti-receipt"></i></div>
-                    <div>
-                        <div class="small text-muted fw-semibold">Recent Payments</div>
-                        <div class="h3 mb-0"><?= esc((string) $serviceStats['payments']) ?></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card h-100">
-                <div class="card-body d-flex align-items-center gap-3">
-                    <div class="service-card__icon"><i class="ti ti-clipboard-list"></i></div>
-                    <div>
-                        <div class="small text-muted fw-semibold">Service Requests</div>
-                        <div class="h3 mb-0"><?= esc((string) $serviceStats['services']) ?></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row g-3 mt-4">
-        <div class="col-lg-7">
-            <div class="card h-100">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <div>
-                            <h3 class="h5 mb-1">Payment History</h3>
-                            <p class="text-secondary mb-0">Most recent transactions tied to your current plan.</p>
-                        </div>
-                        <i class="ti ti-receipt-2 text-primary fs-3"></i>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="table align-middle mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Amount</th>
-                                    <th>Method</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($payment_history as $payment): ?>
-                                    <tr>
-                                        <td><?= esc((string) $payment['payment_date']) ?></td>
-                                        <td>P<?= number_format((float) ($payment['amount'] ?? 0), 2) ?></td>
-                                        <td><?= esc(strtoupper((string) $payment['payment_method'])) ?></td>
-                                        <td><span class="badge text-bg-<?= ((string) ($payment['status'] ?? '') === 'paid') ? 'success' : 'warning' ?>"><?= esc((string) $payment['status']) ?></span></td>
-                                    </tr>
-                                <?php endforeach; ?>
-                                <?php if (empty($payment_history)): ?>
-                                    <tr><td colspan="4" class="text-center text-secondary py-4">No payment history yet.</td></tr>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-5">
-            <div class="card h-100">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <div>
-                            <h3 class="h5 mb-1">Service Requests</h3>
-                            <p class="text-secondary mb-0">Your latest submitted requests and their progress.</p>
-                        </div>
-                        <i class="ti ti-clipboard-check text-primary fs-3"></i>
-                    </div>
-                    <div class="d-grid gap-3">
-                        <?php foreach ($service_requests as $request): ?>
-                            <div class="d-flex justify-content-between align-items-start p-3 rounded-4" style="background: rgba(15,23,42,.02); border: 1px solid rgba(148,163,184,.16);">
-                                <div>
-                                    <div class="fw-bold">#<?= esc((string) $request['application_id']) ?> <?= esc((string) ($request['package_name'] ?? '-')) ?></div>
-                                    <div class="small text-secondary">Submitted <?= esc((string) ($request['created_at'] ?? '-')) ?></div>
-                                </div>
-                                <span class="badge text-bg-<?= ((string) ($request['status'] ?? '') === 'approved' || (string) ($request['status'] ?? '') === 'completed') ? 'success' : 'primary' ?>"><?= esc((string) $request['status']) ?></span>
-                            </div>
-                        <?php endforeach; ?>
-                        <?php if (empty($service_requests)): ?>
-                            <div class="text-center text-secondary py-4">No service requests yet.</div>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
     <?php endif; ?>
+
 </div>
+
+<!-- ====== Scripts ====== -->
+<script>
+(function () {
+    'use strict';
+
+    window.bdSwitchTab = function (btn) {
+        var tabId = btn.getAttribute('data-tab');
+        document.querySelectorAll('#bd-tabs .bd-tab').forEach(function (t) { t.classList.remove('bd-tab--active'); });
+        btn.classList.add('bd-tab--active');
+
+        document.querySelectorAll('.bd-panel').forEach(function (p) { p.style.display = 'none'; });
+        var panel = document.getElementById('bd-tab-' + tabId);
+        if (panel) panel.style.display = '';
+    };
+})();
+</script>
 <?= $this->endSection() ?>

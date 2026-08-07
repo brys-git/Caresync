@@ -77,14 +77,23 @@
                     <?php if (($request['status'] ?? '') === 'pending'): ?>
                         <form action="<?= site_url('/branch-admin/service-package/requests/approve/' . (int) $request['application_id']) ?>" method="post" class="d-inline-block me-2">
                             <?= csrf_field() ?>
-                            <button type="submit" class="btn btn-success">Approve</button>
+                            <button type="submit" class="btn btn-success" onclick="return confirm('Approve this request?')">Approve</button>
                         </form>
-                        <form action="<?= site_url('/branch-admin/service-package/requests/reject/' . (int) $request['application_id']) ?>" method="post" class="d-inline-block">
-                            <?= csrf_field() ?>
-                            <button type="submit" class="btn btn-danger">Reject</button>
-                        </form>
+                        <div class="mt-3">
+                            <form action="<?= site_url('/branch-admin/service-package/requests/reject/' . (int) $request['application_id']) ?>" method="post">
+                                <?= csrf_field() ?>
+                                <div class="mb-2">
+                                    <label class="form-label small fw-semibold">Rejection Reason (optional)</label>
+                                    <textarea name="rejection_reason" class="form-control form-control-sm" rows="2" placeholder="Provide a reason for rejection..."></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-danger" onclick="return confirm('Reject this request?')">Reject</button>
+                            </form>
+                        </div>
                     <?php else: ?>
                         <div class="text-muted">This request is <?= esc(ucfirst((string) ($request['status'] ?? 'unknown'))) ?>.</div>
+                        <?php if (! empty($request['rejection_reason'] ?? '')): ?>
+                            <div class="alert alert-warning mt-2 mb-0"><strong>Rejection reason:</strong> <?= esc((string) $request['rejection_reason']) ?></div>
+                        <?php endif; ?>
                     <?php endif; ?>
                 </div>
             </div>

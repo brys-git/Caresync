@@ -25,11 +25,14 @@ $routes->group('staff', ['filter' => 'auth'], static function (RouteCollection $
     // Payment Management
     $routes->get('payment-management', 'PaymentTracking::staff', ['filter' => 'role:3']);
     $routes->post('payment-management/record-cash', 'PaymentTracking::recordCash', ['filter' => 'role:3']);
+    $routes->get('record-payment', 'PaymentTracking::staffRecordPaymentForm', ['filter' => 'role:3']);
+    $routes->post('record-payment/save', 'PaymentTracking::staffRecordPaymentSave', ['filter' => 'role:3']);
 
     // Service Management
     $routes->get('services', 'Staff\ServicesController::index', ['filter' => 'role:3']);
     $routes->get('services/requests', 'Staff\ServicesController::serviceRequests', ['filter' => 'role:3']);
     $routes->get('services/ongoing', 'Staff\ServicesController::ongoingServices', ['filter' => 'role:3']);
+    $routes->post('services/update-status/(:num)', 'Staff\ServicesController::updateStatus/$1', ['filter' => 'role:3']);
 
     // Reports & Analytics
     $routes->get('reports', 'Staff\ReportsController::index', ['filter' => 'role:3']);

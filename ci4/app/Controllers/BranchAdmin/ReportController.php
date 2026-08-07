@@ -17,6 +17,11 @@ class ReportController extends BaseController
         $this->reportService = new ReportService();
     }
 
+    public function index()
+    {
+        return $this->remittance();
+    }
+
     public function remittance()
     {
         $this->ensureBranchAdminAccess();

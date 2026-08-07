@@ -21,12 +21,49 @@ class PaymentTracking extends BaseController
             return redirect()->to('/unauthorized');
         }
 
+        $rows = $this->adminPaymentRows();
+
+        $totalCollections = 0.0;
+        $completedCount = 0;
+        $pendingCount = 0;
+        $methodCounts = [];
+
+        foreach ($rows as $row) {
+            $status = strtolower((string) ($row['status'] ?? ''));
+            $method = strtolower((string) ($row['payment_method'] ?? 'other'));
+
+            if ($status === 'paid') {
+                $totalCollections += (float) ($row['amount'] ?? 0);
+                $completedCount++;
+            } elseif ($status === 'pending') {
+                $pendingCount++;
+            }
+
+            $methodCounts[$method] = ($methodCounts[$method] ?? 0) + 1;
+        }
+
+        $primaryMethod = 'N/A';
+        $primaryMethodPct = 0;
+        if (! empty($methodCounts)) {
+            arsort($methodCounts);
+            $topMethod = array_key_first($methodCounts);
+            $primaryMethod = strtoupper($topMethod);
+            $totalMethods = array_sum($methodCounts);
+            $primaryMethodPct = $totalMethods > 0 ? round(($methodCounts[$topMethod] / $totalMethods) * 100) : 0;
+        }
+
         return view('admin/payment_monitoring/index', [
             'role_layout' => 'layouts/admin',
-            'rows' => $this->adminPaymentRows(),
+            'page_title' => null,
+            'rows' => $rows,
             'branches' => $this->branchOptions(),
             'filters' => $this->adminFilters(),
             'supports_proof_upload' => $this->supportsProofUpload(),
+            'total_collections' => $totalCollections,
+            'completed_count' => $completedCount,
+            'pending_count' => $pendingCount,
+            'primary_method' => $primaryMethod,
+            'primary_method_pct' => $primaryMethodPct,
         ]);
     }
 
@@ -92,15 +129,52 @@ class PaymentTracking extends BaseController
             $tab = '';
         }
 
+        $rows = $this->paymentRows($branchId);
+
+        $totalCollections = 0.0;
+        $completedCount = 0;
+        $pendingCount = 0;
+        $methodCounts = [];
+
+        foreach ($rows as $row) {
+            $status = strtolower((string) ($row['status'] ?? ''));
+            $method = strtolower((string) ($row['payment_method'] ?? 'other'));
+
+            if ($status === 'paid') {
+                $totalCollections += (float) ($row['amount'] ?? 0);
+                $completedCount++;
+            } elseif ($status === 'pending') {
+                $pendingCount++;
+            }
+
+            $methodCounts[$method] = ($methodCounts[$method] ?? 0) + 1;
+        }
+
+        $primaryMethod = 'N/A';
+        $primaryMethodPct = 0;
+        if (! empty($methodCounts)) {
+            arsort($methodCounts);
+            $topMethod = array_key_first($methodCounts);
+            $primaryMethod = strtoupper($topMethod);
+            $totalMethods = array_sum($methodCounts);
+            $primaryMethodPct = $totalMethods > 0 ? round(($methodCounts[$topMethod] / $totalMethods) * 100) : 0;
+        }
+
         return view('branch_admin/payment_tracking/index', [
             'role_layout' => 'layouts/branch_admin',
+            'page_title' => null,
             'plan_options' => $this->branchPlanOptions($branchId),
             'initial_plan_options' => $this->branchInitialPlanOptions($branchId),
-            'rows' => $this->paymentRows($branchId),
+            'rows' => $rows,
             'initial_rows' => $this->initialPaymentRows($branchId),
             'can_approve' => true,
             'selected_status' => (string) $this->request->getGet('status'),
             'active_tab' => $tab,
+            'total_collections' => $totalCollections,
+            'completed_count' => $completedCount,
+            'pending_count' => $pendingCount,
+            'primary_method' => $primaryMethod,
+            'primary_method_pct' => $primaryMethodPct,
         ]);
     }
 
@@ -112,13 +186,57 @@ class PaymentTracking extends BaseController
         }
 
         $branchId = (int) session('branch_id');
+        $tab = strtolower((string) $this->request->getGet('tab'));
+        if (! in_array($tab, ['', 'record', 'monitoring', 'initial'], true)) {
+            $tab = '';
+        }
+
+        $rows = $this->paymentRows($branchId);
+
+        $totalCollections = 0.0;
+        $completedCount = 0;
+        $pendingCount = 0;
+        $methodCounts = [];
+
+        foreach ($rows as $row) {
+            $status = strtolower((string) ($row['status'] ?? ''));
+            $method = strtolower((string) ($row['payment_method'] ?? 'other'));
+
+            if ($status === 'paid') {
+                $totalCollections += (float) ($row['amount'] ?? 0);
+                $completedCount++;
+            } elseif ($status === 'pending') {
+                $pendingCount++;
+            }
+
+            $methodCounts[$method] = ($methodCounts[$method] ?? 0) + 1;
+        }
+
+        $primaryMethod = 'N/A';
+        $primaryMethodPct = 0;
+        if (! empty($methodCounts)) {
+            arsort($methodCounts);
+            $topMethod = array_key_first($methodCounts);
+            $primaryMethod = strtoupper($topMethod);
+            $totalMethods = array_sum($methodCounts);
+            $primaryMethodPct = $totalMethods > 0 ? round(($methodCounts[$topMethod] / $totalMethods) * 100) : 0;
+        }
 
         return view('staff/payment_management/index', [
             'role_layout' => 'layouts/staff',
+            'page_title' => null,
             'plan_options' => $this->branchPlanOptions($branchId),
-            'rows' => $this->paymentRows($branchId),
+            'initial_plan_options' => $this->branchInitialPlanOptions($branchId),
+            'rows' => $rows,
+            'initial_rows' => $this->initialPaymentRows($branchId),
             'can_approve' => false,
             'selected_status' => (string) $this->request->getGet('status'),
+            'active_tab' => $tab,
+            'total_collections' => $totalCollections,
+            'completed_count' => $completedCount,
+            'pending_count' => $pendingCount,
+            'primary_method' => $primaryMethod,
+            'primary_method_pct' => $primaryMethodPct,
         ]);
     }
 
@@ -879,5 +997,110 @@ class PaymentTracking extends BaseController
         }
 
         return (int) ($earliestPayment['payment_id'] ?? 0) === $paymentId;
+    }
+
+    public function staffRecordPaymentForm(): string
+    {
+        $roleId = (int) session('role_id');
+        if ($roleId !== 3) {
+            return redirect()->to('/unauthorized');
+        }
+
+        $branchId = (int) session('branch_id');
+        $db = db_connect();
+
+        $clients = $db->table('plan_holders ph')
+            ->select('ph.plan_holder_id, ph.unique_identifier, ph.status AS plan_holder_status, u.first_name, u.last_name')
+            ->join('users u', 'u.user_id = ph.user_id', 'inner')
+            ->where('ph.branch_id', $branchId)
+            ->orderBy('u.first_name', 'ASC')
+            ->get()
+            ->getResultArray();
+
+        $approvalQueue = $db->table('payments p')
+            ->select('p.payment_id, p.amount, p.payment_method, p.status, p.payment_date, u.first_name, u.last_name, ph.unique_identifier')
+            ->join('plans pl', 'pl.plan_id = p.plan_id', 'inner')
+            ->join('plan_holders ph', 'ph.plan_holder_id = pl.plan_holder_id', 'inner')
+            ->join('users u', 'u.user_id = ph.user_id', 'inner')
+            ->where('p.branch_id', $branchId)
+            ->orderBy('p.payment_id', 'DESC')
+            ->limit(10)
+            ->get()
+            ->getResultArray();
+
+        $pendingCount = 0;
+        foreach ($approvalQueue as $record) {
+            if (strtolower((string) ($record['status'] ?? '')) === 'pending') {
+                $pendingCount++;
+            }
+        }
+
+        return view('staff/record_payment', [
+            'role_layout' => 'layouts/staff',
+            'page_title' => null,
+            'clients' => $clients,
+            'approval_queue' => $approvalQueue,
+            'monthly_fee' => 240.0,
+            'pending_count' => $pendingCount,
+        ]);
+    }
+
+    public function staffRecordPaymentSave()
+    {
+        $roleId = (int) session('role_id');
+        if ($roleId !== 3) {
+            return redirect()->to('/unauthorized');
+        }
+
+        $branchId = (int) session('branch_id');
+        $clientName = trim((string) $this->request->getPost('client_name'));
+        $monthsCovered = max(1, (int) $this->request->getPost('months_covered'));
+        $receiptNumber = trim((string) $this->request->getPost('receipt_number'));
+        $paymentType = strtolower(trim((string) $this->request->getPost('payment_type')));
+        $monthlyFee = 240.0;
+
+        if (empty($clientName) || empty($receiptNumber)) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Client name and receipt number are required.');
+        }
+
+        $existing = db_connect()->table('cash_payment_records')
+            ->where('receipt_number', $receiptNumber)
+            ->get()
+            ->getRowArray();
+
+        if ($existing) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'This receipt number already exists. Receipt: ' . esc($receiptNumber));
+        }
+
+        $db = db_connect();
+        $amount = $monthlyFee * $monthsCovered;
+        $paymentData = [
+            'branch_id' => $branchId,
+            'client_name' => $clientName,
+            'months_covered' => $monthsCovered,
+            'amount' => $amount,
+            'receipt_number' => $receiptNumber,
+            'recorded_by' => (int) session('user_id'),
+            'recorded_date' => date('Y-m-d'),
+            'verified' => 0,
+            'created_at' => date('Y-m-d H:i:s'),
+        ];
+
+        $inserted = $db->table('cash_payment_records')->insert($paymentData);
+
+        if (! $inserted) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Failed to record payment.');
+        }
+
+        $label = $paymentType === 'initial' ? 'Initial payment' : 'Payment';
+
+        return redirect()->to('/staff/record-payment')
+            ->with('success', ucfirst($label) . ' recorded. Receipt: ' . esc($receiptNumber) . ' for ' . esc($clientName));
     }
 }

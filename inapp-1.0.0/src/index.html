@@ -1,167 +1,106 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8" />
-  <title>InApp Inventory Dashboard</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="apple-touch-icon" sizes="180x180" href="./assets/images/favicon_io/apple-touch-icon.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="./assets/images/favicon_io/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="./assets/images/favicon_io/favicon-16x16.png">
-  <link rel="manifest" href="./assets/images/favicon_io/site.webmanifest">
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kaagapay Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="apple-touch-icon" sizes="180x180" href="./assets/images/favicon_io/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="./assets/images/favicon_io/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="./assets/images/favicon_io/favicon-16x16.png">
+    <link rel="manifest" href="./assets/images/favicon_io/site.webmanifest">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        #sidebar { transition: transform 0.3s ease-in-out; }
+    </style>
 </head>
+<body class="bg-slate-50 text-slate-800">
 
-<body>
-  <div id="overlay" class="overlay"></div>
-  <!-- TOPBAR -->
-  <nav id="topbar" class="navbar bg-white border-bottom fixed-top topbar px-3">
-    <button id="toggleBtn" class="d-none d-lg-inline-flex btn btn-light btn-icon btn-sm ">
-      <i class="ti ti-layout-sidebar-left-expand"></i>
-    </button>
+    <div class="flex min-h-screen relative">
+        <div id="overlay" class="fixed inset-0 bg-black/50 z-30 hidden"></div>
 
-    <!-- MOBILE -->
-    <button id="mobileBtn" class="btn btn-light btn-icon btn-sm d-lg-none me-2">
-      <i class="ti ti-layout-sidebar-left-expand"></i>
-    </button>
-    <div>
-      <!-- Navbar nav -->
-      <ul class="list-unstyled d-flex align-items-center mb-0 gap-1">
-        <!-- Pages link -->
-
-        <!-- Bell icon -->
-        <li>
-          <a class="position-relative btn-icon btn-sm btn-light btn rounded-circle" data-bs-toggle="dropdown"
-            aria-expanded="false" href="#" role="button">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
-              class="icon icon-tabler icons-tabler-outline icon-tabler-bell">
-              <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-              <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
-              <path d="M9 17v1a3 3 0 0 0 6 0v-1" />
-            </svg>
-            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger mt-2 ms-n2">
-              2
-              <span class="visually-hidden">unread messages</span>
-            </span>
-          </a>
-          <div class="dropdown-menu dropdown-menu-end dropdown-menu-md p-0">
-            <ul class="list-unstyled p-0 m-0">
-              <li class="p-3 border-bottom ">
-                <div class="d-flex gap-3">
-                  <img src="./assets/images/avatar/avatar-1.jpg" alt="" class="avatar avatar-sm rounded-circle" />
-                  <div class="flex-grow-1 small">
-                    <p class="mb-0">New order received</p>
-                    <p class="mb-1">Order #12345 has been placed</p>
-                    <div class="text-secondary">5 minutes ago</div>
-                  </div>
-                </div>
-              </li>
-              <li class="p-3 border-bottom ">
-                <div class="d-flex gap-3">
-                  <img src="./assets/images/avatar/avatar-4.jpg" alt="" class="avatar avatar-sm rounded-circle" />
-                  <div class="flex-grow-1 small">
-                    <p class="mb-0">New user registered</p>
-                    <p class="mb-1">User @john_doe has signed up</p>
-                    <div class="text-secondary">30 minutes ago</div>
-                  </div>
-              </li>
-
-              <li class="p-3 border-bottom">
-                <div class="d-flex gap-3">
-                  <img src="./assets/images/avatar/avatar-2.jpg" alt="" class="avatar avatar-sm rounded-circle" />
-                  <div class="flex-grow-1 small">
-                    <p class="mb-0">Payment confirmed</p>
-                    <p class="mb-1">Payment of $299 has been received</p>
-                    <div class="text-secondary">1 hour ago</div>
-                  </div>
-                </div>
-              </li>
-              <li class="px-4 py-3 text-center">
-                <a href="#" class="text-primary ">View all notifications</a>
-              </li>
-            </ul>
-          </div>
-        </li>
-        <!-- Dropdown -->
-        <li class="ms-3 dropdown">
-          <a href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            <img src="./assets/images/avatar/avatar-1.jpg" alt="" class="avatar avatar-sm rounded-circle" />
-          </a>
-          <div class="dropdown-menu dropdown-menu-end p-0" style="min-width: 200px;">
-            <div>
-              <div class="d-flex gap-3 align-items-center border-dashed border-bottom px-3 py-3">
-                <img src="./assets/images/avatar/avatar-1.jpg" alt="" class="avatar avatar-md rounded-circle" />
-                <div>
-                  <h4 class="mb-0 small">Shrina Tesla</h4>
-                  <p class="mb-0  small">@imshrina</p>
-                </div>
-              </div>
-              <div class="p-3 d-flex flex-column gap-1 small lh-lg">
-                <a href="#!" class="">
-
-                  <span>Home</span>
-                </a>
-                <a href="#!" class="">
-
-                  <span> Inbox</span>
-                </a>
-                <a href="#!" class="">
-
-                  <span> Chat</span>
-                </a>
-                <a href="#!" class="">
-
-                  <span> Activity</span>
-                </a>
-                <a href="#!" class="">
-
-                  <span> Account Settings</span>
-                </a>
-              </div>
-
+        <aside id="sidebar" class="fixed md:static inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 -translate-x-full md:translate-x-0 flex flex-col shadow-xl md:shadow-none">
+            <div class="p-6 flex items-center gap-2 text-xl font-bold text-slate-900">
+                <div class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white">K</div> Kaagapay
             </div>
-          </div>
-        </li>
-      </ul>
-    </div>
+            
+            <nav class="flex-1 px-4 py-2 space-y-1">
+                <a href="#" onclick="switchPage('dashboard'); return false;" class="navLink flex items-center gap-3 px-4 py-2 text-blue-600 bg-blue-50 rounded-lg font-medium" data-page="dashboard"><i data-lucide="layout-grid" class="w-5 h-5"></i> Dashboard</a>
+                
+                <!-- Client Management -->
+                <div class="mt-2">
+                    <button onclick="toggleDropdown('clientDropdown', this)" class="flex items-center justify-between w-full px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg font-medium">
+                        <span class="flex items-center gap-3"><i data-lucide="users" class="w-5 h-5"></i> Client Mgmt</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform duration-200"></i>
+                    </button>
+                    <div id="clientDropdown" class="hidden pl-10 mt-1 space-y-1">
+                        <a href="#" onclick="switchPage('clientManagement'); return false;" class="navLink block py-1 text-sm text-slate-500 hover:text-blue-600" data-page="clientManagement">Client</a>
+                        <a href="#" class="block py-1 text-sm text-slate-500 hover:text-blue-600">Register Client</a>
+                    </div>
+                </div>
 
-  </nav>
+                <!-- Payment Management -->
+                <div class="mt-2">
+                    <button onclick="toggleDropdown('paymentDropdown', this)" class="flex items-center justify-between w-full px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg font-medium">
+                        <span class="flex items-center gap-3"><i data-lucide="credit-card" class="w-5 h-5"></i> Payment Mgmt</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform duration-200"></i>
+                    </button>
+                    <div id="paymentDropdown" class="hidden pl-10 mt-1 space-y-1">
+                        <a href="#" class="block py-1 text-sm text-slate-500 hover:text-blue-600">Payment Record</a>
+                        <a href="#" class="block py-1 text-sm text-slate-500 hover:text-blue-600">Record Payment</a>
+                        <a href="#" class="block py-1 text-sm text-slate-500 hover:text-blue-600">Record Initial Payment</a>
+                        <a href="#" class="block py-1 text-sm text-slate-500 hover:text-blue-600">Verify Payment</a>
+                    </div>
+                </div>
 
-  <!-- SIDEBAR -->
-  <aside id="sidebar" class="sidebar">
-    <div class="logo-area">
-     <a href="index.html" class="d-inline-flex"><img src="./assets/images/logo-icon.svg" alt="" width="24">
-        <span class="logo-text ms-2"> <img src="./assets/images/logo.svg" alt=""></span>
-      </a>
-    </div>
-    <ul class="nav flex-column">
-      <li class="px-4 py-2"><small class="nav-text">Main</small></li>
-      <li><a class="nav-link active" href="index.html"><i class="ti ti-home"></i><span
-            class="nav-text">Dashboard</span></a></li>
-      <li><a class="nav-link" href="inventory.html"><i class="ti ti-box-seam"></i><span
-            class="nav-text">Inventory</span></a></li>
-      <li><a class="nav-link" href="create-product.html"><i class="ti ti-plus"></i><span class="nav-text">Add
-            Product</span></a></li>
-    <li><a class="nav-link" href="reports.html"><i class="ti ti-receipt"></i><span class="nav-text">Reports</span></a>
-      </li>
-    <li><a class="nav-link" href="404-error.html"><i class="ti ti-alert-circle"></i><span class="nav-text">404 Error</span></a>
-      </li>
-      <li><a class="nav-link" href="docs.html"><i class="ti ti-file-text"></i><span class="nav-text">Docs</span></a></li>
+                <!-- Package/Service -->
+                <div class="mt-2">
+                    <button onclick="toggleDropdown('packageDropdown', this)" class="flex items-center justify-between w-full px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg font-medium">
+                        <span class="flex items-center gap-3"><i data-lucide="package" class="w-5 h-5"></i> Package/Service</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform duration-200"></i>
+                    </button>
+                    <div id="packageDropdown" class="hidden pl-10 mt-1 space-y-1">
+                        <a href="#" class="block py-1 text-sm text-slate-500 hover:text-blue-600">Package</a>
+                        <a href="#" class="block py-1 text-sm text-slate-500 hover:text-blue-600">Service</a>
+                    </div>
+                </div>
 
+                <!-- Reports -->
+                <a href="#" class="flex items-center gap-3 px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg font-medium mt-2"><i data-lucide="file-text" class="w-5 h-5"></i> Reports</a>
+            </nav>
 
-      <li class="px-4 pt-4 pb-2"><small class="nav-text">Account</small></li>
-      <li><a class="nav-link" href="signin.html"><i class="ti ti-logout"></i><span class="nav-text">Log in</span></a>
-      </li>
-      <li><a class="nav-link" href="signup.html"><i class="ti ti-user-plus"></i><span class="nav-text">Sign
-            up</span></a></li>
-    </ul>
+            <div class="p-4 space-y-4 border-t">
+                <div class="bg-slate-50 p-3 rounded-lg flex items-center gap-3">
+                    <img id="sidebarAvatar" src="https://ui-avatars.com/api/?name=John+Doe" class="w-10 h-10 rounded-full" alt="User">
+                    <div>
+                        <p id="sidebarName" class="text-sm font-bold">John Doe</p>
+                        <p class="text-xs text-slate-500">Plan Holder</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
 
-  </aside>
+        <div id="mainContent" class="flex-1 flex flex-col min-w-0 transition-all duration-300">
+            <header class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-6 sticky top-0 z-20">
+                <button id="sidebarToggle" class="text-slate-600 hover:bg-slate-100 p-2 rounded-lg"><i data-lucide="menu"></i></button>
+                <div class="relative">
+                    <button id="profileToggle" class="flex items-center gap-3 hover:bg-slate-50 p-2 rounded-lg transition-colors">
+                        <span id="headerName" class="text-sm font-medium hidden sm:block">John Doe</span>
+                        <img id="headerAvatar" src="https://ui-avatars.com/api/?name=John+Doe" class="w-8 h-8 rounded-full border border-slate-200" alt="Profile">
+                    </button>
+                    <div id="profileDropdown" class="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-lg shadow-lg hidden z-50">
+                        <a href="#" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 border-b">Account Settings</a>
+                        <a href="#" class="block px-4 py-2 text-sm text-rose-600 hover:bg-rose-50">Logout</a>
+                    </div>
+                </div>
+            </header>
 
-  <!-- MAIN CONTENT -->
-  <main id="content" class="content py-10">
-    <div class="container-fluid">
+            <main id="content" class="flex-1 overflow-auto p-6">
+                <!-- Dashboard Page -->
+                <div id="dashboardPage" class="page-content">
+                <div class="container-fluid">
       <div class="row ">
         <div class="col-12">
           <div class="mb-6">
@@ -639,17 +578,131 @@
         <p class="mb-0">Copyright © 2026 InApp Inventory Dashboard. Developed by <a href="https://codescandy.com/" target="_blank" class="text-primary">CodesCandy</a> • Distributed by <a href="https://themewagon.com/" target="_blank" class="text-primary">ThemeWagon</a> </p>
       </footer>
         </div>
+                </div>
+                </div>
+                <!-- End Dashboard Page -->
 
-      </div>
+                <!-- Client Management Page -->
+                <div id="clientManagementPage" class="page-content hidden">
+                    <div class="max-w-5xl mx-auto space-y-6">
+                        
+                        <!-- Header & Action -->
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                            <div>
+                                <h1 class="text-2xl font-bold text-slate-900">Clients</h1>
+                                <p class="text-slate-500 text-sm">Manage and view all registered system clients.</p>
+                            </div>
+                            <button class="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-blue-700 flex items-center gap-2 shadow-sm transition-all">
+                                <i data-lucide="user-plus" class="w-4 h-4"></i> Register New Client
+                            </button>
+                        </div>
 
+                        <!-- Search Bar -->
+                        <div class="flex items-center gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                            <i data-lucide="search" class="w-5 h-5 text-slate-400"></i>
+                            <input type="text" placeholder="Search clients by name, ID, or contact..." class="flex-1 outline-none text-sm text-slate-700">
+                        </div>
+
+                        <!-- Client Table -->
+                        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm text-left">
+                                    <thead class="bg-slate-50 text-slate-600 uppercase font-medium">
+                                        <tr>
+                                            <th class="px-6 py-4">Client Name</th>
+                                            <th class="px-6 py-4">Contact</th>
+                                            <th class="px-6 py-4">Status</th>
+                                            <th class="px-6 py-4 text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-200">
+                                        <!-- Example Row -->
+                                        <tr class="hover:bg-slate-50 transition-colors">
+                                            <td class="px-6 py-4">
+                                                <div class="font-semibold text-slate-900">Maria Santos</div>
+                                                <div class="text-xs text-slate-500">ID: CL-2026-001</div>
+                                            </td>
+                                            <td class="px-6 py-4 text-slate-600">0917-123-4567</td>
+                                            <td class="px-6 py-4">
+                                                <span class="px-2 py-1 rounded-full bg-green-50 text-green-700 text-xs font-bold">Active</span>
+                                            </td>
+                                            <td class="px-6 py-4 text-right">
+                                                <button class="text-blue-600 hover:text-blue-800 font-medium">View</button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- End Client Management Page -->
+            </main>
+        </div>
     </div>
-  </main>
 
-  <!-- Bootstrap JS -->
-  <script src="./assets/js/main.js" type="module"></script>
+    <script>
+        lucide.createIcons();
+        
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const overlay = document.getElementById('overlay');
+        const profileToggle = document.getElementById('profileToggle');
+        const profileDropdown = document.getElementById('profileDropdown');
 
 
+        const toggleSidebar = () => {
+            if (window.innerWidth >= 768) {
+                sidebar.classList.toggle('hidden');
+            } else {
+                sidebar.classList.toggle('-translate-x-full');
+                overlay.classList.toggle('hidden');
+            }
+        };
 
+        function toggleDropdown(id, btn) {
+            document.getElementById(id).classList.toggle('hidden');
+            btn.querySelector('i[data-lucide="chevron-down"]').classList.toggle('rotate-180');
+        }
+
+        function switchPage(pageName) {
+            // Hide all pages
+            document.querySelectorAll('.page-content').forEach(page => {
+                page.classList.add('hidden');
+            });
+            
+            // Show selected page
+            const selectedPage = document.getElementById(pageName + 'Page');
+            if (selectedPage) {
+                selectedPage.classList.remove('hidden');
+            }
+
+            // Update navigation styling
+            document.querySelectorAll('.navLink').forEach(link => {
+                link.classList.remove('text-blue-600', 'bg-blue-50');
+                link.classList.add('text-slate-600');
+            });
+            
+            const activeLink = document.querySelector(`[data-page="${pageName}"]`);
+            if (activeLink) {
+                activeLink.classList.add('text-blue-600', 'bg-blue-50');
+                activeLink.classList.remove('text-slate-600');
+            }
+
+            // Recreate lucide icons for the new content
+            lucide.createIcons();
+        }
+
+        sidebarToggle.addEventListener('click', toggleSidebar);
+        overlay.addEventListener('click', toggleSidebar);
+
+        profileToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            profileDropdown.classList.toggle('hidden');
+        });
+
+        document.addEventListener('click', () => profileDropdown.classList.add('hidden'));
+    </script>
 </body>
 
 </html>

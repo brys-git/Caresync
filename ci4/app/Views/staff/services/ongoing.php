@@ -25,13 +25,14 @@
                             <th>Service</th>
                             <th>Date</th>
                             <th>Status</th>
+                            <th>Assigned To</th>
                             <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php $rows = $services ?? []; ?>
                         <?php if (empty($rows)): ?>
-                            <tr><td colspan="5" class="text-center py-3">No ongoing services found for your branch.</td></tr>
+                            <tr><td colspan="6" class="text-center py-3">No ongoing services found for your branch.</td></tr>
                         <?php else: ?>
                             <?php foreach ($rows as $row): ?>
                                 <?php $status = strtolower((string) ($row['status'] ?? '')); ?>
@@ -49,7 +50,27 @@
                                         <?php endif; ?>
                                     </td>
                                     <td>
-                                        <a href="<?= site_url('/staff/services?tab=services&service_id=' . (int) ($row['service_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-secondary">View</a>
+                                        <?php $assignedToMe = (int) ($row['assigned_staff'] ?? 0) === (int) session()->get('user_id'); ?>
+                                        <?php if ($assignedToMe): ?>
+                                            <span class="badge bg-info text-dark">You</span>
+                                        <?php else: ?>
+                                            <?= esc(trim((string) (($row['staff_first_name'] ?? '') . ' ' . ($row['staff_last_name'] ?? '')))) ?: '-' ?>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <?php if ($assignedToMe && $status !== 'completed'): ?>
+                                            <form action="<?= site_url('/staff/services/update-status/' . (int) ($row['service_id'] ?? 0)) ?>" method="post" class="d-flex gap-1 align-items-center">
+                                                <?= csrf_field() ?>
+                                                <select name="status" class="form-select form-select-sm">
+                                                    <?php foreach (['pending', 'ongoing', 'completed', 'cancelled'] as $statusOption): ?>
+                                                        <option value="<?= esc($statusOption) ?>" <?= $status === $statusOption ? 'selected' : '' ?>><?= esc(ucfirst($statusOption)) ?></option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                                <button class="btn btn-sm btn-primary" type="submit">Save</button>
+                                            </form>
+                                        <?php else: ?>
+                                            <a href="<?= site_url('/staff/services?tab=services&service_id=' . (int) ($row['service_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-secondary">View</a>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>

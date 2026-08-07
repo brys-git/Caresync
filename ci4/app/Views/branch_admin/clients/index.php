@@ -109,8 +109,9 @@
                                         <td><?= esc((string) ($client['email'] ?? '-')) ?></td>
                                         <td><?= esc((string) ($client['contact_number'] ?? '-')) ?></td>
                                         <td>
-                                            <span class="badge text-bg-<?= $client['status'] === 'active' ? 'success' : 'secondary' ?>">
-                                                <?= esc(ucfirst((string) $client['status'])) ?>
+                                            <?php $status = $client['status'] ?? $client['plan_holder_status'] ?? 'inactive'; ?>
+                                            <span class="badge text-bg-<?= $status === 'active' ? 'success' : 'secondary' ?>">
+                                                <?= esc(ucfirst((string) $status)) ?>
                                             </span>
                                         </td>
                                         <td class="text-end">

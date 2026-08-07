@@ -1,0 +1,422 @@
+/* ==========================================================================
+   CareSync — Payment Recording (Branch Admin)
+   Scoped under `.pr` to avoid leaking into the PurpleAdmin theme.
+   ========================================================================== */
+
+.pr {
+  --pr-purple: #1e3a5f;
+  --pr-purple-hover: #162d4a;
+  --pr-purple-soft: #e8eef6;
+  --pr-teal: #1e3a5f;
+  --pr-teal-soft: #e8eef6;
+  --pr-green: #22a06b;
+  --pr-green-soft: #e6f9ee;
+  --pr-orange: #d4a843;
+  --pr-orange-soft: #fdf6e3;
+  --pr-red: #dc2626;
+  --pr-red-soft: #fef2f2;
+  --pr-ink: #1a202c;
+  --pr-ink-soft: #64748b;
+  --pr-ink-faint: #a0aec0;
+  --pr-surface: #ffffff;
+  --pr-bg: #f5f7fa;
+  --pr-border: #e2e8f0;
+  --pr-radius: 14px;
+  --pr-radius-sm: 10px;
+  --pr-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03);
+
+  font-family: "Manrope", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: var(--pr-ink);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.pr *, .pr *::before, .pr *::after { box-sizing: border-box; }
+
+/* ---------------------------------------------------------------- Header --- */
+.pr-header__title {
+  font-size: 1.55rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0 0 2px;
+}
+
+.pr-header__sub {
+  font-size: 0.86rem;
+  color: var(--pr-ink-soft);
+  margin: 0;
+}
+
+/* ------------------------------------------------------------- Tabs --- */
+.pr-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--pr-border);
+}
+
+.pr-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 12px 20px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--pr-ink-soft);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+  cursor: pointer;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  font-family: inherit;
+}
+
+.pr-tab:hover { color: var(--pr-ink); text-decoration: none; }
+
+.pr-tab--active {
+  color: var(--pr-purple);
+  border-bottom-color: var(--pr-purple);
+}
+
+/* ------------------------------------------------------------- Alerts --- */
+.pr-alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: var(--pr-radius-sm);
+  font-size: 0.86rem;
+  font-weight: 600;
+  border: 1px solid;
+}
+
+.pr-alert--error { background: #fff5f5; color: #e53e3e; border-color: #fed7d7; }
+.pr-alert--success { background: #f0fff4; color: #38a169; border-color: #c6f6d5; }
+
+/* --------------------------------------------------------- Form grid --- */
+.pr-form-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr 0.8fr;
+  gap: 16px;
+}
+
+.pr-form-card {
+  background: var(--pr-surface);
+  border: 1px solid var(--pr-border);
+  border-radius: var(--pr-radius);
+  box-shadow: var(--pr-shadow);
+  padding: 22px;
+}
+
+.pr-form-card--highlight {
+  border-color: var(--pr-teal);
+  border-width: 2px;
+}
+
+.pr-form-label {
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: var(--pr-ink);
+  margin-bottom: 2px;
+}
+
+.pr-form-label span {
+  color: var(--pr-red);
+  font-weight: 800;
+}
+
+.pr-form-hint {
+  font-size: 0.78rem;
+  color: var(--pr-ink-faint);
+  margin-bottom: 12px;
+}
+
+/* Client search */
+.pr-search-wrap {
+  position: relative;
+}
+
+.pr-search-input {
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--pr-ink);
+  background: var(--pr-surface);
+  border: 2px solid var(--pr-teal);
+  border-radius: var(--pr-radius-sm);
+  padding: 11px 14px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.pr-search-input:focus {
+  border-color: var(--pr-teal);
+  box-shadow: 0 0 0 3px rgba(13,148,136,0.12);
+}
+
+.pr-search-input::placeholder { color: var(--pr-ink-faint); }
+
+.pr-search-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--pr-surface);
+  border: 1px solid var(--pr-border);
+  border-radius: var(--pr-radius-sm);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  z-index: 50;
+  display: none;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.pr-search-dropdown.show { display: block; }
+
+.pr-search-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--pr-ink);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.pr-search-item:hover { background: #f7fafc; }
+
+.pr-search-item--verified { color: var(--pr-teal); }
+.pr-search-item--pending { color: var(--pr-orange); }
+
+.pr-search-tag {
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.pr-search-tag--verified { background: var(--pr-teal-soft); color: var(--pr-teal); }
+.pr-search-tag--pending { background: var(--pr-orange-soft); color: var(--pr-orange); }
+
+/* Rate card */
+.pr-rate-box {
+  background: var(--pr-bg);
+  border: 1px solid var(--pr-border);
+  border-radius: var(--pr-radius-sm);
+  padding: 16px;
+}
+
+.pr-rate-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.pr-rate-row:last-child { margin-bottom: 0; }
+
+.pr-rate-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--pr-ink-soft);
+}
+
+.pr-rate-value {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--pr-ink);
+}
+
+.pr-rate-select {
+  font-family: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--pr-ink);
+  background: var(--pr-surface);
+  border: 1px solid var(--pr-border);
+  border-radius: 8px;
+  padding: 7px 28px 7px 10px;
+  outline: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%234a5568' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+}
+
+.pr-calc-box {
+  background: var(--pr-surface);
+  border: 1px solid var(--pr-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-top: 12px;
+}
+
+.pr-calc-label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--pr-ink-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.pr-calc-formula {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--pr-ink);
+}
+
+.pr-calc-formula strong {
+  color: var(--pr-purple);
+}
+
+.pr-calc-link {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--pr-teal);
+  text-decoration: none;
+}
+
+.pr-calc-link:hover { text-decoration: underline; }
+
+/* Receipt input */
+.pr-input {
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--pr-ink);
+  background: var(--pr-surface);
+  border: 1px solid var(--pr-border);
+  border-radius: var(--pr-radius-sm);
+  padding: 11px 14px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.pr-input:focus {
+  border-color: #a0aec0;
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.04);
+}
+
+/* Add client button */
+.pr-add-client {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.82rem;
+  padding: 10px 18px;
+  border-radius: var(--pr-radius-sm);
+  border: 2px solid var(--pr-teal);
+  background: var(--pr-surface);
+  color: var(--pr-teal);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+  margin-top: 12px;
+}
+
+.pr-add-client:hover {
+  background: var(--pr-teal-soft);
+  text-decoration: none;
+}
+
+/* ------------------------------------------------------- Approval Queue --- */
+.pr-card {
+  background: var(--pr-surface);
+  border: 1px solid var(--pr-border);
+  border-radius: var(--pr-radius);
+  box-shadow: var(--pr-shadow);
+  overflow: hidden;
+}
+
+.pr-card__header {
+  padding: 18px 22px 0;
+}
+
+.pr-card__title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.pr-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+
+.pr-table thead th {
+  padding: 12px 22px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--pr-ink-faint);
+  text-align: left;
+  border-bottom: 1px solid var(--pr-border);
+}
+
+.pr-table tbody td {
+  padding: 13px 22px;
+  border-bottom: 1px solid #f1f4f8;
+  vertical-align: middle;
+}
+
+.pr-table tbody tr:last-child td { border-bottom: 0; }
+.pr-table tbody tr:hover { background: #fafbfc; }
+
+.pr-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pr-status-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 4px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.pr-status-badge--pending { background: var(--pr-orange-soft); color: var(--pr-orange); border: 1px solid var(--pr-orange); }
+.pr-status-badge--approved { background: var(--pr-green-soft); color: var(--pr-green); border: 1px solid var(--pr-green); }
+.pr-status-badge--rejected { background: var(--pr-red-soft); color: var(--pr-red); border: 1px solid var(--pr-red); }
+
+.pr-empty {
+  text-align: center;
+  padding: 32px 20px;
+  color: var(--pr-ink-faint);
+  font-size: 0.86rem;
+}
+
+.pr-empty .mdi {
+  display: block;
+  font-size: 2rem;
+  margin-bottom: 8px;
+  color: var(--pr-border);
+}
+
+/* --------------------------------------------------------- Responsive --- */
+@media (max-width: 992px) {
+  .pr-form-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .pr-form-grid { grid-template-columns: 1fr; }
+}

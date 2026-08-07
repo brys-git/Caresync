@@ -43,11 +43,12 @@ class ServicesController extends BaseController
             $branchIssue = 'No branch is assigned to your staff account. Please contact the branch admin.';
         } else {
             $services = db_connect()->table('services s')
-                ->select('s.service_id, s.plan_holder_id, s.service_list_id, s.package_id, s.service_date, s.status, sl.service_name, ph.unique_identifier, u.first_name, u.last_name, p.package_name')
+                ->select('s.service_id, s.plan_holder_id, s.service_list_id, s.package_id, s.service_date, s.status, s.assigned_staff, sl.service_name, ph.unique_identifier, u.first_name, u.last_name, p.package_name, st.first_name AS staff_first_name, st.last_name AS staff_last_name')
                 ->join('plan_holders ph', 'ph.plan_holder_id = s.plan_holder_id', 'inner')
                 ->join('users u', 'u.user_id = ph.user_id', 'inner')
                 ->join('packages p', 'p.package_id = s.package_id', 'left')
                 ->join('service_list sl', 'sl.service_list_id = s.service_list_id', 'left')
+                ->join('users st', 'st.user_id = s.assigned_staff', 'left')
                 ->where('s.branch_id', $branchId)
                 ->orderBy('s.service_date', 'DESC')
                 ->orderBy('s.service_id', 'DESC')
@@ -85,14 +86,30 @@ class ServicesController extends BaseController
             }
 
             if ($selectedPackage !== null) {
-                $selectedPackageServices = db_connect()->table('package_services ps')
-                    ->select('ps.service_list_id, sl.service_name, sl.description, sl.base_price, sl.status')
-                    ->join('service_list sl', 'sl.service_list_id = ps.service_list_id', 'inner')
-                    ->where('sl.is_available', 1)
-                    ->where('ps.package_id', $selectedPackageId)
-                    ->orderBy('sl.service_name', 'ASC')
-                    ->get()
-                    ->getResultArray();
+                $selectedPackageServices = [];
+                $db = db_connect();
+                if ($db->tableExists('package_services')) {
+                    $packageServiceFields = $db->getFieldNames('package_services');
+                    if (in_array('service_list_id', $packageServiceFields, true)) {
+                        $selectedPackageServices = $db->table('package_services ps')
+                            ->select('sl.service_list_id, sl.service_name, sl.description, sl.base_price, sl.status')
+                            ->join('service_list sl', 'sl.service_list_id = ps.service_list_id', 'inner')
+                            ->where('sl.is_available', 1)
+                            ->where('ps.package_id', $selectedPackageId)
+                            ->orderBy('sl.service_name', 'ASC')
+                            ->get()
+                            ->getResultArray();
+                    } elseif (in_array('service_id', $packageServiceFields, true)) {
+                        $selectedPackageServices = $db->table('package_services ps')
+                            ->select('sl.service_list_id, sl.service_name, sl.description, sl.base_price, sl.status')
+                            ->join('service_list sl', 'sl.service_list_id = ps.service_id', 'inner')
+                            ->where('sl.is_available', 1)
+                            ->where('ps.package_id', $selectedPackageId)
+                            ->orderBy('sl.service_name', 'ASC')
+                            ->get()
+                            ->getResultArray();
+                    }
+                }
 
                 $selectedPackageVersions = $this->packageVersionModel
                     ->where('package_id', $selectedPackageId)
@@ -102,6 +119,8 @@ class ServicesController extends BaseController
             }
         }
 
+        $serviceListForCards = $this->serviceListModel->where('is_available', 1)->orderBy('service_name', 'ASC')->findAll();
+
         return view('staff/services/index', [
             'active_tab' => $activeTab,
             'services' => $services,
@@ -110,9 +129,12 @@ class ServicesController extends BaseController
             'selected_package' => $selectedPackage,
             'selected_package_services' => $selectedPackageServices,
             'selected_package_versions' => $selectedPackageVersions,
-            'service_list' => $this->serviceListModel->where('is_available', 1)->orderBy('service_name', 'ASC')->findAll(),
+            'service_list' => $serviceListForCards,
             'branch_issue' => $branchIssue,
             'role_layout' => 'layouts/staff',
+            'page_title' => null,
+            'total_services' => count($services),
+            'total_packages' => count($packages),
         ]);
     }
 
@@ -158,11 +180,12 @@ class ServicesController extends BaseController
             $branchIssue = 'No branch is assigned to your staff account. Please contact the branch admin.';
         } else {
             $services = db_connect()->table('services s')
-                ->select('s.service_id, s.plan_holder_id, s.service_list_id, s.service_date, s.status, sl.service_name, ph.unique_identifier, u.first_name, u.last_name, p.package_name')
+                ->select('s.service_id, s.plan_holder_id, s.service_list_id, s.service_date, s.status, s.assigned_staff, sl.service_name, ph.unique_identifier, u.first_name, u.last_name, p.package_name, st.first_name AS staff_first_name, st.last_name AS staff_last_name')
                 ->join('plan_holders ph', 'ph.plan_holder_id = s.plan_holder_id', 'inner')
                 ->join('users u', 'u.user_id = ph.user_id', 'inner')
                 ->join('packages p', 'p.package_id = s.package_id', 'left')
                 ->join('service_list sl', 'sl.service_list_id = s.service_list_id', 'left')
+                ->join('users st', 'st.user_id = s.assigned_staff', 'left')
                 ->where('s.branch_id', $branchId)
                 ->whereIn('s.status', ['pending', 'ongoing', 'completed'])
                 ->orderBy('s.service_date', 'DESC')
@@ -176,6 +199,44 @@ class ServicesController extends BaseController
             'branch_issue' => $branchIssue,
             'role_layout' => 'layouts/staff',
         ]);
+    }
+
+    public function updateStatus(int $serviceId)
+    {
+        $this->ensureStaffAccess();
+
+        $branchId = (int) session()->get('branch_id');
+        $currentUserId = (int) session()->get('user_id');
+
+        $service = db_connect()->table('services s')
+            ->select('s.*, ph.user_id AS plan_holder_user_id')
+            ->join('plan_holders ph', 'ph.plan_holder_id = s.plan_holder_id', 'left')
+            ->where('s.service_id', $serviceId)
+            ->where('s.branch_id', $branchId)
+            ->get()
+            ->getRowArray();
+
+        if (! $service || (int) ($service['assigned_staff'] ?? 0) !== $currentUserId) {
+            return redirect()->to('/unauthorized')->with('error', 'You are not authorized to update this service.');
+        }
+
+        $rules = [
+            'status' => 'required|in_list[pending,ongoing,completed,cancelled]',
+        ];
+
+        if (! $this->validate($rules)) {
+            return redirect()->back()->withInput()->with('error', implode(' ', $this->validator->getErrors()));
+        }
+
+        $updated = db_connect()->table('services')->where('service_id', $serviceId)->update([
+            'status' => (string) $this->request->getPost('status'),
+        ]);
+
+        if (! $updated) {
+            return redirect()->back()->with('error', 'Failed to update service status.');
+        }
+
+        return redirect()->to('/staff/services/ongoing')->with('success', 'Service status updated successfully.');
     }
 
     private function ensureStaffAccess(): void

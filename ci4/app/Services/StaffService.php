@@ -69,7 +69,10 @@ class StaffService
             ->join('users u', 'u.user_id = a.staff_id', 'inner')
             ->join('services s', 's.service_id = a.service_id', 'inner')
             ->join('service_list sl', 'sl.service_list_id = s.service_list_id', 'left')
-            ->where('u.branch_id', $branchId)
+            ->groupStart()
+                ->where('u.branch_id', $branchId)
+                ->orWhere('u.branch_id IS NULL', null, false)
+            ->groupEnd()
             ->orderBy('a.assigned_date', 'DESC')
             ->get()
             ->getResultArray();

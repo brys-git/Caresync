@@ -72,7 +72,6 @@ class Auth extends BaseController
             'email' => 'required|valid_email|max_length[100]|is_unique[users.email]',
             'first_name' => 'required|max_length[50]',
             'last_name' => 'required|max_length[50]',
-            'unique_identifier' => 'permit_empty|max_length[100]',
             'password' => 'required|min_length[8]',
             'password_confirm' => 'required|matches[password]',
         ];
@@ -89,7 +88,6 @@ class Auth extends BaseController
         try {
             $firstName = trim((string) $this->request->getPost('first_name'));
             $lastName = trim((string) $this->request->getPost('last_name'));
-            $uniqueIdentifier = trim((string) $this->request->getPost('unique_identifier'));
 
             $saved = $userModel->insert([
                 'username' => trim((string) $this->request->getPost('username')),
@@ -115,20 +113,9 @@ class Auth extends BaseController
             $existingPlanHolderQuery = $db->table('plan_holders ph')
                 ->select('ph.plan_holder_id, ph.user_id, ph.unique_identifier')
                 ->join('users u', 'u.user_id = ph.user_id', 'left')
-                ->where('ph.user_id !=', $newUserId);
-
-            if ($uniqueIdentifier !== '') {
-                $existingPlanHolderQuery->groupStart()
-                    ->where('ph.unique_identifier', $uniqueIdentifier)
-                    ->orGroupStart()
-                    ->where('u.first_name', $firstName)
-                    ->where('u.last_name', $lastName)
-                    ->groupEnd()
-                    ->groupEnd();
-            } else {
-                $existingPlanHolderQuery->where('u.first_name', $firstName)
-                    ->where('u.last_name', $lastName);
-            }
+                ->where('ph.user_id !=', $newUserId)
+                ->where('u.first_name', $firstName)
+                ->where('u.last_name', $lastName);
 
             $existingPlanHolder = $existingPlanHolderQuery
                 ->orderBy('ph.plan_holder_id', 'DESC')

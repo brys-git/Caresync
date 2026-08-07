@@ -19,7 +19,7 @@ class ReportService
     public function getRemittanceReport(array $filters): array
     {
         $builder = $this->baseQuery($filters)
-            ->select('p.payment_id, p.payment_date, p.amount, p.months_covered, p.payment_method, p.reference_number, p.official_receipt_number, p.status, rb.first_name AS staff_first, rb.last_name AS staff_last, cu.first_name AS client_first, cu.last_name AS client_last, ph.plan_holder_id, ph.unique_identifier, pl.start_date');
+            ->select('p.payment_id, p.payment_date, p.amount, p.months_covered, p.payment_method, p.reference_number, p.official_receipt_number, p.status, rb.first_name AS staff_first, rb.last_name AS staff_last, cu.first_name AS client_first, cu.last_name AS client_last, ph.plan_holder_id, ph.unique_identifier, pl.start_date, b.branch_name');
 
         return $builder
             ->orderBy('p.payment_date', 'DESC')
@@ -55,10 +55,15 @@ class ReportService
 
     public function getBranchPaymentStaff(int $branchId): array
     {
-        return db_connect()->table('users u')
+        $builder = db_connect()->table('users u')
             ->select('u.user_id, u.first_name, u.last_name, u.contact_number')
-            ->join('payments p', 'p.received_by = u.user_id', 'inner')
-            ->where('u.branch_id', $branchId)
+            ->join('payments p', 'p.received_by = u.user_id', 'inner');
+
+        if ($branchId > 0) {
+            $builder->where('u.branch_id', $branchId);
+        }
+
+        return $builder
             ->groupBy('u.user_id, u.first_name, u.last_name, u.contact_number')
             ->orderBy('u.first_name', 'ASC')
             ->orderBy('u.last_name', 'ASC')
@@ -85,7 +90,7 @@ class ReportService
         $builder = db_connect()->table('payments p')
             ->select("DATE_FORMAT(p.payment_date, '%Y-%m') AS month_key, DATE_FORMAT(p.payment_date, '%b %Y') AS month_label, COUNT(*) AS total_transactions, COALESCE(SUM(p.amount), 0) AS total_amount", false)
             ->where('YEAR(p.payment_date)', $year, false)
-            ->groupBy('DATE_FORMAT(p.payment_date, \"%Y-%m\")', false)
+            ->groupBy("DATE_FORMAT(p.payment_date, '%Y-%m')", false)
             ->orderBy('month_key', 'ASC');
 
         if ($branchId > 0) {
@@ -143,9 +148,9 @@ class ReportService
         $branchId = (int) ($filters['branch_id'] ?? 0);
 
         $builder = db_connect()->table('services s')
-            ->select('COALESCE(sl.service_name, \"Unknown\") AS service_name, COUNT(*) AS total_services, SUM(CASE WHEN s.status = \"completed\" THEN 1 ELSE 0 END) AS completed_services, SUM(CASE WHEN s.status = \"cancelled\" THEN 1 ELSE 0 END) AS cancelled_services', false)
+            ->select("COALESCE(sl.service_name, 'Unknown') AS service_name, COUNT(*) AS total_services, SUM(CASE WHEN s.status = 'completed' THEN 1 ELSE 0 END) AS completed_services, SUM(CASE WHEN s.status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled_services", false)
             ->join('service_list sl', 'sl.service_list_id = s.service_list_id', 'left')
-            ->groupBy('COALESCE(sl.service_name, \"Unknown\")', false)
+            ->groupBy("COALESCE(sl.service_name, 'Unknown')", false)
             ->orderBy('total_services', 'DESC')
             ->limit(10);
 
@@ -164,7 +169,7 @@ class ReportService
         $builder = db_connect()->table('payments p')
             ->select("DATE_FORMAT(p.payment_date, '%Y-%m') AS month_key, DATE_FORMAT(p.payment_date, '%b %Y') AS month_label, SUM(CASE WHEN p.payment_method = 'cash' THEN p.amount ELSE 0 END) AS cash_total, SUM(CASE WHEN p.payment_method = 'gcash' THEN p.amount ELSE 0 END) AS gcash_total", false)
             ->where('YEAR(p.payment_date)', $year, false)
-            ->groupBy('DATE_FORMAT(p.payment_date, \"%Y-%m\")', false)
+            ->groupBy("DATE_FORMAT(p.payment_date, '%Y-%m')", false)
             ->orderBy('month_key', 'ASC');
 
         if ($branchId > 0) {
@@ -181,9 +186,13 @@ class ReportService
             ->join('plans pl', 'pl.plan_id = p.plan_id', 'inner')
             ->join('plan_holders ph', 'ph.plan_holder_id = pl.plan_holder_id', 'inner')
             ->join('users cu', 'cu.user_id = ph.user_id', 'inner')
-            ->where('p.branch_id', (int) $filters['branch_id'])
+            ->join('branches b', 'b.branch_id = p.branch_id', 'left')
             ->where('p.payment_date >=', (string) $filters['date_from'])
             ->where('p.payment_date <=', (string) $filters['date_to']);
+
+        if (! empty($filters['branch_id']) && (int) $filters['branch_id'] > 0) {
+            $builder->where('p.branch_id', (int) $filters['branch_id']);
+        }
 
         if (! empty($filters['payment_method'])) {
             $builder->where('p.payment_method', (string) $filters['payment_method']);

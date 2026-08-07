@@ -4,6 +4,7 @@ namespace App\Controllers\Client;
 
 use App\Controllers\BaseController;
 use CodeIgniter\HTTP\ResponseInterface;
+use CodeIgniter\HTTP\Files\UploadedFile;
 use App\Services\MembershipService;
 use App\Services\NotificationService;
 
@@ -34,14 +35,14 @@ class ClientServiceController extends BaseController
         }
 
         $services = db_connect()->table('service_list')
-            ->select('service_list_id, service_name, description, base_price')
+            ->select('service_list_id, service_name, description, base_price, is_available')
             ->where('is_available', 1)
             ->orderBy('service_name', 'ASC')
             ->get()
             ->getResultArray();
 
         $packages = db_connect()->table('packages')
-            ->select('package_id, package_name, description, base_price')
+            ->select('package_id, package_name, description, base_price, is_available')
             ->orderBy('package_name', 'ASC')
             ->get()
             ->getResultArray();
@@ -122,13 +123,28 @@ class ClientServiceController extends BaseController
             return redirect()->to('/client/service?tab=packages')->with('error', 'Package not found.');
         }
 
-        $packageServices = db_connect()->table('package_services ps')
-            ->select('sl.service_list_id, sl.service_name, sl.description, sl.base_price')
-            ->join('service_list sl', 'sl.service_list_id = ps.service_list_id', 'inner')
-            ->where('ps.package_id', $packageId)
-            ->orderBy('sl.service_name', 'ASC')
-            ->get()
-            ->getResultArray();
+        $packageServices = [];
+        $db = db_connect();
+        if ($db->tableExists('package_services') && $db->tableExists('service_list')) {
+            $psFields = $db->getFieldNames('package_services');
+            if (in_array('service_list_id', $psFields, true)) {
+                $packageServices = $db->table('package_services ps')
+                    ->select('sl.service_list_id, sl.service_name, sl.description, sl.base_price')
+                    ->join('service_list sl', 'sl.service_list_id = ps.service_list_id', 'inner')
+                    ->where('ps.package_id', $packageId)
+                    ->orderBy('sl.service_name', 'ASC')
+                    ->get()
+                    ->getResultArray();
+            } elseif (in_array('service_id', $psFields, true)) {
+                $packageServices = $db->table('package_services ps')
+                    ->select('sl.service_list_id, sl.service_name, sl.description, sl.base_price')
+                    ->join('service_list sl', 'sl.service_list_id = ps.service_id', 'inner')
+                    ->where('ps.package_id', $packageId)
+                    ->orderBy('sl.service_name', 'ASC')
+                    ->get()
+                    ->getResultArray();
+            }
+        }
 
         return view('client/package_details', [
             'role_layout' => 'layouts/plan_holder',
@@ -172,11 +188,14 @@ class ClientServiceController extends BaseController
             $canApply = (($access['state'] ?? 'unregistered') === 'active') && $monthsPaid >= 2;
         }
 
+        $applicationContext = $this->buildApplicationContext($access);
+
         return view('client/service_apply', [
             'role_layout' => 'layouts/plan_holder',
             'access' => $access,
             'service' => $service,
             'can_apply' => $canApply,
+            'application_context' => $applicationContext,
         ]);
     }
 
@@ -213,12 +232,80 @@ class ClientServiceController extends BaseController
             $canApply = (($access['state'] ?? 'unregistered') === 'active') && $monthsPaid >= 2;
         }
 
+        $applicationContext = $this->buildApplicationContext($access);
+
         return view('client/package_apply', [
             'role_layout' => 'layouts/plan_holder',
             'access' => $access,
             'package' => $package,
             'can_apply' => $canApply,
+            'application_context' => $applicationContext,
         ]);
+    }
+
+    /**
+     * Build display data for the simplified application form.
+     *
+     * @return array{plan_holder_name:string,plan_holder_address:string,deceased_name_options:array<int,string>}
+     */
+    private function buildApplicationContext(array $access): array
+    {
+        $user = is_array($access['user'] ?? null) ? $access['user'] : [];
+        $planHolder = is_array($access['plan_holder'] ?? null) ? $access['plan_holder'] : [];
+        $planHolderId = (int) ($planHolder['plan_holder_id'] ?? 0);
+
+        $planHolderName = trim(implode(' ', array_filter([
+            (string) ($user['first_name'] ?? ''),
+            (string) ($user['middle_name'] ?? ''),
+            (string) ($user['last_name'] ?? ''),
+        ], static fn (string $value): bool => $value !== '')));
+
+        if ($planHolderName === '') {
+            $planHolderName = 'Plan Holder';
+        }
+
+        $addressParts = array_filter([
+            trim((string) ($planHolder['address_no'] ?? '')),
+            trim((string) ($planHolder['address_street'] ?? '')),
+            trim((string) ($planHolder['address_barangay'] ?? '')),
+            trim((string) ($planHolder['address_city'] ?? '')),
+        ], static fn (string $value): bool => $value !== '');
+
+        $planHolderAddress = trim(implode(', ', $addressParts));
+        if ($planHolderAddress === '') {
+            $planHolderAddress = '-';
+        }
+
+        $deceasedNameOptions = [$planHolderName];
+        if ($planHolderId > 0) {
+            $db = db_connect();
+            if ($db->tableExists('beneficiaries')) {
+                $beneficiaries = $db->table('beneficiaries')
+                    ->select('first_name, middle_name, last_name')
+                    ->where('plan_holder_id', $planHolderId)
+                    ->orderBy('beneficiary_id', 'ASC')
+                    ->get()
+                    ->getResultArray();
+
+                foreach ($beneficiaries as $beneficiary) {
+                    $name = trim(implode(' ', array_filter([
+                        (string) ($beneficiary['first_name'] ?? ''),
+                        (string) ($beneficiary['middle_name'] ?? ''),
+                        (string) ($beneficiary['last_name'] ?? ''),
+                    ], static fn (string $value): bool => $value !== '')));
+
+                    if ($name !== '') {
+                        $deceasedNameOptions[] = $name;
+                    }
+                }
+            }
+        }
+
+        return [
+            'plan_holder_name' => $planHolderName,
+            'plan_holder_address' => $planHolderAddress,
+            'deceased_name_options' => array_values(array_unique($deceasedNameOptions)),
+        ];
     }
 
     /**
@@ -276,6 +363,17 @@ class ClientServiceController extends BaseController
             return redirect()->back()->with('error', 'Selected service is unavailable.');
         }
 
+        // Check for duplicate pending application
+        $existingApp = db_connect()->table('service_applications')
+            ->where('plan_holder_id', (int) $planHolder['plan_holder_id'])
+            ->where('service_list_id', (int) $serviceListId)
+            ->where('status', 'pending')
+            ->countAllResults();
+
+        if ($existingApp > 0) {
+            return redirect()->back()->with('error', 'You already have a pending application for this service. Please wait for it to be processed.');
+        }
+
         $db = db_connect();
         $db->transBegin();
 
@@ -293,12 +391,23 @@ class ClientServiceController extends BaseController
                 'application_notes' => trim((string) $this->request->getPost('application_notes')) ?: null,
             ];
 
-            $db->table('service_applications')->insert($insert);
+            $builder = $db->table('service_applications');
+            $ok = $builder->insert($insert);
+            $dbError = $db->error() ?? [];
+            if (! $ok || (! empty($dbError) && ((int) ($dbError['code'] ?? 0)) !== 0)) {
+                log_message('error', 'Failed inserting service application: ' . json_encode($dbError));
+                $errMsg = 'Failed to submit application.';
+                if (defined('ENVIRONMENT') && ENVIRONMENT !== 'production') {
+                    $errMsg .= ' DB error (insert): ' . ($dbError['message'] ?? json_encode($dbError));
+                }
+                throw new \RuntimeException($errMsg);
+            }
+
             $applicationId = (int) $db->insertID();
 
             // Handle uploaded documents
-            $files = $this->request->getFiles('documents');
-            if (is_array($files) && count($files) > 0) {
+            $files = $this->request->getFileMultiple('documents');
+            if (is_array($files) && $files !== []) {
                 $targetDir = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'service_applications' . DIRECTORY_SEPARATOR . $applicationId;
                 if (! is_dir($targetDir)) {
                     mkdir($targetDir, 0755, true);
@@ -306,14 +415,14 @@ class ClientServiceController extends BaseController
 
                 $docModel = new \App\Models\ServiceApplicationDocumentModel();
                 foreach ($files as $file) {
-                    if (! $file->isValid() || $file->getError() !== UPLOAD_ERR_OK) {
+                    if (! $file instanceof UploadedFile || ! $file->isValid() || $file->getError() !== UPLOAD_ERR_OK) {
                         continue;
                     }
 
                     $newName = $file->getRandomName();
                     $moved = $file->move($targetDir, $newName);
                     if ($moved) {
-                        $docModel->insert([
+                        $docOk = $docModel->insert([
                             'application_id' => $applicationId,
                             'filename' => $newName,
                             'original_name' => $file->getClientName(),
@@ -321,6 +430,10 @@ class ClientServiceController extends BaseController
                             'path' => str_replace('\\', '/', str_replace(WRITEPATH, '', $targetDir . DIRECTORY_SEPARATOR . $newName)),
                             'uploaded_by' => (int) $user['user_id'],
                         ]);
+                        if (! $docOk) {
+                            $docDbErr = $db->error() ?? [];
+                            log_message('error', 'Failed inserting service application document: ' . json_encode($docDbErr));
+                        }
                     }
                 }
             }
@@ -331,13 +444,44 @@ class ClientServiceController extends BaseController
                 'registration_pending'
             );
 
+            // Notify branch admin(s)
+            $planHolderUserId = (int) $planHolder['user_id'];
+            $branchId = (int) ($planHolder['branch_id'] ?? 0);
+            if ($branchId > 0) {
+                $branchAdmins = $db->table('users')
+                    ->select('user_id')
+                    ->where('branch_id', $branchId)
+                    ->whereIn('role_id', [2])
+                    ->where('status', 'active')
+                    ->get()
+                    ->getResultArray();
+                $clientName = trim((string) $user['first_name'] ?? '') . ' ' . trim((string) $user['last_name'] ?? '');
+                foreach ($branchAdmins as $admin) {
+                    (new NotificationService())->notify(
+                        (int) $admin['user_id'],
+                        'New service application: ' . trim($clientName) . ' applied for ' . (string) $service['service_name'] . '.',
+                        'service_pending'
+                    );
+                }
+            }
+
             if ($db->transStatus() === false) {
-                throw new \RuntimeException('Failed to submit application.');
+                $dbError = $db->error() ?? [];
+                log_message('error', 'Service application DB transaction failed: ' . json_encode($dbError));
+                $errMsg = 'Failed to submit application.';
+                if (defined('ENVIRONMENT') && ENVIRONMENT !== 'production') {
+                    $errMsg .= ' DB error: ' . ($dbError['message'] ?? json_encode($dbError));
+                }
+                throw new \RuntimeException($errMsg);
             }
 
             $db->transCommit();
 
-            return redirect()->to('/client/service?tab=services')->with('success', 'Service application submitted successfully.');
+            return view('client/service_confirmation', [
+                'role_layout' => 'layouts/plan_holder',
+                'item_name' => (string) $service['service_name'],
+                'item_type' => 'Service',
+            ]);
         } catch (\Throwable $e) {
             $db->transRollback();
             return redirect()->back()->withInput()->with('error', $e->getMessage());
@@ -398,6 +542,17 @@ class ClientServiceController extends BaseController
             return redirect()->back()->with('error', 'Selected package is unavailable.');
         }
 
+        // Check for duplicate pending application
+        $existingApp = db_connect()->table('service_applications')
+            ->where('plan_holder_id', (int) $planHolder['plan_holder_id'])
+            ->where('package_id', (int) $packageId)
+            ->where('status', 'pending')
+            ->countAllResults();
+
+        if ($existingApp > 0) {
+            return redirect()->back()->with('error', 'You already have a pending application for this package. Please wait for it to be processed.');
+        }
+
         $db = db_connect();
         $db->transBegin();
 
@@ -415,12 +570,23 @@ class ClientServiceController extends BaseController
                 'application_notes' => trim((string) $this->request->getPost('application_notes')) ?: null,
             ];
 
-            $db->table('service_applications')->insert($insert);
+            $builder = $db->table('service_applications');
+            $ok = $builder->insert($insert);
+            $dbError = $db->error() ?? [];
+            if (! $ok || (! empty($dbError) && ((int) ($dbError['code'] ?? 0)) !== 0)) {
+                log_message('error', 'Failed inserting package application: ' . json_encode($dbError));
+                $errMsg = 'Failed to submit application.';
+                if (defined('ENVIRONMENT') && ENVIRONMENT !== 'production') {
+                    $errMsg .= ' DB error (insert): ' . ($dbError['message'] ?? json_encode($dbError));
+                }
+                throw new \RuntimeException($errMsg);
+            }
+
             $applicationId = (int) $db->insertID();
 
             // Handle uploaded documents
-            $files = $this->request->getFiles('documents');
-            if (is_array($files) && count($files) > 0) {
+            $files = $this->request->getFileMultiple('documents');
+            if (is_array($files) && $files !== []) {
                 $targetDir = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'service_applications' . DIRECTORY_SEPARATOR . $applicationId;
                 if (! is_dir($targetDir)) {
                     mkdir($targetDir, 0755, true);
@@ -428,14 +594,14 @@ class ClientServiceController extends BaseController
 
                 $docModel = new \App\Models\ServiceApplicationDocumentModel();
                 foreach ($files as $file) {
-                    if (! $file->isValid() || $file->getError() !== UPLOAD_ERR_OK) {
+                    if (! $file instanceof UploadedFile || ! $file->isValid() || $file->getError() !== UPLOAD_ERR_OK) {
                         continue;
                     }
 
                     $newName = $file->getRandomName();
                     $moved = $file->move($targetDir, $newName);
                     if ($moved) {
-                        $docModel->insert([
+                        $docOk = $docModel->insert([
                             'application_id' => $applicationId,
                             'filename' => $newName,
                             'original_name' => $file->getClientName(),
@@ -443,6 +609,10 @@ class ClientServiceController extends BaseController
                             'path' => str_replace('\\', '/', str_replace(WRITEPATH, '', $targetDir . DIRECTORY_SEPARATOR . $newName)),
                             'uploaded_by' => (int) $user['user_id'],
                         ]);
+                        if (! $docOk) {
+                            $docDbErr = $db->error() ?? [];
+                            log_message('error', 'Failed inserting package application document: ' . json_encode($docDbErr));
+                        }
                     }
                 }
             }
@@ -453,13 +623,43 @@ class ClientServiceController extends BaseController
                 'registration_pending'
             );
 
+            // Notify branch admin(s)
+            $branchId = (int) ($planHolder['branch_id'] ?? 0);
+            if ($branchId > 0) {
+                $branchAdmins = $db->table('users')
+                    ->select('user_id')
+                    ->where('branch_id', $branchId)
+                    ->whereIn('role_id', [2])
+                    ->where('status', 'active')
+                    ->get()
+                    ->getResultArray();
+                $clientName = trim((string) $user['first_name'] ?? '') . ' ' . trim((string) $user['last_name'] ?? '');
+                foreach ($branchAdmins as $admin) {
+                    (new NotificationService())->notify(
+                        (int) $admin['user_id'],
+                        'New package application: ' . trim($clientName) . ' applied for ' . (string) $package['package_name'] . '.',
+                        'service_pending'
+                    );
+                }
+            }
+
             if ($db->transStatus() === false) {
-                throw new \RuntimeException('Failed to submit application.');
+                $dbError = $db->error() ?? [];
+                log_message('error', 'Package application DB transaction failed: ' . json_encode($dbError));
+                $errMsg = 'Failed to submit application.';
+                if (defined('ENVIRONMENT') && ENVIRONMENT !== 'production') {
+                    $errMsg .= ' DB error: ' . ($dbError['message'] ?? json_encode($dbError));
+                }
+                throw new \RuntimeException($errMsg);
             }
 
             $db->transCommit();
 
-            return redirect()->to('/client/service?tab=packages')->with('success', 'Package application submitted successfully.');
+            return view('client/service_confirmation', [
+                'role_layout' => 'layouts/plan_holder',
+                'item_name' => (string) $package['package_name'],
+                'item_type' => 'Package',
+            ]);
         } catch (\Throwable $e) {
             $db->transRollback();
             return redirect()->back()->withInput()->with('error', $e->getMessage());

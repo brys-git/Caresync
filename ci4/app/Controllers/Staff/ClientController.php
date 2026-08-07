@@ -3,8 +3,10 @@
 namespace App\Controllers\Staff;
 
 use App\Controllers\BaseController;
+use App\Services\ActivityLogService;
 use App\Services\ClientService;
 use App\Services\MembershipService;
+use App\Services\NotificationService;
 use CodeIgniter\Exceptions\PageNotFoundException;
 
 class ClientController extends BaseController
@@ -28,11 +30,32 @@ class ClientController extends BaseController
             $clients = $this->clientService->getClientsByBranch($branchId);
         }
 
+        $totalClients = count($clients);
+        $activeClients = 0;
+        foreach ($clients as $client) {
+            if (strtolower((string) ($client['plan_holder_status'] ?? '')) === 'active') {
+                $activeClients++;
+            }
+        }
+
+        $newThisMonth = 0;
+        $currentMonth = date('Y-m');
+        foreach ($clients as $client) {
+            $createdAt = (string) ($client['created_at'] ?? '');
+            if ($createdAt !== '' && strpos($createdAt, $currentMonth) === 0) {
+                $newThisMonth++;
+            }
+        }
+
         return view('staff/clients/index', [
             'clients' => $clients,
             'program' => MembershipService::getProgramInfo(),
             'branch_issue' => $branchIssue,
             'role_layout' => 'layouts/staff',
+            'page_title' => null,
+            'total_clients' => $totalClients,
+            'active_clients' => $activeClients,
+            'new_clients_month' => $newThisMonth,
         ]);
     }
 
@@ -143,7 +166,18 @@ class ClientController extends BaseController
             throw PageNotFoundException::forPageNotFound();
         }
 
+        $existingUsers = db_connect()->table('users u')
+            ->select('u.user_id, u.first_name, u.middle_name, u.last_name, u.email, u.contact_number')
+            ->join('plan_holders ph', 'ph.user_id = u.user_id', 'left')
+            ->where('u.role_id', 4)
+            ->where('ph.plan_holder_id IS NULL', null, false)
+            ->orderBy('u.first_name', 'ASC')
+            ->orderBy('u.last_name', 'ASC')
+            ->get()
+            ->getResultArray();
+
         return view('staff/clients/register', [
+            'existing_users' => $existingUsers,
             'program' => MembershipService::getProgramInfo(),
             'role_layout' => 'layouts/staff',
         ]);
@@ -157,10 +191,12 @@ class ClientController extends BaseController
             return redirect()->back()->with('error', 'Branch information is missing.');
         }
 
+        $mode = (string) $this->request->getPost('client_account_mode');
+        if (! in_array($mode, ['existing', 'new'], true)) {
+            $mode = 'new';
+        }
+
         $rules = [
-            'first_name' => 'required|max_length[50]',
-            'last_name' => 'required|max_length[50]',
-            'email' => 'required|valid_email|max_length[100]|is_unique[users.email]',
             'contact_number' => 'permit_empty|max_length[30]',
             'date_of_birth' => 'permit_empty|valid_date',
             'gender' => 'permit_empty|in_list[Male,Female,Other]',
@@ -171,17 +207,33 @@ class ClientController extends BaseController
             'address_city' => 'permit_empty|max_length[100]',
         ];
 
+        if ($mode === 'existing') {
+            $rules['email'] = 'required|valid_email|max_length[100]';
+        } else {
+            $rules['first_name'] = 'required|max_length[50]';
+            $rules['last_name'] = 'required|max_length[50]';
+            $rules['email'] = 'required|valid_email|max_length[100]|is_unique[users.email]';
+        }
+
         if (! $this->validate($rules)) {
             return redirect()->back()->withInput()->with('error', implode(' ', $this->validator->getErrors()));
         }
 
         try {
+            $existingUser = null;
+            if ($mode === 'existing') {
+                $existingUser = $this->clientService->findUserByEmail(trim((string) $this->request->getPost('email')));
+                if (! $existingUser) {
+                    return redirect()->back()->withInput()->with('error', 'No existing account found for the provided email.');
+                }
+            }
+
             $planHolderId = $this->clientService->registerPlanHolder([
-                'first_name' => trim((string) $this->request->getPost('first_name')),
-                'middle_name' => trim((string) $this->request->getPost('middle_name')),
-                'last_name' => trim((string) $this->request->getPost('last_name')),
+                'first_name' => $mode === 'existing' ? trim((string) ($existingUser['first_name'] ?? '')) : trim((string) $this->request->getPost('first_name')),
+                'middle_name' => $mode === 'existing' ? trim((string) ($existingUser['middle_name'] ?? '')) : trim((string) $this->request->getPost('middle_name')),
+                'last_name' => $mode === 'existing' ? trim((string) ($existingUser['last_name'] ?? '')) : trim((string) $this->request->getPost('last_name')),
                 'email' => trim((string) $this->request->getPost('email')),
-                'contact_number' => trim((string) $this->request->getPost('contact_number')),
+                'contact_number' => $mode === 'existing' ? trim((string) ($existingUser['contact_number'] ?? '')) : trim((string) $this->request->getPost('contact_number')),
                 'date_of_birth' => trim((string) $this->request->getPost('date_of_birth')),
                 'place_of_birth' => trim((string) $this->request->getPost('place_of_birth')),
                 'age' => trim((string) $this->request->getPost('age')),
@@ -200,6 +252,32 @@ class ClientController extends BaseController
                 'senior_citizen_id' => trim((string) $this->request->getPost('senior_citizen_id')),
                 'organization_affiliation' => trim((string) $this->request->getPost('organization_affiliation')),
             ], $branchId);
+
+            $targetUserId = 0;
+            if ($mode === 'existing') {
+                $targetUserId = (int) ($existingUser['user_id'] ?? 0);
+            } else {
+                $newlyCreated = $this->clientService->findUserByEmail(trim((string) $this->request->getPost('email')));
+                $targetUserId = (int) ($newlyCreated['user_id'] ?? 0);
+            }
+
+            if ($targetUserId > 0) {
+                (new NotificationService())->notify(
+                    $targetUserId,
+                    'Your account was linked as a plan holder and your Damayan Burial Program plan was registered by staff.',
+                    'registration_pending'
+                );
+
+                (new ActivityLogService())->log(
+                    (int) session('user_id'),
+                    'created',
+                    'plan_holder',
+                    (int) $planHolderId,
+                    'Registered plan holder from staff client form',
+                    null,
+                    ['branch_id' => $branchId]
+                );
+            }
 
             return redirect()->to('/staff/client/view/' . $planHolderId)->with('success', 'Plan holder registered successfully!');
         } catch (\Throwable $e) {

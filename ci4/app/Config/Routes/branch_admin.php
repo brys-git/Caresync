@@ -28,7 +28,8 @@ $routes->group('branch-admin', ['filter' => 'auth'], static function (RouteColle
     $routes->get('client/view/(:num)', 'BranchAdmin\ClientController::view/$1', ['filter' => 'role:2']);
     $routes->get('client/edit/(:num)', 'BranchAdmin\ClientController::edit/$1', ['filter' => 'role:2']);
     $routes->post('client/update/(:num)', 'BranchAdmin\ClientController::update/$1', ['filter' => 'role:2']);
-    $routes->get('client/register', 'BranchAdmin\ClientController::create', ['filter' => 'role:2']);
+    $routes->get('client/register', 'BranchAdmin\ClientController::registerForm', ['filter' => 'role:2']);
+    $routes->post('client/register-submit', 'BranchAdmin\ClientController::submitRegister', ['filter' => 'role:2']);
     $routes->post('client/store', 'BranchAdmin\ClientController::store', ['filter' => 'role:2']);
 
     // Payment Tracking
@@ -82,6 +83,9 @@ $routes->group('branch-admin', ['filter' => 'auth'], static function (RouteColle
 
     // Staff & Monitoring
     $routes->get('staff-monitoring', 'BranchAdmin\StaffMonitoringController::index', ['filter' => 'role:2']);
+    $routes->get('staff-monitoring/assign', 'BranchAdmin\StaffMonitoringController::assign', ['filter' => 'role:2']);
+    $routes->post('staff-monitoring/store', 'BranchAdmin\StaffMonitoringController::store', ['filter' => 'role:2']);
+    $routes->get('staff-monitoring/activities', 'BranchAdmin\StaffMonitoringController::activities', ['filter' => 'role:2']);
 
     // Reports & Analytics
     $routes->get('reports', 'BranchAdmin\ReportController::index', ['filter' => 'role:2']);

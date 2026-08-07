@@ -25,7 +25,17 @@ class NotificationService
             return false;
         }
 
-        $validTypes = ['payment_approved', 'payment_rejected', 'service_approved', 'service_rejected', 'registration_pending', 'service_completed', 'general'];
+        $validTypes = [
+            'payment_approved',
+            'payment_rejected',
+            'payment_pending',
+            'service_approved',
+            'service_rejected',
+            'service_balance_created',
+            'registration_pending',
+            'service_completed',
+            'general',
+        ];
 
         if (!in_array($type, $validTypes, true)) {
             $type = 'general';
@@ -36,7 +46,7 @@ class NotificationService
                 'user_id' => $userId,
                 'message' => trim($message),
                 'type' => $type,
-                'status' => 'unread',
+                'is_read' => 0,
                 'created_at' => date('Y-m-d H:i:s'),
             ]);
         } catch (\Throwable $e) {
@@ -44,6 +54,27 @@ class NotificationService
 
             return false;
         }
+    }
+
+    /**
+     * Map a legacy status string to the new is_read field.
+     *
+     * @param string $status
+     * @return int|null
+     */
+    private function mapStatusToReadFlag(string $status): ?int
+    {
+        $status = strtolower(trim($status));
+
+        if ($status === 'unread') {
+            return 0;
+        }
+
+        if ($status === 'read') {
+            return 1;
+        }
+
+        return null;
     }
 
     /**
@@ -69,7 +100,10 @@ class NotificationService
         }
 
         if (!empty($status)) {
-            $builder->where('status', $status);
+            $readFlag = $this->mapStatusToReadFlag($status);
+            if ($readFlag !== null) {
+                $builder->where('is_read', $readFlag);
+            }
         }
 
         return $builder->get()->getResultArray();
@@ -89,7 +123,7 @@ class NotificationService
 
         return (int) db_connect()->table('notifications')
             ->where('user_id', $userId)
-            ->where('status', 'unread')
+            ->where('is_read', 0)
             ->countAllResults();
     }
 
@@ -108,7 +142,7 @@ class NotificationService
         try {
             return (bool) db_connect()->table('notifications')
                 ->where('notification_id', $notificationId)
-                ->update(['status' => 'read']);
+                ->update(['is_read' => 1]);
         } catch (\Throwable $e) {
             log_message('error', 'NotificationService::markAsRead - ' . $e->getMessage());
 
@@ -131,7 +165,7 @@ class NotificationService
         try {
             return (bool) db_connect()->table('notifications')
                 ->where('user_id', $userId)
-                ->update(['status' => 'read']);
+                ->update(['is_read' => 1]);
         } catch (\Throwable $e) {
             log_message('error', 'NotificationService::markAllAsRead - ' . $e->getMessage());
 

@@ -1,0 +1,28 @@
+/* Kaagapay Layout Overrides - Plan Holder Dashboard */
+
+/* Reset the old margin-left that was designed for external sidebar */
+.main-wrapper {
+  margin-left: 0 !important;
+}
+
+/* Ensure sidebar stays in the left flow */
+#sidebar {
+  margin-left: 0 !important;
+}
+
+/* Responsive: on small screens, hide the sidebar by default */
+@media (max-width: 767px) {
+  #sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100vh;
+    z-index: 40;
+  }
+}
+
+/* Ensure main content doesn't have conflicting margins */
+#mainContent {
+  margin-left: 0 !important;
+  width: 100%;
+}

@@ -12,6 +12,7 @@ use CodeIgniter\Router\RouteCollection;
 $routes->group('admin', ['filter' => 'auth'], static function (RouteCollection $routes) {
     // Dashboard
     $routes->get('dashboard', 'Dashboard::admin', ['filter' => 'role:1']);
+    $routes->get('dashboard/data', 'Dashboard::adminData', ['filter' => 'role:1']);
 
     // Registration & Approvals
     $routes->get('registration-approvals', 'ClientPortal::registrationApprovals', ['filter' => 'role:1']);
@@ -31,12 +32,24 @@ $routes->group('admin', ['filter' => 'auth'], static function (RouteCollection $
     $routes->get('client-management/edit/(:num)', 'Admin\ClientManagementController::edit/$1', ['filter' => 'role:1']);
     $routes->post('client-management/update/(:num)', 'Admin\ClientManagementController::update/$1', ['filter' => 'role:1']);
 
+    // User Account Management
+    $routes->get('users/create', 'Users::create', ['filter' => 'role:1']);
+    $routes->post('users/store', 'Users::store', ['filter' => 'role:1']);
+
+    // Branch Management / Branch CRUD
+    $routes->get('branches', 'Branches::index', ['filter' => 'role:1']);
+    $routes->post('branches/store', 'Branches::store', ['filter' => 'role:1']);
+    $routes->post('branches/assign-user', 'Branches::assignUser', ['filter' => 'role:1']);
+    $routes->get('branches/activity', 'Branches::activity', ['filter' => 'role:1']);
+
     // Payment Monitoring
     $routes->get('payment-monitoring', 'PaymentTracking::admin', ['filter' => 'role:1']);
     $routes->get('payment-monitoring/export', 'PaymentTracking::exportCsv', ['filter' => 'role:1']);
 
     // Reports & Analytics
     $routes->get('reports', 'Reports::index', ['filter' => 'role:1']);
+    $routes->get('reports/remittance', 'Reports::remittance', ['filter' => 'role:1']);
+    $routes->post('reports/remittance/generate', 'Reports::generate', ['filter' => 'role:1']);
     $routes->get('analytics', 'Analytics::admin', ['filter' => 'role:1']);
 
     // Service Offer Management

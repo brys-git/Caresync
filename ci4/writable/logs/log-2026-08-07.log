@@ -1,0 +1,466 @@
+DEBUG - 2026-08-07 01:12:17 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-07 01:12:18 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-07 01:12:45 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-07 01:12:46 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-07 01:12:56 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-07 01:28:22 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-07 01:28:26 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-07 01:28:35 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-07 01:28:35 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-07 01:28:51 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-07 01:46:50 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-07 01:46:50 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-07 01:47:41 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-07 02:27:28 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-07 02:27:30 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-07 02:27:35 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-07 02:27:36 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-07 02:28:48 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-07 02:28:53 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-07 02:28:54 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-07 02:28:55 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-07 02:28:59 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-07 02:29:12 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-07 02:29:17 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-07 02:29:19 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-07 03:15:10 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+ERROR - 2026-08-07 04:33:06 --> Table 'cash_payment_records' already exists
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('CREATE TABLE `cash_payment_records` (
+	`cash_record_id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+	`branch_id` INT(11) UNSIGNED NOT NULL,
+	`client_name` VARCHAR(255) NOT NULL,
+	`months_covered` INT(3) NOT NULL DEFAULT 1,
+	`amount` DECIMAL(10,2) NOT NULL,
+	`receipt_number` VARCHAR(50) NOT NULL UNIQUE,
+	`recorded_by` INT(11) UNSIGNED NULL,
+	`recorded_date` DATE NOT NULL,
+	`verified` TINYINT(1) NOT NULL DEFAULT 0,
+	`verified_date` DATETIME NULL,
+	`created_at` DATETIME NOT NULL,
+	`updated_at` DATETIME NULL,
+	CONSTRAINT `pk_cash_payment_records` PRIMARY KEY(`cash_record_id`),
+	KEY `branch_id` (`branch_id`),
+	KEY `receipt_number` (`receipt_number`),
+	KEY `verified` (`verified`)
+) DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('CREATE TABLE `cash_payment_records` (
+	`cash_record_id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+	`branch_id` INT(11) UNSIGNED NOT NULL,
+	`client_name` VARCHAR(255) NOT NULL,
+	`months_covered` INT(3) NOT NULL DEFAULT 1,
+	`amount` DECIMAL(10,2) NOT NULL,
+	`receipt_number` VARCHAR(50) NOT NULL UNIQUE,
+	`recorded_by` INT(11) UNSIGNED NULL,
+	`recorded_date` DATE NOT NULL,
+	`verified` TINYINT(1) NOT NULL DEFAULT 0,
+	`verified_date` DATETIME NULL,
+	`created_at` DATETIME NOT NULL,
+	`updated_at` DATETIME NULL,
+	CONSTRAINT `pk_cash_payment_records` PRIMARY KEY(`cash_record_id`),
+	KEY `branch_id` (`branch_id`),
+	KEY `receipt_number` (`receipt_number`),
+	KEY `verified` (`verified`)
+) DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('CREATE TABLE `cash_payment_records` (
+	`cash_record_id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+	`branch_id` INT(11) UNSIGNED NOT NULL,
+	`client_name` VARCHAR(255) NOT NULL,
+	`months_covered` INT(3) NOT NULL DEFAULT 1,
+	`amount` DECIMAL(10,2) NOT NULL,
+	`receipt_number` VARCHAR(50) NOT NULL UNIQUE,
+	`recorded_by` INT(11) UNSIGNED NULL,
+	`recorded_date` DATE NOT NULL,
+	`verified` TINYINT(1) NOT NULL DEFAULT 0,
+	`verified_date` DATETIME NULL,
+	`created_at` DATETIME NOT NULL,
+	`updated_at` DATETIME NULL,
+	CONSTRAINT `pk_cash_payment_records` PRIMARY KEY(`cash_record_id`),
+	KEY `branch_id` (`branch_id`),
+	KEY `receipt_number` (`receipt_number`),
+	KEY `verified` (`verified`)
+) DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci')
+ 4 SYSTEMPATH\Database\Forge.php(570): CodeIgniter\Database\BaseConnection->query('CREATE TABLE `cash_payment_records` (
+	`cash_record_id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+	`branch_id` INT(11) UNSIGNED NOT NULL,
+	`client_name` VARCHAR(255) NOT NULL,
+	`months_covered` INT(3) NOT NULL DEFAULT 1,
+	`amount` DECIMAL(10,2) NOT NULL,
+	`receipt_number` VARCHAR(50) NOT NULL UNIQUE,
+	`recorded_by` INT(11) UNSIGNED NULL,
+	`recorded_date` DATE NOT NULL,
+	`verified` TINYINT(1) NOT NULL DEFAULT 0,
+	`verified_date` DATETIME NULL,
+	`created_at` DATETIME NOT NULL,
+	`updated_at` DATETIME NULL,
+	CONSTRAINT `pk_cash_payment_records` PRIMARY KEY(`cash_record_id`),
+	KEY `branch_id` (`branch_id`),
+	KEY `receipt_number` (`receipt_number`),
+	KEY `verified` (`verified`)
+) DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci')
+ 5 APPPATH\Database\Migrations\2026-05-12-000001_CreateCashPaymentRecords.php(72): CodeIgniter\Database\Forge->createTable('cash_payment_records')
+ 6 SYSTEMPATH\Database\MigrationRunner.php(1014): App\Database\Migrations\CreateCashPaymentRecords->up()
+ 7 SYSTEMPATH\Database\MigrationRunner.php(202): CodeIgniter\Database\MigrationRunner->migrate('up', Object(stdClass))
+ 8 SYSTEMPATH\Commands\Database\Migrate.php(89): CodeIgniter\Database\MigrationRunner->latest(null)
+ 9 SYSTEMPATH\CLI\SignalTrait.php(245): CodeIgniter\Commands\Database\Migrate::CodeIgniter\Commands\Database\{closure}()
+10 SYSTEMPATH\Commands\Database\Migrate.php(88): CodeIgniter\Commands\Database\Migrate->withSignalsBlocked(Object(Closure))
+11 SYSTEMPATH\CLI\Commands.php(74): CodeIgniter\Commands\Database\Migrate->run([])
+12 SYSTEMPATH\CLI\Console.php(47): CodeIgniter\CLI\Commands->run('migrate', [])
+13 SYSTEMPATH\Boot.php(442): CodeIgniter\CLI\Console->run()
+14 SYSTEMPATH\Boot.php(166): CodeIgniter\Boot::runCommand(Object(CodeIgniter\CLI\Console))
+15 ROOTPATH\spark(87): CodeIgniter\Boot::bootSpark(Object(Config\Paths))
+ERROR - 2026-08-07 04:38:07 --> Table 'cash_payment_records' already exists
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('CREATE TABLE `cash_payment_records` (
+	`cash_record_id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+	`branch_id` INT(11) UNSIGNED NOT NULL,
+	`client_name` VARCHAR(255) NOT NULL,
+	`months_covered` INT(3) NOT NULL DEFAULT 1,
+	`amount` DECIMAL(10,2) NOT NULL,
+	`receipt_number` VARCHAR(50) NOT NULL UNIQUE,
+	`recorded_by` INT(11) UNSIGNED NULL,
+	`recorded_date` DATE NOT NULL,
+	`verified` TINYINT(1) NOT NULL DEFAULT 0,
+	`verified_date` DATETIME NULL,
+	`created_at` DATETIME NOT NULL,
+	`updated_at` DATETIME NULL,
+	CONSTRAINT `pk_cash_payment_records` PRIMARY KEY(`cash_record_id`),
+	KEY `branch_id` (`branch_id`),
+	KEY `receipt_number` (`receipt_number`),
+	KEY `verified` (`verified`)
+) DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('CREATE TABLE `cash_payment_records` (
+	`cash_record_id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+	`branch_id` INT(11) UNSIGNED NOT NULL,
+	`client_name` VARCHAR(255) NOT NULL,
+	`months_covered` INT(3) NOT NULL DEFAULT 1,
+	`amount` DECIMAL(10,2) NOT NULL,
+	`receipt_number` VARCHAR(50) NOT NULL UNIQUE,
+	`recorded_by` INT(11) UNSIGNED NULL,
+	`recorded_date` DATE NOT NULL,
+	`verified` TINYINT(1) NOT NULL DEFAULT 0,
+	`verified_date` DATETIME NULL,
+	`created_at` DATETIME NOT NULL,
+	`updated_at` DATETIME NULL,
+	CONSTRAINT `pk_cash_payment_records` PRIMARY KEY(`cash_record_id`),
+	KEY `branch_id` (`branch_id`),
+	KEY `receipt_number` (`receipt_number`),
+	KEY `verified` (`verified`)
+) DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('CREATE TABLE `cash_payment_records` (
+	`cash_record_id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+	`branch_id` INT(11) UNSIGNED NOT NULL,
+	`client_name` VARCHAR(255) NOT NULL,
+	`months_covered` INT(3) NOT NULL DEFAULT 1,
+	`amount` DECIMAL(10,2) NOT NULL,
+	`receipt_number` VARCHAR(50) NOT NULL UNIQUE,
+	`recorded_by` INT(11) UNSIGNED NULL,
+	`recorded_date` DATE NOT NULL,
+	`verified` TINYINT(1) NOT NULL DEFAULT 0,
+	`verified_date` DATETIME NULL,
+	`created_at` DATETIME NOT NULL,
+	`updated_at` DATETIME NULL,
+	CONSTRAINT `pk_cash_payment_records` PRIMARY KEY(`cash_record_id`),
+	KEY `branch_id` (`branch_id`),
+	KEY `receipt_number` (`receipt_number`),
+	KEY `verified` (`verified`)
+) DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci')
+ 4 SYSTEMPATH\Database\Forge.php(570): CodeIgniter\Database\BaseConnection->query('CREATE TABLE `cash_payment_records` (
+	`cash_record_id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+	`branch_id` INT(11) UNSIGNED NOT NULL,
+	`client_name` VARCHAR(255) NOT NULL,
+	`months_covered` INT(3) NOT NULL DEFAULT 1,
+	`amount` DECIMAL(10,2) NOT NULL,
+	`receipt_number` VARCHAR(50) NOT NULL UNIQUE,
+	`recorded_by` INT(11) UNSIGNED NULL,
+	`recorded_date` DATE NOT NULL,
+	`verified` TINYINT(1) NOT NULL DEFAULT 0,
+	`verified_date` DATETIME NULL,
+	`created_at` DATETIME NOT NULL,
+	`updated_at` DATETIME NULL,
+	CONSTRAINT `pk_cash_payment_records` PRIMARY KEY(`cash_record_id`),
+	KEY `branch_id` (`branch_id`),
+	KEY `receipt_number` (`receipt_number`),
+	KEY `verified` (`verified`)
+) DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci')
+ 5 APPPATH\Database\Migrations\2026-05-12-000001_CreateCashPaymentRecords.php(72): CodeIgniter\Database\Forge->createTable('cash_payment_records')
+ 6 SYSTEMPATH\Database\MigrationRunner.php(1014): App\Database\Migrations\CreateCashPaymentRecords->up()
+ 7 SYSTEMPATH\Database\MigrationRunner.php(202): CodeIgniter\Database\MigrationRunner->migrate('up', Object(stdClass))
+ 8 SYSTEMPATH\Commands\Database\Migrate.php(89): CodeIgniter\Database\MigrationRunner->latest(null)
+ 9 SYSTEMPATH\CLI\SignalTrait.php(245): CodeIgniter\Commands\Database\Migrate::CodeIgniter\Commands\Database\{closure}()
+10 SYSTEMPATH\Commands\Database\Migrate.php(88): CodeIgniter\Commands\Database\Migrate->withSignalsBlocked(Object(Closure))
+11 SYSTEMPATH\CLI\Commands.php(74): CodeIgniter\Commands\Database\Migrate->run([])
+12 SYSTEMPATH\CLI\Console.php(47): CodeIgniter\CLI\Commands->run('migrate', [])
+13 SYSTEMPATH\Boot.php(442): CodeIgniter\CLI\Console->run()
+14 SYSTEMPATH\Boot.php(166): CodeIgniter\Boot::runCommand(Object(CodeIgniter\CLI\Console))
+15 ROOTPATH\spark(87): CodeIgniter\Boot::bootSpark(Object(Config\Paths))
+ERROR - 2026-08-07 04:48:03 --> Table 'cash_payment_records' already exists
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('CREATE TABLE `cash_payment_records` (
+	`cash_record_id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+	`branch_id` INT(11) UNSIGNED NOT NULL,
+	`client_name` VARCHAR(255) NOT NULL,
+	`months_covered` INT(3) NOT NULL DEFAULT 1,
+	`amount` DECIMAL(10,2) NOT NULL,
+	`receipt_number` VARCHAR(50) NOT NULL UNIQUE,
+	`recorded_by` INT(11) UNSIGNED NULL,
+	`recorded_date` DATE NOT NULL,
+	`verified` TINYINT(1) NOT NULL DEFAULT 0,
+	`verified_date` DATETIME NULL,
+	`created_at` DATETIME NOT NULL,
+	`updated_at` DATETIME NULL,
+	CONSTRAINT `pk_cash_payment_records` PRIMARY KEY(`cash_record_id`),
+	KEY `branch_id` (`branch_id`),
+	KEY `receipt_number` (`receipt_number`),
+	KEY `verified` (`verified`)
+) DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('CREATE TABLE `cash_payment_records` (
+	`cash_record_id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+	`branch_id` INT(11) UNSIGNED NOT NULL,
+	`client_name` VARCHAR(255) NOT NULL,
+	`months_covered` INT(3) NOT NULL DEFAULT 1,
+	`amount` DECIMAL(10,2) NOT NULL,
+	`receipt_number` VARCHAR(50) NOT NULL UNIQUE,
+	`recorded_by` INT(11) UNSIGNED NULL,
+	`recorded_date` DATE NOT NULL,
+	`verified` TINYINT(1) NOT NULL DEFAULT 0,
+	`verified_date` DATETIME NULL,
+	`created_at` DATETIME NOT NULL,
+	`updated_at` DATETIME NULL,
+	CONSTRAINT `pk_cash_payment_records` PRIMARY KEY(`cash_record_id`),
+	KEY `branch_id` (`branch_id`),
+	KEY `receipt_number` (`receipt_number`),
+	KEY `verified` (`verified`)
+) DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('CREATE TABLE `cash_payment_records` (
+	`cash_record_id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+	`branch_id` INT(11) UNSIGNED NOT NULL,
+	`client_name` VARCHAR(255) NOT NULL,
+	`months_covered` INT(3) NOT NULL DEFAULT 1,
+	`amount` DECIMAL(10,2) NOT NULL,
+	`receipt_number` VARCHAR(50) NOT NULL UNIQUE,
+	`recorded_by` INT(11) UNSIGNED NULL,
+	`recorded_date` DATE NOT NULL,
+	`verified` TINYINT(1) NOT NULL DEFAULT 0,
+	`verified_date` DATETIME NULL,
+	`created_at` DATETIME NOT NULL,
+	`updated_at` DATETIME NULL,
+	CONSTRAINT `pk_cash_payment_records` PRIMARY KEY(`cash_record_id`),
+	KEY `branch_id` (`branch_id`),
+	KEY `receipt_number` (`receipt_number`),
+	KEY `verified` (`verified`)
+) DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci')
+ 4 SYSTEMPATH\Database\Forge.php(570): CodeIgniter\Database\BaseConnection->query('CREATE TABLE `cash_payment_records` (
+	`cash_record_id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+	`branch_id` INT(11) UNSIGNED NOT NULL,
+	`client_name` VARCHAR(255) NOT NULL,
+	`months_covered` INT(3) NOT NULL DEFAULT 1,
+	`amount` DECIMAL(10,2) NOT NULL,
+	`receipt_number` VARCHAR(50) NOT NULL UNIQUE,
+	`recorded_by` INT(11) UNSIGNED NULL,
+	`recorded_date` DATE NOT NULL,
+	`verified` TINYINT(1) NOT NULL DEFAULT 0,
+	`verified_date` DATETIME NULL,
+	`created_at` DATETIME NOT NULL,
+	`updated_at` DATETIME NULL,
+	CONSTRAINT `pk_cash_payment_records` PRIMARY KEY(`cash_record_id`),
+	KEY `branch_id` (`branch_id`),
+	KEY `receipt_number` (`receipt_number`),
+	KEY `verified` (`verified`)
+) DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci')
+ 5 APPPATH\Database\Migrations\2026-05-12-000001_CreateCashPaymentRecords.php(72): CodeIgniter\Database\Forge->createTable('cash_payment_records')
+ 6 SYSTEMPATH\Database\MigrationRunner.php(1014): App\Database\Migrations\CreateCashPaymentRecords->up()
+ 7 SYSTEMPATH\Database\MigrationRunner.php(202): CodeIgniter\Database\MigrationRunner->migrate('up', Object(stdClass))
+ 8 SYSTEMPATH\Commands\Database\Migrate.php(89): CodeIgniter\Database\MigrationRunner->latest('default')
+ 9 SYSTEMPATH\CLI\SignalTrait.php(245): CodeIgniter\Commands\Database\Migrate::CodeIgniter\Commands\Database\{closure}()
+10 SYSTEMPATH\Commands\Database\Migrate.php(88): CodeIgniter\Commands\Database\Migrate->withSignalsBlocked(Object(Closure))
+11 SYSTEMPATH\CLI\Commands.php(74): CodeIgniter\Commands\Database\Migrate->run([...])
+12 SYSTEMPATH\CLI\Console.php(47): CodeIgniter\CLI\Commands->run('migrate', [...])
+13 SYSTEMPATH\Boot.php(442): CodeIgniter\CLI\Console->run()
+14 SYSTEMPATH\Boot.php(166): CodeIgniter\Boot::runCommand(Object(CodeIgniter\CLI\Console))
+15 ROOTPATH\spark(87): CodeIgniter\Boot::bootSpark(Object(Config\Paths))
+CRITICAL - 2026-08-07 04:58:26 --> ErrorException: Uncaught CodeIgniter\Exceptions\PageNotFoundException: Can't find a route for 'CLI: /'. in C:\xampp\htdocs\caresync\ci4\system\CodeIgniter.php:1001
+Stack trace:
+#0 C:\xampp\htdocs\caresync\ci4\system\CodeIgniter.php(1001): CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound('Can't find a ro...')
+#1 C:\xampp\htdocs\caresync\ci4\system\CodeIgniter.php(346): CodeIgniter\CodeIgniter->display404errors(Object(CodeIgniter\Exceptions\PageNotFoundException))
+#2 C:\xampp\htdocs\caresync\ci4\system\Boot.php(417): CodeIgniter\CodeIgniter->run()
+#3 C:\xampp\htdocs\caresync\ci4\system\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+#4 C:\xampp\htdocs\caresync\ci4\public\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+#5 Command line code(1): require('C:\\xampp\\htdocs...')
+#6 {main}
+  thrown
+[Method: CLI, Route: /]
+in SYSTEMPATH\CodeIgniter.php on line 1001.
+ 1 [internal function]: CodeIgniter\Debug\Exceptions->shutdownHandler()
+ERROR - 2026-08-07 05:02:02 --> Table 'cash_payment_records' already exists
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('CREATE TABLE `cash_payment_records` (
+	`cash_record_id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+	`branch_id` INT(11) UNSIGNED NOT NULL,
+	`client_name` VARCHAR(255) NOT NULL,
+	`months_covered` INT(3) NOT NULL DEFAULT 1,
+	`amount` DECIMAL(10,2) NOT NULL,
+	`receipt_number` VARCHAR(50) NOT NULL UNIQUE,
+	`recorded_by` INT(11) UNSIGNED NULL,
+	`recorded_date` DATE NOT NULL,
+	`verified` TINYINT(1) NOT NULL DEFAULT 0,
+	`verified_date` DATETIME NULL,
+	`created_at` DATETIME NOT NULL,
+	`updated_at` DATETIME NULL,
+	CONSTRAINT `pk_cash_payment_records` PRIMARY KEY(`cash_record_id`),
+	KEY `branch_id` (`branch_id`),
+	KEY `receipt_number` (`receipt_number`),
+	KEY `verified` (`verified`)
+) DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('CREATE TABLE `cash_payment_records` (
+	`cash_record_id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+	`branch_id` INT(11) UNSIGNED NOT NULL,
+	`client_name` VARCHAR(255) NOT NULL,
+	`months_covered` INT(3) NOT NULL DEFAULT 1,
+	`amount` DECIMAL(10,2) NOT NULL,
+	`receipt_number` VARCHAR(50) NOT NULL UNIQUE,
+	`recorded_by` INT(11) UNSIGNED NULL,
+	`recorded_date` DATE NOT NULL,
+	`verified` TINYINT(1) NOT NULL DEFAULT 0,
+	`verified_date` DATETIME NULL,
+	`created_at` DATETIME NOT NULL,
+	`updated_at` DATETIME NULL,
+	CONSTRAINT `pk_cash_payment_records` PRIMARY KEY(`cash_record_id`),
+	KEY `branch_id` (`branch_id`),
+	KEY `receipt_number` (`receipt_number`),
+	KEY `verified` (`verified`)
+) DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('CREATE TABLE `cash_payment_records` (
+	`cash_record_id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+	`branch_id` INT(11) UNSIGNED NOT NULL,
+	`client_name` VARCHAR(255) NOT NULL,
+	`months_covered` INT(3) NOT NULL DEFAULT 1,
+	`amount` DECIMAL(10,2) NOT NULL,
+	`receipt_number` VARCHAR(50) NOT NULL UNIQUE,
+	`recorded_by` INT(11) UNSIGNED NULL,
+	`recorded_date` DATE NOT NULL,
+	`verified` TINYINT(1) NOT NULL DEFAULT 0,
+	`verified_date` DATETIME NULL,
+	`created_at` DATETIME NOT NULL,
+	`updated_at` DATETIME NULL,
+	CONSTRAINT `pk_cash_payment_records` PRIMARY KEY(`cash_record_id`),
+	KEY `branch_id` (`branch_id`),
+	KEY `receipt_number` (`receipt_number`),
+	KEY `verified` (`verified`)
+) DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci')
+ 4 SYSTEMPATH\Database\Forge.php(570): CodeIgniter\Database\BaseConnection->query('CREATE TABLE `cash_payment_records` (
+	`cash_record_id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+	`branch_id` INT(11) UNSIGNED NOT NULL,
+	`client_name` VARCHAR(255) NOT NULL,
+	`months_covered` INT(3) NOT NULL DEFAULT 1,
+	`amount` DECIMAL(10,2) NOT NULL,
+	`receipt_number` VARCHAR(50) NOT NULL UNIQUE,
+	`recorded_by` INT(11) UNSIGNED NULL,
+	`recorded_date` DATE NOT NULL,
+	`verified` TINYINT(1) NOT NULL DEFAULT 0,
+	`verified_date` DATETIME NULL,
+	`created_at` DATETIME NOT NULL,
+	`updated_at` DATETIME NULL,
+	CONSTRAINT `pk_cash_payment_records` PRIMARY KEY(`cash_record_id`),
+	KEY `branch_id` (`branch_id`),
+	KEY `receipt_number` (`receipt_number`),
+	KEY `verified` (`verified`)
+) DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci')
+ 5 APPPATH\Database\Migrations\2026-05-12-000001_CreateCashPaymentRecords.php(72): CodeIgniter\Database\Forge->createTable('cash_payment_records')
+ 6 SYSTEMPATH\Database\MigrationRunner.php(1014): App\Database\Migrations\CreateCashPaymentRecords->up()
+ 7 SYSTEMPATH\Database\MigrationRunner.php(202): CodeIgniter\Database\MigrationRunner->migrate('up', Object(stdClass))
+ 8 SYSTEMPATH\Commands\Database\Migrate.php(89): CodeIgniter\Database\MigrationRunner->latest(null)
+ 9 SYSTEMPATH\CLI\SignalTrait.php(245): CodeIgniter\Commands\Database\Migrate::CodeIgniter\Commands\Database\{closure}()
+10 SYSTEMPATH\Commands\Database\Migrate.php(88): CodeIgniter\Commands\Database\Migrate->withSignalsBlocked(Object(Closure))
+11 SYSTEMPATH\CLI\Commands.php(74): CodeIgniter\Commands\Database\Migrate->run([])
+12 SYSTEMPATH\CLI\Console.php(47): CodeIgniter\CLI\Commands->run('migrate', [])
+13 SYSTEMPATH\Boot.php(442): CodeIgniter\CLI\Console->run()
+14 SYSTEMPATH\Boot.php(166): CodeIgniter\Boot::runCommand(Object(CodeIgniter\CLI\Console))
+15 ROOTPATH\spark(87): CodeIgniter\Boot::bootSpark(Object(Config\Paths))
+ERROR - 2026-08-07 05:05:52 --> Table 'cash_payment_records' already exists
+in SYSTEMPATH\Database\MySQLi\Connection.php on line 300.
+ 1 SYSTEMPATH\Database\MySQLi\Connection.php(300): mysqli->query('CREATE TABLE `cash_payment_records` (
+	`cash_record_id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+	`branch_id` INT(11) UNSIGNED NOT NULL,
+	`client_name` VARCHAR(255) NOT NULL,
+	`months_covered` INT(3) NOT NULL DEFAULT 1,
+	`amount` DECIMAL(10,2) NOT NULL,
+	`receipt_number` VARCHAR(50) NOT NULL UNIQUE,
+	`recorded_by` INT(11) UNSIGNED NULL,
+	`recorded_date` DATE NOT NULL,
+	`verified` TINYINT(1) NOT NULL DEFAULT 0,
+	`verified_date` DATETIME NULL,
+	`created_at` DATETIME NOT NULL,
+	`updated_at` DATETIME NULL,
+	CONSTRAINT `pk_cash_payment_records` PRIMARY KEY(`cash_record_id`),
+	KEY `branch_id` (`branch_id`),
+	KEY `receipt_number` (`receipt_number`),
+	KEY `verified` (`verified`)
+) DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci', 0)
+ 2 SYSTEMPATH\Database\BaseConnection.php(910): CodeIgniter\Database\MySQLi\Connection->execute('CREATE TABLE `cash_payment_records` (
+	`cash_record_id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+	`branch_id` INT(11) UNSIGNED NOT NULL,
+	`client_name` VARCHAR(255) NOT NULL,
+	`months_covered` INT(3) NOT NULL DEFAULT 1,
+	`amount` DECIMAL(10,2) NOT NULL,
+	`receipt_number` VARCHAR(50) NOT NULL UNIQUE,
+	`recorded_by` INT(11) UNSIGNED NULL,
+	`recorded_date` DATE NOT NULL,
+	`verified` TINYINT(1) NOT NULL DEFAULT 0,
+	`verified_date` DATETIME NULL,
+	`created_at` DATETIME NOT NULL,
+	`updated_at` DATETIME NULL,
+	CONSTRAINT `pk_cash_payment_records` PRIMARY KEY(`cash_record_id`),
+	KEY `branch_id` (`branch_id`),
+	KEY `receipt_number` (`receipt_number`),
+	KEY `verified` (`verified`)
+) DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci')
+ 3 SYSTEMPATH\Database\BaseConnection.php(827): CodeIgniter\Database\BaseConnection->simpleQuery('CREATE TABLE `cash_payment_records` (
+	`cash_record_id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+	`branch_id` INT(11) UNSIGNED NOT NULL,
+	`client_name` VARCHAR(255) NOT NULL,
+	`months_covered` INT(3) NOT NULL DEFAULT 1,
+	`amount` DECIMAL(10,2) NOT NULL,
+	`receipt_number` VARCHAR(50) NOT NULL UNIQUE,
+	`recorded_by` INT(11) UNSIGNED NULL,
+	`recorded_date` DATE NOT NULL,
+	`verified` TINYINT(1) NOT NULL DEFAULT 0,
+	`verified_date` DATETIME NULL,
+	`created_at` DATETIME NOT NULL,
+	`updated_at` DATETIME NULL,
+	CONSTRAINT `pk_cash_payment_records` PRIMARY KEY(`cash_record_id`),
+	KEY `branch_id` (`branch_id`),
+	KEY `receipt_number` (`receipt_number`),
+	KEY `verified` (`verified`)
+) DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci')
+ 4 SYSTEMPATH\Database\Forge.php(570): CodeIgniter\Database\BaseConnection->query('CREATE TABLE `cash_payment_records` (
+	`cash_record_id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+	`branch_id` INT(11) UNSIGNED NOT NULL,
+	`client_name` VARCHAR(255) NOT NULL,
+	`months_covered` INT(3) NOT NULL DEFAULT 1,
+	`amount` DECIMAL(10,2) NOT NULL,
+	`receipt_number` VARCHAR(50) NOT NULL UNIQUE,
+	`recorded_by` INT(11) UNSIGNED NULL,
+	`recorded_date` DATE NOT NULL,
+	`verified` TINYINT(1) NOT NULL DEFAULT 0,
+	`verified_date` DATETIME NULL,
+	`created_at` DATETIME NOT NULL,
+	`updated_at` DATETIME NULL,
+	CONSTRAINT `pk_cash_payment_records` PRIMARY KEY(`cash_record_id`),
+	KEY `branch_id` (`branch_id`),
+	KEY `receipt_number` (`receipt_number`),
+	KEY `verified` (`verified`)
+) DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci')
+ 5 APPPATH\Database\Migrations\2026-05-12-000001_CreateCashPaymentRecords.php(72): CodeIgniter\Database\Forge->createTable('cash_payment_records')
+ 6 SYSTEMPATH\Database\MigrationRunner.php(1014): App\Database\Migrations\CreateCashPaymentRecords->up()
+ 7 SYSTEMPATH\Database\MigrationRunner.php(202): CodeIgniter\Database\MigrationRunner->migrate('up', Object(stdClass))
+ 8 SYSTEMPATH\Commands\Database\Migrate.php(89): CodeIgniter\Database\MigrationRunner->latest(null)
+ 9 SYSTEMPATH\CLI\SignalTrait.php(245): CodeIgniter\Commands\Database\Migrate::CodeIgniter\Commands\Database\{closure}()
+10 SYSTEMPATH\Commands\Database\Migrate.php(88): CodeIgniter\Commands\Database\Migrate->withSignalsBlocked(Object(Closure))
+11 SYSTEMPATH\CLI\Commands.php(74): CodeIgniter\Commands\Database\Migrate->run([])
+12 SYSTEMPATH\CLI\Console.php(47): CodeIgniter\CLI\Commands->run('migrate', [])
+13 SYSTEMPATH\Boot.php(442): CodeIgniter\CLI\Console->run()
+14 SYSTEMPATH\Boot.php(166): CodeIgniter\Boot::runCommand(Object(CodeIgniter\CLI\Console))
+15 ROOTPATH\spark(87): CodeIgniter\Boot::bootSpark(Object(Config\Paths))
+DEBUG - 2026-08-07 10:24:00 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
+DEBUG - 2026-08-07 10:24:02 --> Session: Class initialized using 'CodeIgniter\Session\Handlers\FileHandler' driver.
