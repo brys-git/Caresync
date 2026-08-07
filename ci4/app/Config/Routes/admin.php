@@ -32,6 +32,19 @@ $routes->group('admin', ['filter' => 'auth'], static function (RouteCollection $
     $routes->get('client-management/edit/(:num)', 'Admin\ClientManagementController::edit/$1', ['filter' => 'role:1']);
     $routes->post('client-management/update/(:num)', 'Admin\ClientManagementController::update/$1', ['filter' => 'role:1']);
 
+    // Client Record Import
+    $routes->get('client-import', 'Admin\ClientImportController::index', ['filter' => 'role:1']);
+    $routes->post('client-import/upload', 'Admin\ClientImportController::upload', ['filter' => 'role:1']);
+    $routes->get('client-import/review/(:num)', 'Admin\ClientImportController::review/$1', ['filter' => 'role:1']);
+    $routes->post('client-import/record/(:num)/save', 'Admin\ClientImportController::saveRecord/$1', ['filter' => 'role:1']);
+    $routes->post('client-import/record/(:num)/decide', 'Admin\ClientImportController::decideRecord/$1', ['filter' => 'role:1']);
+    $routes->post('client-import/record/(:num)/clear-credentials', 'Admin\ClientImportController::clearCredentials/$1', ['filter' => 'role:1']);
+    $routes->post('client-import/batch/(:num)/commit', 'Admin\ClientImportController::commit/$1', ['filter' => 'role:1']);
+    $routes->get('client-import/history', 'Admin\ClientImportController::history', ['filter' => 'role:1']);
+    $routes->get('client-import/history/(:num)', 'Admin\ClientImportController::batchDetail/$1', ['filter' => 'role:1']);
+    $routes->get('client-import/download/(:num)', 'Admin\ClientImportController::download/$1', ['filter' => 'role:1']);
+    $routes->get('client-import/template/csv', 'Admin\ClientImportController::templateCsv', ['filter' => 'role:1']);
+
     // User Account Management
     $routes->get('users/create', 'Users::create', ['filter' => 'role:1']);
     $routes->post('users/store', 'Users::store', ['filter' => 'role:1']);

@@ -32,6 +32,19 @@ $routes->group('branch-admin', ['filter' => 'auth'], static function (RouteColle
     $routes->post('client/register-submit', 'BranchAdmin\ClientController::submitRegister', ['filter' => 'role:2']);
     $routes->post('client/store', 'BranchAdmin\ClientController::store', ['filter' => 'role:2']);
 
+    // Client Record Import
+    $routes->get('client-import', 'BranchAdmin\ClientImportController::index', ['filter' => 'role:2']);
+    $routes->post('client-import/upload', 'BranchAdmin\ClientImportController::upload', ['filter' => 'role:2']);
+    $routes->get('client-import/review/(:num)', 'BranchAdmin\ClientImportController::review/$1', ['filter' => 'role:2']);
+    $routes->post('client-import/record/(:num)/save', 'BranchAdmin\ClientImportController::saveRecord/$1', ['filter' => 'role:2']);
+    $routes->post('client-import/record/(:num)/decide', 'BranchAdmin\ClientImportController::decideRecord/$1', ['filter' => 'role:2']);
+    $routes->post('client-import/record/(:num)/clear-credentials', 'BranchAdmin\ClientImportController::clearCredentials/$1', ['filter' => 'role:2']);
+    $routes->post('client-import/batch/(:num)/commit', 'BranchAdmin\ClientImportController::commit/$1', ['filter' => 'role:2']);
+    $routes->get('client-import/history', 'BranchAdmin\ClientImportController::history', ['filter' => 'role:2']);
+    $routes->get('client-import/history/(:num)', 'BranchAdmin\ClientImportController::batchDetail/$1', ['filter' => 'role:2']);
+    $routes->get('client-import/download/(:num)', 'BranchAdmin\ClientImportController::download/$1', ['filter' => 'role:2']);
+    $routes->get('client-import/template/csv', 'BranchAdmin\ClientImportController::templateCsv', ['filter' => 'role:2']);
+
     // Payment Tracking
     $routes->get('payment-tracking', 'PaymentTracking::branchAdmin', ['filter' => 'role:2']);
     $routes->post('payment-tracking/record-cash', 'PaymentTracking::recordCash', ['filter' => 'role:2']);
@@ -65,6 +78,10 @@ $routes->group('branch-admin', ['filter' => 'auth'], static function (RouteColle
     $routes->post('service-package/ongoing/update-status/(:num)', 'BranchAdmin\ServiceController::updateStatus/$1', ['filter' => 'role:2']);
     $routes->get('service-package/schedule', 'BranchAdmin\ServiceController::create', ['filter' => 'role:2']);
     $routes->post('service-package/schedule/store', 'BranchAdmin\ServiceController::store', ['filter' => 'role:2']);
+    $routes->post('service-package/ongoing/reschedule/(:num)', 'BranchAdmin\ServiceController::reschedule/$1', ['filter' => 'role:2']);
+    $routes->post('service-package/ongoing/cancel/(:num)', 'BranchAdmin\ServiceController::cancel/$1', ['filter' => 'role:2']);
+    $routes->post('service-package/ongoing/complete/(:num)', 'BranchAdmin\ServiceController::complete/$1', ['filter' => 'role:2']);
+    $routes->get('service-package/history/(:num)', 'BranchAdmin\ServiceController::history/$1', ['filter' => 'role:2']);
 
     // Services Management
     $routes->get('services/create', 'BranchAdmin\ServiceOfferController::create', ['filter' => 'role:2']);

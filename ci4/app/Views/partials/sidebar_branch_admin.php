@@ -29,6 +29,7 @@
         <ul class="nav flex-column sub-menu">
           <li class="nav-item"><a class="nav-link" href="<?= base_url('branch-admin/client-management') ?>">View Clients</a></li>
           <li class="nav-item"><a class="nav-link" href="<?= base_url('branch-admin/client/register') ?>">Register Client</a></li>
+          <li class="nav-item"><a class="nav-link" href="<?= base_url('branch-admin/client-import') ?>">Import Records</a></li>
         </ul>
       </div>
     </li>

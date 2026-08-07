@@ -16,7 +16,7 @@
             <h1 class="h3 mb-1">Apply for Package</h1>
             <p class="text-muted mb-0">Confirm your package request.</p>
         </div>
-        <a class="btn btn-outline-secondary" href="<?= site_url('/client/service/package/' . (int) ($package['package_id'] ?? 0)) ?>">Back</a>
+        <a class="btn btn-outline-secondary" href="<?= site_url('/client/package/' . (int) ($package['package_id'] ?? 0)) ?>">Back</a>
     </div>
 
     <?php if (session()->getFlashdata('error')): ?>

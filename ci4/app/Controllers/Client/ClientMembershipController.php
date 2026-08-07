@@ -4,6 +4,7 @@ namespace App\Controllers\Client;
 
 use App\Controllers\BaseController;
 use App\Services\MembershipService;
+use App\Services\PaymentService;
 
 /**
  * ClientMembershipController
@@ -32,12 +33,24 @@ class ClientMembershipController extends BaseController
         $latestPlan = $planHolderId > 0 ? $this->latestPlan($planHolderId) : null;
 
         $membershipService = new MembershipService();
+        $paymentService = new PaymentService();
         $membershipSummary = $planHolderId > 0
             ? $membershipService->getMembershipSummary($planHolderId)
             : null;
 
         $plan = $activePlan ?? $latestPlan ?? [];
         $planId = (int) ($plan['plan_id'] ?? 0);
+
+        // Recompute paid / remaining exactly like the dashboard so the summary
+        // reflects actual collected contributions, not the initial estimate.
+        if ($planId > 0 && is_array($membershipSummary)) {
+            $totalContribution = (float) ($membershipSummary['total_plan_amount'] ?? MembershipService::TOTAL_CONTRIBUTION);
+            $paidAmount = $paymentService->getTotalPaidForPlan($planId);
+            $membershipSummary['paid_amount'] = $paidAmount;
+            $membershipSummary['total_paid'] = $paidAmount;
+            $membershipSummary['total_plan_amount'] = $totalContribution;
+            $membershipSummary['remaining_balance'] = max(0, round($totalContribution - $paidAmount, 2));
+        }
 
         $currentContributions = $planId > 0
             ? db_connect()->table('payments p')

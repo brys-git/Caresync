@@ -234,6 +234,10 @@ class ClientRegistrationController extends BaseController
 
                 $planHolderId = (int) $existingHolder['plan_holder_id'];
             } else {
+                $planHolderData['unique_identifier'] = strtoupper(preg_replace('/\s+/', '', (string) $this->request->getPost('last_name')))
+                    . '-' . strtoupper(preg_replace('/\s+/', '', (string) $this->request->getPost('first_name')))
+                    . '-' . substr((string) time(), -6);
+
                 $inserted = $planHolderModel->insert($planHolderData, true);
                 $planHolderId = (int) $inserted;
 

@@ -21,6 +21,7 @@
     ];
 ?>
 
+<div class="ap">
 <?php if ($state === 'unregistered'): ?>
     <!-- ====== Locked State ====== -->
     <div style="background:var(--ap-surface, #fff);border:1px solid var(--ap-border, #e2e8f0);border-radius:var(--ap-radius, 16px);padding:40px 20px;text-align:center;">
@@ -316,6 +317,7 @@
     <?php endif; ?>
 
 <?php endif; ?>
+</div>
 
 <!-- ====== Scripts ====== -->
 <script>

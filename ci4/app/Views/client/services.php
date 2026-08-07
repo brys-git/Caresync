@@ -311,7 +311,7 @@ $activeTab = (string) ($active_tab ?? 'services');
 
                             <div class="service-actions">
                                 <a class="btn btn-outline-primary btn-sm d-flex align-items-center justify-content-center"
-                                   href="<?= site_url('/client/service/package/' . (int) ($package['package_id'] ?? 0)) ?>">
+                                   href="<?= site_url('/client/package/' . (int) ($package['package_id'] ?? 0)) ?>">
                                     <i class="bi bi-eye me-1"></i> View Details
                                 </a>
                                 <?php if ($isEligible && $packageAvailable): ?>
@@ -354,7 +354,7 @@ $activeTab = (string) ($active_tab ?? 'services');
             $db = db_connect();
             if ($db->tableExists('service_applications')) {
                 $myApplications = $db->table('service_applications sa')
-                    ->select('sa.application_id, sa.status, sa.created_at, sa.rejection_reason, p.package_name, sl.service_name')
+                    ->select('sa.application_id, sa.service_list_id, sa.package_id, sa.status, sa.created_at, sa.rejection_reason, p.package_name, sl.service_name')
                     ->join('packages p', 'p.package_id = sa.package_id', 'left')
                     ->join('service_list sl', 'sl.service_list_id = sa.service_list_id', 'left')
                     ->where('sa.plan_holder_id', $planHolderId)
@@ -438,26 +438,3 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <?= $this->endSection() ?>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <?php if ($state === 'awaiting_activation'): ?>
-                    Complete your initial payment before requesting services.
-                <?php elseif ($state === 'active'): ?>
-                    You must complete at least 2 months of payments before requesting services.
-                <?php else: ?>
-                    You must register as a Plan Holder to apply.
-                <?php endif; ?>
-            </div>
-            <div class="modal-footer">
-                <?php if ($state === 'awaiting_activation'): ?>
-                    <a href="<?= base_url('initial-payment') ?>" class="btn btn-primary">Go to Initial Payment</a>
-                <?php elseif ($state === 'active'): ?>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">OK</button>
-                <?php else: ?>
-                    <a href="<?= base_url('plan-info') ?>" class="btn btn-primary">Register Now</a>
-                <?php endif; ?>
-            </div>
-        </div>
-    </div>
-</div>

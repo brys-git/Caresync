@@ -14,7 +14,7 @@ class AuthFilter implements FilterInterface
             return redirect()->to('/login')->with('error', 'Please sign in first.');
         }
 
-        $path = trim($request->getUri()->getPath(), '/');
+        $path = trim($request->getPath(), '/');
         $mustChangePassword = (int) session('must_change_password') === 1;
         $allowedPaths = ['change-password', 'logout'];
 

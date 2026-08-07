@@ -520,6 +520,9 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 0.84rem;
+  border: 1.5px solid var(--ap-border);
+  border-radius: 10px;
+  overflow: hidden;
 }
 
 .ap-history-table thead th {
@@ -528,20 +531,20 @@
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--ap-ink-faint);
+  color: var(--ap-primary);
   text-align: left;
-  border-bottom: 2px solid var(--ap-border);
+  background: var(--ap-primary-soft);
+  border: 1px solid var(--ap-border);
 }
 
 .ap-history-table tbody td {
   padding: 12px 14px;
-  border-bottom: 1px solid var(--ap-border);
+  border: 1px solid var(--ap-border);
   vertical-align: middle;
+  background: var(--ap-surface);
 }
 
-.ap-history-table tbody tr:last-child td { border-bottom: 0; }
-
-.ap-history-table tbody tr:hover { background: #f8fafc; }
+.ap-history-table tbody tr:hover td { background: #f8fafc; }
 
 .ap-history-link {
   font-size: 0.8rem;

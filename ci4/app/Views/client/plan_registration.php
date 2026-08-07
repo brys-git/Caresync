@@ -1,6 +1,8 @@
 <?= $this->extend($role_layout) ?>
 
 <?= $this->section('content') ?>
+<link rel="stylesheet" href="<?= base_url('assets/css/registration-wizard.css') ?>">
+
 <?php
 $beneficiaries = $beneficiaries ?? [];
 $program = $program ?? ['name' => 'Damayan Burial Program', 'monthly_fee' => 240.0];
@@ -8,670 +10,615 @@ $planId = (int) ($plan_id ?? 0);
 $applicationDate = (string) old('application_date', (string) ($plan_holder['application_date'] ?? date('Y-m-d')));
 $civilStatus = (string) old('civil_status', (string) ($plan_holder['civil_status'] ?? ''));
 $gender = (string) old('gender', (string) ($plan_holder['gender'] ?? ''));
+$selectedBranch = (int) old('branch_id', (string) ($plan_holder['branch_id'] ?? 0));
 ?>
-<div class="container-fluid">
-    <div class="mb-3">
-        <h1 class="h3 mb-1"><?= esc((string) ($program['name'] ?? 'Damayan Burial Program')) ?></h1>
-        <p class="text-muted mb-0">Plan registration form.</p>
-    </div>
 
+<div class="rw">
+
+    <!-- ====== Flash Messages ====== -->
     <?php if (session()->getFlashdata('error')): ?>
-        <div class="alert alert-danger">
-            <strong>Error:</strong> <?= esc(session()->getFlashdata('error')) ?>
+        <div class="rw-alert rw-alert--error">
+            <i class="mdi mdi-alert-circle-outline"></i>
+            <?= esc(session()->getFlashdata('error')) ?>
         </div>
     <?php endif; ?>
-
     <?php if (session()->getFlashdata('success')): ?>
-        <div class="alert alert-success"><?= esc(session()->getFlashdata('success')) ?></div>
+        <div class="rw-alert rw-alert--success">
+            <i class="mdi mdi-check-circle-outline"></i>
+            <?= esc(session()->getFlashdata('success')) ?>
+        </div>
     <?php endif; ?>
-
     <?php $errors = session()->getFlashdata('errors') ?? []; ?>
     <?php if (! empty($errors)): ?>
-        <div class="alert alert-danger">
-            <strong>Please fix the following errors:</strong>
-            <ul class="mb-0 mt-2">
-                <?php foreach ($errors as $message): ?>
-                    <li><?= esc((string) $message) ?></li>
-                <?php endforeach; ?>
-            </ul>
+        <div class="rw-alert rw-alert--error">
+            <i class="mdi mdi-alert-circle-outline"></i>
+            <div>
+                <strong>Please fix the following errors:</strong>
+                <ul style="margin:4px 0 0;padding-left:18px;">
+                    <?php foreach ($errors as $message): ?>
+                        <li><?= esc((string) $message) ?></li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
         </div>
     <?php endif; ?>
 
-    <div class="card mb-4">
-        <div class="card-body">
-            <h2 class="h5 mb-2">KAAGAPAY MO KARAMAY FUNERAL HOMES CO.</h2>
-            <p class="mb-1"><strong>Main Office Address:</strong> #65 J.F. Diaz Ave. Ampid 1, San Mateo, Rizal</p>
-            <p class="mb-1"><strong>Branch Offices:</strong> Dakila Cor. Constitutional Rd. Batasan Hills Q.C.; Sta Isabel, Calapan City; Babangonan, Victoria; Poblacion, Bansud; C-5 Diversion Rd. Bongabong; Upper Odiong, Roxas; Don Pedro, Mansalay Oriental Mindoro</p>
-            <p class="mb-1"><strong>Contact Numbers:</strong> Smart 0962-571-9780; Globe 0997-512-7828 / 0927-735-0239</p>
-            <p class="mb-1"><strong>Website &amp; Facebook Page:</strong> KaagapayMoKaramayFuneralHomes</p>
-            <p class="mb-1"><strong>Registration Details:</strong> SEC. REG. PG 201520567, TIN # 009-196-436-0000</p>
-            <p class="mb-0"><strong>Founder/CEO:</strong> Ricardo C. Ramilo</p>
+    <!-- ====== Progress Steps ====== -->
+    <div class="rw-steps" id="rw-steps">
+        <div class="rw-step rw-step--active" data-rw-step="1">
+            <div class="rw-step__circle">1</div>
+            <div class="rw-step__label">Applicant Information</div>
+        </div>
+        <div class="rw-step__line"></div>
+        <div class="rw-step" data-rw-step="2">
+            <div class="rw-step__circle">2</div>
+            <div class="rw-step__label">Beneficiaries</div>
+        </div>
+        <div class="rw-step__line"></div>
+        <div class="rw-step" data-rw-step="3">
+            <div class="rw-step__circle">3</div>
+            <div class="rw-step__label">Verification</div>
+        </div>
+        <div class="rw-step__line"></div>
+        <div class="rw-step" data-rw-step="4">
+            <div class="rw-step__circle">4</div>
+            <div class="rw-step__label">Initial Payment</div>
         </div>
     </div>
 
+    <form method="post" action="<?= base_url('plan-registration') ?>" enctype="multipart/form-data" id="rw-form">
+        <?= csrf_field() ?>
+        <input type="hidden" name="plan_id" value="<?= $planId ?>">
+        <input type="hidden" name="package_id" value="<?= $planId ?>">
 
-    <div class="card">
-        <div class="card-body">
-            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <!-- ================================================================ -->
+        <!-- STEP 1: Applicant Information                                    -->
+        <!-- ================================================================ -->
+        <div class="rw-panel" data-rw-panel="1">
+            <div class="rw-section-title">Step 1 — Applicant Information</div>
+            <div class="rw-section-sub">Complete the applicant's personal and contact details.</div>
+
+            <div class="rw-two-col">
+                <!-- Left Column -->
                 <div>
-                    <h2 class="h5 mb-1">Step-by-step registration</h2>
-                    <p class="text-muted mb-0">Complete each section to submit the registration for verification.</p>
-                </div>
-                <div class="w-100 w-md-50">
-                    <div class="progress" style="height: 8px;">
-                        <div id="registration-progress" class="progress-bar" role="progressbar" style="width: 33%"></div>
-                    </div>
-                    <div class="d-flex justify-content-between mt-2 small text-muted">
-                        <span class="step-pill text-primary" data-step-pill="1">1. Applicant</span>
-                        <span class="step-pill" data-step-pill="2">2. Beneficiaries</span>
-                        <span class="step-pill" data-step-pill="3">3. Verification</span>
-                    </div>
-                </div>
-            </div>
-
-            <form method="post" action="<?= base_url('plan-registration') ?>" enctype="multipart/form-data">
-                <?= csrf_field() ?>
-                <input type="hidden" name="plan_id" value="<?= $planId ?>">
-                <input type="hidden" name="package_id" value="<?= $planId ?>">
-
-                <div class="step-panel" data-step-panel="1">
-                    <h3 class="h6 text-primary mb-3">Step 1 — Applicant Information</h3>
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-4">
-                            <label class="form-label" for="id_control_no">ID Control No.</label>
-                            <input id="id_control_no" name="id_control_no" class="form-control" value="<?= esc(old('id_control_no', (string) ($plan_holder['id_control_no'] ?? ''))) ?>">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label" for="coordinator">Coordinator</label>
-                            <input id="coordinator" name="coordinator" class="form-control" value="<?= esc(old('coordinator', (string) ($plan_holder['coordinator'] ?? ''))) ?>">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label" for="application_date">Date of Application</label>
-                            <input id="application_date" name="application_date" type="date" class="form-control" value="<?= esc($applicationDate) ?>" data-required-step-1>
-                        </div>
-
-                        <div class="col-md-4">
-                            <label class="form-label" for="last_name">Last Name</label>
-                            <input id="last_name" name="last_name" class="form-control" value="<?= esc(old('last_name', (string) ($user['last_name'] ?? ''))) ?>" required data-required-step-1>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label" for="first_name">Given Name</label>
-                            <input id="first_name" name="first_name" class="form-control" value="<?= esc(old('first_name', (string) ($user['first_name'] ?? ''))) ?>" required data-required-step-1>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label" for="middle_name">Middle Name</label>
-                            <input id="middle_name" name="middle_name" class="form-control" value="<?= esc(old('middle_name', (string) ($user['middle_name'] ?? ''))) ?>">
-                        </div>
-
-                        <div class="col-md-3">
-                            <label class="form-label" for="address_no">Address No.</label>
-                            <input id="address_no" name="address_no" class="form-control" value="<?= esc(old('address_no', (string) ($plan_holder['address_no'] ?? ''))) ?>">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label" for="address_street">Street</label>
-                            <input id="address_street" name="address_street" class="form-control" value="<?= esc(old('address_street', (string) ($plan_holder['address_street'] ?? ''))) ?>">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label" for="address_province">Province</label>
-                            <select id="address_province" name="address_province" class="form-select" required data-required-step-1 data-initial-province="<?= esc(old('address_province', (string) ($plan_holder['address_province'] ?? ''))) ?>">
-                                <option value="">Select Province</option>
-                            </select>
-                            <input type="hidden" id="address_province_code" name="address_province_code" value="<?= esc(old('address_province_code', (string) ($plan_holder['address_province_code'] ?? ''))) ?>">
-                        </div>
-                    </div>
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-3">
-                            <label class="form-label" for="address_city">Town/City</label>
-                            <select id="address_city" name="address_city" class="form-select" required data-required-step-1 data-initial-city="<?= esc(old('address_city', (string) ($plan_holder['address_city'] ?? ''))) ?>">
-                                <option value="">Select Province first</option>
-                            </select>
-                            <input type="hidden" id="address_city_code" name="address_city_code" value="<?= esc(old('address_city_code', (string) ($plan_holder['address_city_code'] ?? ''))) ?>">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label" for="address_barangay">Barangay</label>
-                            <select id="address_barangay" name="address_barangay" class="form-select" required data-required-step-1 data-initial-barangay="<?= esc(old('address_barangay', (string) ($plan_holder['address_barangay'] ?? ''))) ?>">
-                                <option value="">Select Town/City first</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label" for="age">Age</label>
-                            <input id="age" name="age" type="number" class="form-control" value="<?= esc(old('age', (string) ($plan_holder['age'] ?? ''))) ?>">
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label" for="gender">Gender</label>
-                            <select id="gender" name="gender" class="form-select">
-                                <option value="">Select</option>
-                                <option value="Male" <?= $gender === 'Male' ? 'selected' : '' ?>>Male</option>
-                                <option value="Female" <?= $gender === 'Female' ? 'selected' : '' ?>>Female</option>
-                                <option value="Other" <?= $gender === 'Other' ? 'selected' : '' ?>>Other</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label" for="civil_status">Civil Status</label>
-                            <select id="civil_status" name="civil_status" class="form-select">
-                                <option value="">Select</option>
-                                <option value="Single" <?= $civilStatus === 'Single' ? 'selected' : '' ?>>Single</option>
-                                <option value="Married" <?= $civilStatus === 'Married' ? 'selected' : '' ?>>Married</option>
-                                <option value="Divorced" <?= $civilStatus === 'Divorced' ? 'selected' : '' ?>>Divorced</option>
-                                <option value="Widowed" <?= $civilStatus === 'Widowed' ? 'selected' : '' ?>>Widowed</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label" for="date_of_birth">Date of Birth</label>
-                            <input id="date_of_birth" name="date_of_birth" type="date" class="form-control" value="<?= esc(old('date_of_birth', (string) ($plan_holder['date_of_birth'] ?? ''))) ?>">
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label" for="place_of_birth">Place of Birth</label>
-                            <input id="place_of_birth" name="place_of_birth" class="form-control" value="<?= esc(old('place_of_birth', (string) ($plan_holder['place_of_birth'] ?? ''))) ?>">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label" for="citizenship">Citizenship</label>
-                            <input id="citizenship" name="citizenship" class="form-control" value="<?= esc(old('citizenship', (string) ($plan_holder['citizenship'] ?? ''))) ?>">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label" for="branch_id">Branch Office</label>
-                            <select id="branch_id" name="branch_id" class="form-select" required data-required-step-1>
-                                <option value="">Select Branch</option>
-                                <?php $selectedBranch = (int) old('branch_id', (string) ($plan_holder['branch_id'] ?? 0)); ?>
-                                <?php foreach ($branches as $branch): ?>
-                                    <option value="<?= (int) $branch['branch_id'] ?>" <?= $selectedBranch === (int) $branch['branch_id'] ? 'selected' : '' ?>>
-                                        <?= esc((string) $branch['branch_name']) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                    </div>
-
-                    <h3 class="h6 text-primary mb-3">Spouse Information</h3>
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-3">
-                            <label class="form-label" for="spouse_last_name">Last Name (Spouse)</label>
-                            <input id="spouse_last_name" name="spouse_last_name" class="form-control" value="<?= esc(old('spouse_last_name', (string) ($plan_holder['spouse_last_name'] ?? ''))) ?>">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label" for="spouse_first_name">Given Name (Spouse)</label>
-                            <input id="spouse_first_name" name="spouse_first_name" class="form-control" value="<?= esc(old('spouse_first_name', (string) ($plan_holder['spouse_first_name'] ?? ''))) ?>">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label" for="spouse_middle_name">Middle Name (Spouse)</label>
-                            <input id="spouse_middle_name" name="spouse_middle_name" class="form-control" value="<?= esc(old('spouse_middle_name', (string) ($plan_holder['spouse_middle_name'] ?? ''))) ?>">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label" for="spouse_birthdate">Date of Birth (Spouse)</label>
-                            <input id="spouse_birthdate" name="spouse_birthdate" type="date" class="form-control" value="<?= esc(old('spouse_birthdate', (string) ($plan_holder['spouse_birthdate'] ?? ''))) ?>">
-                        </div>
-                    </div>
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-6">
-                            <label class="form-label" for="spouse_occupation">Occupation (Spouse)</label>
-                            <input id="spouse_occupation" name="spouse_occupation" class="form-control" value="<?= esc(old('spouse_occupation', (string) ($plan_holder['spouse_occupation'] ?? ''))) ?>">
-                        </div>
-                    </div>
-
-                    <h3 class="h6 text-primary mb-3">Contact Info</h3>
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-4">
-                            <label class="form-label" for="contact_number">Cellphone No.</label>
-                            <input id="contact_number" name="contact_number" class="form-control" value="<?= esc(old('contact_number', (string) ($user['contact_number'] ?? ''))) ?>">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label" for="email">Email</label>
-                            <input id="email" name="email" type="email" class="form-control" value="<?= esc(old('email', (string) ($user['email'] ?? ''))) ?>" required>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label" for="senior_citizen_id">Senior Citizen ID No.</label>
-                            <input id="senior_citizen_id" name="senior_citizen_id" class="form-control" value="<?= esc(old('senior_citizen_id', (string) ($plan_holder['senior_citizen_id'] ?? ''))) ?>">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" for="organization_affiliation">Organization Affiliation</label>
-                            <input id="organization_affiliation" name="organization_affiliation" class="form-control" value="<?= esc(old('organization_affiliation', (string) ($plan_holder['organization_affiliation'] ?? ''))) ?>">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="step-panel d-none" data-step-panel="2">
-                    <h3 class="h6 text-primary mb-3">Step 2 — Beneficiary Section <span class="text-danger">*</span></h3>
-                    <p class="text-muted small mb-3">Add at least one beneficiary. You can leave empty rows blank.</p>
-                    <div class="table-responsive mb-4">
-                        <table class="table table-bordered align-middle">
-                            <thead class="table-light">
-                                <tr>
-                                    <th style="width: 15%;">Last Name</th>
-                                    <th style="width: 15%;">Given Name</th>
-                                    <th style="width: 15%;">Middle Name</th>
-                                    <th style="width: 15%;">Birthday</th>
-                                    <th style="width: 25%;">Relationship</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php for ($i = 0; $i < 10; $i++): ?>
-                                    <?php
-                                    $beneficiary = $beneficiaries[$i] ?? [];
-                                    ?>
-                                    <tr>
-                                        <td>
-                                            <input
-                                                class="form-control"
-                                                name="beneficiaries[<?= $i ?>][last_name]"
-                                                value="<?= esc(old('beneficiaries.' . $i . '.last_name', (string) ($beneficiary['last_name'] ?? ''))) ?>"
-                                            >
-                                        </td>
-                                        <td>
-                                            <input
-                                                class="form-control"
-                                                name="beneficiaries[<?= $i ?>][first_name]"
-                                                value="<?= esc(old('beneficiaries.' . $i . '.first_name', (string) ($beneficiary['first_name'] ?? ''))) ?>"
-                                            >
-                                        </td>
-                                        <td>
-                                            <input
-                                                class="form-control"
-                                                name="beneficiaries[<?= $i ?>][middle_name]"
-                                                value="<?= esc(old('beneficiaries.' . $i . '.middle_name', (string) ($beneficiary['middle_name'] ?? ''))) ?>"
-                                            >
-                                        </td>
-                                        <td>
-                                            <input
-                                                type="date"
-                                                class="form-control"
-                                                name="beneficiaries[<?= $i ?>][birthday]"
-                                                value="<?= esc(old('beneficiaries.' . $i . '.birthday', (string) ($beneficiary['date_of_birth'] ?? ''))) ?>"
-                                            >
-                                        </td>
-                                        <td>
-                                            <input
-                                                class="form-control"
-                                                name="beneficiaries[<?= $i ?>][relationship]"
-                                                value="<?= esc(old('beneficiaries.' . $i . '.relationship', (string) ($beneficiary['relationship'] ?? ''))) ?>"
-                                            >
-                                        </td>
-                                    </tr>
-                                <?php endfor; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div class="step-panel d-none" data-step-panel="3">
-                    <h3 class="h6 text-primary mb-3">Step 3 — Verification</h3>
-                    <div class="alert alert-info">
-                        Please upload a valid government-issued ID. The registration will be reviewed and the submitted name, birthday, and other personal details will be checked against the uploaded document.
-                    </div>
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-6">
-                            <label class="form-label" for="valid_id">Upload Valid ID</label>
-                            <input id="valid_id" name="valid_id" type="file" class="form-control" accept="image/*,.pdf">
-                            <small class="text-muted">Accepted formats: JPG, PNG, PDF.</small>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Verification Note</label>
-                            <div class="border rounded p-3 bg-light-subtle">
-                                <p class="mb-2 small">The system will verify:</p>
-                                <ul class="mb-0 small">
-                                    <li>Full name</li>
-                                    <li>Birthday</li>
-                                    <li>Address and branch details</li>
-                                </ul>
+                    <!-- Application Details -->
+                    <div class="rw-card">
+                        <h3 class="rw-card__title">Application Details</h3>
+                        <div class="rw-form-row rw-form-row--3">
+                            <div class="rw-group">
+                                <label class="rw-label" for="id_control_no">ID Control No.</label>
+                                <input class="rw-input" id="id_control_no" name="id_control_no" value="<?= esc(old('id_control_no', (string) ($plan_holder['id_control_no'] ?? ''))) ?>">
+                            </div>
+                            <div class="rw-group">
+                                <label class="rw-label" for="coordinator">Coordinator (if known)</label>
+                                <input class="rw-input" id="coordinator" name="coordinator" value="<?= esc(old('coordinator', (string) ($plan_holder['coordinator'] ?? ''))) ?>" placeholder="Enter your coordinator's name">
+                            </div>
+                            <div class="rw-group">
+                                <label class="rw-label" for="application_date">Date of Application <span>*</span></label>
+                                <input class="rw-input" id="application_date" name="application_date" type="date" value="<?= esc($applicationDate) ?>" data-rw-req>
                             </div>
                         </div>
                     </div>
 
-                    <h3 class="h6 text-primary mb-3">Certification</h3>
-                    <div class="form-check mb-4">
-                        <input class="form-check-input" type="checkbox" id="certify" name="certify" value="1" <?= old('certify') ? 'checked' : '' ?> required>
-                        <label class="form-check-label" for="certify">
-                            This is to certify that the above information is TRUE AND CORRECT to the best of my knowledge.
-                        </label>
+                    <!-- Personal Details -->
+                    <div class="rw-card">
+                        <h3 class="rw-card__title">Personal Details</h3>
+                        <div class="rw-form-row rw-form-row--3">
+                            <div class="rw-group">
+                                <label class="rw-label" for="last_name">Last Name <span>*</span></label>
+                                <input class="rw-input" id="last_name" name="last_name" value="<?= esc(old('last_name', (string) ($user['last_name'] ?? ''))) ?>" data-rw-req>
+                            </div>
+                            <div class="rw-group">
+                                <label class="rw-label" for="first_name">Given Name <span>*</span></label>
+                                <input class="rw-input" id="first_name" name="first_name" value="<?= esc(old('first_name', (string) ($user['first_name'] ?? ''))) ?>" data-rw-req>
+                            </div>
+                            <div class="rw-group">
+                                <label class="rw-label" for="middle_name">Middle Name <span>*</span></label>
+                                <input class="rw-input" id="middle_name" name="middle_name" value="<?= esc(old('middle_name', (string) ($user['middle_name'] ?? ''))) ?>">
+                            </div>
+                        </div>
+                        <div class="rw-form-row rw-form-row--4">
+                            <div class="rw-group">
+                                <label class="rw-label" for="date_of_birth">Date of Birth <span>*</span></label>
+                                <input class="rw-input" id="date_of_birth" name="date_of_birth" type="date" value="<?= esc(old('date_of_birth', (string) ($plan_holder['date_of_birth'] ?? ''))) ?>" data-rw-req>
+                            </div>
+                            <div class="rw-group">
+                                <label class="rw-label" for="age">Age</label>
+                                <input class="rw-input" id="age" name="age" type="number" value="<?= esc(old('age', (string) ($plan_holder['age'] ?? ''))) ?>" readonly>
+                            </div>
+                            <div class="rw-group">
+                                <label class="rw-label" for="gender">Gender <span>*</span></label>
+                                <select class="rw-select" id="gender" name="gender">
+                                    <option value="">Gender</option>
+                                    <option value="Male" <?= $gender === 'Male' ? 'selected' : '' ?>>Male</option>
+                                    <option value="Female" <?= $gender === 'Female' ? 'selected' : '' ?>>Female</option>
+                                    <option value="Other" <?= $gender === 'Other' ? 'selected' : '' ?>>Other</option>
+                                </select>
+                            </div>
+                            <div class="rw-group">
+                                <label class="rw-label" for="civil_status">Civil Status</label>
+                                <select class="rw-select" id="civil_status" name="civil_status">
+                                    <option value="">Civil Status</option>
+                                    <option value="Single" <?= $civilStatus === 'Single' ? 'selected' : '' ?>>Single</option>
+                                    <option value="Married" <?= $civilStatus === 'Married' ? 'selected' : '' ?>>Married</option>
+                                    <option value="Divorced" <?= $civilStatus === 'Divorced' ? 'selected' : '' ?>>Divorced</option>
+                                    <option value="Widowed" <?= $civilStatus === 'Widowed' ? 'selected' : '' ?>>Widowed</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Address & Location -->
+                    <div class="rw-card">
+                        <h3 class="rw-card__title">Address & Location</h3>
+                        <div class="rw-form-row rw-form-row--2">
+                            <div class="rw-group">
+                                <label class="rw-label" for="address_no">Address No.</label>
+                                <input class="rw-input" id="address_no" name="address_no" value="<?= esc(old('address_no', (string) ($plan_holder['address_no'] ?? ''))) ?>">
+                            </div>
+                            <div class="rw-group">
+                                <label class="rw-label" for="address_street">Street</label>
+                                <input class="rw-input" id="address_street" name="address_street" value="<?= esc(old('address_street', (string) ($plan_holder['address_street'] ?? ''))) ?>">
+                            </div>
+                        </div>
+                        <div class="rw-form-row rw-form-row--3">
+                            <div class="rw-group">
+                                <label class="rw-label" for="address_province">Province <span>*</span></label>
+                                <select class="rw-select" id="address_province" name="address_province" data-rw-req data-initial-province="<?= esc(old('address_province', (string) ($plan_holder['address_province'] ?? ''))) ?>">
+                                    <option value="">Select Province</option>
+                                </select>
+                                <input type="hidden" id="address_province_code" name="address_province_code" value="<?= esc(old('address_province_code', (string) ($plan_holder['address_province_code'] ?? ''))) ?>">
+                            </div>
+                            <div class="rw-group">
+                                <label class="rw-label" for="address_city">Town/City <span>*</span></label>
+                                <select class="rw-select" id="address_city" name="address_city" data-rw-req data-initial-city="<?= esc(old('address_city', (string) ($plan_holder['address_city'] ?? ''))) ?>">
+                                    <option value="">Select Province first</option>
+                                </select>
+                                <input type="hidden" id="address_city_code" name="address_city_code" value="<?= esc(old('address_city_code', (string) ($plan_holder['address_city_code'] ?? ''))) ?>">
+                            </div>
+                            <div class="rw-group">
+                                <label class="rw-label" for="address_barangay">Barangay <span>*</span></label>
+                                <select class="rw-select" id="address_barangay" name="address_barangay" data-rw-req data-initial-barangay="<?= esc(old('address_barangay', (string) ($plan_holder['address_barangay'] ?? ''))) ?>">
+                                    <option value="">Select Town/City first</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="rw-form-row rw-form-row--3">
+                            <div class="rw-group">
+                                <label class="rw-label" for="citizenship">Citizenship</label>
+                                <input class="rw-input" id="citizenship" name="citizenship" value="<?= esc(old('citizenship', (string) ($plan_holder['citizenship'] ?? ''))) ?>">
+                            </div>
+                            <div class="rw-group">
+                                <label class="rw-label" for="branch_id">Branch Office <span>*</span></label>
+                                <select class="rw-select" id="branch_id" name="branch_id" data-rw-req>
+                                    <option value="">Select Branch</option>
+                                    <?php foreach ($branches as $branch): ?>
+                                        <option value="<?= (int) $branch['branch_id'] ?>" <?= $selectedBranch === (int) $branch['branch_id'] ? 'selected' : '' ?>>
+                                            <?= esc((string) $branch['branch_name']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="rw-group">
+                                <label class="rw-label" for="place_of_birth">Place of Birth</label>
+                                <input class="rw-input" id="place_of_birth" name="place_of_birth" value="<?= esc(old('place_of_birth', (string) ($plan_holder['place_of_birth'] ?? ''))) ?>">
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="d-flex justify-content-between align-items-center mt-4">
-                    <button type="button" class="btn btn-outline-secondary prev-step d-none">Back</button>
-                    <div class="ms-auto">
-                        <button type="button" class="btn btn-outline-primary next-step">Next</button>
-                        <button type="submit" class="btn btn-primary submit-step d-none">Submit Registration</button>
+                <!-- Right Column -->
+                <div>
+                    <!-- Spouse Information -->
+                    <div class="rw-card">
+                        <h3 class="rw-card__title">Spouse Information</h3>
+                        <div class="rw-form-row rw-form-row--2">
+                            <div class="rw-group">
+                                <label class="rw-label" for="spouse_last_name">Last Name <span>*</span></label>
+                                <input class="rw-input" id="spouse_last_name" name="spouse_last_name" value="<?= esc(old('spouse_last_name', (string) ($plan_holder['spouse_last_name'] ?? ''))) ?>">
+                            </div>
+                            <div class="rw-group">
+                                <label class="rw-label" for="spouse_first_name">Given Name <span>*</span></label>
+                                <input class="rw-input" id="spouse_first_name" name="spouse_first_name" value="<?= esc(old('spouse_first_name', (string) ($plan_holder['spouse_first_name'] ?? ''))) ?>">
+                            </div>
+                        </div>
+                        <div class="rw-form-row">
+                            <div class="rw-group">
+                                <label class="rw-label" for="spouse_middle_name">Middle Name <span>*</span></label>
+                                <input class="rw-input" id="spouse_middle_name" name="spouse_middle_name" value="<?= esc(old('spouse_middle_name', (string) ($plan_holder['spouse_middle_name'] ?? ''))) ?>">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Contact & Affiliation -->
+                    <div class="rw-card">
+                        <h3 class="rw-card__title">Contact & Affiliation</h3>
+                        <div class="rw-form-row">
+                            <div class="rw-group">
+                                <label class="rw-label" for="contact_number">Cellphone No.</label>
+                                <input class="rw-input" id="contact_number" name="contact_number" value="<?= esc(old('contact_number', (string) ($user['contact_number'] ?? ''))) ?>">
+                            </div>
+                        </div>
+                        <div class="rw-form-row">
+                            <div class="rw-group">
+                                <label class="rw-label" for="email">Email</label>
+                                <input class="rw-input" id="email" name="email" type="email" value="<?= esc(old('email', (string) ($user['email'] ?? ''))) ?>" data-rw-req>
+                            </div>
+                        </div>
+                        <div class="rw-form-row">
+                            <div class="rw-group">
+                                <label class="rw-label" for="senior_citizen_id">Senior Citizen ID No.</label>
+                                <input class="rw-input" id="senior_citizen_id" name="senior_citizen_id" value="<?= esc(old('senior_citizen_id', (string) ($plan_holder['senior_citizen_id'] ?? ''))) ?>">
+                            </div>
+                        </div>
+                        <div class="rw-form-row">
+                            <div class="rw-group">
+                                <label class="rw-label" for="organization_affiliation">Organization Affiliation</label>
+                                <input class="rw-input" id="organization_affiliation" name="organization_affiliation" value="<?= esc(old('organization_affiliation', (string) ($plan_holder['organization_affiliation'] ?? ''))) ?>">
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </form>
+            </div>
         </div>
-    </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const stepPanels = Array.from(document.querySelectorAll('[data-step-panel]'));
-            const stepPills = Array.from(document.querySelectorAll('[data-step-pill]'));
-            const progressBar = document.getElementById('registration-progress');
-            const nextButton = document.querySelector('.next-step');
-            const backButton = document.querySelector('.prev-step');
-            const submitButton = document.querySelector('.submit-step');
-            let currentStep = 1;
+        <!-- ================================================================ -->
+        <!-- STEP 2: Beneficiaries                                            -->
+        <!-- ================================================================ -->
+        <div class="rw-panel" data-rw-panel="2" style="display:none;">
+            <div class="rw-section-title">Step 2 — Beneficiaries</div>
+            <div class="rw-section-sub">Add at least one beneficiary. You can leave empty rows blank.</div>
 
-            function showStep(step) {
-                currentStep = step;
-                stepPanels.forEach(function (panel) {
-                    const panelStep = Number(panel.getAttribute('data-step-panel'));
-                    panel.classList.toggle('d-none', panelStep !== step);
-                });
-
-                stepPills.forEach(function (pill) {
-                    const pillStep = Number(pill.getAttribute('data-step-pill'));
-                    const isActive = pillStep === step;
-                    pill.classList.toggle('text-primary', isActive);
-                    pill.classList.toggle('fw-semibold', isActive);
-                });
-
-                const progressPercent = ((step - 1) / (stepPanels.length - 1)) * 100;
-                if (progressBar) {
-                    progressBar.style.width = progressPercent + '%';
-                }
-
-                if (backButton) {
-                    backButton.classList.toggle('d-none', step === 1);
-                }
-                if (nextButton) {
-                    nextButton.classList.toggle('d-none', step === stepPanels.length);
-                }
-                if (submitButton) {
-                    submitButton.classList.toggle('d-none', step !== stepPanels.length);
-                }
-            }
-
-            function validateStep(step) {
-                if (step === 1) {
-                    const requiredFields = document.querySelectorAll('[data-required-step-1]');
-                    for (const field of requiredFields) {
-                        if (!String(field.value || '').trim()) {
-                            field.focus();
-                            window.alert('Please complete all required fields in Step 1 before continuing.');
-                            return false;
-                        }
-                    }
-                    return true;
-                }
-
-                if (step === 2) {
-                    const beneficiaryFields = Array.from(document.querySelectorAll('input[name^="beneficiaries["]'));
-                    const hasEntry = beneficiaryFields.some(function (input) {
-                        return String(input.value || '').trim() !== '';
-                    });
-
-                    if (!hasEntry) {
-                        window.alert('Please add at least one beneficiary before continuing.');
-                        return false;
-                    }
-                }
-
-                return true;
-            }
-
-            if (nextButton) {
-                nextButton.addEventListener('click', function () {
-                    if (validateStep(currentStep) && currentStep < stepPanels.length) {
-                        showStep(currentStep + 1);
-                    }
-                });
-            }
-
-            if (backButton) {
-                backButton.addEventListener('click', function () {
-                    if (currentStep > 1) {
-                        showStep(currentStep - 1);
-                    }
-                });
-            }
-
-            showStep(1);
-
-            function clearCityAndBarangay() {
-                const citySelect = document.getElementById('address_city');
-                const barangaySelect = document.getElementById('address_barangay');
-                const cityCodeInput = document.getElementById('address_city_code');
-                const provinceCodeInput = document.getElementById('address_province_code');
-
-                if (citySelect) {
-                    citySelect.innerHTML = '<option value="">Select Province first</option>';
-                }
-                if (barangaySelect) {
-                    barangaySelect.innerHTML = '<option value="">Select Town/City first</option>';
-                }
-                if (cityCodeInput) {
-                    cityCodeInput.value = '';
-                }
-                if (provinceCodeInput) {
-                    provinceCodeInput.value = '';
-                }
-            }
-
-            async function loadProvinces() {
-                const provinceSelect = document.getElementById('address_province');
-                const citySelect = document.getElementById('address_city');
-                const barangaySelect = document.getElementById('address_barangay');
-
-                if (!provinceSelect) {
-                    return;
-                }
-
-                if (provinceSelect.dataset.loaded === 'true') {
-                    return;
-                }
-
-                provinceSelect.innerHTML = '<option value="">Loading provinces...</option>';
-
-                try {
-                    const response = await fetch('https://psgc.cloud/api/v2/provinces');
-                    const json = await response.json();
-                    const data = json.data || json;
-
-                    provinceSelect.innerHTML = '<option value="">Select Province</option>';
-                    data.sort((a, b) => a.name.localeCompare(b.name));
-                    data.forEach(function (item) {
-                        const option = document.createElement('option');
-                        option.value = item.name;
-                        option.dataset.code = item.code;
-                        option.textContent = item.name;
-                        provinceSelect.appendChild(option);
-                    });
-
-                    provinceSelect.dataset.loaded = 'true';
-
-                    const initialProvince = provinceSelect.getAttribute('data-initial-province') || '';
-                    if (initialProvince) {
-                        const provinceOption = Array.from(provinceSelect.options).find(function (option) {
-                            return option.value === initialProvince;
-                        });
-                        if (provinceOption) {
-                            provinceSelect.value = initialProvince;
-                            const selectedOption = provinceSelect.options[provinceSelect.selectedIndex];
-                            if (selectedOption?.dataset.code) {
-                                await loadCities(selectedOption.dataset.code, true);
-                            }
-                        }
-                    } else {
-                        if (citySelect) {
-                            citySelect.innerHTML = '<option value="">Select Province first</option>';
-                        }
-                        if (barangaySelect) {
-                            barangaySelect.innerHTML = '<option value="">Select Town/City first</option>';
-                        }
-                    }
-                } catch (error) {
-                    console.error('Unable to load provinces:', error);
-                    provinceSelect.innerHTML = '<option value="">Unable to load provinces</option>';
-                }
-            }
-
-            async function loadCities(provinceCode, preserveSelection = false) {
-                const citySelect = document.getElementById('address_city');
-                const barangaySelect = document.getElementById('address_barangay');
-                const hiddenCityCode = document.getElementById('address_city_code');
-
-                if (!citySelect || !provinceCode) {
-                    return;
-                }
-
-                try {
-                    const response = await fetch('https://psgc.cloud/api/v2/provinces/' + encodeURIComponent(provinceCode) + '/cities-municipalities');
-                    const json = await response.json();
-                    const data = json.data || json;
-
-                    citySelect.innerHTML = '<option value="">Select Town/City</option>';
-                    data.sort((a, b) => a.name.localeCompare(b.name));
-                    data.forEach(function (item) {
-                        const option = document.createElement('option');
-                        option.value = item.name;
-                        option.dataset.code = item.code;
-                        option.textContent = item.name;
-                        citySelect.appendChild(option);
-                    });
-
-                    const initialCity = citySelect.getAttribute('data-initial-city') || '';
-                    if (preserveSelection && initialCity) {
-                        const cityOption = Array.from(citySelect.options).find(function (option) {
-                            return option.value === initialCity;
-                        });
-                        if (cityOption) {
-                            citySelect.value = initialCity;
-                            const selectedOption = citySelect.options[citySelect.selectedIndex];
-                            if (selectedOption?.dataset.code) {
-                                await loadBarangays(selectedOption.dataset.code, true);
-                            }
-                        }
-                    } else {
-                        if (barangaySelect) {
-                            barangaySelect.innerHTML = '<option value="">Select Town/City first</option>';
-                        }
-                    }
-
-                    if (hiddenCityCode) {
-                        hiddenCityCode.value = provinceCode;
-                    }
-                } catch (error) {
-                    console.error('Unable to load cities:', error);
-                    citySelect.innerHTML = '<option value="">Unable to load cities</option>';
-                    if (barangaySelect) {
-                        barangaySelect.innerHTML = '<option value="">Unable to load barangays</option>';
-                    }
-                }
-            }
-
-            async function loadBarangays(cityCode, preserveSelection = false) {
-                const barangaySelect = document.getElementById('address_barangay');
-
-                if (!barangaySelect || !cityCode) {
-                    return;
-                }
-
-                try {
-                    const response = await fetch('https://psgc.cloud/api/v2/cities-municipalities/' + encodeURIComponent(cityCode) + '/barangays');
-                    const json = await response.json();
-                    const data = json.data || json;
-
-                    barangaySelect.innerHTML = '<option value="">Select Barangay</option>';
-                    data.sort((a, b) => a.name.localeCompare(b.name));
-                    data.forEach(function (item) {
-                        const option = document.createElement('option');
-                        option.value = item.name;
-                        option.textContent = item.name;
-                        barangaySelect.appendChild(option);
-                    });
-
-                    const initialBarangay = barangaySelect.getAttribute('data-initial-barangay') || '';
-                    if (preserveSelection && initialBarangay) {
-                        const barangayOption = Array.from(barangaySelect.options).find(function (option) {
-                            return option.value === initialBarangay;
-                        });
-                        if (barangayOption) {
-                            barangaySelect.value = initialBarangay;
-                        }
-                    }
-                } catch (error) {
-                    console.error('Unable to load barangays:', error);
-                    barangaySelect.innerHTML = '<option value="">Unable to load barangays</option>';
-                }
-            }
-
-            const provinceField = document.getElementById('address_province');
-            if (provinceField) {
-                provinceField.addEventListener('click', function () {
-                    loadProvinces();
-                });
-                provinceField.addEventListener('focus', function () {
-                        });
-                provinceField.addEventListener('change', function () {
-                    const selectedOption = provinceField.options[provinceField.selectedIndex];
-                    const provinceCode = selectedOption?.dataset.code || '';
-                    const hiddenCode = document.getElementById('address_province_code');
-                    if (provinceCode) {
-                        loadCities(provinceCode);
-                        if (hiddenCode) hiddenCode.value = provinceCode;
-                    } else {
-                        clearCityAndBarangay();
-                    }
-                });
-            }
-
-            const cityField = document.getElementById('address_city');
-            if (cityField) {
-                cityField.addEventListener('change', function () {
-                    const selectedOption = cityField.options[cityField.selectedIndex];
-                    const cityCode = selectedOption?.dataset.code || '';
-                    const hiddenCode = document.getElementById('address_city_code');
-                    if (cityCode) {
-                        loadBarangays(cityCode);
-                        if (hiddenCode) hiddenCode.value = cityCode;
-                    } else {
-                        const barangaySelect = document.getElementById('address_barangay');
-                        if (barangaySelect) {
-                            barangaySelect.innerHTML = '<option value="">Select Town/City first</option>';
-                        }
-                    }
-                });
-            }
-
-            // Auto-calculate age from date of birth
-            function calculateAge(dateOfBirthStr) {
-                if (!dateOfBirthStr) {
-                    return null;
-                }
-
-                const birthDate = new Date(dateOfBirthStr);
-                const today = new Date();
-                let age = today.getFullYear() - birthDate.getFullYear();
-                const monthDiff = today.getMonth() - birthDate.getMonth();
-
-                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-                    age--;
-                }
-
-                return age >= 0 ? age : null;
-            }
-
-            const dateOfBirthField = document.getElementById('date_of_birth');
-            const ageField = document.getElementById('age');
-
-            if (dateOfBirthField) {
-                // Calculate age on page load if date of birth exists
-                if (dateOfBirthField.value) {
-                    const calculatedAge = calculateAge(dateOfBirthField.value);
-                    if (calculatedAge !== null && ageField) {
-                        ageField.value = calculatedAge;
-                    }
-                }
-
-                // Calculate age when date of birth changes
-                dateOfBirthField.addEventListener('change', function () {
-                    const calculatedAge = calculateAge(this.value);
-                    if (calculatedAge !== null && ageField) {
-                        ageField.value = calculatedAge;
-                    } else if (ageField) {
-                        ageField.value = '';
-                    }
-                });
-            }
-
-        });
-    </script>
+            <div class="rw-card">
+                <div class="rw-table-wrap">
+                    <table class="rw-table">
+                        <thead>
+                            <tr>
+                                <th style="width:20%;">Last Name</th>
+                                <th style="width:20%;">Given Name</th>
+                                <th style="width:18%;">Middle Name</th>
+                                <th style="width:18%;">Birthday</th>
+                                <th style="width:24%;">Relationship</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php for ($i = 0; $i < 10; $i++):
+                                $beneficiary = $beneficiaries[$i] ?? [];
+                            ?>
+                            <tr>
+                                <td><input class="rw-input" name="beneficiaries[<?= $i ?>][last_name]" value="<?= esc(old('beneficiaries.' . $i . '.last_name', (string) ($beneficiary['last_name'] ?? ''))) ?>"></td>
+                                <td><input class="rw-input" name="beneficiaries[<?= $i ?>][first_name]" value="<?= esc(old('beneficiaries.' . $i . '.first_name', (string) ($beneficiary['first_name'] ?? ''))) ?>"></td>
+                                <td><input class="rw-input" name="beneficiaries[<?= $i ?>][middle_name]" value="<?= esc(old('beneficiaries.' . $i . '.middle_name', (string) ($beneficiary['middle_name'] ?? ''))) ?>"></td>
+                                <td><input class="rw-input" type="date" name="beneficiaries[<?= $i ?>][birthday]" value="<?= esc(old('beneficiaries.' . $i . '.birthday', (string) ($beneficiary['date_of_birth'] ?? ''))) ?>"></td>
+                                <td><input class="rw-input" name="beneficiaries[<?= $i ?>][relationship]" value="<?= esc(old('beneficiaries.' . $i . '.relationship', (string) ($beneficiary['relationship'] ?? ''))) ?>"></td>
+                            </tr>
+                            <?php endfor; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
-    </div>
+
+        <!-- ================================================================ -->
+        <!-- STEP 3: Verification                                             -->
+        <!-- ================================================================ -->
+        <div class="rw-panel" data-rw-panel="3" style="display:none;">
+            <div class="rw-section-title">Step 3 — Verification</div>
+            <div class="rw-section-sub">Upload a valid government-issued ID for verification.</div>
+
+            <div class="rw-two-col">
+                <div class="rw-card">
+                    <h3 class="rw-card__title">Upload Valid ID</h3>
+                    <div class="rw-upload-area" onclick="document.getElementById('valid_id').click();">
+                        <i class="mdi mdi-cloud-upload-outline"></i>
+                        <p>Click to upload or drag and drop</p>
+                        <small>Accepted formats: JPG, PNG, PDF</small>
+                    </div>
+                    <input id="valid_id" name="valid_id" type="file" class="rw-input" accept="image/*,.pdf" style="display:none;" onchange="rwShowFileName(this)">
+                    <div id="rw-file-name" style="margin-top:8px;font-size:0.82rem;color:var(--rw-ink-soft);"></div>
+                </div>
+                <div class="rw-card">
+                    <h3 class="rw-card__title">Verification Note</h3>
+                    <div class="rw-info-box">
+                        <h6>The system will verify:</h6>
+                        <ul>
+                            <li>Full name</li>
+                            <li>Birthday</li>
+                            <li>Address and branch details</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rw-card" style="margin-top:16px;">
+                <h3 class="rw-card__title">Certification</h3>
+                <div style="display:flex;align-items:flex-start;gap:12px;">
+                    <input class="rw-input--check" type="checkbox" id="certify" name="certify" value="1" <?= old('certify') ? 'checked' : '' ?> required style="margin-top:4px;width:18px;height:18px;">
+                    <label for="certify" style="font-size:0.86rem;color:var(--rw-ink-soft);line-height:1.5;">
+                        This is to certify that the above information is <strong>TRUE AND CORRECT</strong> to the best of my knowledge.
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================================================================ -->
+        <!-- STEP 4: Initial Payment                                          -->
+        <!-- ================================================================ -->
+        <div class="rw-panel" data-rw-panel="4" style="display:none;">
+            <div class="rw-section-title">Step 4 — Initial Payment</div>
+            <div class="rw-section-sub">Submit your initial payment to activate your membership.</div>
+
+            <div class="rw-card">
+                <h3 class="rw-card__title">Payment Details</h3>
+                <div class="rw-form-row rw-form-row--3">
+                    <div class="rw-group">
+                        <label class="rw-label">Monthly Fee</label>
+                        <input class="rw-input" type="text" value="₱<?= number_format((float) ($program['monthly_fee'] ?? 240), 2) ?>" readonly>
+                    </div>
+                    <div class="rw-group">
+                        <label class="rw-label">Plan</label>
+                        <input class="rw-input" type="text" value="<?= esc((string) ($program['name'] ?? 'Damayan Burial Program')) ?>" readonly>
+                    </div>
+                    <div class="rw-group">
+                        <label class="rw-label">Status</label>
+                        <input class="rw-input" type="text" value="Pending Registration" readonly>
+                    </div>
+                </div>
+                <div class="rw-info-box" style="margin-top:12px;">
+                    <h6>What happens next?</h6>
+                    <p style="margin:0;">After submitting your registration, you will need to visit your branch office to make the initial payment. Once payment is verified, your membership will be activated.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== Navigation ====== -->
+        <div class="rw-nav">
+            <div class="rw-nav__left">
+                <button type="button" class="rw-btn rw-btn--outline rw-prev" style="display:none;" onclick="rwNav(-1)">
+                    <i class="mdi mdi-chevron-left"></i> Previous
+                </button>
+            </div>
+            <div class="rw-nav__right">
+                <button type="button" class="rw-btn rw-btn--primary rw-next" onclick="rwNav(1)">
+                    Next <i class="mdi mdi-chevron-right"></i>
+                </button>
+                <button type="submit" class="rw-btn rw-btn--primary rw-submit" style="display:none;">
+                    <i class="mdi mdi-check"></i> Submit Registration
+                </button>
+            </div>
+        </div>
+    </form>
 </div>
+
+<!-- ====== Scripts ====== -->
+<script>
+(function () {
+    'use strict';
+
+    var currentStep = 1;
+    var totalSteps = 4;
+
+    function showStep(step) {
+        currentStep = step;
+
+        /* Hide all panels */
+        document.querySelectorAll('[data-rw-panel]').forEach(function (p) {
+            p.style.display = 'none';
+        });
+
+        /* Show current panel */
+        var panel = document.querySelector('[data-rw-panel="' + step + '"]');
+        if (panel) panel.style.display = '';
+
+        /* Update step indicators */
+        document.querySelectorAll('.rw-step').forEach(function (s) {
+            var sStep = parseInt(s.getAttribute('data-rw-step'));
+            s.classList.remove('rw-step--active', 'rw-step--completed');
+            if (sStep === step) s.classList.add('rw-step--active');
+            else if (sStep < step) s.classList.add('rw-step--completed');
+        });
+
+        /* Update circle numbers for completed steps */
+        document.querySelectorAll('.rw-step--completed .rw-step__circle').forEach(function (c) {
+            c.innerHTML = '<i class="mdi mdi-check"></i>';
+        });
+        document.querySelectorAll('.rw-step:not(.rw-step--completed):not(.rw-step--active) .rw-step__circle').forEach(function (c) {
+            var sStep = parseInt(c.closest('.rw-step').getAttribute('data-rw-step'));
+            c.textContent = sStep;
+        });
+
+        /* Show/hide nav buttons */
+        var prevBtn = document.querySelector('.rw-prev');
+        var nextBtn = document.querySelector('.rw-next');
+        var submitBtn = document.querySelector('.rw-submit');
+
+        if (prevBtn) prevBtn.style.display = step === 1 ? 'none' : '';
+        if (nextBtn) nextBtn.style.display = step === totalSteps ? 'none' : '';
+        if (submitBtn) submitBtn.style.display = step === totalSteps ? '' : 'none';
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    window.rwNav = function (dir) {
+        if (dir === 1) {
+            /* Validate required fields in current step */
+            var reqFields = document.querySelectorAll('[data-rw-panel="' + currentStep + '"] [data-rw-req]');
+            for (var i = 0; i < reqFields.length; i++) {
+                if (!String(reqFields[i].value || '').trim()) {
+                    reqFields[i].focus();
+                    reqFields[i].style.borderColor = 'var(--rw-red)';
+                    setTimeout(function () { reqFields[i].style.borderColor = ''; }, 2000);
+                    return;
+                }
+            }
+
+            /* Validate step 2 has at least one beneficiary */
+            if (currentStep === 2) {
+                var benFields = document.querySelectorAll('input[name^="beneficiaries["]');
+                var hasEntry = false;
+                benFields.forEach(function (f) { if (String(f.value || '').trim()) hasEntry = true; });
+                if (!hasEntry) {
+                    alert('Please add at least one beneficiary before continuing.');
+                    return;
+                }
+            }
+
+            /* Validate step 3 certification */
+            if (currentStep === 3) {
+                var certify = document.getElementById('certify');
+                if (certify && !certify.checked) {
+                    alert('Please certify that the information is true and correct.');
+                    return;
+                }
+            }
+        }
+
+        var next = currentStep + dir;
+        if (next >= 1 && next <= totalSteps) {
+            showStep(next);
+        }
+    };
+
+    /* Show file name on upload */
+    window.rwShowFileName = function (input) {
+        var nameEl = document.getElementById('rw-file-name');
+        if (nameEl && input.files && input.files[0]) {
+            nameEl.textContent = 'Selected: ' + input.files[0].name;
+        }
+    };
+
+    /* Initialize step 1 */
+    showStep(1);
+
+    /* PSGC Address API */
+    async function loadProvinces() {
+        var el = document.getElementById('address_province');
+        if (!el || el.dataset.loaded === 'true') return;
+        el.innerHTML = '<option value="">Loading provinces...</option>';
+        try {
+            var r = await fetch('https://psgc.cloud/api/v2/provinces');
+            var j = await r.json();
+            var data = j.data || j;
+            el.innerHTML = '<option value="">Select Province</option>';
+            data.sort(function (a, b) { return a.name.localeCompare(b.name); });
+            data.forEach(function (item) {
+                var opt = document.createElement('option');
+                opt.value = item.name;
+                opt.dataset.code = item.code;
+                opt.textContent = item.name;
+                el.appendChild(opt);
+            });
+            el.dataset.loaded = 'true';
+            var init = el.getAttribute('data-initial-province') || '';
+            if (init) {
+                el.value = init;
+                var sel = el.options[el.selectedIndex];
+                if (sel && sel.dataset.code) loadCities(sel.dataset.code, true);
+            }
+        } catch (e) { el.innerHTML = '<option value="">Unable to load</option>'; }
+    }
+
+    async function loadCities(code, preserve) {
+        var cityEl = document.getElementById('address_city');
+        var brgyEl = document.getElementById('address_barangay');
+        var hiddenCode = document.getElementById('address_city_code');
+        if (!cityEl || !code) return;
+        try {
+            var r = await fetch('https://psgc.cloud/api/v2/provinces/' + encodeURIComponent(code) + '/cities-municipalities');
+            var j = await r.json();
+            var data = j.data || j;
+            cityEl.innerHTML = '<option value="">Select Town/City</option>';
+            data.sort(function (a, b) { return a.name.localeCompare(b.name); });
+            data.forEach(function (item) {
+                var opt = document.createElement('option');
+                opt.value = item.name;
+                opt.dataset.code = item.code;
+                opt.textContent = item.name;
+                cityEl.appendChild(opt);
+            });
+            if (preserve) {
+                var initCity = cityEl.getAttribute('data-initial-city') || '';
+                if (initCity) {
+                    cityEl.value = initCity;
+                    var sel = cityEl.options[cityEl.selectedIndex];
+                    if (sel && sel.dataset.code) loadBarangays(sel.dataset.code, true);
+                }
+            } else if (brgyEl) {
+                brgyEl.innerHTML = '<option value="">Select Town/City first</option>';
+            }
+            if (hiddenCode) hiddenCode.value = code;
+        } catch (e) { cityEl.innerHTML = '<option value="">Unable to load</option>'; }
+    }
+
+    async function loadBarangays(code, preserve) {
+        var brgyEl = document.getElementById('address_barangay');
+        if (!brgyEl || !code) return;
+        try {
+            var r = await fetch('https://psgc.cloud/api/v2/cities-municipalities/' + encodeURIComponent(code) + '/barangays');
+            var j = await r.json();
+            var data = j.data || j;
+            brgyEl.innerHTML = '<option value="">Select Barangay</option>';
+            data.sort(function (a, b) { return a.name.localeCompare(b.name); });
+            data.forEach(function (item) {
+                var opt = document.createElement('option');
+                opt.value = item.name;
+                opt.textContent = item.name;
+                brgyEl.appendChild(opt);
+            });
+            if (preserve) {
+                var initBrgy = brgyEl.getAttribute('data-initial-barangay') || '';
+                if (initBrgy) brgyEl.value = initBrgy;
+            }
+        } catch (e) { brgyEl.innerHTML = '<option value="">Unable to load</option>'; }
+    }
+
+    var provEl = document.getElementById('address_province');
+    if (provEl) {
+        provEl.addEventListener('click', loadProvinces);
+        provEl.addEventListener('focus', loadProvinces);
+        provEl.addEventListener('change', function () {
+            var sel = provEl.options[provEl.selectedIndex];
+            var code = (sel && sel.dataset.code) || '';
+            var hidden = document.getElementById('address_province_code');
+            if (code) { loadCities(code); if (hidden) hidden.value = code; }
+            else {
+                var c = document.getElementById('address_city');
+                var b = document.getElementById('address_barangay');
+                if (c) c.innerHTML = '<option value="">Select Province first</option>';
+                if (b) b.innerHTML = '<option value="">Select Town/City first</option>';
+            }
+        });
+    }
+
+    var cityEl = document.getElementById('address_city');
+    if (cityEl) {
+        cityEl.addEventListener('change', function () {
+            var sel = cityEl.options[cityEl.selectedIndex];
+            var code = (sel && sel.dataset.code) || '';
+            var hidden = document.getElementById('address_city_code');
+            if (code) { loadBarangays(code); if (hidden) hidden.value = code; }
+            else {
+                var b = document.getElementById('address_barangay');
+                if (b) b.innerHTML = '<option value="">Select Town/City first</option>';
+            }
+        });
+    }
+
+    /* Auto-calculate age */
+    var dobEl = document.getElementById('date_of_birth');
+    var ageEl = document.getElementById('age');
+    if (dobEl && ageEl) {
+        function calcAge() {
+            var d = new Date(dobEl.value);
+            if (isNaN(d)) { ageEl.value = ''; return; }
+            var now = new Date();
+            var a = now.getFullYear() - d.getFullYear();
+            if (now.getMonth() < d.getMonth() || (now.getMonth() === d.getMonth() && now.getDate() < d.getDate())) a--;
+            ageEl.value = a >= 0 ? a : '';
+        }
+        if (dobEl.value) calcAge();
+        dobEl.addEventListener('change', calcAge);
+    }
+})();
+</script>
 <?= $this->endSection() ?>

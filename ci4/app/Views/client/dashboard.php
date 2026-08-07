@@ -69,7 +69,7 @@
         <div class="bd-quick-actions">
             <h3 class="bd-quick-actions__title">Quick Actions</h3>
             <div class="bd-quick-actions__list">
-                <a href="<?= base_url('initial-payment') ?>" class="bd-qa-btn">
+                <a href="<?= base_url('client/payment/advance') ?>" class="bd-qa-btn">
                     <i class="mdi mdi-credit-card-check"></i> Make Payment
                 </a>
                 <a href="<?= base_url('client/payment') ?>" class="bd-qa-btn">
