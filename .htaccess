@@ -1,0 +1,4 @@
+RewriteEngine On
+
+RewriteRule ^$ ci4/public/ [L]
+RewriteRule ^(.*)$ ci4/public/$1 [L]
