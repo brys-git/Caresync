@@ -56,6 +56,8 @@
                                onfocus="prShowDropdown('pr-dropdown-regular')"
                                autocomplete="off">
                         <input type="hidden" name="client_name" id="pr-client-id-regular">
+                        <input type="hidden" name="plan_holder_id" id="pr-plan-holder-id-regular">
+                        <input type="hidden" name="unique_identifier" id="pr-unique-id-regular">
                         <div class="pr-search-dropdown" id="pr-dropdown-regular"></div>
                     </div>
                     <button type="button" class="pr-add-client" onclick="window.location.href='<?= site_url('staff/client-management/register') ?>'">
@@ -117,6 +119,8 @@
                                onfocus="prShowDropdown('pr-dropdown-initial')"
                                autocomplete="off">
                         <input type="hidden" name="client_name" id="pr-client-id-initial">
+                        <input type="hidden" name="plan_holder_id" id="pr-plan-holder-id-initial">
+                        <input type="hidden" name="unique_identifier" id="pr-unique-id-initial">
                         <div class="pr-search-dropdown" id="pr-dropdown-initial"></div>
                     </div>
                     <button type="button" class="pr-add-client" onclick="window.location.href='<?= site_url('staff/client-management/register') ?>'">
@@ -300,6 +304,20 @@
 
         input.value = name;
         hidden.value = name;
+
+        // Also set plan_holder_id and unique_identifier
+        var isInitial = dropdownId.indexOf('initial') !== -1;
+        var selectedClient = clientsData.find(function(c) {
+            return ((c.first_name || '') + ' ' + (c.last_name || '')) === name;
+        });
+
+        if (selectedClient) {
+            var planHolderIdField = document.getElementById(isInitial ? 'pr-plan-holder-id-initial' : 'pr-plan-holder-id-regular');
+            var uniqueIdField = document.getElementById(isInitial ? 'pr-unique-id-initial' : 'pr-unique-id-regular');
+            if (planHolderIdField) planHolderIdField.value = selectedClient.plan_holder_id || '';
+            if (uniqueIdField) uniqueIdField.value = selectedClient.unique_identifier || '';
+        }
+
         dropdown.classList.remove('show');
     };
 

@@ -1099,6 +1099,7 @@ class PaymentTracking extends BaseController
         $clientName = trim((string) $this->request->getPost('client_name'));
         $monthsCovered = max(1, (int) $this->request->getPost('months_covered'));
         $receiptNumber = trim((string) $this->request->getPost('receipt_number'));
+        $planHolderId = (int) $this->request->getPost('plan_holder_id');
         $paymentType = strtolower(trim((string) $this->request->getPost('payment_type')));
         $program = \App\Services\MembershipService::getProgramInfo();
         $monthlyFee = (float) ($program['monthly_fee'] ?? 240.0);
@@ -1109,6 +1110,13 @@ class PaymentTracking extends BaseController
                 ->with('error', 'Client name and receipt number are required.');
         }
 
+        if ($planHolderId <= 0) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Please select a valid client from the dropdown.');
+        }
+
+        // Check if receipt already exists in cash_payment_records
         $existing = db_connect()->table('cash_payment_records')
             ->where('receipt_number', $receiptNumber)
             ->get()
@@ -1120,9 +1128,38 @@ class PaymentTracking extends BaseController
                 ->with('error', 'This receipt number already exists. Receipt: ' . esc($receiptNumber));
         }
 
+        // Also check if receipt already exists in payments table (for sync)
+        $existingPayment = db_connect()->table('payments')
+            ->where('official_receipt_number', $receiptNumber)
+            ->get()
+            ->getRowArray();
+
+        if ($existingPayment) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'This receipt number already exists in payment records. Receipt: ' . esc($receiptNumber));
+        }
+
+        // Find the plan for this plan holder
+        $plan = db_connect()->table('plans')
+            ->select('plan_id, plan_holder_id, monthly_fee, status')
+            ->where('plan_holder_id', $planHolderId)
+            ->orderBy('plan_id', 'DESC')
+            ->limit(1)
+            ->get()
+            ->getRowArray();
+
+        if (!$plan) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'No active plan found for this client. Please ensure the client has a registered plan.');
+        }
+
+        // Record the cash payment (advance payments apply the tiered discount).
         $db = db_connect();
-        // Advance payments apply the tiered discount.
         $amount = \App\Services\PaymentService::advanceTotal($monthlyFee, $monthsCovered);
+
+        // 1. Save to cash_payment_records table (legacy)
         $paymentData = [
             'branch_id' => $branchId,
             'client_name' => $clientName,
@@ -1135,17 +1172,90 @@ class PaymentTracking extends BaseController
             'created_at' => date('Y-m-d H:i:s'),
         ];
 
+        log_message('debug', '[StaffCashPaymentSave] Inserting to cash_payment_records: branch=' . $branchId . ' receipt=' . $receiptNumber);
+
         $inserted = $db->table('cash_payment_records')->insert($paymentData);
 
-        if (! $inserted) {
+        if (!$inserted) {
+            $error = $db->error();
+            log_message('error', '[StaffCashPaymentSave] cash_payment_records insert failed: ' . json_encode($error));
             return redirect()->back()
                 ->withInput()
-                ->with('error', 'Failed to record payment.');
+                ->with('error', 'Failed to record payment. Error: ' . (isset($error['message']) ? $error['message'] : 'Unknown error'));
         }
+
+        // 2. Also save to payments table for client verification sync
+        // For staff (role 3), status is 'pending' (needs branch admin approval)
+        $paymentDataPayments = [
+            'plan_id' => (int) $plan['plan_id'],
+            'amount' => $amount,
+            'months_covered' => $monthsCovered,
+            'payment_date' => date('Y-m-d'),
+            'payment_method' => 'cash',
+            'reference_number' => $receiptNumber,
+            'official_receipt_number' => $receiptNumber,
+            'received_by' => (int) session('user_id'),
+            'branch_id' => $branchId,
+            'status' => 'pending',  // Staff records are pending approval
+            'remarks' => 'Recorded by staff, pending branch verification',
+            'payment_type' => $paymentType === 'initial' ? 'initial_registration' : 'monthly_contribution',
+        ];
+
+        // Filter to only include columns that exist in the payments table
+        $paymentModel = new \App\Models\PaymentModel();
+        $paymentFields = $db->getFieldNames('payments');
+        $paymentDataPayments = array_intersect_key($paymentDataPayments, array_flip($paymentFields));
+
+        log_message('debug', '[StaffCashPaymentSave] Inserting to payments table: plan_id=' . $plan['plan_id'] . ' receipt=' . $receiptNumber);
+
+        $paymentId = (int) $paymentModel->insert($paymentDataPayments, true);
+
+        if ($paymentId <= 0) {
+            // Rollback cash_payment_records if payments insert fails
+            $db->table('cash_payment_records')->where('receipt_number', $receiptNumber)->delete();
+            log_message('error', '[StaffCashPaymentSave] payments table insert failed, rolled back cash_payment_records');
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Failed to record payment in payment system.');
+        }
+
+        log_message('debug', '[StaffCashPaymentSave] Success: receipt=' . $receiptNumber . ' for ' . $clientName . ' (payment_id=' . $paymentId . ')');
+
+        // Send notification to client
+        $holder = db_connect()->table('plan_holders')
+            ->select('user_id')
+            ->where('plan_holder_id', $planHolderId)
+            ->get()
+            ->getRowArray();
+
+        if (isset($holder['user_id']) && $holder['user_id'] > 0) {
+            (new \App\Services\NotificationService())->notify(
+                (int) $holder['user_id'],
+                'Cash payment of PHP ' . number_format($amount, 2) . ' recorded for ' . $monthsCovered . ' month(s). Receipt: ' . esc($receiptNumber) . '. Pending branch verification.',
+                'payment_pending'
+            );
+        }
+
+        // Log activity
+        (new \App\Services\ActivityLogService())->log(
+            (int) session('user_id'),
+            'created',
+            'payment',
+            $paymentId,
+            'Recorded cash payment for plan #' . (int) $plan['plan_id'],
+            null,
+            [
+                'plan_id' => (int) $plan['plan_id'],
+                'amount' => $amount,
+                'payment_method' => 'cash',
+                'status' => 'pending',
+                'receipt_number' => $receiptNumber,
+            ]
+        );
 
         $label = $paymentType === 'initial' ? 'Initial payment' : 'Payment';
 
         return redirect()->to('/staff/record-payment')
-            ->with('success', ucfirst($label) . ' recorded. Receipt: ' . esc($receiptNumber) . ' for ' . esc($clientName));
+            ->with('success', ucfirst($label) . ' recorded. Receipt: ' . esc($receiptNumber) . ' for ' . esc($clientName) . ' (pending branch verification)');
     }
 }

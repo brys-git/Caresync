@@ -412,6 +412,57 @@
   color: var(--pr-border);
 }
 
+/* --------------------------------------------------------- Form Actions --- */
+.pr-form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--pr-border);
+}
+
+.pr-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+  padding: 12px 24px;
+  border-radius: var(--pr-radius-sm);
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.pr-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pr-btn--primary {
+  background: var(--pr-teal);
+  border-color: var(--pr-teal);
+  color: #fff;
+}
+
+.pr-btn--primary:hover:not(:disabled) {
+  background: var(--pr-teal-hover);
+  border-color: var(--pr-teal-hover);
+}
+
+.pr-btn--secondary {
+  background: var(--pr-surface);
+  border-color: var(--pr-border);
+  color: var(--pr-ink);
+}
+
+.pr-btn--secondary:hover:not(:disabled) {
+  background: var(--pr-bg);
+  border-color: var(--pr-ink-faint);
+}
+
 /* --------------------------------------------------------- Responsive --- */
 @media (max-width: 992px) {
   .pr-form-grid { grid-template-columns: 1fr; }
@@ -419,4 +470,6 @@
 
 @media (max-width: 640px) {
   .pr-form-grid { grid-template-columns: 1fr; }
+  .pr-form-actions { flex-direction: column; }
+  .pr-btn { width: 100%; justify-content: center; }
 }

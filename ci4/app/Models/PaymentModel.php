@@ -25,5 +25,6 @@ class PaymentModel extends Model
         'branch_id',
         'remarks',
         'status',
+        'payment_type',
     ];
 }

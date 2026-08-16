@@ -5,7 +5,8 @@
 
 <?php
     $monthlyFee = (float) ($monthly_fee ?? 240.0);
-    $clientsJson = json_encode($clients ?? []);
+    $initialClientsJson = json_encode($initial_clients ?? []);
+    $regularClientsJson = json_encode($regular_clients ?? []);
 ?>
 
 <div class="pr">
@@ -48,7 +49,7 @@
                 <!-- Client Search -->
                 <div class="pr-form-card pr-form-card--highlight">
                     <div class="pr-form-label">Client <span>*</span></div>
-                    <div class="pr-form-hint">Smart Client Search</div>
+                    <div class="pr-form-hint">Search registered Damayan members</div>
                     <div class="pr-search-wrap">
                         <input type="text" class="pr-search-input" id="pr-search-regular"
                                placeholder="Start typing client name..."
@@ -56,6 +57,8 @@
                                onfocus="prShowDropdown('pr-dropdown-regular')"
                                autocomplete="off">
                         <input type="hidden" name="client_name" id="pr-client-id-regular">
+                        <input type="hidden" name="plan_holder_id" id="pr-plan-holder-id-regular">
+                        <input type="hidden" name="unique_identifier" id="pr-unique-id-regular">
                         <div class="pr-search-dropdown" id="pr-dropdown-regular"></div>
                     </div>
                     <button type="button" class="pr-add-client" onclick="window.location.href='<?= site_url('branch-admin/client-management/register') ?>'">
@@ -95,6 +98,16 @@
                     <input type="text" class="pr-input" name="receipt_number" placeholder="" value="<?= esc(old('receipt_number')) ?>" required>
                 </div>
             </div>
+
+            <!-- Save Button -->
+            <div class="pr-form-actions">
+                <button type="submit" class="pr-btn pr-btn--primary">
+                    <i class="mdi mdi-content-save"></i> Save Payment Record
+                </button>
+                <button type="button" class="pr-btn pr-btn--secondary" onclick="prResetForm('regular')">
+                    <i class="mdi mdi-refresh"></i> Reset
+                </button>
+            </div>
         </form>
     </div>
 
@@ -109,7 +122,7 @@
             <div class="pr-form-grid">
                 <div class="pr-form-card pr-form-card--highlight">
                     <div class="pr-form-label">Client <span>*</span></div>
-                    <div class="pr-form-hint">Smart Client Search</div>
+                    <div class="pr-form-hint">Search clients with pending verification</div>
                     <div class="pr-search-wrap">
                         <input type="text" class="pr-search-input" id="pr-search-initial"
                                placeholder="Start typing client name..."
@@ -117,6 +130,8 @@
                                onfocus="prShowDropdown('pr-dropdown-initial')"
                                autocomplete="off">
                         <input type="hidden" name="client_name" id="pr-client-id-initial">
+                        <input type="hidden" name="plan_holder_id" id="pr-plan-holder-id-initial">
+                        <input type="hidden" name="unique_identifier" id="pr-unique-id-initial">
                         <div class="pr-search-dropdown" id="pr-dropdown-initial"></div>
                     </div>
                     <button type="button" class="pr-add-client" onclick="window.location.href='<?= site_url('branch-admin/client-management/register') ?>'">
@@ -153,6 +168,16 @@
                     <div class="pr-form-hint">Official Receipt Number</div>
                     <input type="text" class="pr-input" name="receipt_number" value="<?= esc(old('receipt_number')) ?>" required>
                 </div>
+            </div>
+
+            <!-- Save Button -->
+            <div class="pr-form-actions">
+                <button type="submit" class="pr-btn pr-btn--primary">
+                    <i class="mdi mdi-content-save"></i> Save Payment Record
+                </button>
+                <button type="button" class="pr-btn pr-btn--secondary" onclick="prResetForm('initial')">
+                    <i class="mdi mdi-refresh"></i> Reset
+                </button>
             </div>
         </form>
     </div>
@@ -225,7 +250,8 @@
 (function () {
     'use strict';
 
-    var clientsData = <?= $clientsJson ?>;
+    var initialClientsData = <?= $initialClientsJson ?>;
+    var regularClientsData = <?= $regularClientsJson ?>;
     var monthlyFee = <?= json_encode($monthlyFee) ?>;
     // Same source of truth as the server (PaymentService::ADVANCE_DISCOUNTS).
     var discountSchedule = <?= json_encode(\App\Services\PaymentService::ADVANCE_DISCOUNTS) ?>;
@@ -262,6 +288,10 @@
         var hidden = document.getElementById(hiddenId);
         var query = input.value.toLowerCase().trim();
 
+        // Determine which client list to use based on the form prefix
+        var isInitial = dropdownId.indexOf('initial') !== -1;
+        var clientsData = isInitial ? initialClientsData : regularClientsData;
+
         if (query.length < 1) {
             dropdown.classList.remove('show');
             hidden.value = '';
@@ -281,9 +311,9 @@
 
         dropdown.innerHTML = matches.map(function (c) {
             var name = (c.first_name || '') + ' ' + (c.last_name || '');
-            var status = (c.plan_holder_status || 'inactive').toLowerCase();
-            var tagClass = status === 'active' ? 'verified' : 'pending';
-            var tagLabel = status === 'active' ? 'Verified' : 'Pending';
+            var status = (c.account_status || 'pending').toLowerCase();
+            var tagClass = status === 'verified' ? 'verified' : 'pending';
+            var tagLabel = status === 'verified' ? 'Verified' : 'Pending';
             return '<div class="pr-search-item" onclick="prSelectClient(\'' + dropdownId + '\', \'' + hiddenId + '\', \'' + name.replace(/'/g, "\\'") + '\')">' +
                 '<span>' + name + '</span>' +
                 '<span class="pr-search-tag pr-search-tag--' + tagClass + '">[' + tagLabel + ']</span>' +
@@ -300,6 +330,21 @@
 
         input.value = name;
         hidden.value = name;
+
+        // Also set plan_holder_id and unique_identifier
+        var isInitial = dropdownId.indexOf('initial') !== -1;
+        var clientsData = isInitial ? initialClientsData : regularClientsData;
+        var selectedClient = clientsData.find(function(c) {
+            return ((c.first_name || '') + ' ' + (c.last_name || '')) === name;
+        });
+
+        if (selectedClient) {
+            var planHolderIdField = document.getElementById(isInitial ? 'pr-plan-holder-id-initial' : 'pr-plan-holder-id-regular');
+            var uniqueIdField = document.getElementById(isInitial ? 'pr-unique-id-initial' : 'pr-unique-id-regular');
+            if (planHolderIdField) planHolderIdField.value = selectedClient.plan_holder_id || '';
+            if (uniqueIdField) uniqueIdField.value = selectedClient.unique_identifier || '';
+        }
+
         dropdown.classList.remove('show');
     };
 
@@ -329,6 +374,32 @@
             }
         });
     });
+
+    /* Form reset */
+    window.prResetForm = function (prefix) {
+        var form = document.getElementById('pr-form-' + prefix);
+        if (!form) return;
+
+        // Reset search input
+        var searchInput = document.getElementById('pr-search-' + prefix);
+        var hiddenInput = document.getElementById('pr-client-id-' + prefix);
+        var dropdown = document.getElementById('pr-dropdown-' + prefix);
+
+        if (searchInput) searchInput.value = '';
+        if (hiddenInput) hiddenInput.value = '';
+        if (dropdown) dropdown.classList.remove('show');
+
+        // Reset months covered to 1
+        var monthsSelect = document.getElementById('pr-months-' + prefix);
+        if (monthsSelect) monthsSelect.value = '1';
+
+        // Reset receipt number
+        var receiptInput = form.querySelector('input[name="receipt_number"]');
+        if (receiptInput) receiptInput.value = '';
+
+        // Update calculation display
+        window.prUpdateCalc(prefix);
+    };
 })();
 </script>
 <?= $this->endSection() ?>
