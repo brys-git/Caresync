@@ -492,16 +492,22 @@ class ClientRegistrationController extends BaseController
             throw new \RuntimeException('The ID image must be 2MB or smaller.');
         }
         $mime = strtolower((string) $file->getMimeType());
-        if (! in_array($mime, ['image/jpeg', 'image/png', 'image/jpg'], true)) {
-            throw new \RuntimeException('Only JPG or PNG images are accepted for the ID. Please upload a photo of your ID.');
+        $allowedMimes = [
+            'image/jpeg', 'image/jpg', 'image/png',
+            'image/webp', 'image/heic', 'image/heif',
+            'image/tiff', 'image/bmp', 'image/gif'
+        ];
+        if (! in_array($mime, $allowedMimes, true)) {
+            throw new \RuntimeException('Unsupported image format. Please upload JPG, PNG, WebP, HEIC, TIFF, BMP, or GIF.');
         }
         $imageInfo = @getimagesize($file->getTempName());
         if (! $imageInfo || $imageInfo[0] <= 0 || $imageInfo[1] <= 0) {
             throw new \RuntimeException('The uploaded file is not a valid image. Please upload a clear photo of your ID.');
         }
         $extension = strtolower((string) ($file->getClientExtension() ?: 'jpg'));
-        if (! in_array($extension, ['jpg', 'jpeg', 'png'], true)) {
-            throw new \RuntimeException('Only JPG or PNG images are accepted for the ID.');
+        $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif', 'tiff', 'tif', 'bmp', 'gif'];
+        if (! in_array($extension, $allowedExtensions, true)) {
+            throw new \RuntimeException('Unsupported image format. Please use JPG, PNG, WebP, HEIC, TIFF, BMP, or GIF.');
         }
 
         // Level 1 — supported ID type + non-empty, plausible ID number.

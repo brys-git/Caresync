@@ -407,9 +407,9 @@ $approvalsUrl = (string) ($approvals_url ?? '');
                     <div class="rw-upload-area" onclick="document.getElementById('valid_id').click();">
                         <i class="mdi mdi-cloud-upload-outline"></i>
                         <p>Click to upload or drag and drop</p>
-                        <small>Accepted formats: JPG, PNG (max 2MB)</small>
+                        <small>Accepted formats: JPG, PNG, WebP, HEIC, TIFF, BMP, GIF (max 2MB)</small>
                     </div>
-                    <input id="valid_id" name="valid_id" type="file" class="rw-input" accept="image/jpeg,image/png,image/*" style="display:none;" onchange="rwStartIdScan(this)">
+                    <input id="valid_id" name="valid_id" type="file" class="rw-input" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/tiff,image/bmp,image/gif" style="display:none;" onchange="rwStartIdScan(this)">
                     <div id="rw-file-name" style="margin-top:8px;font-size:0.82rem;color:var(--rw-ink-soft);"></div>
                     <input type="hidden" name="ocr_text" id="ocr_text" value="">
                     <div id="rw-ocr-status" class="rw-ocr-status" style="display:none;"></div>
