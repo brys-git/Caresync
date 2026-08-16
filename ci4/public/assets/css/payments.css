@@ -457,3 +457,48 @@
   .pm-filter-group { flex: 1 1 100%; min-width: unset; }
   .pm-filter-actions { margin-left: 0; flex-wrap: wrap; }
 }
+
+/* ------------------------------------------------------- Tabs (payments) --- */
+.pm-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.pm-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  background: var(--pm-surface, #fff);
+  border: 1px solid var(--pm-border, #e2e8f0);
+  color: var(--pm-ink-soft, #64748b);
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.pm-tab:hover { color: var(--pm-blue, #1e3a5f); border-color: var(--pm-blue, #1e3a5f); }
+
+.pm-tab--active {
+  background: var(--pm-blue, #1e3a5f);
+  border-color: var(--pm-blue, #1e3a5f);
+  color: #fff;
+}
+
+.pm-tab__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--pm-blue, #1e3a5f);
+  font-size: 0.7rem;
+  font-weight: 700;
+}

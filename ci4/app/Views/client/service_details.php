@@ -28,7 +28,7 @@
     </div>
 
     <div class="mt-3">
-            <?php if ($state === 'approved'): ?>
+            <?php if (in_array($state, ['approved', 'active'], true)): ?>
             <a class="btn btn-primary" href="<?= site_url('/client/apply-service/' . (int) ($service['service_list_id'] ?? 0)) ?>">Apply for Service</a>
         <?php elseif ($state === 'pending'): ?>
             <div class="alert alert-warning">Approval required before requesting services.</div>

@@ -61,8 +61,35 @@ abstract class BaseController extends Controller
         if ($value === '') {
             return null;
         }
-        
+
         $decimal = (float) $value;
         return $decimal === 0.0 ? null : $decimal;
+    }
+
+    /**
+     * Helper method: Get a nullable integer POST value (returns null if empty)
+     */
+    protected function nullableIntPost(string $key): ?int
+    {
+        $value = trim((string) $this->request->getPost($key, ''));
+        if ($value === '') {
+            return null;
+        }
+        return (int) $value;
+    }
+
+    /**
+     * Keep only columns that exist in the target table.
+     */
+    protected function filterTableData(string $table, array $data): array
+    {
+        $db = db_connect();
+        $fields = $db->getFieldNames($table);
+
+        if (empty($fields)) {
+            return $data;
+        }
+
+        return array_intersect_key($data, array_flip($fields));
     }
 }

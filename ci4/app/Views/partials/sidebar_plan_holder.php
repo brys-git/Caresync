@@ -40,8 +40,8 @@
       </a>
       <div class="collapse" id="client-services">
         <ul class="nav flex-column sub-menu">
-          <li class="nav-item"><a class="nav-link" href="<?= base_url('client/service') ?>">Packages</a></li>
-          <li class="nav-item"><a class="nav-link" href="<?= base_url('client/service') ?>">Services</a></li>
+          <li class="nav-item"><a class="nav-link" href="<?= base_url('client/service?tab=packages') ?>">Packages</a></li>
+          <li class="nav-item"><a class="nav-link" href="<?= base_url('client/service?tab=services') ?>">Services</a></li>
         </ul>
       </div>
     </li>

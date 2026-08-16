@@ -19,7 +19,7 @@
             <div class="col-lg-6 mx-auto">
               <div class="auth-form-light text-center p-5">
                 <div class="brand-logo mb-4">
-                  <img src="<?= base_url('purpleadmin/assets/images/logo.svg') ?>" alt="logo">
+                  <img src="<?= base_url('purpleadmin/assets/images/logo.svg?v=2') ?>" alt="logo">
                 </div>
                 <h3 class="font-weight-bold mb-3">Access Denied</h3>
                 <p class="text-muted mb-4">You do not have permission to access this page.</p>

@@ -16,6 +16,7 @@ $routes->group('client', ['filter' => 'auth'], static function (RouteCollection 
 
     // Profile Management
     $routes->get('profile', 'Client\ClientProfileController::profile', ['filter' => 'role:4']);
+    $routes->get('profile/edit', 'Client\ClientProfileController::editProfile', ['filter' => 'role:4']);
     $routes->post('profile/update', 'Client\ClientProfileController::updateProfile', ['filter' => 'role:4']);
     $routes->get('profile/change-password', 'Client\ClientProfileController::changePassword', ['filter' => 'role:4']);
     $routes->post('profile/update-password', 'Client\ClientProfileController::updatePassword', ['filter' => 'role:4']);
@@ -37,6 +38,11 @@ $routes->group('client', ['filter' => 'auth'], static function (RouteCollection 
     $routes->get('service/(:num)', 'Client\ClientServiceController::serviceDetails/$1', ['filter' => 'role:4']);
     $routes->get('package/(:num)', 'Client\ClientServiceController::packageDetails/$1', ['filter' => 'role:4']);
 
+    // Dedicated Detail Pages (SEO-friendly routes)
+    $routes->get('services/balik-probinsya', 'Client\ClientServiceController::balikProbinsyaDetail', ['filter' => 'role:4']);
+    $routes->get('packages/wood-casket', 'Client\ClientServiceController::woodCasketDetail', ['filter' => 'role:4']);
+    $routes->get('packages/metal-casket', 'Client\ClientServiceController::metalCasketDetail', ['filter' => 'role:4']);
+
     // Redirect legacy URLs to canonical routes (301 Permanent)
     $routes->addRedirect('service/apply/service/(:any)', 'apply-service/$1', 301);
 
@@ -45,6 +51,8 @@ $routes->group('client', ['filter' => 'auth'], static function (RouteCollection 
     // Service Applications
     $routes->get('apply-service/(:num)', 'Client\ClientServiceController::applyServiceForm/$1', ['filter' => 'role:4']);
     $routes->post('apply-service/(:num)', 'Client\ClientServiceController::submitServiceApplication/$1', ['filter' => 'role:4']);
+    $routes->get('apply-balik-probinsya/(:num)', 'Client\ClientServiceController::applyBalikProbinsyaForm/$1', ['filter' => 'role:4']);
+    $routes->post('apply-balik-probinsya/(:num)', 'Client\ClientServiceController::submitBalikProbinsyaApplication/$1', ['filter' => 'role:4']);
     $routes->get('apply-package/(:num)', 'Client\ClientServiceController::applyPackageForm/$1', ['filter' => 'role:4']);
     $routes->post('apply-package/(:num)', 'Client\ClientServiceController::submitPackageApplication/$1', ['filter' => 'role:4']);
 

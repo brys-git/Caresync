@@ -44,6 +44,28 @@ class ClientProfileController extends BaseController
     }
 
     /**
+     * Display client profile in edit mode
+     */
+    public function editProfile(): ResponseInterface|string
+    {
+        try {
+            $access = $this->resolveAccessState();
+        } catch (\RuntimeException $e) {
+            return redirect()->to('/signin')->with('error', 'Session expired. Please log in again.');
+        }
+        $user = $access['user'];
+        $planHolder = $access['plan_holder'];
+
+        return view('client/profile', [
+            'role_layout' => 'layouts/plan_holder',
+            'user' => $user,
+            'plan_holder' => $planHolder,
+            'access' => $access,
+            'edit_mode' => true,
+        ]);
+    }
+
+    /**
      * Update client profile information
      */
     public function updateProfile()

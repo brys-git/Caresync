@@ -174,7 +174,7 @@ class ClientService
             ->select("s.service_id, COALESCE(sl.service_name, '-') AS service_type, s.service_date, s.status, s.total_cost, COALESCE(sc.cost_entries, 0) AS cost_entries, COALESCE(ao.add_on_entries, 0) AS add_on_entries", false)
             ->join('service_list sl', 'sl.service_list_id = s.service_list_id', 'left')
             ->join('(SELECT service_id, COUNT(*) AS cost_entries FROM service_costs GROUP BY service_id) sc', 'sc.service_id = s.service_id', 'left', false)
-            ->join('(SELECT service_id, COUNT(*) AS add_on_entries FROM add_ons GROUP BY service_id) ao', 'ao.service_id = s.service_id', 'left', false)
+            ->join('(SELECT service_id, COUNT(*) AS add_on_entries FROM service_add_ons GROUP BY service_id) ao', 'ao.service_id = s.service_id', 'left', false)
             ->where('s.plan_holder_id', $planHolderId)
             ->orderBy('s.service_date', 'DESC')
             ->orderBy('s.service_id', 'DESC')

@@ -2,12 +2,14 @@
 
 namespace App\Config;
 
+use App\Services\IdVerificationService;
+
 /**
  * ValidationRules Configuration
- * 
+ *
  * Centralized validation rules used across controllers
  * to avoid duplication and maintain consistency
- * 
+ *
  * Usage:
  * $rules = ValidationRules::getProfileRules();
  * if (! $this->validate($rules)) { ... }
@@ -41,17 +43,33 @@ class ValidationRules
 
     /**
      * Plan Registration Rules
+     *
+     * Step 1 (Applicant) + Step 3 (Government ID). The spouse/beneficiary
+     * conditional rules are applied in the controller (spouse depends on
+     * civil_status; beneficiaries are array rows).
      */
     public static function getPlanRegistrationRules(): array
     {
         return [
+            // Applicant identity
+            'last_name' => 'required|max_length[50]',
+            'first_name' => 'required|max_length[50]',
+            'email' => 'required|valid_email|max_length[100]',
+            'gender' => 'required|in_list[Male,Female,Other]',
+            'date_of_birth' => 'required|valid_date[Y-m-d]',
+            'civil_status' => 'required|in_list[Single,Married,Divorced,Widowed]',
             'contact_number' => 'required|regex_match[/^[0-9+\-()\s]+$/]|min_length[10]|max_length[20]',
             'address_barangay' => 'required|max_length[100]',
             'address_city' => 'required|max_length[100]',
-            'civil_status' => 'permit_empty|in_list[Single,Married,Divorced,Widowed]',
             'citizenship' => 'permit_empty|max_length[50]',
+            'application_date' => 'required|valid_date[Y-m-d]',
+            'coordinator_user_id' => 'required|is_natural_no_zero',
             'branch_id' => 'required|numeric',
             'package_id' => 'required|numeric',
+
+            // Government ID (Level 1)
+            'id_type' => 'required|in_list[' . implode(',', IdVerificationService::supportedIdKeys()) . ']',
+            'id_number' => 'required|max_length[100]',
         ];
     }
 
@@ -118,6 +136,12 @@ class ValidationRules
     public static function getValidationMessages(): array
     {
         return [
+            'last_name' => [
+                'required' => 'Last name is required',
+            ],
+            'first_name' => [
+                'required' => 'Given name is required',
+            ],
             'contact_number' => [
                 'required' => 'Contact number is required',
                 'regex_match' => 'Contact number contains invalid characters',
@@ -127,6 +151,35 @@ class ValidationRules
                 'required' => 'Email address is required',
                 'valid_email' => 'Please enter a valid email address',
                 'is_unique' => 'Email is already registered in the system',
+            ],
+            'gender' => [
+                'required' => 'Gender is required',
+                'in_list' => 'Invalid gender selection',
+            ],
+            'date_of_birth' => [
+                'required' => 'Date of birth is required',
+                'valid_date' => 'Please enter a valid date of birth',
+            ],
+            'application_date' => [
+                'required' => 'Date of application is required',
+                'valid_date' => 'Please enter a valid application date',
+            ],
+            'coordinator_user_id' => [
+                'required' => 'Please select your coordinator',
+                'is_natural_no_zero' => 'Please select a valid coordinator',
+            ],
+            'spouse_first_name' => [
+                'required' => 'Spouse given name is required when civil status is Married',
+            ],
+            'spouse_last_name' => [
+                'required' => 'Spouse last name is required when civil status is Married',
+            ],
+            'id_type' => [
+                'required' => 'Please select the government ID type',
+                'in_list' => 'Unsupported government ID type',
+            ],
+            'id_number' => [
+                'required' => 'ID number is required',
             ],
             'package_id' => [
                 'required' => 'Please select a package',

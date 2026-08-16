@@ -45,13 +45,15 @@ class CashPaymentController extends BaseController
             ->get()
             ->getResultArray();
 
+        $program = \App\Services\MembershipService::getProgramInfo();
+
         return view('branch_admin/cash_payment_record', [
             'branch_id' => $branch_id,
             'role_layout' => 'layouts/branch_admin',
             'page_title' => null,
             'clients' => $clients,
             'approval_queue' => $approvalQueue,
-            'monthly_fee' => 240.0,
+            'monthly_fee' => (float) ($program['monthly_fee'] ?? 240.0),
         ]);
     }
 
@@ -69,7 +71,8 @@ class CashPaymentController extends BaseController
         $monthsCovered = max(1, (int) $this->request->getPost('months_covered'));
         $receiptNumber = trim((string) $this->request->getPost('receipt_number'));
         $paymentType = strtolower(trim((string) $this->request->getPost('payment_type')));
-        $monthlyFee = 240.0; // Hardcoded for now, could be dynamic
+        $program = \App\Services\MembershipService::getProgramInfo();
+        $monthlyFee = (float) ($program['monthly_fee'] ?? 240.0);
 
         if (empty($clientName) || empty($receiptNumber)) {
             return redirect()->back()
@@ -89,9 +92,9 @@ class CashPaymentController extends BaseController
                 ->with('error', 'This receipt number already exists. Receipt: ' . esc($receiptNumber));
         }
 
-        // Record the cash payment
+        // Record the cash payment (advance payments apply the tiered discount).
         $db = db_connect();
-        $amount = $monthlyFee * $monthsCovered;
+        $amount = \App\Services\PaymentService::advanceTotal($monthlyFee, $monthsCovered);
         $paymentData = [
             'branch_id' => $branch_id,
             'client_name' => $clientName,

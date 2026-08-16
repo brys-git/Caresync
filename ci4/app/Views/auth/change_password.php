@@ -19,7 +19,7 @@
             <div class="col-lg-8 mx-auto">
               <div class="auth-form-light text-left p-5">
                 <div class="brand-logo text-center mb-4">
-                  <img src="<?= base_url('purpleadmin/assets/images/logo.svg') ?>" alt="logo">
+                  <img src="<?= base_url('purpleadmin/assets/images/logo.svg?v=2') ?>" alt="logo">
                 </div>
                 <h4>Change Your Password</h4>
                 <h6 class="font-weight-light">Set a strong password before continuing.</h6>

@@ -7,6 +7,57 @@ use App\Services\MembershipService;
 
 class PaymentService
 {
+    /**
+     * Advance-payment discount schedule (percent off), keyed by months covered.
+     *
+     * This is the single source of truth for the advance-payment pricing. Both the
+     * client advance-payment page and the staff/branch-admin cash recording flow
+     * compute the discounted total through {@see advancePaymentBreakdown()}, and the
+     * server re-validates the submitted amount against it, so a client or staff
+     * member can never bypass or change the discount by editing a request value.
+     *
+     * Adjust these percentages in one place to change the whole system. A month
+     * count not listed here gets no discount (0%).
+     */
+    public const ADVANCE_DISCOUNTS = [
+        1 => 0,
+        3 => 2,
+        6 => 5,
+        12 => 10,
+    ];
+
+    /**
+     * Compute the advance-payment price breakdown for N months.
+     *
+     * @return array{months:int, monthly_fee:float, subtotal:float, discount_percent:float, discount_amount:float, total:float, has_discount:bool}
+     */
+    public static function advancePaymentBreakdown(float $monthlyFee, int $months): array
+    {
+        $months = max(1, $months);
+        $discountPercent = (float) (self::ADVANCE_DISCOUNTS[$months] ?? 0);
+        $subtotal = round($monthlyFee * $months, 2);
+        $discountAmount = round($subtotal * ($discountPercent / 100), 2);
+        $total = round($subtotal - $discountAmount, 2);
+
+        return [
+            'months' => $months,
+            'monthly_fee' => $monthlyFee,
+            'subtotal' => $subtotal,
+            'discount_percent' => $discountPercent,
+            'discount_amount' => $discountAmount,
+            'total' => $total,
+            'has_discount' => $discountPercent > 0 && $discountAmount > 0,
+        ];
+    }
+
+    /**
+     * Discounted total due for an advance payment of N months.
+     */
+    public static function advanceTotal(float $monthlyFee, int $months): float
+    {
+        return self::advancePaymentBreakdown($monthlyFee, $months)['total'];
+    }
+
     public function getBranchPlanHolderChoices(int $branchId): array
     {
         if ($branchId <= 0) {

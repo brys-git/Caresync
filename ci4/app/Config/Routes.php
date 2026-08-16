@@ -33,9 +33,11 @@ $routes->group('dashboard', ['filter' => 'auth'], static function (RouteCollecti
     $routes->get('admin', 'Dashboard::admin', ['filter' => 'role:1']);
     $routes->get('branch-admin', 'Dashboard::branchAdmin', ['filter' => 'role:2']);
     $routes->get('staff', 'Dashboard::staff', ['filter' => 'role:3']);
-    $routes->get('plan-holder', 'ClientPortal::dashboard', ['filter' => 'role:4']);
+    $routes->get('plan-holder', 'Client\ClientDashboardController::dashboard', ['filter' => 'role:4']);
 });
 
 // Plan Holder Registration Routes (accessible by Admin: 1, BranchAdmin: 2)
 $routes->get('plan-holders/register', 'PlanHolders::register', ['filter' => 'auth']);
 $routes->post('plan-holders/store', 'PlanHolders::store', ['filter' => 'auth']);
+$routes->post('plan-holders/approvals/approve/(:num)', 'PlanHolders::approve/$1', ['filter' => 'auth']);
+$routes->post('plan-holders/approvals/reject/(:num)', 'PlanHolders::reject/$1', ['filter' => 'auth']);

@@ -11,10 +11,10 @@
         <?php if (! ($edit_mode ?? false)): ?>
             <div class="d-flex gap-2 flex-wrap">
                 <a href="<?= base_url('client/profile/edit') ?>" class="btn btn-primary btn-sm">
-                    <i class="bi bi-pencil-square me-1"></i> Edit Profile
+                    <i class="mdi mdi-pencil me-1"></i> Edit Profile
                 </a>
                 <a href="#password-section" class="btn btn-outline-secondary btn-sm">
-                    <i class="bi bi-key me-1"></i> Change Password
+                    <i class="mdi mdi-key me-1"></i> Change Password
                 </a>
             </div>
         <?php endif; ?>
@@ -23,13 +23,13 @@
     <!-- Alert Messages -->
     <?php if (session()->getFlashdata('error')): ?>
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="bi bi-exclamation-circle me-2"></i> <?= esc(session()->getFlashdata('error')) ?>
+            <i class="mdi mdi-alert-circle me-2"></i> <?= esc(session()->getFlashdata('error')) ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     <?php endif; ?>
     <?php if (session()->getFlashdata('success')): ?>
         <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="bi bi-check-circle me-2"></i> <?= esc(session()->getFlashdata('success')) ?>
+            <i class="mdi mdi-check-circle me-2"></i> <?= esc(session()->getFlashdata('success')) ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     <?php endif; ?>
@@ -69,7 +69,9 @@
                         </div>
                         <div class="mb-2">
                             <small class="text-muted d-block">Account Status</small>
-                            <span class="badge bg-success small">Active</span>
+                            <span class="badge bg-<?= esc($access['badge_class'] ?? 'secondary') ?> small">
+                                <?= esc($access['badge_label'] ?? 'Unregistered') ?>
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -128,7 +130,7 @@
                                     Cancel
                                 </a>
                                 <button type="submit" class="btn btn-primary">
-                                    <i class="bi bi-check-circle me-1"></i> Save Changes
+                                    <i class="mdi mdi-check-circle me-1"></i> Save Changes
                                 </button>
                             </div>
                         </form>
@@ -195,7 +197,7 @@
             <?php if (! ($edit_mode ?? false)): ?>
                 <div class="mt-3">
                     <a href="<?= base_url('client/profile/change-password') ?>" class="btn btn-outline-primary btn-sm">
-                        <i class="bi bi-key me-1"></i> Change Password
+                        <i class="mdi mdi-key me-1"></i> Change Password
                     </a>
                 </div>
             <?php endif; ?>

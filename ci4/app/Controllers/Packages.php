@@ -236,7 +236,7 @@ class Packages extends BaseController
         return 'layouts/plan_holder';
     }
 
-    private function nullablePost(string $field): ?string
+    protected function nullablePost(string $field): ?string
     {
         $value = trim((string) $this->request->getPost($field));
 

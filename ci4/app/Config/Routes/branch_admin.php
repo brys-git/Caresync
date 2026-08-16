@@ -50,6 +50,7 @@ $routes->group('branch-admin', ['filter' => 'auth'], static function (RouteColle
     $routes->post('payment-tracking/record-cash', 'PaymentTracking::recordCash', ['filter' => 'role:2']);
     $routes->post('payment-tracking/approve/(:num)', 'PaymentTracking::approveGcash/$1', ['filter' => 'role:2']);
     $routes->post('payment-tracking/reject/(:num)', 'PaymentTracking::rejectGcash/$1', ['filter' => 'role:2']);
+    $routes->get('payment-tracking/id-document/(:num)', 'PaymentTracking::idDocument/$1', ['filter' => 'role:2']);
 
     // Service balance continuation
     $routes->get('service-balances', 'ServiceBalances::index', ['filter' => 'role:2']);
@@ -97,6 +98,26 @@ $routes->group('branch-admin', ['filter' => 'auth'], static function (RouteColle
     $routes->get('packages/edit/(:num)', 'BranchAdmin\PackageController::edit/$1', ['filter' => 'role:2']);
     $routes->post('packages/update/(:num)', 'BranchAdmin\PackageController::update/$1', ['filter' => 'role:2']);
     $routes->post('packages/add-item/(:num)', 'BranchAdmin\PackageController::addItem/$1', ['filter' => 'role:2']);
+
+    // Package Variants Management
+    $routes->post('packages/(:num)/variants/add', 'BranchAdmin\PackageController::addVariant/$1', ['filter' => 'role:2']);
+    $routes->post('packages/(:num)/variants/update/(:num)', 'BranchAdmin\PackageController::updateVariant/$1/$2', ['filter' => 'role:2']);
+    $routes->post('packages/(:num)/variants/delete/(:num)', 'BranchAdmin\PackageController::deleteVariant/$1/$2', ['filter' => 'role:2']);
+
+    // Package Inclusions Management
+    $routes->post('packages/(:num)/inclusions/add', 'BranchAdmin\PackageController::addInclusion/$1', ['filter' => 'role:2']);
+    $routes->post('packages/(:num)/inclusions/update/(:num)', 'BranchAdmin\PackageController::updateInclusion/$1/$2', ['filter' => 'role:2']);
+    $routes->post('packages/(:num)/inclusions/delete/(:num)', 'BranchAdmin\PackageController::deleteInclusion/$1/$2', ['filter' => 'role:2']);
+
+    // Add-ons Management (global, not per-package)
+    $routes->post('packages/addons/add', 'BranchAdmin\PackageController::addAddOn', ['filter' => 'role:2']);
+    $routes->post('packages/addons/update/(:num)', 'BranchAdmin\PackageController::updateAddOn/$1', ['filter' => 'role:2']);
+    $routes->post('packages/addons/delete/(:num)', 'BranchAdmin\PackageController::deleteAddOn/$1', ['filter' => 'role:2']);
+
+    // Service Rates Management
+    $routes->post('packages/rates/add/(:num)', 'BranchAdmin\PackageController::addServiceRate/$1', ['filter' => 'role:2']);
+    $routes->post('packages/rates/update/(:num)', 'BranchAdmin\PackageController::updateServiceRate/$1', ['filter' => 'role:2']);
+    $routes->post('packages/rates/delete/(:num)', 'BranchAdmin\PackageController::deleteServiceRate/$1', ['filter' => 'role:2']);
 
     // Staff & Monitoring
     $routes->get('staff-monitoring', 'BranchAdmin\StaffMonitoringController::index', ['filter' => 'role:2']);

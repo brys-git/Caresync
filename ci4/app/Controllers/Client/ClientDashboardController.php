@@ -69,6 +69,12 @@ class ClientDashboardController extends BaseController
             $membershipSince = date('F Y', strtotime((string) $user['created_at']));
         }
 
+        $packages = db_connect()->table('packages')
+            ->select('package_id')
+            ->where('is_available', 1)
+            ->get()
+            ->getResultArray();
+
         return view('client/dashboard', [
             'role_layout' => 'layouts/plan_holder',
             'user' => $user,
@@ -79,6 +85,7 @@ class ClientDashboardController extends BaseController
             'branch_name' => $branchName,
             'recent_payments' => $recentPayments,
             'membership_since' => $membershipSince,
+            'packages' => $packages,
         ]);
     }
 

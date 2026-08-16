@@ -11,13 +11,16 @@
     $userName = (string) ($user_name ?? trim((string) (($access['user']['first_name'] ?? '') . ' ' . ($access['user']['last_name'] ?? ''))));
     $planName = (string) ($plan_name ?? ($program['name'] ?? 'Damayan Burial Program'));
     $lastPaymentStatus = (string) ($last_payment_status ?? 'None');
+    $coordinatorGcash = $coordinator_gcash ?? null;
+    $coordinatorName = $coordinator_name ?? null;
 
-    // Discount tiers
-    $discounts = [
-        1 => ['label' => '1 Month', 'discount' => 0, 'discount_label' => ''],
-        3 => ['label' => '3 Months (Save 5%)', 'discount' => 0.05, 'discount_label' => '5%'],
-        6 => ['label' => '6 Months (Save 10%)', 'discount' => 0.10, 'discount_label' => '10%'],
-        12 => ['label' => '12 Months (Save 15%)', 'discount' => 0.15, 'discount_label' => '15%'],
+    // Months covered options. The total due is always monthly fee × months
+    // (the server enforces this exact amount), so no discount is applied here.
+    $monthsOptions = [
+        1 => '1 Month',
+        3 => '3 Months',
+        6 => '6 Months',
+        12 => '12 Months',
     ];
 ?>
 
@@ -61,6 +64,7 @@
             <?= csrf_field() ?>
             <input type="hidden" name="payment_date" value="<?= esc(date('Y-m-d')) ?>">
             <input type="hidden" name="months_covered" id="ap-months-hidden" value="1">
+            <input type="hidden" name="amount" id="ap-amount-hidden" value="<?= number_format($monthlyFee, 2, '.', '') ?>">
 
             <div class="ap-layout">
                 <!-- ====== Left Column: Payment Details ====== -->
@@ -86,14 +90,11 @@
                             <!-- Select Advance Months -->
                             <div class="ap-section-label">Select Advance Months</div>
                             <div class="ap-months-grid">
-                                <?php foreach ($discounts as $months => $info): ?>
+                                <?php foreach ($monthsOptions as $months => $label): ?>
                                     <button type="button" class="ap-month-btn <?= $months === 1 ? 'ap-month-btn--active' : '' ?>"
                                             data-months="<?= $months ?>"
                                             onclick="apSelectMonths(this)">
-                                        <span class="ap-month-btn__label"><?= $info['label'] ?></span>
-                                        <?php if ($info['discount'] > 0): ?>
-                                            <span class="ap-month-btn__discount"><?= $info['discount_label'] ?></span>
-                                        <?php endif; ?>
+                                        <span class="ap-month-btn__label"><?= $label ?></span>
                                     </button>
                                 <?php endforeach; ?>
                             </div>
@@ -126,15 +127,24 @@
                                     <i class="mdi mdi-qrcode" style="font-size:3rem;color:var(--ap-ink-faint);"></i>
                                 </div>
                                 <div class="ap-qr-info">
-                                    <h4>GCash QR Code</h4>
-                                    <p>Open the GCash app, scan the QR code, or send the amount to the account details below.</p>
-                                    <div class="ap-qr-account">
-                                        <span>Account Details:</span>
-                                        <strong>GCASH123456789</strong>
-                                        <button type="button" class="ap-copy-btn" onclick="apCopyAccount()">
-                                            <i class="mdi mdi-content-copy"></i> Copy Account
-                                        </button>
-                                    </div>
+                                    <h4>GCash Payment</h4>
+                                    <?php if ($coordinatorGcash): ?>
+                                        <p>Send the total due to your assigned coordinator's GCash account below.</p>
+                                        <div class="ap-qr-account">
+                                            <span>Account Details:</span>
+                                            <strong id="ap-gcash-number"><?= esc((string) ($coordinatorGcash['number'] ?? '')) ?></strong>
+                                            <?php if (! empty($coordinatorGcash['name'])): ?>
+                                                <small style="color:var(--ap-ink-faint);display:block;margin-top:4px;"><?= esc((string) $coordinatorGcash['name']) ?></small>
+                                            <?php endif; ?>
+                                            <button type="button" class="ap-copy-btn" onclick="apCopyAccount()">
+                                                <i class="mdi mdi-content-copy"></i> Copy Account
+                                            </button>
+                                        </div>
+                                    <?php else: ?>
+                                        <p>No GCash account is set for your assigned coordinator
+                                            (<?= esc($coordinatorName ?: 'unknown') ?>) yet. Please contact your branch to confirm
+                                            the payment details before sending a GCash payment.</p>
+                                    <?php endif; ?>
                                 </div>
                             </div>
 
@@ -186,14 +196,13 @@
                                 <span class="ap-summary-row__label">Months Selected:</span>
                                 <span class="ap-summary-row__value" id="ap-summary-months">x 1</span>
                             </div>
-                            <div class="ap-summary-row" id="ap-discount-row" style="display:none;">
-                                <span class="ap-summary-row__label">Plan Discount:</span>
-                                <span class="ap-summary-row__value ap-summary-row__value--discount" id="ap-summary-discount">-₱0.00</span>
-                            </div>
-                            <hr class="ap-summary-divider">
                             <div class="ap-summary-row">
                                 <span class="ap-summary-row__label">Subtotal:</span>
                                 <span class="ap-summary-row__value" id="ap-summary-subtotal">₱<?= number_format($monthlyFee, 2) ?></span>
+                            </div>
+                            <div class="ap-summary-row" id="ap-discount-row" style="display:none;color:var(--ap-green,#38a169);">
+                                <span class="ap-summary-row__label">Advance Discount:</span>
+                                <span class="ap-summary-row__value" id="ap-summary-discount">−₱0.00</span>
                             </div>
                             <hr class="ap-summary-divider">
                             <div class="ap-summary-row">
@@ -325,38 +334,40 @@
     'use strict';
 
     var monthlyFee = <?= json_encode($monthlyFee) ?>;
-    var discounts = {
-        1: { discount: 0, label: '' },
-        3: { discount: 0.05, label: '5%' },
-        6: { discount: 0.10, label: '10%' },
-        12: { discount: 0.15, label: '15%' }
-    };
+    // Advance-payment discount schedule — same source of truth as the server
+    // (PaymentService::ADVANCE_DISCOUNTS). Mirrors the server exactly.
+    var discountSchedule = <?= json_encode(\App\Services\PaymentService::ADVANCE_DISCOUNTS) ?>;
     var currentMonths = 1;
+
+    function roundMoney(value) {
+        return Math.round(value * 100) / 100;
+    }
 
     function updateSummary() {
         var monthsEl = document.getElementById('ap-summary-months');
         var discountRow = document.getElementById('ap-discount-row');
-        var discountEl = document.getElementById('ap-summary-discount');
+        var discountValueEl = document.getElementById('ap-summary-discount');
         var subtotalEl = document.getElementById('ap-summary-subtotal');
         var totalEl = document.getElementById('ap-summary-total');
         var submitAmount = document.getElementById('ap-submit-amount');
         var progressFill = document.getElementById('ap-progress-fill');
         var hiddenMonths = document.getElementById('ap-months-hidden');
+        var hiddenAmount = document.getElementById('ap-amount-hidden');
 
         if (!monthsEl) return;
 
-        var subtotal = monthlyFee * currentMonths;
-        var disc = discounts[currentMonths] || { discount: 0 };
-        var discountAmount = subtotal * disc.discount;
-        var total = subtotal - discountAmount;
+        var subtotal = roundMoney(monthlyFee * currentMonths);
+        var pct = discountSchedule[currentMonths] || 0;
+        var discount = roundMoney(subtotal * pct / 100);
+        var total = roundMoney(subtotal - discount);
 
         monthsEl.textContent = 'x ' + currentMonths;
 
-        if (disc.discount > 0) {
-            discountRow.style.display = '';
-            discountEl.textContent = '-₱' + discountAmount.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + ' (' + disc.label + ')';
-        } else {
-            discountRow.style.display = 'none';
+        if (discountRow) {
+            discountRow.style.display = (discount > 0) ? '' : 'none';
+        }
+        if (discountValueEl) {
+            discountValueEl.textContent = '−₱' + discount.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
         }
 
         subtotalEl.textContent = '₱' + subtotal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
@@ -369,6 +380,10 @@
 
         if (hiddenMonths) {
             hiddenMonths.value = currentMonths;
+        }
+
+        if (hiddenAmount) {
+            hiddenAmount.value = total.toFixed(2);
         }
     }
 
@@ -403,7 +418,9 @@
     };
 
     window.apCopyAccount = function () {
-        var account = 'GCASH123456789';
+        var account = (document.getElementById('ap-gcash-number') || {}).textContent || '';
+        account = account.trim();
+        if (!account) return;
         navigator.clipboard.writeText(account).then(function () {
             var btn = document.querySelector('.ap-copy-btn');
             if (btn) {

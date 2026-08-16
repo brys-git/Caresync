@@ -19,6 +19,8 @@ class UserModel extends Model
         'last_name',
         'name_extension',
         'contact_number',
+        'gcash_number',
+        'gcash_name',
         'role_id',
         'branch_id',
         'status',

@@ -1,0 +1,12 @@
+# ---------------------------------------------------------------
+# CI4 root .htaccess — rewrite all requests into public/index.php
+# ---------------------------------------------------------------
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+# Deny direct access to hidden files
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>

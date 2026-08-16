@@ -298,7 +298,7 @@ $cancelledPayment = $initialPaymentStatus === 'cancelled';
             <p class="text-muted mb-0">Damayan program membership overview.</p>
         </div>
         <a href="<?= base_url('client/payment') ?>" class="btn btn-sm btn-outline-primary">
-            <i class="bi bi-receipt"></i> View Payments
+            <i class="mdi mdi-receipt"></i> View Payments
         </a>
     </div>
 

@@ -2,15 +2,19 @@
 
 <?= $this->section('content') ?>
 <link rel="stylesheet" href="<?= base_url('assets/css/registration-wizard.css') ?>">
+<script src="<?= base_url('assets/vendor/tesseract/tesseract.min.js') ?>"></script>
 
 <?php
 $beneficiaries = $beneficiaries ?? [];
+$coordinators = $coordinators ?? [];
+$id_types = $id_types ?? [];
 $program = $program ?? ['name' => 'Damayan Burial Program', 'monthly_fee' => 240.0];
 $planId = (int) ($plan_id ?? 0);
 $applicationDate = (string) old('application_date', (string) ($plan_holder['application_date'] ?? date('Y-m-d')));
 $civilStatus = (string) old('civil_status', (string) ($plan_holder['civil_status'] ?? ''));
 $gender = (string) old('gender', (string) ($plan_holder['gender'] ?? ''));
 $selectedBranch = (int) old('branch_id', (string) ($plan_holder['branch_id'] ?? 0));
+$selectedCoordinator = (int) old('coordinator_user_id', (string) ($plan_holder['coordinator_user_id'] ?? 0));
 ?>
 
 <div class="rw">
@@ -90,8 +94,19 @@ $selectedBranch = (int) old('branch_id', (string) ($plan_holder['branch_id'] ?? 
                                 <input class="rw-input" id="id_control_no" name="id_control_no" value="<?= esc(old('id_control_no', (string) ($plan_holder['id_control_no'] ?? ''))) ?>">
                             </div>
                             <div class="rw-group">
-                                <label class="rw-label" for="coordinator">Coordinator (if known)</label>
-                                <input class="rw-input" id="coordinator" name="coordinator" value="<?= esc(old('coordinator', (string) ($plan_holder['coordinator'] ?? ''))) ?>" placeholder="Enter your coordinator's name">
+                                <label class="rw-label" for="coordinator_user_id">Coordinator <span>*</span></label>
+                                <select class="rw-select" id="coordinator_user_id" name="coordinator_user_id" data-rw-req>
+                                    <option value="">Select your coordinator</option>
+                                    <?php foreach ($coordinators as $coord): ?>
+                                        <?php $coordName = trim(implode(' ', array_filter([$coord['first_name'] ?? '', $coord['middle_name'] ?? '', $coord['last_name'] ?? ''], static fn ($v) => $v !== ''))); ?>
+                                        <option value="<?= (int) $coord['user_id'] ?>" <?= $selectedCoordinator === (int) $coord['user_id'] ? 'selected' : '' ?>>
+                                            <?= esc($coordName) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <?php if (empty($coordinators)): ?>
+                                    <small style="color:var(--rw-red);">No active staff coordinators available yet.</small>
+                                <?php endif; ?>
                             </div>
                             <div class="rw-group">
                                 <label class="rw-label" for="application_date">Date of Application <span>*</span></label>
@@ -128,7 +143,7 @@ $selectedBranch = (int) old('branch_id', (string) ($plan_holder['branch_id'] ?? 
                             </div>
                             <div class="rw-group">
                                 <label class="rw-label" for="gender">Gender <span>*</span></label>
-                                <select class="rw-select" id="gender" name="gender">
+                                <select class="rw-select" id="gender" name="gender" data-rw-req>
                                     <option value="">Gender</option>
                                     <option value="Male" <?= $gender === 'Male' ? 'selected' : '' ?>>Male</option>
                                     <option value="Female" <?= $gender === 'Female' ? 'selected' : '' ?>>Female</option>
@@ -136,8 +151,8 @@ $selectedBranch = (int) old('branch_id', (string) ($plan_holder['branch_id'] ?? 
                                 </select>
                             </div>
                             <div class="rw-group">
-                                <label class="rw-label" for="civil_status">Civil Status</label>
-                                <select class="rw-select" id="civil_status" name="civil_status">
+                                <label class="rw-label" for="civil_status">Civil Status <span>*</span></label>
+                                <select class="rw-select" id="civil_status" name="civil_status" data-rw-req>
                                     <option value="">Civil Status</option>
                                     <option value="Single" <?= $civilStatus === 'Single' ? 'selected' : '' ?>>Single</option>
                                     <option value="Married" <?= $civilStatus === 'Married' ? 'selected' : '' ?>>Married</option>
@@ -209,24 +224,30 @@ $selectedBranch = (int) old('branch_id', (string) ($plan_holder['branch_id'] ?? 
 
                 <!-- Right Column -->
                 <div>
-                    <!-- Spouse Information -->
-                    <div class="rw-card">
-                        <h3 class="rw-card__title">Spouse Information</h3>
+                    <!-- Spouse Information (required when Civil Status = Married) -->
+                    <div class="rw-card" id="spouse_card">
+                        <h3 class="rw-card__title">Spouse Information
+                            <span id="spouse_req_badge" class="rw-required-badge" style="display:none;">Required when Married</span>
+                        </h3>
                         <div class="rw-form-row rw-form-row--2">
                             <div class="rw-group">
-                                <label class="rw-label" for="spouse_last_name">Last Name <span>*</span></label>
-                                <input class="rw-input" id="spouse_last_name" name="spouse_last_name" value="<?= esc(old('spouse_last_name', (string) ($plan_holder['spouse_last_name'] ?? ''))) ?>">
+                                <label class="rw-label" for="spouse_last_name">Last Name</label>
+                                <input class="rw-input" id="spouse_last_name" name="spouse_last_name" data-spouse-req value="<?= esc(old('spouse_last_name', (string) ($plan_holder['spouse_last_name'] ?? ''))) ?>">
                             </div>
                             <div class="rw-group">
-                                <label class="rw-label" for="spouse_first_name">Given Name <span>*</span></label>
-                                <input class="rw-input" id="spouse_first_name" name="spouse_first_name" value="<?= esc(old('spouse_first_name', (string) ($plan_holder['spouse_first_name'] ?? ''))) ?>">
+                                <label class="rw-label" for="spouse_first_name">Given Name</label>
+                                <input class="rw-input" id="spouse_first_name" name="spouse_first_name" data-spouse-req value="<?= esc(old('spouse_first_name', (string) ($plan_holder['spouse_first_name'] ?? ''))) ?>">
                             </div>
                         </div>
                         <div class="rw-form-row">
                             <div class="rw-group">
-                                <label class="rw-label" for="spouse_middle_name">Middle Name <span>*</span></label>
+                                <label class="rw-label" for="spouse_middle_name">Middle Name</label>
                                 <input class="rw-input" id="spouse_middle_name" name="spouse_middle_name" value="<?= esc(old('spouse_middle_name', (string) ($plan_holder['spouse_middle_name'] ?? ''))) ?>">
                             </div>
+                        </div>
+                        <div class="rw-spouse-note" id="spouse_note" style="display:none;">
+                            <i class="mdi mdi-information-outline"></i>
+                            Spouse first and last name are required because your Civil Status is Married.
                         </div>
                     </div>
 
@@ -235,8 +256,8 @@ $selectedBranch = (int) old('branch_id', (string) ($plan_holder['branch_id'] ?? 
                         <h3 class="rw-card__title">Contact & Affiliation</h3>
                         <div class="rw-form-row">
                             <div class="rw-group">
-                                <label class="rw-label" for="contact_number">Cellphone No.</label>
-                                <input class="rw-input" id="contact_number" name="contact_number" value="<?= esc(old('contact_number', (string) ($user['contact_number'] ?? ''))) ?>">
+                                <label class="rw-label" for="contact_number">Cellphone No. <span>*</span></label>
+                                <input class="rw-input" id="contact_number" name="contact_number" data-rw-req value="<?= esc(old('contact_number', (string) ($user['contact_number'] ?? ''))) ?>">
                             </div>
                         </div>
                         <div class="rw-form-row">
@@ -303,29 +324,56 @@ $selectedBranch = (int) old('branch_id', (string) ($plan_holder['branch_id'] ?? 
         <!-- STEP 3: Verification                                             -->
         <!-- ================================================================ -->
         <div class="rw-panel" data-rw-panel="3" style="display:none;">
-            <div class="rw-section-title">Step 3 — Verification</div>
-            <div class="rw-section-sub">Upload a valid government-issued ID for verification.</div>
+            <div class="rw-section-title">Step 3 — Government ID Verification</div>
+            <div class="rw-section-sub">Upload a supported government-issued ID. The system scans the document and checks that it <strong>appears consistent</strong> with the details you provided. This is a document check only — it does NOT prove the ID was issued by the government authority.</div>
 
             <div class="rw-two-col">
                 <div class="rw-card">
-                    <h3 class="rw-card__title">Upload Valid ID</h3>
+                    <h3 class="rw-card__title">Government ID</h3>
+                    <div class="rw-form-row rw-form-row--2">
+                        <div class="rw-group">
+                            <label class="rw-label" for="id_type">ID Type <span>*</span></label>
+                            <select class="rw-select" id="id_type" name="id_type" data-rw-req>
+                                <option value="">Select ID type</option>
+                                <?php foreach ($id_types as $key => $info): ?>
+                                    <option value="<?= esc($key) ?>" <?= old('id_type') === $key ? 'selected' : '' ?>><?= esc($info['label']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="rw-group">
+                            <label class="rw-label" for="id_number">ID Number <span>*</span></label>
+                            <input class="rw-input" id="id_number" name="id_number" data-rw-req value="<?= esc(old('id_number')) ?>" placeholder="Enter the ID number shown on your card">
+                        </div>
+                    </div>
                     <div class="rw-upload-area" onclick="document.getElementById('valid_id').click();">
                         <i class="mdi mdi-cloud-upload-outline"></i>
                         <p>Click to upload or drag and drop</p>
-                        <small>Accepted formats: JPG, PNG, PDF</small>
+                        <small>Accepted formats: JPG, PNG (max 2MB)</small>
                     </div>
-                    <input id="valid_id" name="valid_id" type="file" class="rw-input" accept="image/*,.pdf" style="display:none;" onchange="rwShowFileName(this)">
+                    <input id="valid_id" name="valid_id" type="file" class="rw-input" accept="image/jpeg,image/png,image/*" style="display:none;" onchange="rwStartIdScan(this)">
                     <div id="rw-file-name" style="margin-top:8px;font-size:0.82rem;color:var(--rw-ink-soft);"></div>
+                    <input type="hidden" name="ocr_text" id="ocr_text" value="">
+                    <div id="rw-ocr-status" class="rw-ocr-status" style="display:none;"></div>
+                    <div id="rw-id-result" class="rw-id-result" style="display:none;">
+                        <i class="mdi mdi-shield-check"></i>
+                        <div>
+                            <strong id="rw-id-result-title"></strong>
+                            <div id="rw-id-result-detail"></div>
+                        </div>
+                    </div>
                 </div>
                 <div class="rw-card">
                     <h3 class="rw-card__title">Verification Note</h3>
                     <div class="rw-info-box">
-                        <h6>The system will verify:</h6>
+                        <h6>The system checks:</h6>
                         <ul>
-                            <li>Full name</li>
-                            <li>Birthday</li>
-                            <li>Address and branch details</li>
+                            <li>That the ID is a supported government-issued ID</li>
+                            <li>That the document appears consistent with your name, birthday, and address</li>
+                            <li>The ID number format for the selected ID type</li>
                         </ul>
+                        <p style="margin-top:8px;font-style:italic;font-size:0.8rem;color:var(--rw-ink-soft);">
+                            "Appears consistent" means the document matches your application details. It does NOT mean a government authority has officially verified the ID. A staff member will confirm the document before your account is activated.
+                        </p>
                     </div>
                 </div>
             </div>
@@ -366,7 +414,7 @@ $selectedBranch = (int) old('branch_id', (string) ($plan_holder['branch_id'] ?? 
                 </div>
                 <div class="rw-info-box" style="margin-top:12px;">
                     <h6>What happens next?</h6>
-                    <p style="margin:0;">After submitting your registration, you will need to visit your branch office to make the initial payment. Once payment is verified, your membership will be activated.</p>
+                    <p style="margin:0;">After you submit your registration, you will go to the <strong>Initial Payment</strong> step. You may pay online via GCash to your assigned coordinator, or pay in cash at your branch. Once the payment is verified by staff, your membership will be activated.</p>
                 </div>
             </div>
         </div>
@@ -463,8 +511,17 @@ $selectedBranch = (int) old('branch_id', (string) ($plan_holder['branch_id'] ?? 
                 }
             }
 
-            /* Validate step 3 certification */
+            /* Validate step 3: ID scan completed + appears consistent + certification */
             if (currentStep === 3) {
+                var idScanState = window.rwIdScanState || {};
+                if (!idScanState.ocrDone) {
+                    alert('Please upload your government ID and wait for the scan to finish before continuing.');
+                    return;
+                }
+                if (!idScanState.matched) {
+                    alert('The document does not appear consistent with the details you provided. Please re-check your ID and your details, then re-scan.');
+                    return;
+                }
                 var certify = document.getElementById('certify');
                 if (certify && !certify.checked) {
                     alert('Please certify that the information is true and correct.');
@@ -479,11 +536,147 @@ $selectedBranch = (int) old('branch_id', (string) ($plan_holder['branch_id'] ?? 
         }
     };
 
-    /* Show file name on upload */
-    window.rwShowFileName = function (input) {
+    /* ------------------------------------------------------------------ */
+    /* Civil Status -> Spouse dynamic requirement                         */
+    /* ------------------------------------------------------------------ */
+    var OCR_WORKER = <?= json_encode(base_url('assets/vendor/tesseract/worker.min.js')) ?>;
+    var OCR_CORE = <?= json_encode(base_url('assets/vendor/tesseract/tesseract-core.wasm.js')) ?>;
+    var OCR_LANG_PATH = <?= json_encode(base_url('assets/vendor/tesseract')) ?>;
+
+    function updateSpouseRequirement() {
+        var cs = document.getElementById('civil_status');
+        var required = cs && cs.value === 'Married';
+        document.querySelectorAll('[data-spouse-req]').forEach(function (el) {
+            if (required) el.setAttribute('data-rw-req', '1');
+            else el.removeAttribute('data-rw-req');
+        });
+        var card = document.getElementById('spouse_card');
+        if (card) card.classList.toggle('rw-card--spouse-required', required);
+        var badge = document.getElementById('spouse_req_badge');
+        var note = document.getElementById('spouse_note');
+        if (badge) badge.style.display = required ? '' : 'none';
+        if (note) note.style.display = required ? '' : 'none';
+    }
+
+    var civilStatusEl = document.getElementById('civil_status');
+    if (civilStatusEl) {
+        civilStatusEl.addEventListener('change', updateSpouseRequirement);
+    }
+    updateSpouseRequirement();
+
+    /* ------------------------------------------------------------------ */
+    /* Government ID: client-side scan + rough match estimate              */
+    /* The server re-scores the OCR text authoritatively on submit.        */
+    /* ------------------------------------------------------------------ */
+    window.rwIdScanState = { ocrDone: false, matched: false };
+
+    function rwNormalize(s) {
+        return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    }
+
+    function rwEstimateMatch(text) {
+        var t = rwNormalize(text);
+        var last = rwNormalize((document.getElementById('last_name') || {}).value || '');
+        var first = rwNormalize((document.getElementById('first_name') || {}).value || '');
+        var dobEl = document.getElementById('date_of_birth');
+
+        if (t === '' || last === '') return { pass: false, detail: 'The document could not be matched against your last name.' };
+
+        var score = 0;
+        if (t.indexOf(last) !== -1) score += 30; else return { pass: false, detail: 'Your last name was not found on the document.' };
+
+        if (t.indexOf(first) !== -1) score += 25;
+        else {
+            var firstToken = (first.split(' ')[0] || '');
+            if (firstToken.length >= 2 && t.indexOf(firstToken) !== -1) score += 25;
+            else return { pass: false, detail: 'Your given name was not found on the document.' };
+        }
+
+        if (dobEl && dobEl.value) {
+            var d = new Date(dobEl.value);
+            if (!isNaN(d.getTime())) {
+                var y = d.getFullYear();
+                var mm = String(d.getMonth() + 1).padStart(2, '0');
+                var dd = String(d.getDate()).padStart(2, '0');
+                if (t.indexOf(y + ' ' + mm + ' ' + dd) !== -1 || t.indexOf(mm + ' ' + dd + ' ' + y) !== -1 || t.indexOf('' + y + mm + dd) !== -1) score += 20;
+            }
+        }
+
+        return score >= 55
+            ? { pass: true, detail: 'The document appears consistent with the details you provided.' }
+            : { pass: false, detail: 'The document does not appear to match your details (estimate score ' + score + ').' };
+    }
+
+    window.rwStartIdScan = async function (input) {
         var nameEl = document.getElementById('rw-file-name');
-        if (nameEl && input.files && input.files[0]) {
-            nameEl.textContent = 'Selected: ' + input.files[0].name;
+        var statusEl = document.getElementById('rw-ocr-status');
+        var resultEl = document.getElementById('rw-id-result');
+        var ocrInput = document.getElementById('ocr_text');
+
+        window.rwIdScanState = { ocrDone: false, matched: false };
+
+        if (!input.files || !input.files[0]) return;
+        var file = input.files[0];
+        if (nameEl) nameEl.textContent = 'Selected: ' + file.name;
+
+        if (file.size > 2 * 1024 * 1024) {
+            statusEl.style.display = '';
+            statusEl.className = 'rw-ocr-status rw-ocr-status--error';
+            statusEl.textContent = 'File is larger than 2MB. Please upload a smaller photo.';
+            ocrInput.value = '';
+            return;
+        }
+
+        if (typeof Tesseract === 'undefined') {
+            statusEl.style.display = '';
+            statusEl.className = 'rw-ocr-status rw-ocr-status--error';
+            statusEl.textContent = 'The scanner engine did not load. Please refresh the page and try again.';
+            return;
+        }
+
+        statusEl.style.display = '';
+        statusEl.className = 'rw-ocr-status rw-ocr-status--working';
+        statusEl.textContent = 'Scanning ID... this can take a few seconds.';
+        resultEl.style.display = 'none';
+
+        try {
+            var worker = await Tesseract.createWorker('eng', 1, {
+                workerPath: OCR_WORKER,
+                corePath: OCR_CORE,
+                langPath: OCR_LANG_PATH,
+                logger: function (m) {
+                    if (m && m.status === 'recognizing text' && statusEl) {
+                        statusEl.textContent = 'Scanning ID... ' + Math.round((m.progress || 0) * 100) + '%';
+                    }
+                }
+            });
+            var result = await worker.recognize(file);
+            await worker.terminate();
+
+            var text = String((result && result.data && result.data.text) || '').trim();
+            ocrInput.value = text;
+            statusEl.style.display = 'none';
+
+            if (text === '') {
+                window.rwIdScanState = { ocrDone: false, matched: false };
+                resultEl.style.display = '';
+                resultEl.className = 'rw-id-result rw-id-result--error';
+                document.getElementById('rw-id-result-title').textContent = 'No text detected';
+                document.getElementById('rw-id-result-detail').textContent = 'The ID could not be scanned. Please upload a clearer, well-lit photo of your ID.';
+                return;
+            }
+
+            var estimate = rwEstimateMatch(text);
+            window.rwIdScanState = { ocrDone: true, matched: estimate.pass };
+            resultEl.style.display = '';
+            resultEl.className = estimate.pass ? 'rw-id-result rw-id-result--ok' : 'rw-id-result rw-id-result--error';
+            document.getElementById('rw-id-result-title').textContent = estimate.pass ? 'Document appears consistent' : 'Document does not match';
+            document.getElementById('rw-id-result-detail').textContent = estimate.detail + ' The system will re-check the document when you submit.';
+        } catch (err) {
+            statusEl.style.display = '';
+            statusEl.className = 'rw-ocr-status rw-ocr-status--error';
+            statusEl.textContent = 'Scanning failed. Please try again.';
+            window.rwIdScanState = { ocrDone: false, matched: false };
         }
     };
 
@@ -496,7 +689,7 @@ $selectedBranch = (int) old('branch_id', (string) ($plan_holder['branch_id'] ?? 
         if (!el || el.dataset.loaded === 'true') return;
         el.innerHTML = '<option value="">Loading provinces...</option>';
         try {
-            var r = await fetch('https://psgc.cloud/api/v2/provinces');
+            var r = await fetch('<?= base_url('api/address/provinces') ?>');
             var j = await r.json();
             var data = j.data || j;
             el.innerHTML = '<option value="">Select Province</option>';
@@ -524,7 +717,7 @@ $selectedBranch = (int) old('branch_id', (string) ($plan_holder['branch_id'] ?? 
         var hiddenCode = document.getElementById('address_city_code');
         if (!cityEl || !code) return;
         try {
-            var r = await fetch('https://psgc.cloud/api/v2/provinces/' + encodeURIComponent(code) + '/cities-municipalities');
+            var r = await fetch('<?= base_url('api/address/cities') ?>' + '/' + encodeURIComponent(code));
             var j = await r.json();
             var data = j.data || j;
             cityEl.innerHTML = '<option value="">Select Town/City</option>';
@@ -554,7 +747,7 @@ $selectedBranch = (int) old('branch_id', (string) ($plan_holder['branch_id'] ?? 
         var brgyEl = document.getElementById('address_barangay');
         if (!brgyEl || !code) return;
         try {
-            var r = await fetch('https://psgc.cloud/api/v2/cities-municipalities/' + encodeURIComponent(code) + '/barangays');
+            var r = await fetch('<?= base_url('api/address/barangays') ?>' + '/' + encodeURIComponent(code));
             var j = await r.json();
             var data = j.data || j;
             brgyEl.innerHTML = '<option value="">Select Barangay</option>';

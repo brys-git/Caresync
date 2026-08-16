@@ -5,8 +5,10 @@ namespace App\Controllers\BranchAdmin;
 use App\Controllers\BaseController;
 use App\Services\ActivityLogService;
 use App\Services\ClientService;
+use App\Services\IdVerificationService;
 use App\Services\MembershipService;
 use App\Services\NotificationService;
+use App\Services\RegistrationWizardService;
 use CodeIgniter\Exceptions\PageNotFoundException;
 
 class ClientController extends BaseController
@@ -190,34 +192,41 @@ class ClientController extends BaseController
         }
 
         $db = db_connect();
+        $program = MembershipService::getProgramInfo();
 
-        // Get branches for the dropdown
+        // Get branches for the dropdown (scoped to the session branch for role 2)
         $branches = $db->table('branches')
             ->select('branch_id, branch_name')
             ->where('status', 'active')
+            ->where('branch_id', $branchId)
             ->orderBy('branch_name', 'ASC')
             ->get()
             ->getResultArray();
 
         // Get staff and branch admins for coordinator dropdown (role_id 2 = branch admin, 3 = staff)
         $coordinators = $db->table('users')
-            ->select('user_id, first_name, last_name')
+            ->select('user_id, first_name, middle_name, last_name, name_extension')
             ->whereIn('role_id', [2, 3])
             ->where('status', 'active')
             ->orderBy('first_name', 'ASC')
+            ->orderBy('last_name', 'ASC')
             ->get()
             ->getResultArray();
 
-        return view('branch_admin/client/register', [
+        return view('registration/wizard', [
             'plan_holder' => [],
             'user' => [],
             'beneficiaries' => [],
             'branches' => $branches,
             'coordinators' => $coordinators,
-            'program' => MembershipService::getProgramInfo(),
-            'plan_id' => 0,
+            'id_types' => IdVerificationService::supportedIds(),
+            'program' => $program,
+            'plan_id' => (int) ($program['package_id'] ?? 0),
             'role_layout' => 'layouts/branch_admin',
             'page_title' => null,
+            'form_action' => base_url('branch-admin/client/register-submit'),
+            'show_account_mode' => false,
+            'is_client' => false,
         ]);
     }
 
@@ -233,13 +242,17 @@ class ClientController extends BaseController
         if ($planId <= 0) {
             $planId = (int) $this->request->getPost('package_id');
         }
-
+        if ($planId <= 0) {
+            $planId = (int) (MembershipService::getProgramInfo()['package_id'] ?? 0);
+        }
         if ($planId <= 0) {
             return redirect()->back()->with('error', 'Selected plan is unavailable.');
         }
 
-        // Validate required fields using centralized rules
+        // Validate required fields using centralized rules (+ conditional spouse)
+        $civilStatus = trim((string) $this->request->getPost('civil_status'));
         $rules = \App\Config\ValidationRules::getPlanRegistrationRules();
+        $rules = array_merge($rules, RegistrationWizardService::spouseRules($civilStatus));
         $messages = \App\Config\ValidationRules::getValidationMessages();
 
         if (! $this->validate($rules, $messages)) {
@@ -248,32 +261,51 @@ class ClientController extends BaseController
                 ->with('errors', $this->validator->getErrors());
         }
 
+        // DOB sanity (not in the future, age <= 150)
+        $dobError = RegistrationWizardService::validateDob(trim((string) $this->request->getPost('date_of_birth')));
+        if ($dobError !== null) {
+            return redirect()->back()->withInput()->with('errors', ['date_of_birth' => $dobError]);
+        }
+
+        // Server-side beneficiary validation
+        $beneficiariesInput = $this->request->getPost('beneficiaries');
+        $beneficiariesInput = is_array($beneficiariesInput) ? $beneficiariesInput : [];
+        $beneficiaryCheck = RegistrationWizardService::validateBeneficiaries($beneficiariesInput);
+        if (! empty($beneficiaryCheck['errors'])) {
+            return redirect()->back()->withInput()->with('errors', $beneficiaryCheck['errors']);
+        }
+
+        // Coordinator must be a real, active staff/branch-admin user
+        $coordinatorUserId = (int) $this->request->getPost('coordinator_user_id');
+        $coordinatorUser = RegistrationWizardService::resolveCoordinator($coordinatorUserId);
+        if (! $coordinatorUser) {
+            return redirect()->back()->withInput()->with('errors', ['coordinator_user_id' => 'Please select a valid coordinator.']);
+        }
+        $coordinatorName = RegistrationWizardService::coordinatorName($coordinatorUser);
+
         try {
             $db = db_connect();
             $db->transStart();
 
-            $validIdFile = $this->request->getFile('valid_id');
-            $verificationDocument = null;
-            if ($validIdFile instanceof \CodeIgniter\HTTP\Files\UploadedFile && $validIdFile->isValid() && ! $validIdFile->hasMoved()) {
-                $allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf'];
-                $extension = strtolower($validIdFile->getClientExtension() ?: pathinfo($validIdFile->getClientName(), PATHINFO_EXTENSION));
-
-                if (! in_array($extension, $allowedExtensions, true)) {
-                    throw new \RuntimeException('Only JPG, PNG, or PDF files are allowed for the uploaded ID.');
-                }
-
-                $uploadDir = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'plan_registration_verification' . DIRECTORY_SEPARATOR . 'branch_admin_' . $branchId;
-                if (! is_dir($uploadDir) && ! mkdir($uploadDir, 0777, true) && ! is_dir($uploadDir)) {
-                    throw new \RuntimeException('Unable to create the upload directory for the verification document.');
-                }
-
-                $fileName = 'valid_id_' . time() . '_' . md5($validIdFile->getClientName() . microtime(true)) . '.' . $extension;
-                $validIdFile->move($uploadDir, $fileName);
-                $verificationDocument = [
-                    'path' => $uploadDir . DIRECTORY_SEPARATOR . $fileName,
-                    'name' => $validIdFile->getClientName(),
-                ];
-            }
+            // Step 3 government ID verification (Level 1 + Level 2) — server-side re-check.
+            $idVerification = RegistrationWizardService::processIdVerification(
+                $this->request->getFile('valid_id'),
+                [
+                    'first_name' => trim((string) $this->request->getPost('first_name')),
+                    'middle_name' => trim((string) $this->request->getPost('middle_name')),
+                    'last_name' => trim((string) $this->request->getPost('last_name')),
+                    'date_of_birth' => trim((string) $this->request->getPost('date_of_birth')),
+                    'address' => trim(implode(' ', array_filter([
+                        (string) $this->request->getPost('address_street'),
+                        (string) $this->request->getPost('address_barangay'),
+                        (string) $this->request->getPost('address_city'),
+                    ], static fn ($value): bool => $value !== ''))),
+                ],
+                (string) $this->request->getPost('ocr_text'),
+                (string) $this->request->getPost('id_type'),
+                (string) $this->request->getPost('id_number'),
+                'branch_admin_' . $branchId
+            );
 
             // Create or find user for this plan holder
             $firstName = trim((string) $this->request->getPost('first_name'));
@@ -294,6 +326,7 @@ class ClientController extends BaseController
                     'contact_number' => $contactNumber,
                     'role_id' => 4, // Plan holder
                     'status' => 'active',
+                    'account_status' => 'pending', // pending until initial payment is verified
                 ], true);
 
                 if (! $userId) {
@@ -316,7 +349,13 @@ class ClientController extends BaseController
             $planHolderData = [
                 'user_id' => $userId,
                 'id_control_no' => trim((string) $this->request->getPost('id_control_no')),
-                'coordinator' => trim((string) $this->request->getPost('coordinator')),
+                'coordinator' => $coordinatorName,
+                'coordinator_user_id' => $coordinatorUserId,
+                'id_document_path' => $idVerification['path'],
+                'id_type' => $idVerification['type'],
+                'id_number' => $idVerification['number'],
+                'id_match_score' => $idVerification['score'],
+                'id_verification_status' => 'pending',
                 'application_date' => $this->nullablePost('application_date'),
                 'address_no' => trim((string) $this->request->getPost('address_no')),
                 'address_street' => trim((string) $this->request->getPost('address_street')),
@@ -359,6 +398,10 @@ class ClientController extends BaseController
 
                 $planHolderId = (int) $existingHolder['plan_holder_id'];
             } else {
+                $planHolderData['unique_identifier'] = strtoupper(preg_replace('/\s+/', '', $lastName))
+                    . '-' . strtoupper(preg_replace('/\s+/', '', $firstName))
+                    . '-' . substr((string) time(), -6);
+
                 $inserted = $planHolderModel->insert($planHolderData, true);
                 $planHolderId = (int) $inserted;
 
@@ -386,70 +429,11 @@ class ClientController extends BaseController
                 'branch_id' => $branchId,
             ]);
 
-            // Process beneficiaries
-            $beneficiariesInput = $this->request->getPost('beneficiaries');
-            $beneficiariesInput = is_array($beneficiariesInput) ? $beneficiariesInput : [];
-            $beneficiaries = [];
-            $isPrimary = true;
+            // Insert beneficiaries (validated above) — replaces existing rows.
+            RegistrationWizardService::insertBeneficiaries($beneficiaryCheck['rows'], $planHolderId);
 
-            foreach ($beneficiariesInput as $row) {
-                $firstName = trim((string) ($row['first_name'] ?? ''));
-                $middleName = trim((string) ($row['middle_name'] ?? ''));
-                $lastName = trim((string) ($row['last_name'] ?? ''));
-                $birthday = trim((string) ($row['birthday'] ?? $row['date_of_birth'] ?? ''));
-                $relationship = trim((string) ($row['relationship'] ?? ''));
-
-                // Skip completely empty rows
-                if ($firstName === '' && $middleName === '' && $lastName === '' && $birthday === '' && $relationship === '') {
-                    continue;
-                }
-
-                if ($firstName === '' && $lastName === '') {
-                    throw new \RuntimeException('Beneficiary name is required. Please provide at least a first or last name for each beneficiary.');
-                }
-
-                if ($relationship === '') {
-                    throw new \RuntimeException('Please enter the relationship for each beneficiary.');
-                }
-
-                $beneficiaries[] = [
-                    'plan_holder_id' => $planHolderId,
-                    'first_name' => $firstName,
-                    'middle_name' => $middleName,
-                    'last_name' => $lastName,
-                    'date_of_birth' => $birthday,
-                    'relationship' => $relationship,
-                    'is_primary' => $isPrimary ? 1 : 0,
-                ];
-
-                $isPrimary = false;
-            }
-
-            if (empty($beneficiaries)) {
-                throw new \RuntimeException('At least one beneficiary is required.');
-            }
-
-            $beneficiaryModel = new \App\Models\BeneficiaryModel();
-            $beneficiaryModel->where('plan_holder_id', $planHolderId)->delete();
-
-            foreach ($beneficiaries as $beneficiary) {
-                $beneficiaryModel->insert($beneficiary);
-            }
-
-            // Create plan record
-            $planModel = new \App\Models\PlanModel();
-            $existingPlan = $planModel
-                ->where('plan_holder_id', $planHolderId)
-                ->first();
-
-            if (! $existingPlan) {
-                $planModel->insert([
-                    'plan_holder_id' => $planHolderId,
-                    'package_id' => $planId,
-                    'registration_date' => date('Y-m-d'),
-                    'status' => 'inactive',
-                ], true);
-            }
+            // Create plan record (inactive until the initial payment is verified)
+            RegistrationWizardService::createInactivePlan($planHolderId);
 
             $db->transComplete();
 

@@ -5,7 +5,7 @@
     <div class="row justify-content-center">
         <div class="col-lg-6 text-center" style="padding: 60px 20px;">
             <div style="width: 80px; height: 80px; border-radius: 50%; background: #dcfce7; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 20px;">
-                <i class="bi bi-check-lg" style="font-size: 2.5rem; color: #16a34a;"></i>
+                <i class="mdi mdi-check-circle" style="font-size: 2.5rem; color: #16a34a;"></i>
             </div>
             <h2 style="font-weight: 800; margin-bottom: 12px;">Application Submitted!</h2>
             <p style="color: #64748b; font-size: 1rem; margin-bottom: 8px;">
@@ -27,7 +27,7 @@
 
             <div class="d-flex gap-3 justify-content-center flex-wrap">
                 <a href="<?= site_url('/client/service') ?>" class="btn btn-primary" style="background: #1e3a5f; border-color: #1e3a5f;">
-                    <i class="bi bi-arrow-left me-1"></i> Back to Services
+                    <i class="mdi mdi-arrow-left me-1"></i> Back to Services
                 </a>
                 <a href="<?= site_url('/client/dashboard') ?>" class="btn btn-outline-secondary">
                     Go to Dashboard

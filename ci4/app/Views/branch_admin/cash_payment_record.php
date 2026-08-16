@@ -227,6 +227,8 @@
 
     var clientsData = <?= $clientsJson ?>;
     var monthlyFee = <?= json_encode($monthlyFee) ?>;
+    // Same source of truth as the server (PaymentService::ADVANCE_DISCOUNTS).
+    var discountSchedule = <?= json_encode(\App\Services\PaymentService::ADVANCE_DISCOUNTS) ?>;
 
     /* --- Tab switching --- */
     window.prSwitchTab = function (btn) {
@@ -239,15 +241,19 @@
         if (panel) panel.style.display = '';
     };
 
-    /* --- Calculation update --- */
+    /* --- Calculation update (applies the advance-payment discount) --- */
     window.prUpdateCalc = function (prefix) {
         var monthsEl = document.getElementById('pr-months-' + prefix);
         var calcEl = document.getElementById('pr-calc-' + prefix);
         if (!monthsEl || !calcEl) return;
 
         var months = parseInt(monthsEl.value) || 1;
-        var total = monthlyFee * months;
-        calcEl.innerHTML = '₱' + monthlyFee.toLocaleString() + ' × ' + months + ' = [<strong>₱' + total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</strong>]';
+        var subtotal = monthlyFee * months;
+        var pct = discountSchedule[months] || 0;
+        var discount = Math.round(subtotal * pct) / 100;
+        var total = subtotal - discount;
+        var discountNote = (pct > 0) ? ' (incl. ' + pct + '% advance discount)' : '';
+        calcEl.innerHTML = '₱' + monthlyFee.toLocaleString() + ' × ' + months + discountNote + ' = [<strong>₱' + total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</strong>]';
     };
 
     /* --- Client search --- */

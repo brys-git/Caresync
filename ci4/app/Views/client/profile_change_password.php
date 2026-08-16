@@ -9,20 +9,20 @@
             <p class="text-muted mb-0 small">Update your login password</p>
         </div>
         <a href="<?= base_url('client/profile') ?>" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-arrow-left me-1"></i> Back to Profile
+            <i class="mdi mdi-arrow-left me-1"></i> Back to Profile
         </a>
     </div>
 
     <!-- Alert Messages -->
     <?php if (session()->getFlashdata('error')): ?>
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="bi bi-exclamation-circle me-2"></i> <?= esc(session()->getFlashdata('error')) ?>
+            <i class="mdi mdi-alert-circle me-2"></i> <?= esc(session()->getFlashdata('error')) ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     <?php endif; ?>
     <?php if (session()->getFlashdata('success')): ?>
         <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="bi bi-check-circle me-2"></i> <?= esc(session()->getFlashdata('success')) ?>
+            <i class="mdi mdi-check-circle me-2"></i> <?= esc(session()->getFlashdata('success')) ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     <?php endif; ?>
@@ -53,7 +53,7 @@
                                     required 
                                     placeholder="Enter your current password">
                                 <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('current_password')">
-                                    <i class="bi bi-eye"></i>
+                                    <i class="mdi mdi-eye"></i>
                                 </button>
                             </div>
                             <small class="text-muted d-block mt-1">
@@ -79,7 +79,7 @@
                                     placeholder="Enter new password"
                                     minlength="8">
                                 <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('new_password')">
-                                    <i class="bi bi-eye"></i>
+                                    <i class="mdi mdi-eye"></i>
                                 </button>
                             </div>
                             <small class="text-muted d-block mt-1">
@@ -103,7 +103,7 @@
                                     placeholder="Confirm new password"
                                     minlength="8">
                                 <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('confirm_password')">
-                                    <i class="bi bi-eye"></i>
+                                    <i class="mdi mdi-eye"></i>
                                 </button>
                             </div>
                             <small class="text-muted d-block mt-1">
@@ -114,7 +114,7 @@
                         <!-- Password Requirements -->
                         <div class="alert alert-info" role="alert">
                             <small class="mb-0">
-                                <i class="bi bi-info-circle me-2"></i>
+                                <i class="mdi mdi-information me-2"></i>
                                 <strong>Password Requirements:</strong>
                                 <ul class="mb-0 mt-2 ps-3">
                                     <li>At least 8 characters long</li>
@@ -130,7 +130,7 @@
                                 Cancel
                             </a>
                             <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-check-circle me-1"></i> Update Password
+                                <i class="mdi mdi-check-circle me-1"></i> Update Password
                             </button>
                         </div>
                     </form>
@@ -141,23 +141,23 @@
             <div class="card mt-3 shadow-sm border-0">
                 <div class="card-body">
                     <h6 class="card-title mb-3">
-                        <i class="bi bi-shield-check text-success me-2"></i> Security Tips
+                        <i class="mdi mdi-shield-check text-success me-2"></i> Security Tips
                     </h6>
                     <ul class="list-unstyled mb-0 small">
                         <li class="mb-2">
-                            <i class="bi bi-check text-success me-2"></i> 
+                            <i class="mdi mdi-check text-success me-2"></i> 
                             Use a unique password you don't use elsewhere
                         </li>
                         <li class="mb-2">
-                            <i class="bi bi-check text-success me-2"></i> 
+                            <i class="mdi mdi-check text-success me-2"></i> 
                             Change your password regularly
                         </li>
                         <li class="mb-2">
-                            <i class="bi bi-check text-success me-2"></i> 
+                            <i class="mdi mdi-check text-success me-2"></i> 
                             Never share your password with anyone
                         </li>
                         <li>
-                            <i class="bi bi-check text-success me-2"></i> 
+                            <i class="mdi mdi-check text-success me-2"></i> 
                             Use a password manager to store your credentials safely
                         </li>
                     </ul>

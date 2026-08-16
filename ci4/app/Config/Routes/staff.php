@@ -27,6 +27,7 @@ $routes->group('staff', ['filter' => 'auth'], static function (RouteCollection $
     $routes->post('payment-management/record-cash', 'PaymentTracking::recordCash', ['filter' => 'role:3']);
     $routes->get('record-payment', 'PaymentTracking::staffRecordPaymentForm', ['filter' => 'role:3']);
     $routes->post('record-payment/save', 'PaymentTracking::staffRecordPaymentSave', ['filter' => 'role:3']);
+    $routes->get('payment-management/id-document/(:num)', 'PaymentTracking::idDocument/$1', ['filter' => 'role:3']);
 
     // Service Management
     $routes->get('services', 'Staff\ServicesController::index', ['filter' => 'role:3']);

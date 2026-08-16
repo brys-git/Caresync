@@ -273,7 +273,7 @@ class PaymentTracking extends BaseController
         $monthlyFee = (float) ($plan['monthly_fee'] ?? 0);
         $expectedAmount = $this->calculateAmount($monthlyFee, $monthsCovered);
         if ($expectedAmount <= 0 || abs($expectedAmount - $amount) > 0.01) {
-            return redirect()->back()->withInput()->with('error', 'Amount must match the monthly fee multiplied by months covered.');
+            return redirect()->back()->withInput()->with('error', 'Amount must match the monthly fee multiplied by months covered, less any advance discount.');
         }
 
         if ($amount > (float) ($plan['remaining_balance'] ?? 0)) {
@@ -320,13 +320,9 @@ class PaymentTracking extends BaseController
 
         $autoApproved = false;
         if ($status === 'paid') {
-            error_log("RECORD_CASH DEBUG: Status is paid, checking if initial payment");
             if ($this->isInitialPayment((int) $paymentId, (int) $plan['plan_id'], (int) $plan['plan_holder_id'])) {
-                error_log("RECORD_CASH DEBUG: Is initial payment, calling autoApprovePlanHolderFromInitialPayment");
                 $autoApproved = $this->autoApprovePlanHolderFromInitialPayment($plan, $monthsCovered);
-                error_log("RECORD_CASH DEBUG: autoApproved result = " . ($autoApproved ? 'true' : 'false'));
             } else {
-                error_log("RECORD_CASH DEBUG: Not an initial payment, applying membership coverage");
                 (new MembershipService())->applyMembershipCoverage((int) $plan['plan_id'], $monthsCovered);
             }
         }
@@ -373,6 +369,59 @@ class PaymentTracking extends BaseController
     public function rejectGcash(int $paymentId)
     {
         return $this->reviewGcash($paymentId, 'cancelled');
+    }
+
+    /**
+     * Serve the plan-holder's uploaded government ID to branch admins/staff.
+     *
+     * Scope-checked: only the branch that owns the payment may view it, and the
+     * file must live under the secure verification upload dir. The document is
+     * never served from the public webroot.
+     */
+    public function idDocument(int $paymentId)
+    {
+        $roleId = (int) session('role_id');
+        if (! in_array($roleId, [2, 3], true)) {
+            return redirect()->to('/unauthorized');
+        }
+
+        $branchId = (int) session('branch_id');
+
+        $payment = db_connect()->table('payments pay')
+            ->select('pay.payment_id, pay.branch_id, ph.id_document_path, ph.id_type')
+            ->join('plans p', 'p.plan_id = pay.plan_id', 'inner')
+            ->join('plan_holders ph', 'ph.plan_holder_id = p.plan_holder_id', 'inner')
+            ->where('pay.payment_id', $paymentId)
+            ->get()
+            ->getRowArray();
+
+        if (! $payment) {
+            return redirect()->back()->with('error', 'Payment record not found.');
+        }
+
+        if ((int) ($payment['branch_id'] ?? 0) !== $branchId) {
+            return redirect()->back()->with('error', 'This document is outside your branch scope.');
+        }
+
+        $path = (string) ($payment['id_document_path'] ?? '');
+        if ($path === '') {
+            return redirect()->back()->with('error', 'No government ID document is attached for this registration.');
+        }
+
+        // Defense in depth: only serve files under the verification upload dir.
+        $baseDir = realpath(WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'plan_registration_verification');
+        $realPath = realpath($path);
+        if ($baseDir === false || $realPath === false || strpos($realPath, $baseDir) !== 0 || ! is_file($realPath)) {
+            return redirect()->back()->with('error', 'Document not found.');
+        }
+
+        $mime = (string) (function_exists('mime_content_type') ? mime_content_type($realPath) : false);
+        $mime = $mime === '' ? 'application/octet-stream' : $mime;
+
+        return $this->response
+            ->setHeader('Content-Type', $mime)
+            ->setHeader('Content-Disposition', 'inline; filename="government_id_' . (int) $paymentId . '"')
+            ->setBody((string) file_get_contents($realPath));
     }
 
     private function reviewGcash(int $paymentId, string $targetStatus)
@@ -427,6 +476,11 @@ class PaymentTracking extends BaseController
         }
 
         $rejectionReason = trim((string) $this->request->getPost('rejection_reason'));
+
+        if ($targetStatus === 'cancelled' && $rejectionReason === '') {
+            return redirect()->back()->with('error', 'Please provide a reason for the rejection.');
+        }
+
         $remarks = $targetStatus === 'verified'
             ? 'GCash verified by branch admin'
             : ('GCash rejected by branch admin' . ($rejectionReason !== '' ? (': ' . $rejectionReason) : ''));
@@ -491,7 +545,8 @@ class PaymentTracking extends BaseController
 
     private function calculateAmount(float $monthlyFee, int $monthsCovered): float
     {
-        return round($monthlyFee * max(1, $monthsCovered), 2);
+        // Advance payments apply the tiered discount (see PaymentService::ADVANCE_DISCOUNTS).
+        return \App\Services\PaymentService::advanceTotal($monthlyFee, $monthsCovered);
     }
 
     private function paymentApprovedMessage(int $monthsCovered, ?array $plan): string
@@ -509,10 +564,8 @@ class PaymentTracking extends BaseController
     private function autoApprovePlanHolderFromInitialPayment(array $plan, int $monthsCovered = 1): bool
     {
         $planHolderId = (int) ($plan['plan_holder_id'] ?? 0);
-        error_log("AUTO_APPROVE DEBUG: Starting with planHolderId=$planHolderId, monthsCovered=$monthsCovered");
         
         if ($planHolderId <= 0) {
-            error_log("AUTO_APPROVE DEBUG: Invalid planHolderId");
             return false;
         }
 
@@ -522,33 +575,27 @@ class PaymentTracking extends BaseController
         $planModel = new PlanModel();
 
         $holder = $planHolderModel->find($planHolderId);
-        error_log("AUTO_APPROVE DEBUG: Found holder: " . json_encode($holder));
         
         if (! $holder || (int) ($holder['branch_id'] ?? 0) !== $branchId) {
-            error_log("AUTO_APPROVE DEBUG: Holder not found or branch mismatch");
             return false;
         }
 
         if (strtolower((string) ($holder['status'] ?? '')) !== 'inactive') {
-            error_log("AUTO_APPROVE DEBUG: Holder status is not inactive: " . ($holder['status'] ?? ''));
             return false;
         }
 
-        error_log("AUTO_APPROVE DEBUG: Holder is inactive, proceeding with auto-approval");
 
         $db = db_connect();
         $db->transBegin();
 
         try {
             $packageData = $this->resolvePackageAndVersion();
-            error_log("AUTO_APPROVE DEBUG: Resolved package: " . json_encode($packageData));
             
             $existingPlan = $planModel
                 ->where('plan_holder_id', $planHolderId)
                 ->orderBy('plan_id', 'DESC')
                 ->first();
 
-            error_log("AUTO_APPROVE DEBUG: Existing plan: " . json_encode($existingPlan));
 
             if ($existingPlan) {
                 $today = date('Y-m-d');
@@ -586,7 +633,6 @@ class PaymentTracking extends BaseController
                 }
 
                 $planModel->update((int) $existingPlan['plan_id'], $updateData);
-                error_log("AUTO_APPROVE DEBUG: Updated existing plan");
             } else {
                 $today = date('Y-m-d');
                 $coverageUntil = date('Y-m-d', strtotime('+' . max(1, $monthsCovered) . ' months', strtotime($today)));
@@ -628,7 +674,6 @@ class PaymentTracking extends BaseController
 
                 $planId = (int) $planModel->insert($insertData, true);
 
-                error_log("AUTO_APPROVE DEBUG: Created new plan with ID=$planId");
 
                 if ($planId <= 0) {
                     throw new \RuntimeException('Unable to create default plan.');
@@ -638,29 +683,24 @@ class PaymentTracking extends BaseController
             // Enforce one active plan
             try {
                 (new MembershipService())->enforceOneActivePlan($planHolderId);
-                error_log("AUTO_APPROVE DEBUG: Enforced one active plan");
             } catch (\Throwable $e) {
-                error_log("AUTO_APPROVE DEBUG: enforceOneActivePlan failed: " . $e->getMessage());
                 // Don't fail the entire transaction for this
             }
 
             $planHolderModel->update($planHolderId, [
                 'status' => 'active',
             ]);
-            error_log("AUTO_APPROVE DEBUG: Updated plan holder status to active");
 
             $userModel->update((int) ($holder['user_id'] ?? 0), [
                 'is_plan_holder' => 1,
                 'account_status' => 'verified',
                 'branch_id' => $branchId,
             ]);
-            error_log("AUTO_APPROVE DEBUG: Updated user");
 
             // Try to send notification, but don't fail if it errors
             try {
                 (new NotificationService())->notify((int) ($holder['user_id'] ?? 0), 'Your registration has been approved. Your plan is now active.', 'registration_pending');
             } catch (\Throwable $e) {
-                error_log("AUTO_APPROVE DEBUG: NotificationService failed: " . $e->getMessage());
             }
             
             // Try to log activity, but don't fail if it errors
@@ -675,18 +715,14 @@ class PaymentTracking extends BaseController
                     ['status' => 'active']
                 );
             } catch (\Throwable $e) {
-                error_log("AUTO_APPROVE DEBUG: ActivityLogService failed: " . $e->getMessage());
             }
 
             if ($db->transStatus() === false) {
-                error_log("AUTO_APPROVE DEBUG: Transaction status is false");
                 throw new \RuntimeException('Unable to auto-approve plan holder.');
             }
 
             $db->transCommit();
-            error_log("AUTO_APPROVE DEBUG: Transaction committed successfully");
         } catch (\Throwable $e) {
-            error_log("AUTO_APPROVE DEBUG: Exception caught: " . $e->getMessage());
             $db->transRollback();
             return false;
         }
@@ -807,15 +843,20 @@ class PaymentTracking extends BaseController
 
     private function initialPaymentRows(int $branchId): array
     {
-        $sql = "SELECT payments.*, users.first_name, users.last_name, plan_holders.unique_identifier, plan_holders.plan_holder_id
+        $sql = "SELECT payments.*, users.first_name, users.last_name, plan_holders.unique_identifier, plan_holders.plan_holder_id,
+                    plan_holders.coordinator, plan_holders.coordinator_user_id,
+                    plan_holders.id_type, plan_holders.id_verification_status, plan_holders.id_document_path,
+                    plans.monthly_fee, plans.status AS plan_status,
+                    cu.first_name AS coordinator_first_name, cu.middle_name AS coordinator_middle_name, cu.last_name AS coordinator_last_name
             FROM payments
             INNER JOIN plans ON plans.plan_id = payments.plan_id
             INNER JOIN plan_holders ON plan_holders.plan_holder_id = plans.plan_holder_id
             INNER JOIN users ON users.user_id = plan_holders.user_id
+            LEFT JOIN users cu ON cu.user_id = plan_holders.coordinator_user_id
             WHERE payments.branch_id = ?
             GROUP BY payments.payment_id
             ORDER BY payments.payment_id DESC";
-        
+
         $db = db_connect();
         $query = $db->query($sql, [$branchId]);
         $rows = $query->getResultArray();
@@ -827,10 +868,10 @@ class PaymentTracking extends BaseController
                 (int) ($row['plan_holder_id'] ?? 0)
             );
         });
-        
+
         // Re-index array after filtering
         $result = array_values($filtered);
-        
+
         return $this->ensurePaymentColumns($result);
     }
 
@@ -1035,12 +1076,14 @@ class PaymentTracking extends BaseController
             }
         }
 
+        $program = \App\Services\MembershipService::getProgramInfo();
+
         return view('staff/record_payment', [
             'role_layout' => 'layouts/staff',
             'page_title' => null,
             'clients' => $clients,
             'approval_queue' => $approvalQueue,
-            'monthly_fee' => 240.0,
+            'monthly_fee' => (float) ($program['monthly_fee'] ?? 240.0),
             'pending_count' => $pendingCount,
         ]);
     }
@@ -1057,7 +1100,8 @@ class PaymentTracking extends BaseController
         $monthsCovered = max(1, (int) $this->request->getPost('months_covered'));
         $receiptNumber = trim((string) $this->request->getPost('receipt_number'));
         $paymentType = strtolower(trim((string) $this->request->getPost('payment_type')));
-        $monthlyFee = 240.0;
+        $program = \App\Services\MembershipService::getProgramInfo();
+        $monthlyFee = (float) ($program['monthly_fee'] ?? 240.0);
 
         if (empty($clientName) || empty($receiptNumber)) {
             return redirect()->back()
@@ -1077,7 +1121,8 @@ class PaymentTracking extends BaseController
         }
 
         $db = db_connect();
-        $amount = $monthlyFee * $monthsCovered;
+        // Advance payments apply the tiered discount.
+        $amount = \App\Services\PaymentService::advanceTotal($monthlyFee, $monthsCovered);
         $paymentData = [
             'branch_id' => $branchId,
             'client_name' => $clientName,

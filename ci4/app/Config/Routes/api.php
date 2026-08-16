@@ -11,8 +11,11 @@ use CodeIgniter\Router\RouteCollection;
 
 // API group for future REST endpoints
 $routes->group('api', static function (RouteCollection $routes) {
-    // Placeholder for future API endpoints
-    // e.g., $routes->get('members', 'Api\MembersController::index');
+    // PSGC address reference (served from the local cache; upstream psgc.cloud is
+    // only consulted to seed the cache the first time a level is requested).
+    $routes->get('address/provinces', 'Api\AddressController::provinces');
+    $routes->get('address/cities/(:alphanum)', 'Api\AddressController::cities/$1');
+    $routes->get('address/barangays/(:alphanum)', 'Api\AddressController::barangays/$1');
 });
 
 // AJAX endpoints

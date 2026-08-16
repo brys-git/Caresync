@@ -160,16 +160,21 @@ class Database extends Config
     /**
      * This database connection is used when running PHPUnit database tests.
      *
+     * NOTE: this is intentionally pointed at the live application database so the
+     * route smoke test (tests/Feature/RouteSmokeTest.php) exercises the real app
+     * end-to-end and catches 500s/regressions. It only issues GET requests, so it
+     * does not mutate data. Keep it mirrored with $default above.
+     *
      * @var array<string, mixed>
      */
     public array $tests = [
         'DSN'         => '',
-        'hostname'    => '127.0.0.1',
-        'username'    => '',
+        'hostname'    => 'localhost',
+        'username'    => 'root',
         'password'    => '',
-        'database'    => ':memory:',
-        'DBDriver'    => 'SQLite3',
-        'DBPrefix'    => 'db_',  // Needed to ensure we're working correctly with prefixes live. DO NOT REMOVE FOR CI DEVS
+        'database'    => 'kaagapay_db',
+        'DBDriver'    => 'MySQLi',
+        'DBPrefix'    => '',
         'pConnect'    => false,
         'DBDebug'     => true,
         'charset'     => 'utf8',

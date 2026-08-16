@@ -91,11 +91,31 @@ class ServiceBalanceService
         }
 
         $packageCost = (float) ($application['package_cost'] ?? $application['price'] ?? 0);
-        $coverage = $this->calculateCoverage(
-            $packageCost,
-            (int) ($eligibility['months_paid'] ?? 0),
-            (float) ($eligibility['monthly_fee'] ?? MembershipService::MONTHLY_FEE)
-        );
+
+        // If Damayan benefit was already applied to the service, use those values directly
+        $damayanEligible = (bool) ($application['damayan_eligible'] ?? false);
+        $damayanBenefitCredit = (float) ($application['damayan_benefit_credit'] ?? 0);
+        $upgradeAmount = (float) ($application['upgrade_amount'] ?? 0);
+        $finalAmountDue = (float) ($application['final_amount_due'] ?? 0);
+
+        if ($damayanEligible) {
+            // Damayan benefit already calculated — use it directly
+            $coverage = [
+                'total_contributions' => round((float) ($eligibility['monthly_fee'] ?? 0) * (int) ($eligibility['months_paid'] ?? 0), 2),
+                'assistance_amount' => $damayanBenefitCredit,
+                'remaining_balance' => $finalAmountDue,
+                'installment_amount' => $finalAmountDue > 0 ? max(self::DEFAULT_INSTALLMENT_FLOOR, (float) round($finalAmountDue / 10, -2)) : 0.0,
+                'due_date' => $finalAmountDue > 0 ? date('Y-m-d', strtotime('+30 days')) : null,
+                'next_due_date' => $finalAmountDue > 0 ? date('Y-m-d', strtotime('+30 days')) : null,
+            ];
+        } else {
+            // Standard (non-Damayan or pre-Damayan) calculation
+            $coverage = $this->calculateCoverage(
+                $packageCost,
+                (int) ($eligibility['months_paid'] ?? 0),
+                (float) ($eligibility['monthly_fee'] ?? MembershipService::MONTHLY_FEE)
+            );
+        }
 
         $beneficiary = $this->resolvePrimaryBeneficiary($planHolderId);
 

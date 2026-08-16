@@ -3,10 +3,12 @@
 namespace Tests\Feature;
 
 use CodeIgniter\Test\CIUnitTestCase;
-use CodeIgniter\Test\FeatureTestCase;
+use CodeIgniter\Test\FeatureTestTrait;
 
-class ClientRegistrationControllerTest extends FeatureTestCase
+class ClientRegistrationControllerTest extends CIUnitTestCase
 {
+    use FeatureTestTrait;
+
     protected function setUp(): void
     {
         parent::setUp();

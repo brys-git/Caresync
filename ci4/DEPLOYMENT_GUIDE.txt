@@ -1,0 +1,270 @@
+===============================================================
+  CARESYNC — HOSTING DEPLOYMENT GUIDE
+===============================================================
+
+This guide walks you through deploying CareSync to a live server.
+Recommended free hosting: InfinityFree.com (free PHP 8.x + MySQL)
+
+
+---------------------------------------------------------------
+STEP 1: REGISTER AT INFINITYFREE
+---------------------------------------------------------------
+
+1. Go to https://infinityfree.com
+2. Click "Sign Up" (free — no credit card needed)
+3. Create an account (email + password)
+4. Verify your email
+5. Log in and click "Create Account"
+6. Choose a subdomain (e.g., caresync.epizy.com) or connect
+   your own domain later
+7. Note down:
+   - Control Panel URL: https://panel.infinityfree.com
+   - FTP Hostname: ftpupload.net (or shown in your panel)
+   - FTP Username: (shown in your panel)
+   - FTP Password: (the one you set during account creation)
+   - MySQL Hostname: sql###.infinityfree.com (shown in panel)
+   - MySQL Database Name: epiz_XXXXX_caresync (shown in panel)
+   - MySQL Username: epiz_XXXXX (shown in panel)
+   - MySQL Password: (the one you set during creation)
+
+
+---------------------------------------------------------------
+STEP 2: CREATE THE DATABASE (InfinityFree Control Panel)
+---------------------------------------------------------------
+
+1. Go to your InfinityFree Control Panel
+2. Click "MySQL Databases"
+3. Create a new database:
+   - Database Name: epiz_XXXXX_caresync (or similar)
+   - Set a strong password
+4. Write down the 5 database values shown:
+   - Hostname: sql####.infinityfree.com
+   - Database: epiz_XXXXX_caresync
+   - Username: epiz_XXXXX
+   - Password: (the one you set)
+   - Port: 3306 (default)
+
+
+---------------------------------------------------------------
+STEP 3: EXPORT YOUR LOCAL DATABASE
+---------------------------------------------------------------
+
+Option A — Using XAMPP phpMyAdmin (easiest):
+  1. Open http://localhost/phpmyadmin
+  2. Select the "kaagapay_db" database
+  3. Click "Export" tab
+  4. Click "Go" (Quick export, SQL format)
+  5. Save the .sql file
+
+Option B — Using command line:
+  cd C:\xampp\mysql\bin
+  mysqldump -u root kaagapay_db > C:\xampp\htdocs\caresync\database_export.sql
+
+
+---------------------------------------------------------------
+STEP 4: BUILD THE DEPLOYMENT ZIP
+---------------------------------------------------------------
+
+Open PowerShell and run:
+
+  cd C:\xampp\htdocs\caresync\ci4
+  powershell -ExecutionPolicy Bypass -File deploy.ps1
+
+This creates: C:\xampp\htdocs\caresync\caresync-deploy.zip
+Include the database_export.sql file in the zip manually if needed.
+
+
+---------------------------------------------------------------
+STEP 5: UPLOAD FILES TO HOSTING
+---------------------------------------------------------------
+
+Method A — File Manager (easiest, no FTP software needed):
+  1. In InfinityFree Control Panel, click "File Manager"
+  2. Navigate to your domain's root directory (e.g., htdocs/)
+  3. Upload "caresync-deploy.zip"
+  4. Extract/unzip the ZIP in the root directory
+  5. You should see: app/, public/, system/, vendor/, writable/, etc.
+
+Method B — FTP (using FileZilla):
+  1. Download FileZilla (https://filezilla-project.org)
+  2. Connect using your FTP credentials from Step 1
+  3. Drag the extracted files to the remote htdocs/ directory
+  4. Wait for all files to upload (may take 10-30 minutes)
+
+
+---------------------------------------------------------------
+STEP 6: SET DOCUMENT ROOT TO PUBLIC/
+---------------------------------------------------------------
+
+CRITICAL: Your website must point to the "public/" folder, not the
+project root.
+
+In InfinityFree Control Panel:
+  1. Go to "Settings" or "Domain Settings"
+  2. Find "Document Root" or "Web Root"
+  3. Set it to: /public
+     (or: /caresync/public if you uploaded into a subfolder)
+
+If your host doesn't allow changing document root:
+  The .htaccess in the project root will redirect requests
+  to public/ automatically (already configured).
+
+
+---------------------------------------------------------------
+STEP 7: CONFIGURE .ENV FILE
+---------------------------------------------------------------
+
+Using the File Manager or FTP, edit the ".env" file in the
+project root (NOT in public/).
+
+Replace the entire content with:
+
+  CI_ENVIRONMENT = production
+
+  app.baseURL = 'https://YOUR_DOMAIN_HERE/'
+  app.forceGlobalSecureRequests = false
+
+  database.default.hostname = sql####.infinityfree.com
+  database.default.database = epiz_XXXXX_caresync
+  database.default.username = epiz_XXXXX
+  database.default.password = 'YOUR_DB_PASSWORD'
+  database.default.DBDriver = MySQLi
+  database.default.charset = utf8mb4
+  database.default.DBCollat = utf8mb4_general_ci
+  database.default.port = 3306
+
+  session.driver = 'CodeIgniter\Session\Handlers\FileHandler'
+  logger.threshold = 0
+
+IMPORTANT: Replace YOUR_DOMAIN_HERE with your actual domain:
+  - Free subdomain: caresync.epizy.com (no https:// needed... wait,
+    use https:// since InfinityFree provides free SSL)
+  - Custom domain: https://yourdomain.com
+
+Also remove the .env.production file from the server (it's just
+a template — not needed after configuring .env).
+
+
+---------------------------------------------------------------
+STEP 8: IMPORT THE DATABASE
+---------------------------------------------------------------
+
+In InfinityFree Control Panel:
+  1. Click "phpMyAdmin" (under MySQL Databases)
+  2. Log in with your database username and password
+  3. Select your database (epiz_XXXXX_caresync)
+  4. Click "Import" tab
+  5. Choose your database_export.sql file
+  6. Click "Go" to import
+
+Verify: the tables should now appear (users, plans, plan_holders,
+branches, services, etc.)
+
+
+---------------------------------------------------------------
+STEP 9: SET FOLDER PERMISSIONS
+---------------------------------------------------------------
+
+In InfinityFree File Manager, make sure these folders are writable:
+  - writable/cache/
+  - writable/logs/
+  - writable/session/
+  - writable/uploads/
+  - writable/client_imports/
+
+If you get "permission denied" errors, right-click the folder
+and set permissions to 755 or 777.
+
+
+---------------------------------------------------------------
+STEP 10: TEST YOUR LIVE SITE
+---------------------------------------------------------------
+
+1. Visit https://YOUR_DOMAIN_HERE/
+2. You should see the CareSync login page (blue logo)
+3. Log in with your admin credentials
+4. Check that the dashboard loads
+5. Test registration, payments, etc.
+
+If you see a blank page or 500 error:
+  - Check writable/logs/ for error files
+  - Verify database credentials in .env
+  - Ensure PHP 8.2+ is installed (check in Control Panel)
+
+
+---------------------------------------------------------------
+STEP 11: ENABLE FREE SSL (HTTPS)
+---------------------------------------------------------------
+
+InfinityFree provides free SSL via Let's Encrypt:
+  1. In Control Panel, go to "SSL/TLS" or "Security"
+  2. Click "Let's Encrypt" for your domain
+  3. Click "Install"
+  4. Wait 15 minutes for activation
+
+After SSL is active:
+  - Change app.baseURL to use https://
+  - Set app.forceGlobalSecureRequests = true
+  - Test that the site loads over HTTPS
+
+
+---------------------------------------------------------------
+TROUBLESHOOTING
+---------------------------------------------------------------
+
+BLANK PAGE / 500 ERROR:
+  - Check PHP version is 8.2+ (Control Panel > PHP Settings)
+  - Check writable/logs/ for latest log file
+  - Verify database connection in .env
+
+CSS/JS NOT LOADING:
+  - Document root must be set to /public
+  - Check that public/assets/ exists on the server
+  - Clear browser cache
+
+LOGIN REDIRECT LOOP:
+  - Clear writable/session/ contents
+  - Check that app.baseURL matches your actual domain exactly
+  - Make sure baseURL ends with a trailing slash (/)
+
+DATABASE CONNECTION ERROR:
+  - Verify hostname, username, password, database name in .env
+  - Make sure you created the MySQL database in Control Panel
+  - Port is usually 3306 (check your host's info)
+
+UPLOAD ERRORS:
+  - Check writable/uploads/ and writable/client_imports/ permissions
+  - Increase PHP upload limits in Control Panel if needed:
+    upload_max_filesize = 10M
+    post_max_size = 12M
+
+
+---------------------------------------------------------------
+IMPORTANT FILES
+---------------------------------------------------------------
+
+.env                    — Main config (edit this on the server)
+public/                 — Web root (must be the document root)
+app/                    — Your application code
+writable/uploads/       — Uploaded files (plan registration docs, etc.)
+writable/logs/          — Error logs (check here if something breaks)
+vendor/                 — Composer dependencies (do not modify)
+
+
+---------------------------------------------------------------
+DEFAULT ADMIN CREDENTIALS
+---------------------------------------------------------------
+
+Check your local database's "users" table for the admin account
+(role_id = 1). The password is hashed — if you don't remember it,
+you can update it directly in the database:
+
+  UPDATE users SET password = '$2y$10$...' WHERE role_id = 1;
+
+Or use the "Forgot Password" link on the login page if you have
+email configured.
+
+
+===============================================================
+  END OF DEPLOYMENT GUIDE
+===============================================================

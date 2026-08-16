@@ -434,25 +434,25 @@ class ServiceApplications extends BaseController
             ->getRowArray() ?: null;
     }
 
-    private function nullablePost(string $field): ?string
+    protected function nullablePost(string $field): ?string
     {
         $value = trim((string) $this->request->getPost($field));
 
         return $value === '' ? null : $value;
     }
 
-    private function nullableIntPost(string $field): ?int
+    protected function nullableIntPost(string $field): ?int
     {
         $value = trim((string) $this->request->getPost($field));
 
         return $value === '' ? null : (int) $value;
     }
 
-    private function nullableDecimalPost(string $field): ?string
+    protected function nullableDecimalPost(string $field): ?float
     {
         $value = trim((string) $this->request->getPost($field));
 
-        return $value === '' ? null : $value;
+        return $value === '' ? null : (float) $value;
     }
 
     private function tableHasColumn(string $table, string $column): bool

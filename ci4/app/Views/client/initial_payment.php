@@ -5,6 +5,8 @@
 $initialStatus = strtolower((string) (($latest_initial_payment['status'] ?? 'none')));
 $program = $program ?? ['name' => 'Damayan Burial Program', 'monthly_fee' => 240.0];
 $monthlyFee = (float) ($monthly_fee ?? ($program['monthly_fee'] ?? 240));
+$coordinatorGcash = $coordinator_gcash ?? null;
+$coordinatorName = $coordinator_name ?? null;
 ?>
 <div class="container-fluid">
     <div class="mb-3">
@@ -77,6 +79,20 @@ $monthlyFee = (float) ($monthly_fee ?? ($program['monthly_fee'] ?? 240));
                             </small>
                         </div>
                     </div>
+                    <div id="gcash_box" class="mt-3" style="display:none;">
+                        <div class="alert alert-success p-3 mb-0">
+                            <small class="text-muted d-block mb-2"><strong>Pay via GCash to your assigned coordinator:</strong></small>
+                            <?php if ($coordinatorGcash && ! empty($coordinatorGcash['number'])): ?>
+                                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                    <span>Account Name: <strong><?= esc((string) $coordinatorGcash['name']) ?></strong></span>
+                                    <span>GCash Number: <strong><?= esc((string) $coordinatorGcash['number']) ?></strong></span>
+                                </div>
+                                <small class="text-muted d-block mt-2">Send your payment to the account above, then enter your GCash reference number. GCash payments are verified by staff before your membership is activated.</small>
+                            <?php else: ?>
+                                <span class="text-muted">No GCash account is set for your assigned coordinator (<?= esc($coordinatorName ?: 'unknown') ?>) yet. Please contact your branch to confirm the payment details before sending a GCash payment.</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
                     <button type="submit" class="btn btn-primary mt-4" <?= $initialStatus === 'paid' ? 'disabled' : '' ?>>Submit Initial Payment</button>
                 </form>
                     </div>
@@ -88,11 +104,11 @@ $monthlyFee = (float) ($monthly_fee ?? ($program['monthly_fee'] ?? 240));
             <div class="card border-info">
                 <div class="card-body small">
                     <h6 class="card-title">💳 Payment Methods</h6>
-                    <p class="mb-2"><strong>GCash:</strong> Pay online and enter your transaction reference.</p>
-                    <p class="mb-3"><strong>Cash:</strong> Visit your branch to pay, then ask for the official receipt number.</p>
-                    
+                    <p class="mb-2"><strong>GCash:</strong> Pay your assigned coordinator's GCash account (shown when GCash is selected) and enter the transaction reference.</p>
+                    <p class="mb-3"><strong>Cash:</strong> Visit your branch to pay, then enter the official receipt number. The branch verifies cash payments against its records.</p>
+
                     <div class="alert alert-info p-2 mb-0">
-                        <small><strong>Tip:</strong> Once you submit the correct receipt/reference, your membership is automatically activated!</small>
+                        <small><strong>Tip:</strong> GCash payments are verified by staff before your membership is activated. Cash payments are verified against your branch's official receipts.</small>
                     </div>
                 </div>
             </div>
@@ -106,6 +122,7 @@ $monthlyFee = (float) ($monthly_fee ?? ($program['monthly_fee'] ?? 240));
         const reference = document.getElementById('reference_number');
         const hintCash = document.getElementById('hint_cash');
         const hintGcash = document.getElementById('hint_gcash');
+        const gcashBox = document.getElementById('gcash_box');
 
         if (!method || !reference) {
             return;
@@ -138,6 +155,9 @@ $monthlyFee = (float) ($monthly_fee ?? ($program['monthly_fee'] ?? 240));
                 hintCash.style.display = 'none';
                 hintGcash.style.display = 'none';
             }
+
+            // Show the assigned coordinator's GCash account only for GCash.
+            if (gcashBox) gcashBox.style.display = isGcash ? '' : 'none';
             
             if (!isCash && !isGcash) {
                 reference.value = '';

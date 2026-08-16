@@ -1,6 +1,8 @@
 <?= $this->extend($role_layout) ?>
 
 <?= $this->section('content') ?>
+<link rel="stylesheet" href="<?= base_url('assets/css/service-catalog.css') ?>">
+
 <?php
 $state = (string) ($access['state'] ?? 'unregistered');
 $canApply = (bool) ($can_apply ?? false);
@@ -8,433 +10,393 @@ $membership = $membership ?? [];
 $monthsPaid = (int) ($membership['months_paid'] ?? 0);
 $membershipState = strtolower((string) ($membership['membership_state'] ?? 'inactive'));
 $isEligible = $canApply && $monthsPaid >= 2;
-$activeTab = (string) ($active_tab ?? 'services');
+$activeTab = (string) ($active_tab ?? 'packages');
+$services = $services ?? [];
+$packages = $packages ?? [];
+$totalServices = (int) ($total_services ?? count($services));
+$totalPackages = (int) ($total_packages ?? count($packages));
+$isDamayanMember = false;
+if ((int) ($access['plan_holder']['plan_holder_id'] ?? 0) > 0) {
+    $isDamayanMember = (new \App\Services\DamayanService())->isQualifiedMember((int) $access['plan_holder']['plan_holder_id']);
+}
 ?>
 
-<style>
-    .status-badge-eligible { background-color: #dcfce7; color: #166534; border: 1px solid #86efac; }
-    .status-badge-ineligible { background-color: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
-    .service-card {
-        border: 1px solid rgba(229, 231, 235, 1);
-        border-radius: 1.75rem;
-        overflow: hidden;
-        background: #ffffff;
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
-        display: flex;
-        flex-direction: column;
-    }
-    .service-card:hover {
-        transform: translateY(-6px);
-        box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
-    }
-    .service-thumb {
-        height: 220px;
-        min-height: 220px;
-        flex: 0 0 220px;
-        background: linear-gradient(135deg, rgba(224, 242, 254, 0.8), rgba(3, 105, 161, 0.08));
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0;
-        overflow: hidden;
-    }
-    .service-thumb img {
-        width: 100%;
-        min-height: 220px;
-        height: 100%;
-        object-fit: cover;
-        display: block;
-    }
-    .service-card-body {
-        padding: 1.5rem;
-        display: flex;
-        flex-direction: column;
-        min-height: 100%;
-    }
-    .service-title {
-        font-size: 1.125rem;
-        font-weight: 700;
-        margin-bottom: 0.75rem;
-    }
-    .service-description {
-        color: #6b7280;
-        font-size: 0.95rem;
-        margin-bottom: 1.5rem;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-    }
-    .service-meta {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.75rem;
-        margin-bottom: 1.25rem;
-    }
-    .service-price {
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: #1d4ed8;
-    }
-    .status-pill {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0.45rem 0.85rem;
-        border-radius: 9999px;
-        font-size: 0.75rem;
-        font-weight: 700;
-        letter-spacing: 0.02em;
-    }
-    .status-pill.available {
-        background: #ecfdf5;
-        color: #166534;
-        border: 1px solid #86efac;
-    }
-    .status-pill.unavailable {
-        background: #f8fafc;
-        color: #475569;
-        border: 1px solid #cbd5e1;
-    }
-    .service-actions {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        gap: 0.75rem;
-        margin-top: auto;
-    }
-    .service-actions .btn {
-        border-radius: 1rem;
-        font-size: 0.9rem;
-        padding-top: 0.9rem;
-        padding-bottom: 0.9rem;
-    }
-    .service-actions .btn-outline-secondary,
-    .service-actions .btn-outline-primary {
-        border-width: 1px;
-    }
-    .service-actions .btn-primary {
-        box-shadow: 0 10px 20px rgba(59, 130, 246, 0.12);
-    }
-    .membership-alert-box {
-        padding: 1.25rem;
-        border-radius: 12px;
-        margin-bottom: 2rem;
-    }
-    .membership-alert-eligible {
-        background-color: #f0fdf4;
-        border: 2px solid #86efac;
-        color: #166534;
-    }
-    .membership-alert-ineligible {
-        background-color: #fef2f2;
-        border: 2px solid #fca5a5;
-        color: #991b1b;
-    }
-    .membership-alert-pending {
-        background-color: #fffbeb;
-        border: 2px solid #fcd34d;
-        color: #92400e;
-    }
-    .grid-gap-3 { gap: 1.5rem; }
-</style>
+<div class="sc">
+    <div class="sc-container">
 
-<div class="container-fluid py-4">
-    <!-- Page Header -->
-    <div class="mb-4">
-        <h1 class="h3 mb-1">
-            <i class="bi bi-heart-handshake me-2"></i> Services & Packages
-        </h1>
-        <p class="text-muted mb-0">Browse available funeral and membership services</p>
-    </div>
-
-    <!-- Alert Messages -->
-    <?php if (session()->getFlashdata('error')): ?>
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="bi bi-exclamation-circle me-2"></i> <?= esc(session()->getFlashdata('error')) ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <!-- ====== Page Hero ====== -->
+        <div class="sc-page-hero">
+            <div class="sc-page-hero__eyebrow">
+                <i class="mdi mdi-package-variant-closed"></i>
+                Services & Packages
+            </div>
+            <h1 class="sc-page-hero__title">Funeral Services & Casket Packages</h1>
+            <p class="sc-page-hero__sub">Professional, compassionate care for your loved ones. Browse our Balik Probinsya transport service and premium Wood & Metal Casket packages with Damayan member benefits.</p>
         </div>
-    <?php endif; ?>
-    <?php if (session()->getFlashdata('success')): ?>
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="bi bi-check-circle me-2"></i> <?= esc(session()->getFlashdata('success')) ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    <?php endif; ?>
 
-    <!-- Membership Status Alert (CRITICAL) -->
-    <div class="membership-alert-box <?= $isEligible ? 'membership-alert-eligible' : ($state === 'active' ? 'membership-alert-pending' : 'membership-alert-ineligible') ?>">
-        <div class="row g-3 align-items-center">
-            <div class="col-auto">
-                <div style="font-size: 2rem;">
-                    <?= $isEligible ? '<i class="bi bi-check-circle-fill"></i>' : '<i class="bi bi-exclamation-circle-fill"></i>' ?>
+        <!-- ====== KPI Strip ====== -->
+        <div class="sc-kpi-strip">
+            <div class="sc-kpi">
+                <div class="sc-kpi__icon"><i class="mdi mdi-file-document-outline"></i></div>
+                <div>
+                    <div class="sc-kpi__value"><?= $totalPackages ?></div>
+                    <div class="sc-kpi__label">Packages Available</div>
                 </div>
             </div>
-            <div class="col">
-                <div class="fw-bold mb-1">Eligibility Status</div>
-                <div class="row g-3 small">
-                    <div class="col-md-4">
-                        <strong>Membership State:</strong><br>
-                        <span class="badge <?= $membershipState === 'active' ? 'bg-success' : 'bg-warning' ?>">
-                            <?= ucfirst($membershipState) ?>
-                        </span>
-                    </div>
-                    <div class="col-md-4">
-                        <strong>Months Paid:</strong><br>
-                        <span><?= $monthsPaid ?> / 2 months minimum</span>
-                    </div>
-                    <div class="col-md-4">
-                        <strong>Can Apply:</strong><br>
-                        <span class="fw-bold" style="color: <?= $isEligible ? '#059669' : '#dc2626' ?>;">
-                            <?= $isEligible ? '✓ YES' : '✗ NO' ?>
-                        </span>
-                    </div>
+            <div class="sc-kpi">
+                <div class="sc-kpi__icon"><i class="mdi mdi-wrench-outline"></i></div>
+                <div>
+                    <div class="sc-kpi__value"><?= $totalServices ?></div>
+                    <div class="sc-kpi__label">Services Available</div>
+                </div>
+            </div>
+            <div class="sc-kpi">
+                <div class="sc-kpi__icon"><i class="mdi mdi-truck-outline"></i></div>
+                <div>
+                    <div class="sc-kpi__value">2</div>
+                    <div class="sc-kpi__label">Balik Probinsya Routes</div>
+                </div>
+            </div>
+            <div class="sc-kpi">
+                <div class="sc-kpi__icon"><i class="mdi mdi-shield-check-outline"></i></div>
+                <div>
+                    <div class="sc-kpi__value">₱14,500</div>
+                    <div class="sc-kpi__label">Damayan Benefit Credit</div>
                 </div>
             </div>
         </div>
-        <?php if (! $isEligible): ?>
-            <div class="mt-3 p-2 rounded" style="background-color: rgba(0,0,0,0.08);">
-                <small>
-                    <strong><i class="bi bi-info-circle me-1"></i>Requirement:</strong> 
-                    You must complete at least 2 months of contributions to apply for services. 
-                    Currently: <?= $monthsPaid ?> month<?= $monthsPaid === 1 ? '' : 's' ?> paid.
-                </small>
+
+        <!-- ====== Membership Eligibility Strip ====== -->
+        <div class="sc-membership">
+            <div class="sc-membership__left">
+                <div class="sc-membership__icon <?= $isEligible ? '' : 'sc-membership__icon--locked' ?>">
+                    <i class="mdi <?= $isEligible ? 'mdi-shield-check-outline' : 'mdi-shield-lock-outline' ?>"></i>
+                </div>
+                <div>
+                    <div class="sc-membership__title">Eligibility Status</div>
+                    <div class="sc-membership__meta">
+                        Membership: <strong><?= ucfirst($membershipState) ?></strong> ·
+                        Months paid: <strong><?= $monthsPaid ?> / 2 minimum</strong>
+                        <?= $isDamayanMember ? ' · <span class="sc-badge sc-badge--green" style="margin-left:8px;">Damayan Qualified</span>' : '' ?>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <?php if ($isEligible): ?>
+                    <span class="sc-badge sc-badge--green" style="font-size:0.82rem;">✓ Eligible to Apply</span>
+                <?php else: ?>
+                    <span class="sc-badge sc-badge--amber" style="font-size:0.82rem;">✗ Not Yet Eligible</span>
+                    <div style="font-size:0.76rem;color:var(--sc-ink-faint);margin-top:6px;text-align:right;">
+                        Complete <?= max(0, 2 - $monthsPaid) ?> more month(s) of contributions to unlock applications.
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <!-- ====== Flash Messages ====== -->
+        <?php if (session()->getFlashdata('error')): ?>
+            <div class="sc-alert sc-alert--error">
+                <i class="mdi mdi-alert-circle-outline"></i>
+                <?= esc(session()->getFlashdata('error')) ?>
             </div>
         <?php endif; ?>
-    </div>
+        <?php if (session()->getFlashdata('success')): ?>
+            <div class="sc-alert sc-alert--success">
+                <i class="mdi mdi-check-circle-outline"></i>
+                <?= esc(session()->getFlashdata('success')) ?>
+            </div>
+        <?php endif; ?>
 
-    <!-- Tabs Navigation -->
-    <ul class="nav nav-pills mb-4" role="tablist">
-        <li class="nav-item" role="presentation">
-            <a class="nav-link <?= $activeTab === 'services' ? 'active' : '' ?>" 
-               href="<?= site_url('/client/service?tab=services') ?>" role="tab">
-                <i class="bi bi-heart me-2"></i> Funeral Services
+        <!-- ====== Tabs ====== -->
+        <div class="sc-tabs" role="tablist">
+            <a href="<?= site_url('/client/service?tab=packages') ?>"
+               class="sc-tab <?= $activeTab === 'packages' ? 'sc-tab--active' : '' ?>">
+                Packages
+                <span class="sc-tab__count"><?= $totalPackages ?></span>
             </a>
-        </li>
-        <li class="nav-item" role="presentation">
-            <a class="nav-link <?= $activeTab === 'packages' ? 'active' : '' ?>" 
-               href="<?= site_url('/client/service?tab=packages') ?>" role="tab">
-                <i class="bi bi-box2 me-2"></i> Packages
+            <a href="<?= site_url('/client/service?tab=services') ?>"
+               class="sc-tab <?= $activeTab === 'services' ? 'sc-tab--active' : '' ?>">
+                Services
+                <span class="sc-tab__count"><?= $totalServices ?></span>
             </a>
-        </li>
-    </ul>
+        </div>
 
-    <!-- Services Tab -->
-    <?php if ($activeTab === 'services'): ?>
-        <div class="row row-cols-1 row-cols-md-3 g-4">
-            <?php foreach (($services ?? []) as $service): ?>
-                <?php $serviceAvailable = (int) ($service['is_available'] ?? 1) === 1; ?>
-                <div class="col">
-                    <div class="service-card h-100">
-                        <div class="service-thumb">
-                            <img src="<?= base_url('assets/images/temporary-image.png') ?>" alt="Service image" class="img-fluid w-100 h-100 object-fit-cover">
+        <!-- ================================================================ -->
+        <!-- TAB: Packages                                                    -->
+        <!-- ================================================================ -->
+        <?php if ($activeTab === 'packages'): ?>
+
+            <!-- Filter bar -->
+            <div class="sc-filter-bar">
+                <div class="sc-search">
+                    <i class="mdi mdi-magnify"></i>
+                    <input type="text" id="sc-pkg-search" placeholder="Search packages..." oninput="scFilterPackages()">
+                </div>
+                <select class="sc-select" id="sc-pkg-sort" onchange="scFilterPackages()">
+                    <option value="">Sort by</option>
+                    <option value="name">Name</option>
+                    <option value="price-asc">Price: Low → High</option>
+                    <option value="price-desc">Price: High → Low</option>
+                </select>
+            </div>
+
+            <!-- Package cards grid -->
+            <div class="sc-section-head">
+                <div>
+                    <h2 class="sc-section-head__title">Casket Packages</h2>
+                    <p class="sc-section-head__sub">Premium wood and metal caskets with customizable variants and optional burial attire add-on</p>
+                </div>
+            </div>
+
+            <div class="sc-grid" id="sc-pkg-grid">
+                <?php if (empty($packages)): ?>
+                    <div class="sc-empty" style="grid-column: 1 / -1;">
+                        <i class="mdi mdi-package-variant-closed"></i>
+                        <div class="sc-empty__text">No packages found.</div>
+                    </div>
+                <?php else: ?>
+                    <?php foreach ($packages as $pkg):
+                        $pkgStatus = strtolower((string) ($pkg['status'] ?? (($pkg['is_available'] ?? 1) == 1 ? 'active' : 'inactive')));
+                        $desc = (string) ($pkg['description'] ?? '');
+                        $descLines = array_filter(array_map('trim', explode("\n", $desc)));
+                        $colorIdx = ((int) ($pkg['package_id'] ?? 0)) % 3;
+                        $iconMap = [
+                            0 => 'mdi-coffin',
+                            1 => 'mdi-package-variant-closed',
+                            2 => 'mdi-box'
+                        ];
+                        $ribbonMap = [
+                            0 => ['Wood Casket', 'sc-card__ribbon--gold'],
+                            1 => ['Metal Casket', 'sc-card__ribbon--gold'],
+                            2 => ['Premium', 'sc-card__ribbon--green']
+                        ];
+                        $ribbonLabel = $ribbonMap[$colorIdx][0] ?? 'Package';
+                        $ribbonClass = $ribbonMap[$colorIdx][1] ?? 'sc-card__ribbon';
+                        // Pick appropriate product image
+                        $pkgName = strtolower((string) ($pkg['package_name'] ?? ''));
+                        $imgFile = strpos($pkgName, 'wood') !== false ? 'product-1.png' : (strpos($pkgName, 'metal') !== false ? 'product-3.png' : 'product-1.png');
+                    ?>
+                    <div class="sc-card"
+                         data-name="<?= esc(strtolower((string) ($pkg['package_name'] ?? ''))) ?>"
+                         data-status="<?= esc($pkgStatus) ?>"
+                         data-price="<?= (float) ($pkg['base_price'] ?? 0) ?>">
+                        <div class="sc-card__media">
+                            <img src="<?= base_url('assets/images/' . $imgFile) ?>" alt="<?= esc((string) ($pkg['package_name'] ?? 'Package')) ?>" loading="lazy">
+                            <span class="sc-card__ribbon <?= $ribbonClass ?>"><?= $ribbonLabel ?></span>
                         </div>
-
-                        <div class="service-card-body">
-                            <div class="service-title">
-                                <?= esc((string) ($service['service_name'] ?? 'Service')) ?>
-                            </div>
-                            <div class="service-description">
-                                <?= esc(substr((string) ($service['description'] ?? 'No description available.'), 0, 110)) ?>
-                            </div>
-
-                            <div class="service-meta">
-                                <div class="service-price">₱<?= number_format((float) ($service['base_price'] ?? 0), 2) ?></div>
-                                <div class="status-pill <?= $serviceAvailable ? 'available' : 'unavailable' ?>">
-                                    <?= $serviceAvailable ? 'Available' : 'Not available' ?>
-                                </div>
-                            </div>
-
-                            <div class="service-actions">
-                                <a class="btn btn-outline-primary btn-sm d-flex align-items-center justify-content-center"
-                                   href="<?= site_url('/client/service/' . (int) ($service['service_list_id'] ?? 0)) ?>">
-                                    <i class="bi bi-eye me-1"></i> View Details
-                                </a>
-                                <?php if ($isEligible && $serviceAvailable): ?>
-                                    <a class="btn btn-primary btn-sm d-flex align-items-center justify-content-center"
-                                       href="<?= site_url('/client/apply-service/' . (int) ($service['service_list_id'] ?? 0)) ?>"
-                                       title="Apply for this service">
-                                        <i class="bi bi-arrow-right me-1"></i> Apply
-                                    </a>
-                                <?php else: ?>
-                                    <button type="button" class="btn btn-secondary btn-sm d-flex align-items-center justify-content-center"
-                                            data-bs-toggle="popover"
-                                            data-bs-trigger="hover"
-                                            title="Cannot apply"
-                                            data-bs-content="<?= $serviceAvailable ? 'You need 2 months of contributions to apply.' : 'This service is currently unavailable.' ?>">
-                                        <i class="bi bi-lock"></i>
-                                    </button>
+                        <div class="sc-card__body">
+                            <div class="sc-card__cat">Casket Package</div>
+                            <h3 class="sc-card__name"><?= esc((string) ($pkg['package_name'] ?? 'Package')) ?></h3>
+                            <div class="sc-card__price">₱<?= esc(number_format((float) ($pkg['base_price'] ?? 0), 2)) ?></div>
+                            <p class="sc-card__desc"><?= esc(mb_strimwidth($desc, 0, 140, '…')) ?></p>
+                            <ul class="sc-card__features">
+                                <li>Multiple variants available</li>
+                                <li>8 standard inclusions</li>
+                                <li>Optional burial attire add-on</li>
+                                <li>Damayan benefit eligible</li>
+                            </ul>
+                            <div class="sc-card__footer">
+                                <a href="<?= site_url('/client/package/' . (int) $pkg['package_id']) ?>" class="sc-btn sc-btn--outline sc-btn--sm">View Details</a>
+                                <?php if ($isEligible && $pkgStatus === 'active'): ?>
+                                    <a href="<?= site_url('/client/apply-package/' . (int) $pkg['package_id']) ?>" class="sc-btn sc-btn--primary sc-btn--sm">Apply Now</a>
                                 <?php endif; ?>
                             </div>
                         </div>
                     </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+
+        <?php endif; ?>
+
+        <!-- ================================================================ -->
+        <!-- TAB: Services                                                    -->
+        <!-- ================================================================ -->
+        <?php if ($activeTab === 'services'): ?>
+
+            <!-- Filter bar -->
+            <div class="sc-filter-bar">
+                <div class="sc-search">
+                    <i class="mdi mdi-magnify"></i>
+                    <input type="text" id="sc-svc-search" placeholder="Search services..." oninput="scFilterServices()">
                 </div>
-            <?php endforeach; ?>
-            
-            <?php if (empty($services)): ?>
-                <div class="col-12">
-                    <div class="alert alert-info text-center py-5">
-                        <i class="bi bi-info-circle" style="font-size: 2.5rem;"></i>
-                        <p class="mt-2 mb-0">No services available at the moment.</p>
+            </div>
+
+            <div class="sc-section-head">
+                <div>
+                    <h2 class="sc-section-head__title">Additional Services</h2>
+                    <p class="sc-section-head__sub">Specialized transport and care services for your loved ones</p>
+                </div>
+            </div>
+
+            <div class="sc-svc-list" id="sc-svc-list">
+                <?php if (empty($services)): ?>
+                    <div class="sc-empty">
+                        <i class="mdi mdi-wrench-outline"></i>
+                        <div class="sc-empty__text">No services found.</div>
                     </div>
-                </div>
-            <?php endif; ?>
-        </div>
-    <?php endif; ?>
-
-    <!-- Packages Tab -->
-    <?php if ($activeTab === 'packages'): ?>
-        <div class="row row-cols-1 row-cols-md-3 g-4">
-            <?php foreach ($packages ?? [] as $package): ?>
-                <?php $packageAvailable = (int) ($package['is_available'] ?? 1) === 1; ?>
-                <div class="col">
-                    <div class="service-card h-100">
-                        <div class="service-thumb">
-                            <img src="<?= base_url('assets/images/temporary-image.png') ?>" alt="Package image" class="img-fluid w-100 h-100 object-fit-cover">
+                <?php else: ?>
+                    <?php foreach ($services as $svc):
+                        $svcStatus = strtolower((string) ($svc['status'] ?? (($svc['is_available'] ?? 1) == 1 ? 'active' : 'inactive')));
+                        $svcAvailable = $svcStatus === 'active';
+                        $svcName = strtolower((string) ($svc['service_name'] ?? ''));
+                        $icon = strpos($svcName, 'balik') !== false || strpos($svcName, 'probinsya') !== false
+                            ? 'mdi-truck-outline' : 'mdi-wrench-outline';
+                        $gradient = strpos($svcName, 'balik') !== false || strpos($svcName, 'probinsya') !== false
+                            ? 'linear-gradient(135deg, #c2760a 0%, #d4a843 100%)'
+                            : 'linear-gradient(135deg, #1e3a5f 0%, #3182ce 100%)';
+                    ?>
+                    <div class="sc-svc-card"
+                         data-name="<?= esc(strtolower((string) ($svc['service_name'] ?? ''))) ?>"
+                         data-status="<?= esc($svcStatus) ?>">
+                        <div class="sc-svc-card__icon" style="background: <?= $gradient ?>;">
+                            <i class="mdi <?= $icon ?>"></i>
                         </div>
-
-                        <div class="service-card-body">
-                            <div class="service-title">
-                                <?= esc((string) ($package['package_name'] ?? 'Package')) ?>
-                            </div>
-                            <div class="service-description">
-                                <?= esc(substr((string) ($package['description'] ?? 'No description available.'), 0, 110)) ?>
-                            </div>
-
-                            <div class="service-meta">
-                                <div class="service-price">₱<?= number_format((float) ($package['base_price'] ?? 0), 2) ?></div>
-                                <div class="status-pill <?= $packageAvailable ? 'available' : 'unavailable' ?>">
-                                    <?= $packageAvailable ? 'Available' : 'Not available' ?>
-                                </div>
-                            </div>
-
-                            <div class="service-actions">
-                                <a class="btn btn-outline-primary btn-sm d-flex align-items-center justify-content-center"
-                                   href="<?= site_url('/client/package/' . (int) ($package['package_id'] ?? 0)) ?>">
-                                    <i class="bi bi-eye me-1"></i> View Details
-                                </a>
-                                <?php if ($isEligible && $packageAvailable): ?>
-                                    <a class="btn btn-primary btn-sm d-flex align-items-center justify-content-center"
-                                       href="<?= site_url('/client/apply-package/' . (int) ($package['package_id'] ?? 0)) ?>"
-                                       title="Apply for this package">
-                                        <i class="bi bi-arrow-right me-1"></i> Apply
-                                    </a>
-                                <?php else: ?>
-                                    <button type="button" class="btn btn-secondary btn-sm d-flex align-items-center justify-content-center"
-                                            data-bs-toggle="popover"
-                                            data-bs-trigger="hover"
-                                            title="Cannot apply"
-                                            data-bs-content="<?= $packageAvailable ? 'You need 2 months of contributions to apply.' : 'This package is currently unavailable.' ?>">
-                                        <i class="bi bi-lock"></i>
-                                    </button>
+                        <div class="sc-svc-card__body">
+                            <div class="sc-svc-card__name"><?= esc((string) ($svc['service_name'] ?? 'Service')) ?></div>
+                            <div class="sc-svc-card__meta">
+                                <span class="sc-badge sc-badge--<?= $svcStatus === 'active' ? 'green' : 'amber' ?>"><?= $svcStatus === 'active' ? 'Active' : 'Inactive' ?></span>
+                                <?php if (! empty($svc['description'])): ?>
+                                    — <?= esc(mb_strimwidth((string) $svc['description'], 0, 100, '…')) ?>
                                 <?php endif; ?>
                             </div>
                         </div>
+                        <div class="sc-svc-card__price">₱<?= esc(number_format((float) ($svc['base_price'] ?? 0), 2)) ?></div>
+                        <div class="sc-svc-card__actions">
+                            <a href="<?= site_url('/client/service/' . (int) $svc['service_list_id']) ?>" class="sc-btn sc-btn--outline sc-btn--sm">View Details</a>
+                            <?php if ($isEligible && $svcAvailable): ?>
+                                <a href="<?= site_url('/client/apply-service/' . (int) $svc['service_list_id']) ?>" class="sc-btn sc-btn--primary sc-btn--sm">Apply</a>
+                            <?php else: ?>
+                                <span class="sc-btn sc-btn--outline sc-btn--sm" style="opacity:.5;cursor:not-allowed;" title="Complete 2 months of contributions to apply">Apply</span>
+                            <?php endif; ?>
+                        </div>
                     </div>
-                </div>
-            <?php endforeach; ?>
-            
-            <?php if (empty($packages)): ?>
-                <div class="col-12">
-                    <div class="alert alert-info text-center py-5">
-                        <i class="bi bi-info-circle" style="font-size: 2.5rem;"></i>
-                        <p class="mt-2 mb-0">No packages available at the moment.</p>
-                    </div>
-                </div>
-            <?php endif; ?>
-        </div>
-    <?php endif; ?>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
 
-    <!-- Application Status Tracking -->
-    <?php
-        $myApplications = [];
-        $planHolderId = (int) ($access['plan_holder']['plan_holder_id'] ?? 0);
-        if ($planHolderId > 0) {
-            $db = db_connect();
-            if ($db->tableExists('service_applications')) {
-                $myApplications = $db->table('service_applications sa')
-                    ->select('sa.application_id, sa.service_list_id, sa.package_id, sa.status, sa.created_at, sa.rejection_reason, p.package_name, sl.service_name')
-                    ->join('packages p', 'p.package_id = sa.package_id', 'left')
-                    ->join('service_list sl', 'sl.service_list_id = sa.service_list_id', 'left')
-                    ->where('sa.plan_holder_id', $planHolderId)
-                    ->orderBy('sa.created_at', 'DESC')
-                    ->get()
-                    ->getResultArray();
+        <?php endif; ?>
+
+        <!-- ================================================================ -->
+        <!-- My Applications                                                  -->
+        <!-- ================================================================ -->
+        <?php
+            $myApplications = [];
+            $planHolderId = (int) ($access['plan_holder']['plan_holder_id'] ?? 0);
+            if ($planHolderId > 0) {
+                $db = db_connect();
+                if ($db->tableExists('service_applications')) {
+                    $myApplications = $db->table('service_applications sa')
+                        ->select('sa.application_id, sa.service_list_id, sa.package_id, sa.status, sa.created_at, sa.rejection_reason, p.package_name, sl.service_name')
+                        ->join('packages p', 'p.package_id = sa.package_id', 'left')
+                        ->join('service_list sl', 'sl.service_list_id = sa.service_list_id', 'left')
+                        ->where('sa.plan_holder_id', $planHolderId)
+                        ->orderBy('sa.created_at', 'DESC')
+                        ->limit(10)
+                        ->get()
+                        ->getResultArray();
+                }
             }
-        }
-    ?>
+        ?>
 
-    <?php if (! empty($myApplications)): ?>
-    <div class="card mt-4" style="border: 1px solid #e2e8f0; border-radius: 1rem; overflow: hidden;">
-        <div class="card-header" style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; padding: 1rem 1.5rem;">
-            <h5 class="mb-0" style="font-weight: 700;">My Applications</h5>
-            <small class="text-muted">Track the status of your service and package applications.</small>
-        </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0 align-middle">
-                    <thead style="background: #f8fafc;">
-                        <tr>
-                            <th class="px-4 py-3" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #64748b;">Application</th>
-                            <th class="px-4 py-3" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #64748b;">Type</th>
-                            <th class="px-4 py-3" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #64748b;">Submitted</th>
-                            <th class="px-4 py-3" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #64748b;">Status</th>
+        <?php if (! empty($myApplications)): ?>
+        <div class="sc-block" style="margin-top: 8px;">
+            <div class="sc-block__head">
+                <i class="mdi mdi-history"></i>
+                <div>
+                    <div class="sc-block__title">My Applications</div>
+                    <div class="sc-block__sub">Track the status of your recent service and package requests</div>
+                </div>
+            </div>
+            <div style="overflow-x:auto;">
+                <table style="width:100%;border-collapse:collapse;font-size:0.84rem;">
+                    <thead>
+                        <tr style="text-align:left;color:var(--sc-ink-faint);border-bottom:1px solid var(--sc-border);">
+                            <th style="padding:12px 16px;font-size:0.7rem;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;">Item</th>
+                            <th style="padding:12px 16px;font-size:0.7rem;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;">Type</th>
+                            <th style="padding:12px 16px;font-size:0.7rem;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;">Date</th>
+                            <th style="padding:12px 16px;font-size:0.7rem;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;">Status</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($myApplications as $app): ?>
-                            <?php
-                                $appStatus = strtolower((string) ($app['status'] ?? 'pending'));
-                                $appName = (string) ($app['service_name'] ?? $app['package_name'] ?? 'Unknown');
-                                $appType = ! empty($app['service_list_id']) ? 'Service' : 'Package';
-                                $statusColors = [
-                                    'pending' => ['bg' => '#fef3c7', 'text' => '#92400e', 'border' => '#fcd34d'],
-                                    'approved' => ['bg' => '#dcfce7', 'text' => '#166534', 'border' => '#86efac'],
-                                    'rejected' => ['bg' => '#fee2e2', 'text' => '#991b1b', 'border' => '#fca5a5'],
-                                ];
-                                $colors = $statusColors[$appStatus] ?? $statusColors['pending'];
-                            ?>
-                            <tr style="border-bottom: 1px solid #f1f5f9;">
-                                <td class="px-4 py-3">
-                                    <div style="font-weight: 600; color: #1e293b;"><?= esc($appName) ?></div>
-                                    <?php if ($appStatus === 'rejected' && ! empty($app['rejection_reason'])): ?>
-                                        <div style="font-size: 0.78rem; color: #dc2626; margin-top: 2px;">
-                                            <i class="bi bi-exclamation-circle me-1"></i> <?= esc((string) $app['rejection_reason']) ?>
-                                        </div>
-                                    <?php endif; ?>
-                                </td>
-                                <td class="px-4 py-3">
-                                    <span style="padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; background: #ede9fe; color: #6d28d9;">
-                                        <?= $appType ?>
+                        <?php foreach ($myApplications as $app):
+                            $appStatus = strtolower((string) ($app['status'] ?? 'pending'));
+                            $appType = ! empty($app['service_name']) ? 'Service' : 'Package';
+                            $appItem = (string) ($app['service_name'] ?? $app['package_name'] ?? '-');
+                        ?>
+                        <tr style="border-top:1px solid var(--sc-border);">
+                            <td style="padding:12px 16px;font-weight:600;"><?= esc($appItem) ?></td>
+                            <td style="padding:12px 16px;"><?= esc($appType) ?></td>
+                            <td style="padding:12px 16px;color:var(--sc-ink-faint);">
+                                <?= esc(date('M d, Y', strtotime((string) ($app['created_at'] ?? '')))) ?>
+                            </td>
+                            <td style="padding:12px 16px;">
+                                <?php if ($appStatus === 'rejected'): ?>
+                                    <span class="sc-badge" style="background:var(--sc-red-soft);color:var(--sc-red);">
+                                        <?= strtoupper(esc($appStatus)) ?>
                                     </span>
-                                </td>
-                                <td class="px-4 py-3" style="color: #64748b; font-size: 0.84rem;">
-                                    <?= esc(date('M d, Y', strtotime((string) ($app['created_at'] ?? '')))) ?>
-                                </td>
-                                <td class="px-4 py-3">
-                                    <span style="padding: 4px 12px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; background: <?= $colors['bg'] ?>; color: <?= $colors['text'] ?>; border: 1px solid <?= $colors['border'] ?>;">
-                                        <?= strtoupper($appStatus) ?>
+                                <?php else: ?>
+                                    <span class="sc-badge sc-badge--<?= $appStatus === 'approved' ? 'green' : 'amber' ?>">
+                                        <?= strtoupper(esc($appStatus)) ?>
                                     </span>
-                                </td>
-                            </tr>
+                                <?php endif; ?>
+                                <?php if ($appStatus === 'rejected' && ! empty($app['rejection_reason'])): ?>
+                                    <div style="font-size:0.74rem;color:var(--sc-ink-faint);margin-top:4px;"><?= esc(mb_strimwidth((string) $app['rejection_reason'], 0, 60, '…')) ?></div>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
         </div>
+        <?php endif; ?>
+
     </div>
-    <?php endif; ?>
 </div>
 
 <script>
-// Initialize popovers
-document.addEventListener('DOMContentLoaded', function() {
-    const popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'))
-    popoverTriggerList.map(function (popoverTriggerEl) {
-        return new bootstrap.Popover(popoverTriggerEl)
-    })
-});
-</script>
+(function() {
+    /* --- Client-side filters --- */
+    window.scFilterPackages = function() {
+        var search = (document.getElementById('sc-pkg-search') || {}).value || '';
+        search = search.toLowerCase().trim();
+        var sort = (document.getElementById('sc-pkg-sort') || {}).value || '';
+        var cards = document.querySelectorAll('#sc-pkg-grid .sc-card');
+        var visible = [];
 
+        cards.forEach(function(card) {
+            var matchSearch = !search || (card.getAttribute('data-name') || '').indexOf(search) !== -1;
+            if (matchSearch) {
+                card.style.display = '';
+                visible.push(card);
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        if (sort) {
+            visible.sort(function(a, b) {
+                if (sort === 'name') return (a.getAttribute('data-name') || '').localeCompare(b.getAttribute('data-name') || '');
+                if (sort === 'price-asc') return Number(a.getAttribute('data-price') || 0) - Number(b.getAttribute('data-price') || 0);
+                if (sort === 'price-desc') return Number(b.getAttribute('data-price') || 0) - Number(a.getAttribute('data-price') || 0);
+                return 0;
+            });
+            var grid = document.getElementById('sc-pkg-grid');
+            visible.forEach(function(card) { grid.appendChild(card); });
+        }
+    };
+
+    window.scFilterServices = function() {
+        var search = (document.getElementById('sc-svc-search') || {}).value || '';
+        search = search.toLowerCase().trim();
+        var cards = document.querySelectorAll('#sc-svc-list .sc-svc-card');
+
+        cards.forEach(function(card) {
+            var match = !search || (card.getAttribute('data-name') || '').indexOf(search) !== -1;
+            card.style.display = match ? '' : 'none';
+        });
+    };
+})();
+</script>
 <?= $this->endSection() ?>

@@ -91,10 +91,23 @@ class ApprovalService
 
             (new MembershipService())->applyMembershipCoverage($planId, $monthsCovered);
 
-            // Mark plan holder as active
+            // Mark plan holder as active, and confirm the government ID document.
+            // The registration-time "appears consistent" result becomes
+            // staff-confirmed at approval time (audit trail: id_verified_at/by).
+            $holderUpdate = ['status' => 'active'];
+            $holderRow = db_connect()->table('plan_holders')
+                ->select('id_document_path, id_type')
+                ->where('plan_holder_id', $planHolderId)
+                ->get()
+                ->getRowArray();
+            if ($holderRow && ! empty($holderRow['id_document_path'])) {
+                $holderUpdate['id_verification_status'] = 'verified';
+                $holderUpdate['id_verified_at'] = date('Y-m-d H:i:s');
+                $holderUpdate['id_verified_by'] = (int) session('user_id');
+            }
             db_connect()->table('plan_holders')
                 ->where('plan_holder_id', $planHolderId)
-                ->update(['status' => 'active']);
+                ->update($holderUpdate);
 
             // Update user access
             db_connect()->table('users')

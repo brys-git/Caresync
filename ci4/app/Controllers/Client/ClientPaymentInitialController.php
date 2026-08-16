@@ -55,6 +55,36 @@ class ClientPaymentInitialController extends BaseController
         $monthlyFee = (float) ($program['monthly_fee'] ?? ($plan['monthly_fee'] ?? 0));
         $latestInitialPayment = $this->latestInitialPayment($planHolderId);
 
+        // Resolve the assigned coordinator's GCash account SERVER-SIDE from the
+        // DB. A client must never be able to change a request parameter to show
+        // or pay another coordinator's GCash account.
+        $coordinatorGcash = null;
+        $coordinatorName = null;
+        $coordinatorUserId = (int) ($planHolder['coordinator_user_id'] ?? 0);
+        if ($coordinatorUserId > 0) {
+            $coordinator = db_connect()->table('users')
+                ->select('first_name, middle_name, last_name, gcash_number, gcash_name')
+                ->where('user_id', $coordinatorUserId)
+                ->get()
+                ->getRowArray();
+
+            if ($coordinator) {
+                $coordinatorName = trim(implode(' ', array_filter([
+                    (string) ($coordinator['first_name'] ?? ''),
+                    (string) ($coordinator['middle_name'] ?? ''),
+                    (string) ($coordinator['last_name'] ?? ''),
+                ], static fn ($value): bool => $value !== '')));
+
+                $gcashNumber = trim((string) ($coordinator['gcash_number'] ?? ''));
+                if ($gcashNumber !== '') {
+                    $coordinatorGcash = [
+                        'number' => $gcashNumber,
+                        'name' => trim((string) ($coordinator['gcash_name'] ?? $coordinatorName)),
+                    ];
+                }
+            }
+        }
+
         return view('client/initial_payment', [
             'role_layout' => 'layouts/plan_holder',
             'access' => $access,
@@ -63,6 +93,8 @@ class ClientPaymentInitialController extends BaseController
             'monthly_fee' => $monthlyFee,
             'program' => $program,
             'latest_initial_payment' => $latestInitialPayment,
+            'coordinator_name' => $coordinatorName,
+            'coordinator_gcash' => $coordinatorGcash,
         ]);
     }
 
@@ -132,6 +164,7 @@ class ClientPaymentInitialController extends BaseController
                 'months_covered' => $monthsCovered,
                 'payment_date' => date('Y-m-d'),
                 'payment_method' => $paymentMethod,
+                'payment_type' => 'initial_registration',
                 'reference_number' => null,
                 'received_by' => null,
                 'branch_id' => (int) ($planHolder['branch_id'] ?? 0),
@@ -145,11 +178,13 @@ class ClientPaymentInitialController extends BaseController
             if ($paymentMethod === 'gcash') {
                 $referenceNumber = (string) $this->request->getPost('reference_number');
 
-                // Check for duplicate GCash references
+                // Check for duplicate GCash references GLOBALLY (any plan) — a
+                // GCash reference number is unique per transaction, so reusing it
+                // anywhere is rejected. A DB UNIQUE index is unsafe because of
+                // legacy reused references; app-level enforcement is the guard.
                 $existingPayment = $db->table('payments')
                     ->where('reference_number', $referenceNumber)
                     ->where('payment_method', 'gcash')
-                    ->where('plan_id', (int) $plan['plan_id'])
                     ->get()
                     ->getRowArray();
 
@@ -158,7 +193,7 @@ class ClientPaymentInitialController extends BaseController
 
                     return redirect()->back()
                         ->withInput()
-                        ->with('error', 'This GCash reference has already been used.');
+                        ->with('error', 'This GCash reference number has already been used for another payment.');
                 }
 
                 $paymentData['reference_number'] = $referenceNumber;
@@ -170,10 +205,6 @@ class ClientPaymentInitialController extends BaseController
                 $receiptNumber = (string) $this->request->getPost('reference_number');
                 $planId = (int) $plan['plan_id'];
 
-                // Debug logging
-                log_message('debug', '[CashPayment] Client entered receipt: "' . $receiptNumber . '" for plan_id: ' . $planId);
-                log_message('debug', '[CashPayment] Plan details: ' . json_encode($plan));
-
                 // Fetch the latest branch-recorded cash payment for this plan and compare the OR/reference directly.
                 $cashRecord = $db->table('payments')
                     ->select('payment_id, plan_id, amount, payment_date, payment_method, reference_number, official_receipt_number, status, remarks')
@@ -184,8 +215,6 @@ class ClientPaymentInitialController extends BaseController
                     ->get()
                     ->getRowArray();
 
-                log_message('debug', '[CashPayment] Latest cash payment row for plan ' . $planId . ': ' . json_encode($cashRecord));
-
                 $branchReceipt = trim((string) ($cashRecord['official_receipt_number'] ?? ''));
                 $storedReference = trim((string) ($cashRecord['reference_number'] ?? ''));
                 $storedStatus = strtolower(trim((string) ($cashRecord['status'] ?? '')));
@@ -194,13 +223,11 @@ class ClientPaymentInitialController extends BaseController
                     ($branchReceipt === '' || $branchReceipt !== $receiptNumber) &&
                     ($storedReference === '' || $storedReference !== $receiptNumber)
                 )) {
-                    log_message('debug', '[CashPayment] Latest row did not match. Branch OR="' . $branchReceipt . '", stored reference="' . $storedReference . '", client input="' . $receiptNumber . '", status="' . $storedStatus . '"');
-
                     $db->transRollback();
 
                     return redirect()->back()
                         ->withInput()
-                        ->with('error', 'Receipt number not found or payment already processed. Please verify with your branch admin.');
+                        ->with('error', 'Receipt number not found or payment not yet verified. Cash payments are verified against branch records — please confirm your payment with your branch admin before entering the receipt number.');
                 }
 
                 // Update the existing payment record to make sure it stays marked as paid.
@@ -297,10 +324,12 @@ class ClientPaymentInitialController extends BaseController
             return redirect()->to('/client/dashboard')->with('error', 'Unauthorized access.');
         }
 
-        return view('client/payment_verify', [
-            'role_layout' => 'layouts/plan_holder',
-            'access' => $access,
-            'payment' => $payment,
-        ]);
+        $status = strtolower((string) ($payment['status'] ?? 'pending'));
+
+        if ($status === 'paid') {
+            return redirect()->to('/client/payment')->with('success', 'Your initial payment has been verified.');
+        }
+
+        return redirect()->to('/client/payment')->with('info', 'Your initial payment is pending verification.');
     }
 }

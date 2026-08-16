@@ -106,6 +106,12 @@ class ClientPaymentController extends BaseController
         $planHolder = $access['plan_holder'];
         $program = \App\Services\MembershipService::getProgramInfo();
 
+        // Advance payments require an active membership. Registered-but-inactive
+        // clients must complete their initial payment first.
+        if (($access['state'] ?? 'unregistered') === 'awaiting_activation') {
+            return redirect()->to('/initial-payment')->with('info', 'Complete your initial payment before making advance payments.');
+        }
+
         $membershipPlans = [];
         $db = db_connect();
         if ($db->tableExists('membership_programs')) {
@@ -161,6 +167,36 @@ class ClientPaymentController extends BaseController
             $lastPaymentStatus = ucfirst((string) ($payments[0]['status'] ?? 'none'));
         }
 
+        // Resolve the assigned coordinator's GCash account SERVER-SIDE from the
+        // DB. A client must never be able to change a request parameter to show
+        // or pay another coordinator's GCash account.
+        $coordinatorGcash = null;
+        $coordinatorName = null;
+        $coordinatorUserId = (int) ($planHolder['coordinator_user_id'] ?? 0);
+        if ($coordinatorUserId > 0) {
+            $coordinator = db_connect()->table('users')
+                ->select('first_name, middle_name, last_name, gcash_number, gcash_name')
+                ->where('user_id', $coordinatorUserId)
+                ->get()
+                ->getRowArray();
+
+            if ($coordinator) {
+                $coordinatorName = trim(implode(' ', array_filter([
+                    (string) ($coordinator['first_name'] ?? ''),
+                    (string) ($coordinator['middle_name'] ?? ''),
+                    (string) ($coordinator['last_name'] ?? ''),
+                ], static fn ($value): bool => $value !== '')));
+
+                $gcashNumber = trim((string) ($coordinator['gcash_number'] ?? ''));
+                if ($gcashNumber !== '') {
+                    $coordinatorGcash = [
+                        'number' => $gcashNumber,
+                        'name' => trim((string) ($coordinator['gcash_name'] ?? $coordinatorName)),
+                    ];
+                }
+            }
+        }
+
         return view('client/payment', [
             'role_layout' => 'layouts/plan_holder',
             'page_title' => null,
@@ -178,6 +214,8 @@ class ClientPaymentController extends BaseController
             'user_name' => $userName,
             'plan_name' => $planName,
             'last_payment_status' => $lastPaymentStatus,
+            'coordinator_gcash' => $coordinatorGcash,
+            'coordinator_name' => $coordinatorName,
         ]);
     }
 
@@ -215,9 +253,11 @@ class ClientPaymentController extends BaseController
         $monthsCovered = max(1, (int) $this->request->getPost('months_covered'));
         $amount = (float) $this->request->getPost('amount');
         $monthlyFee = (float) ($plan['monthly_fee'] ?? 0);
-        $expectedAmount = round($monthlyFee * $monthsCovered, 2);
+        // Advance payments apply the tiered discount (see PaymentService::ADVANCE_DISCOUNTS).
+        // The server recomputes the exact discounted total so a client cannot alter it.
+        $expectedAmount = \App\Services\PaymentService::advanceTotal($monthlyFee, $monthsCovered);
         if ($expectedAmount <= 0 || abs($expectedAmount - $amount) > 0.01) {
-            return redirect()->back()->withInput()->with('error', 'Amount must match your monthly fee multiplied by months covered.');
+            return redirect()->back()->withInput()->with('error', 'Amount must match your monthly fee multiplied by months covered, less any advance discount.');
         }
 
         if ($amount > (float) ($plan['remaining_balance'] ?? 0)) {

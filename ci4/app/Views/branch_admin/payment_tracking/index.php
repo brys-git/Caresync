@@ -13,6 +13,18 @@
         </div>
     </div>
 
+    <!-- ====== Tabs ====== -->
+    <div class="pm-tabs">
+        <a class="pm-tab <?= ($active_tab ?? '') !== 'initial' ? 'pm-tab--active' : '' ?>" href="<?= site_url('branch-admin/payment-tracking?tab=') ?>">Payment Records</a>
+        <a class="pm-tab <?= ($active_tab ?? '') === 'initial' ? 'pm-tab--active' : '' ?>" href="<?= site_url('branch-admin/payment-tracking?tab=initial') ?>">
+            Initial Registrations
+            <?php $initialCount = is_array($initial_rows ?? null) ? count($initial_rows) : 0; ?>
+            <?php if ($initialCount > 0): ?><span class="pm-tab__badge"><?= $initialCount ?></span><?php endif; ?>
+        </a>
+    </div>
+
+    <?php if (($active_tab ?? '') !== 'initial'): ?>
+
     <!-- ====== Flash Messages ====== -->
     <?php if (session()->getFlashdata('error')): ?>
         <div class="pm-alert pm-alert--error">
@@ -165,8 +177,9 @@
                                                 <i class="mdi mdi-check"></i>
                                             </button>
                                         </form>
-                                        <form method="post" action="<?= site_url('branch-admin/payment-tracking/reject/' . $paymentId) ?>" style="display:inline;">
+                                        <form method="post" action="<?= site_url('branch-admin/payment-tracking/reject/' . $paymentId) ?>" style="display:inline-flex;align-items:center;gap:4px;">
                                             <?= csrf_field() ?>
+                                            <input type="text" name="rejection_reason" placeholder="Reason" class="pm-input" style="padding:4px 8px;font-size:0.72rem;width:110px;" required>
                                             <button type="submit" class="pm-btn pm-btn--sm" style="background:var(--pm-red);color:#fff;border-color:var(--pm-red);font-size:0.7rem;padding:5px 10px;">
                                                 <i class="mdi mdi-close"></i>
                                             </button>
@@ -197,6 +210,110 @@
             </table>
         </div>
     </div>
+
+    <?php else: ?>
+
+    <!-- ====== Initial Registrations ====== -->
+    <div class="pm-card">
+        <div class="pm-table-wrap">
+            <table class="pm-table">
+                <thead>
+                    <tr>
+                        <th>Client</th>
+                        <th>Coordinator</th>
+                        <th>Monthly Fee</th>
+                        <th>Method</th>
+                        <th>Reference / Receipt</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Gov&rsquo;t ID</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (empty($initial_rows ?? [])): ?>
+                        <tr>
+                            <td colspan="9">
+                                <div class="pm-empty">
+                                    <i class="mdi mdi-account-check-outline"></i>
+                                    No initial registrations found.
+                                </div>
+                            </td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach ($initial_rows as $row):
+                            $iStatus = strtolower((string) ($row['status'] ?? 'pending'));
+                            $iMethod = strtolower((string) ($row['payment_method'] ?? 'gcash'));
+                            $iRef = (string) ($row['reference_number'] ?? ($row['official_receipt_number'] ?? '-'));
+                            $iPaymentId = (int) ($row['payment_id'] ?? 0);
+                            $iCoordinatorName = trim(implode(' ', array_filter([
+                                (string) ($row['coordinator_first_name'] ?? ''),
+                                (string) ($row['coordinator_middle_name'] ?? ''),
+                                (string) ($row['coordinator_last_name'] ?? ''),
+                            ], static fn ($v) => $v !== ''))) ?: (string) ($row['coordinator'] ?? 'N/A');
+                            $iPlanFee = (float) ($row['monthly_fee'] ?? 0);
+                            $iIdType = (string) ($row['id_type'] ?? '');
+                            $iIdPath = (string) ($row['id_document_path'] ?? '');
+                        ?>
+                        <tr>
+                            <td>
+                                <div class="pm-holder">
+                                    <span class="pm-holder__name"><?= esc(trim((string) ($row['first_name'] ?? '')) . ' ' . esc((string) ($row['last_name'] ?? ''))) ?></span>
+                                    <span class="pm-holder__id"><?= esc((string) ($row['unique_identifier'] ?: 'No ID')) ?></span>
+                                </div>
+                            </td>
+                            <td><?= esc($iCoordinatorName) ?></td>
+                            <td><strong>₱<?= esc(number_format($iPlanFee, 2)) ?></strong></td>
+                            <td>
+                                <span class="pm-method pm-method--<?= $iMethod ?>">
+                                    <i class="mdi <?= $iMethod === 'gcash' ? 'mdi-cash' : 'mdi-cash-multiple' ?>"></i>
+                                    <?= strtoupper($iMethod) ?>
+                                </span>
+                            </td>
+                            <td><?= esc($iRef) ?></td>
+                            <td><?= esc((string) ($row['payment_date'] ?? '-')) ?></td>
+                            <td>
+                                <span class="pm-status pm-status--<?= $iStatus ?>"><?= esc(ucfirst($iStatus)) ?></span>
+                            </td>
+                            <td>
+                                <?php if ($iIdPath !== ''): ?>
+                                    <a href="<?= site_url('branch-admin/payment-tracking/id-document/' . $iPaymentId) ?>" target="_blank" class="pm-proof-link">
+                                        <i class="mdi mdi-id-card"></i> <?= esc($iIdType !== '' ? \App\Services\IdVerificationService::idTypeLabel($iIdType) : 'View ID') ?>
+                                    </a>
+                                <?php else: ?>
+                                    <span style="color:var(--pm-ink-faint);">-</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <div class="pm-actions" style="flex-wrap:wrap;gap:6px;">
+                                    <?php if ($iStatus === 'pending' && ($can_approve ?? false)): ?>
+                                        <form method="post" action="<?= site_url('branch-admin/payment-tracking/approve/' . $iPaymentId) ?>">
+                                            <?= csrf_field() ?>
+                                            <button type="submit" class="pm-btn pm-btn--sm" style="background:var(--pm-green);color:#fff;border-color:var(--pm-green);font-size:0.7rem;padding:5px 10px;">
+                                                <i class="mdi mdi-check"></i> Approve
+                                            </button>
+                                        </form>
+                                        <form method="post" action="<?= site_url('branch-admin/payment-tracking/reject/' . $iPaymentId) ?>" style="display:flex;gap:6px;align-items:center;">
+                                            <?= csrf_field() ?>
+                                            <input type="text" name="rejection_reason" placeholder="Reason for rejection" class="pm-input" style="padding:5px 8px;font-size:0.75rem;width:140px;" required>
+                                            <button type="submit" class="pm-btn pm-btn--sm" style="background:var(--pm-red);color:#fff;border-color:var(--pm-red);font-size:0.7rem;padding:5px 10px;">
+                                                <i class="mdi mdi-close"></i> Reject
+                                            </button>
+                                        </form>
+                                    <?php else: ?>
+                                        <span style="color:var(--pm-ink-faint);">-</span>
+                                    <?php endif; ?>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <?php endif; ?>
 </div>
 
 <!-- ====== Scripts ====== -->

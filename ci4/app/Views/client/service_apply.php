@@ -24,8 +24,8 @@
     <?php endif; ?>
 
     <?php if (! $canApply): ?>
-        <?php if ($state === 'pending'): ?>
-            <div class="alert alert-warning">Approval required before requesting services.</div>
+        <?php if ($state === 'awaiting_activation'): ?>
+            <div class="alert alert-warning">Your membership is pending activation. Complete your initial payment before requesting services.</div>
         <?php else: ?>
             <div class="alert alert-info">You must register as a Plan Holder to apply.</div>
             <a class="btn btn-primary" href="<?= site_url('/plan-info') ?>">Register Now</a>

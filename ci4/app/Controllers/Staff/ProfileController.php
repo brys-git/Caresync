@@ -25,6 +25,8 @@ class ProfileController extends BaseController
         $rules = [
             'email' => 'required|valid_email|max_length[100]',
             'contact_number' => 'permit_empty|max_length[30]',
+            'gcash_number' => 'permit_empty|regex_match[/^[0-9+\-()\s]{9,20}$/]',
+            'gcash_name' => 'permit_empty|max_length[100]',
         ];
 
         if (! $this->validate($rules)) {
@@ -33,6 +35,8 @@ class ProfileController extends BaseController
 
         $email = trim((string) $this->request->getPost('email'));
         $contactNumber = trim((string) $this->request->getPost('contact_number'));
+        $gcashNumber = trim((string) $this->request->getPost('gcash_number'));
+        $gcashName = trim((string) $this->request->getPost('gcash_name'));
 
         $userModel = new UserModel();
         $existingByEmail = $userModel
@@ -47,6 +51,8 @@ class ProfileController extends BaseController
         $updated = $userModel->update((int) $user['user_id'], [
             'email' => $email,
             'contact_number' => $contactNumber === '' ? null : $contactNumber,
+            'gcash_number' => $gcashNumber === '' ? null : $gcashNumber,
+            'gcash_name' => $gcashName === '' ? null : $gcashName,
         ]);
 
         if (! $updated) {

@@ -2,11 +2,14 @@
 
 namespace App\Controllers;
 
+use App\Config\ValidationRules;
 use App\Models\PlanHolderModel;
 use App\Models\UserModel;
 use App\Services\ActivityLogService;
+use App\Services\IdVerificationService;
+use App\Services\MembershipService;
 use App\Services\NotificationService;
-use App\Services\ClientRegistrationService;
+use App\Services\RegistrationWizardService;
 use App\Services\SecurityEnhancementService;
 use CodeIgniter\HTTP\ResponseInterface;
 
@@ -21,19 +24,11 @@ class PlanHolders extends BaseController
         }
 
         $db = db_connect();
-        $roleId = (int) session('role_id');
         $requestedTab = (string) $this->request->getGet('tab');
         $activeTab = in_array($requestedTab, ['registration', 'approvals'], true) ? $requestedTab : 'registration';
 
-        $branches = $db->table('branches')
-            ->select('branch_id, branch_name')
-            ->where('status', 'active')
-            ->orderBy('branch_name', 'ASC')
-            ->get()
-            ->getResultArray();
-
         $existingUsers = $db->table('users u')
-            ->select('u.user_id, u.username, u.email, u.first_name, u.last_name, u.contact_number')
+            ->select('u.user_id, u.username, u.email, u.first_name, u.middle_name, u.last_name, u.contact_number')
             ->join('plan_holders ph', 'ph.user_id = u.user_id', 'left')
             ->where('u.role_id', 4)
             ->where('ph.plan_holder_id IS NULL', null, false)
@@ -42,28 +37,73 @@ class PlanHolders extends BaseController
             ->get()
             ->getResultArray();
 
-        $approvalRegistrations = [];
-        $hasPendingTable = $this->pendingTableExists();
-        $canReviewApprovals = in_array($roleId, [1, 2], true);
-        if ($canReviewApprovals && $hasPendingTable) {
-            $approvalRegistrations = $db->table('pending_plan_holder_registrations pr')
-                ->select('pr.*, u.first_name, u.last_name, u.email, u.contact_number, b.branch_name, reviewer.first_name AS reviewer_first_name, reviewer.last_name AS reviewer_last_name')
-                ->join('users u', 'u.user_id = pr.user_id', 'left')
-                ->join('branches b', 'b.branch_id = pr.branch_id', 'left')
-                ->join('users reviewer', 'reviewer.user_id = pr.reviewed_by', 'left')
-                ->orderBy('pr.pending_registration_id', 'DESC')
-                ->get()
-                ->getResultArray();
+        // Approvals tab keeps the legacy tabbed view (its registration panel stays
+        // hidden because active_tab=approvals), preserving the verification queue.
+        if ($activeTab === 'approvals') {
+            $approvalRegistrations = [];
+            $hasPendingTable = $this->pendingTableExists();
+            $canReviewApprovals = in_array($roleId, [1, 2], true);
+            if ($canReviewApprovals && $hasPendingTable) {
+                $approvalRegistrations = $db->table('pending_plan_holder_registrations pr')
+                    ->select('pr.*, u.first_name, u.last_name, u.email, u.contact_number, b.branch_name, reviewer.first_name AS reviewer_first_name, reviewer.last_name AS reviewer_last_name')
+                    ->join('users u', 'u.user_id = pr.user_id', 'left')
+                    ->join('branches b', 'b.branch_id = pr.branch_id', 'left')
+                    ->join('users reviewer', 'reviewer.user_id = pr.reviewed_by', 'left')
+                    ->orderBy('pr.pending_registration_id', 'DESC')
+                    ->get()
+                    ->getResultArray();
+            }
+
+            return view('plan_holders/register', [
+                'branches' => [],
+                'existing_users' => $existingUsers,
+                'active_tab' => $activeTab,
+                'can_review_approvals' => $canReviewApprovals,
+                'has_pending_table' => $hasPendingTable,
+                'approval_registrations' => $approvalRegistrations,
+                'role_layout' => $this->resolveLayoutView(),
+            ]);
         }
 
-        return view('plan_holders/register', [
+        // Registration tab — shared staff-assisted wizard (same 4-step flow as the client).
+        $branchQuery = $db->table('branches')
+            ->select('branch_id, branch_name')
+            ->where('status', 'active');
+
+        if ($roleId === 2) {
+            $branchQuery->where('branch_id', (int) session('branch_id'));
+        }
+
+        $branches = $branchQuery->orderBy('branch_name', 'ASC')->get()->getResultArray();
+
+        // Coordinator candidates = staff (role 3) and branch admins (role 2).
+        $coordinators = $db->table('users')
+            ->select('user_id, first_name, middle_name, last_name, name_extension')
+            ->whereIn('role_id', [2, 3])
+            ->where('status', 'active')
+            ->orderBy('first_name', 'ASC')
+            ->orderBy('last_name', 'ASC')
+            ->get()
+            ->getResultArray();
+
+        $program = MembershipService::getProgramInfo();
+
+        return view('registration/wizard', [
+            'plan_holder' => [],
+            'user' => [],
+            'beneficiaries' => [],
             'branches' => $branches,
+            'coordinators' => $coordinators,
+            'id_types' => IdVerificationService::supportedIds(),
             'existing_users' => $existingUsers,
-            'active_tab' => $activeTab,
-            'can_review_approvals' => $canReviewApprovals,
-            'has_pending_table' => $hasPendingTable,
-            'approval_registrations' => $approvalRegistrations,
+            'program' => $program,
+            'plan_id' => (int) ($program['package_id'] ?? 0),
             'role_layout' => $this->resolveLayoutView(),
+            'page_title' => null,
+            'form_action' => base_url('plan-holders/store'),
+            'show_account_mode' => true,
+            'is_client' => false,
+            'approvals_url' => base_url('plan-holders/register?tab=approvals'),
         ]);
     }
 
@@ -72,175 +112,287 @@ class PlanHolders extends BaseController
         // Only Admin (role 1) and BranchAdmin (role 2) can register plan holders
         $roleId = (int) session('role_id');
         if (!in_array($roleId, [1, 2], true)) {
-            error_log("STORE() ERROR: Unauthorized role {$roleId}");
             return redirect()->to('/unauthorized')->with('error', 'You do not have permission to register plan holders.');
         }
 
         $mode = (string) $this->request->getPost('registration_mode');
-        error_log("STORE() DEBUG: Received POST data = " . json_encode($this->request->getPost()));
-        error_log("STORE() DEBUG: mode={$mode}");
 
         // Validate registration mode
         if (!in_array($mode, ['existing', 'new'], true)) {
-            error_log("STORE() ERROR: Invalid mode '{$mode}', expected 'existing' or 'new'");
             return redirect()->back()->withInput()->with('error', 'Invalid registration mode selected.');
         }
 
         $branchId = (int) $this->request->getPost('branch_id');
         $createdBy = (int) session('user_id');
-        error_log("STORE() DEBUG: branchId={$branchId}, createdBy={$createdBy}");
 
         if ($branchId <= 0) {
-            error_log("STORE() ERROR: Invalid or missing branchId");
             return redirect()->back()->withInput()->with('error', 'Branch selection is required.');
         }
 
-        // Add security checks
+        // Branch admins can only register clients for their own branch.
+        if ($roleId === 2) {
+            $sessionBranchId = (int) session('branch_id');
+            if ($sessionBranchId <= 0 || $branchId !== $sessionBranchId) {
+                return redirect()->back()->withInput()->with('error', 'You can only register clients for your own branch.');
+            }
+        }
+
+        // Add security checks + rate limiting
         $securityService = new SecurityEnhancementService();
         $userId = (int) session('user_id');
 
-        // Check rate limiting
         $rateCheck = $securityService->checkRegistrationAttempts("user_{$userId}");
         if (!$rateCheck['allowed']) {
-            error_log("STORE() ERROR: Rate limit exceeded");
             $securityService->logSecurityEvent('RATE_LIMIT_EXCEEDED', $userId, "Registration attempts exceeded");
             return redirect()->back()->withInput()->with('error', $rateCheck['message']);
         }
 
-        $registrationService = new ClientRegistrationService();
-
-        // Collect common plan holder data
-        $planHolderData = [
-            'unique_identifier' => trim((string) $this->request->getPost('unique_identifier', '')),
-            'address_no' => trim((string) $this->request->getPost('address_no', '')),
-            'address_street' => trim((string) $this->request->getPost('address_street', '')),
-            'address_barangay' => trim((string) $this->request->getPost('address_barangay', '')),
-            'address_city' => trim((string) $this->request->getPost('address_city', '')),
-            'date_of_birth' => $this->nullablePost('date_of_birth'),
-            'place_of_birth' => trim((string) $this->request->getPost('place_of_birth', '')),
-            'gender' => trim((string) $this->request->getPost('gender', '')),
-            'civil_status' => trim((string) $this->request->getPost('civil_status', '')),
-            'citizenship' => trim((string) $this->request->getPost('citizenship', '')),
-            'height' => $this->nullableDecimalPost('height'),
-            'weight' => $this->nullableDecimalPost('weight'),
-            'spouse_name' => trim((string) $this->request->getPost('spouse_name', '')),
-            'spouse_birthdate' => $this->nullablePost('spouse_birthdate'),
-            'spouse_occupation' => trim((string) $this->request->getPost('spouse_occupation', '')),
-            'senior_citizen_id' => trim((string) $this->request->getPost('senior_citizen_id', '')),
-            'organization_affiliation' => trim((string) $this->request->getPost('organization_affiliation', '')),
-        ];
-        $ageRaw = trim((string) $this->request->getPost('age', ''));
-        if ($ageRaw !== '') {
-            $planHolderData['age'] = max(0, (int) $ageRaw);
+        // Resolve the selected program plan (falls back to the active program package).
+        $planId = (int) $this->request->getPost('plan_id');
+        if ($planId <= 0) {
+            $planId = (int) $this->request->getPost('package_id');
         }
-        error_log("STORE() DEBUG: Collected planHolderData = " . json_encode($planHolderData));
-
-        // Auto-calculate age if birthdate provided
-        if (!empty($planHolderData['date_of_birth'])) {
-            $ageValidation = $registrationService->validateAndCalculateAge($planHolderData['date_of_birth']);
-            error_log("STORE() DEBUG: Age validation result = " . json_encode($ageValidation));
-            if ($ageValidation['valid']) {
-                $planHolderData['age'] = $ageValidation['age'];
-                error_log("STORE() DEBUG: Auto-calculated age = {$ageValidation['age']}");
-            } else {
-                error_log("STORE() ERROR: Age validation failed - " . $ageValidation['error']);
-                return redirect()->back()->withInput()->with('error', 'Date of birth is invalid: ' . $ageValidation['error']);
-            }
+        if ($planId <= 0) {
+            $planId = (int) (MembershipService::getProgramInfo()['package_id'] ?? 0);
         }
+        if ($planId <= 0) {
+            return redirect()->back()->with('error', 'Selected plan is unavailable.');
+        }
+
+        // Validate required fields using centralized rules (+ conditional spouse).
+        $civilStatus = trim((string) $this->request->getPost('civil_status'));
+        $rules = ValidationRules::getPlanRegistrationRules();
+        $rules = array_merge($rules, RegistrationWizardService::spouseRules($civilStatus));
 
         if ($mode === 'existing') {
-            error_log("STORE() DEBUG: Processing existing user registration");
-            $userId = (int) $this->request->getPost('user_id');
-            error_log("STORE() DEBUG: user_id from POST = {$userId}");
+            $rules['user_id'] = 'required|is_natural_no_zero';
+        } else {
+            $rules['username'] = 'required|is_unique[users.username]|max_length[50]';
+            $rules['password'] = 'required|min_length[8]|max_length[72]';
+            $rules['password_confirm'] = 'required|matches[password]';
+        }
 
-            if ($userId <= 0) {
-                $emailLookup = strtolower(trim((string) $this->request->getPost('existing_user_email', '')));
-                error_log("STORE() DEBUG: user_id missing, attempting email lookup for {$emailLookup}");
+        $messages = ValidationRules::getValidationMessages();
 
-                if ($emailLookup !== '') {
-                    $user = (new UserModel())
-                        ->where('email', $emailLookup)
-                        ->where('role_id', 4)
-                        ->first();
+        if (! $this->validate($rules, $messages)) {
+            return redirect()->back()
+                ->withInput()
+                ->with('errors', $this->validator->getErrors());
+        }
 
-                    if ($user) {
-                        $linked = (new PlanHolderModel())
-                            ->where('user_id', (int) $user['user_id'])
-                            ->first();
+        // DOB sanity (not in the future, age <= 150)
+        $dobError = RegistrationWizardService::validateDob(trim((string) $this->request->getPost('date_of_birth')));
+        if ($dobError !== null) {
+            return redirect()->back()->withInput()->with('errors', ['date_of_birth' => $dobError]);
+        }
 
-                        if (! $linked) {
-                            $userId = (int) $user['user_id'];
-                            error_log("STORE() DEBUG: Resolved user_id via email = {$userId}");
-                        }
-                    }
+        // Server-side beneficiary validation
+        $beneficiariesInput = $this->request->getPost('beneficiaries');
+        $beneficiariesInput = is_array($beneficiariesInput) ? $beneficiariesInput : [];
+        $beneficiaryCheck = RegistrationWizardService::validateBeneficiaries($beneficiariesInput);
+        if (! empty($beneficiaryCheck['errors'])) {
+            return redirect()->back()->withInput()->with('errors', $beneficiaryCheck['errors']);
+        }
+
+        // Coordinator must be a real, active staff/branch-admin user
+        $coordinatorUserId = (int) $this->request->getPost('coordinator_user_id');
+        $coordinatorUser = RegistrationWizardService::resolveCoordinator($coordinatorUserId);
+        if (! $coordinatorUser) {
+            return redirect()->back()->withInput()->with('errors', ['coordinator_user_id' => 'Please select a valid coordinator.']);
+        }
+        $coordinatorName = RegistrationWizardService::coordinatorName($coordinatorUser);
+
+        try {
+            $db = db_connect();
+            $db->transStart();
+
+            // Step 3 government ID verification (Level 1 + Level 2) — server-side re-check.
+            $idVerification = RegistrationWizardService::processIdVerification(
+                $this->request->getFile('valid_id'),
+                [
+                    'first_name' => trim((string) $this->request->getPost('first_name')),
+                    'middle_name' => trim((string) $this->request->getPost('middle_name')),
+                    'last_name' => trim((string) $this->request->getPost('last_name')),
+                    'date_of_birth' => trim((string) $this->request->getPost('date_of_birth')),
+                    'address' => trim(implode(' ', array_filter([
+                        (string) $this->request->getPost('address_street'),
+                        (string) $this->request->getPost('address_barangay'),
+                        (string) $this->request->getPost('address_city'),
+                    ], static fn ($value): bool => $value !== ''))),
+                ],
+                (string) $this->request->getPost('ocr_text'),
+                (string) $this->request->getPost('id_type'),
+                (string) $this->request->getPost('id_number'),
+                'admin_' . $branchId
+            );
+
+            $userModel = new UserModel();
+
+            // Resolve or create the plan-holder account.
+            if ($mode === 'existing') {
+                $targetUserId = (int) $this->request->getPost('user_id');
+                $existingUser = $userModel->where('user_id', $targetUserId)->where('role_id', 4)->first();
+                if (! $existingUser) {
+                    throw new \RuntimeException('The selected existing account is not a valid plan-holder account.');
+                }
+                $firstName = trim((string) ($existingUser['first_name'] ?? ''));
+                $middleName = trim((string) ($existingUser['middle_name'] ?? ''));
+                $lastName = trim((string) ($existingUser['last_name'] ?? ''));
+            } else {
+                $firstName = trim((string) $this->request->getPost('first_name'));
+                $middleName = trim((string) $this->request->getPost('middle_name'));
+                $lastName = trim((string) $this->request->getPost('last_name'));
+
+                $targetUserId = (int) $userModel->insert([
+                    'username' => trim((string) $this->request->getPost('username')),
+                    'password_hash' => password_hash((string) $this->request->getPost('password'), PASSWORD_DEFAULT),
+                    'first_name' => $firstName,
+                    'middle_name' => $middleName,
+                    'last_name' => $lastName,
+                    'email' => trim((string) $this->request->getPost('email')),
+                    'contact_number' => trim((string) $this->request->getPost('contact_number')),
+                    'role_id' => 4, // Plan holder
+                    'status' => 'active',
+                    'account_status' => 'pending', // pending until initial payment is verified
+                ], true);
+
+                if ($targetUserId <= 0) {
+                    throw new \RuntimeException('Unable to create user account.');
                 }
             }
 
-            if ($userId <= 0) {
-                error_log("STORE() ERROR: Invalid user_id {$userId} for existing mode");
-                return redirect()->back()->withInput()->with('error', 'Please select an existing user account by entering their email address and matching the account that appears.');
+            // Build spouse name
+            $spouseName = trim((string) $this->request->getPost('spouse_name'));
+            if ($spouseName === '') {
+                $spouseFirstName = trim((string) $this->request->getPost('spouse_first_name'));
+                $spouseMiddleName = trim((string) $this->request->getPost('spouse_middle_name'));
+                $spouseLastName = trim((string) $this->request->getPost('spouse_last_name'));
+                $spouseName = trim(implode(' ', array_filter([$spouseFirstName, $spouseMiddleName, $spouseLastName], static fn ($value): bool => $value !== '')));
             }
 
-            error_log("STORE() DEBUG: Calling registerExistingUser with userId={$userId}");
-            $result = $registrationService->registerExistingUser($userId, $branchId, $planHolderData, $createdBy);
-            error_log("STORE() DEBUG: registerExistingUser result = " . json_encode($result));
-
-            if (!$result['success']) {
-                error_log("STORE() ERROR: Registration failed - " . $result['error']);
-                $securityService->recordRegistrationAttempt("user_{$createdBy}");
-                return redirect()->back()->withInput()->with('error', $result['error']);
-            }
-
-            // Clear rate limiting on successful registration
-            $securityService->clearRegistrationAttempts("user_{$createdBy}");
-            $securityService->logSecurityEvent('REGISTRATION_SUCCESS', $createdBy, "Registered existing user {$userId}");
-            
-            $successRedirect = $roleId === 2 ? '/payment-tracking?tab=initial' : '/admin/payment-monitoring';
-            error_log("STORE() SUCCESS: Redirecting to {$successRedirect}");
-            return redirect()->to($successRedirect)->with('success', 'Plan holder registration completed successfully. You can now record the initial payment.');
-        }
-
-        if ($mode === 'new') {
-            error_log("STORE() DEBUG: Processing new user registration");
-            $userData = [
-                'username' => trim((string) $this->request->getPost('username', '')),
-                'email' => trim((string) $this->request->getPost('email', '')),
-                'password' => (string) $this->request->getPost('password', ''),
-                'first_name' => trim((string) $this->request->getPost('first_name', '')),
-                'last_name' => trim((string) $this->request->getPost('last_name', '')),
-                'contact_number' => trim((string) $this->request->getPost('contact_number', '')),
+            // Prepare plan holder data
+            $planHolderData = [
+                'user_id' => $targetUserId,
+                'id_control_no' => trim((string) $this->request->getPost('id_control_no')),
+                'coordinator' => $coordinatorName,
+                'coordinator_user_id' => $coordinatorUserId,
+                'id_document_path' => $idVerification['path'],
+                'id_type' => $idVerification['type'],
+                'id_number' => $idVerification['number'],
+                'id_match_score' => $idVerification['score'],
+                'id_verification_status' => 'pending',
+                'application_date' => $this->nullablePost('application_date'),
+                'address_no' => trim((string) $this->request->getPost('address_no')),
+                'address_street' => trim((string) $this->request->getPost('address_street')),
+                'address_province' => trim((string) $this->request->getPost('address_province')),
+                'address_barangay' => trim((string) $this->request->getPost('address_barangay')),
+                'address_city' => trim((string) $this->request->getPost('address_city')),
+                'date_of_birth' => $this->nullablePost('date_of_birth'),
+                'place_of_birth' => trim((string) $this->request->getPost('place_of_birth')),
+                'age' => $this->nullableIntPost('age'),
+                'gender' => trim((string) $this->request->getPost('gender')),
+                'civil_status' => trim((string) $this->request->getPost('civil_status')),
+                'citizenship' => trim((string) $this->request->getPost('citizenship')),
+                'height' => $this->nullableDecimalPost('height'),
+                'weight' => $this->nullableDecimalPost('weight'),
+                'spouse_name' => $spouseName,
+                'spouse_birthdate' => $this->nullablePost('spouse_birthdate'),
+                'spouse_occupation' => trim((string) $this->request->getPost('spouse_occupation')),
+                'senior_citizen_id' => trim((string) $this->request->getPost('senior_citizen_id')),
+                'organization_affiliation' => trim((string) $this->request->getPost('organization_affiliation')),
+                'branch_id' => $branchId,
+                'status' => 'inactive',
             ];
-            error_log("STORE() DEBUG: userData = " . json_encode($userData));
 
-            // Validate password confirmation
-            $password_confirm = (string) $this->request->getPost('password_confirm', '');
-            if ($userData['password'] !== $password_confirm) {
-                error_log("STORE() ERROR: Password confirmation does not match");
-                $securityService->recordRegistrationAttempt("user_{$createdBy}");
-                return redirect()->back()->withInput()->with('error', 'Password confirmation does not match.');
+            $planHolderData = $this->filterTableData('plan_holders', $planHolderData);
+
+            $planHolderModel = new PlanHolderModel();
+            $existingHolder = $planHolderModel
+                ->where('user_id', $targetUserId)
+                ->orderBy('plan_holder_id', 'DESC')
+                ->first();
+
+            $planHolderId = 0;
+            if ($existingHolder) {
+                $updated = $planHolderModel->update((int) $existingHolder['plan_holder_id'], $planHolderData);
+                if (! $updated) {
+                    $dbError = $db->error();
+                    $modelErrors = $planHolderModel->errors();
+                    throw new \RuntimeException('Unable to update plan holder details. DB: ' . json_encode($dbError) . ' Model: ' . json_encode($modelErrors));
+                }
+
+                $planHolderId = (int) $existingHolder['plan_holder_id'];
+            } else {
+                $planHolderData['unique_identifier'] = strtoupper(preg_replace('/\s+/', '', $lastName))
+                    . '-' . strtoupper(preg_replace('/\s+/', '', $firstName))
+                    . '-' . substr((string) time(), -6);
+
+                $inserted = $planHolderModel->insert($planHolderData, true);
+                $planHolderId = (int) $inserted;
+
+                if ($planHolderId <= 0) {
+                    $insertedRow = $planHolderModel
+                        ->where('user_id', $targetUserId)
+                        ->orderBy('plan_holder_id', 'DESC')
+                        ->first();
+
+                    if ($insertedRow) {
+                        $planHolderId = (int) $insertedRow['plan_holder_id'];
+                    }
+                }
+
+                if ($planHolderId <= 0) {
+                    $dbError = $db->error();
+                    $modelErrors = $planHolderModel->errors();
+                    throw new \RuntimeException('Unable to save plan holder details. DB: ' . json_encode($dbError) . ' Model: ' . json_encode($modelErrors));
+                }
             }
 
-            error_log("STORE() DEBUG: Calling registerNewUser");
-            $result = $registrationService->registerNewUser($userData, $branchId, $planHolderData, $createdBy);
-            error_log("STORE() DEBUG: registerNewUser result = " . json_encode($result));
+            // Update user status
+            $userModel->update($targetUserId, [
+                'is_plan_holder' => 1,
+                'branch_id' => $branchId,
+            ]);
 
-            if (!$result['success']) {
-                error_log("STORE() ERROR: New user registration failed - " . $result['error']);
-                $securityService->recordRegistrationAttempt("user_{$createdBy}");
-                return redirect()->back()->withInput()->with('error', $result['error']);
+            // Insert beneficiaries (validated above) — replaces existing rows.
+            RegistrationWizardService::insertBeneficiaries($beneficiaryCheck['rows'], $planHolderId);
+
+            // Create plan record (inactive until the initial payment is verified)
+            RegistrationWizardService::createInactivePlan($planHolderId);
+
+            $db->transComplete();
+
+            if ($db->transStatus() === false) {
+                throw new \RuntimeException('Database transaction failed. Please try again.');
             }
 
             // Clear rate limiting on successful registration
             $securityService->clearRegistrationAttempts("user_{$createdBy}");
-            $securityService->logSecurityEvent('REGISTRATION_SUCCESS', $result['user_id'], "New account created by {$createdBy}");
+            $securityService->logSecurityEvent('REGISTRATION_SUCCESS', $targetUserId, "Registered plan holder (mode: {$mode}) by user {$createdBy}");
+
+            // Notify + log activity
+            (new NotificationService())->notify(
+                $targetUserId,
+                'Your account was registered as a plan holder. The initial payment must be recorded before the membership is activated.',
+                'registration_pending'
+            );
+
+            (new ActivityLogService())->log(
+                $createdBy,
+                'created',
+                'plan_holder',
+                (int) $planHolderId,
+                'Registered plan holder from registration wizard',
+                null,
+                ['branch_id' => $branchId]
+            );
 
             $successRedirect = $roleId === 2 ? '/payment-tracking?tab=initial' : '/admin/payment-monitoring';
-            error_log("STORE() SUCCESS: Redirecting to {$successRedirect}");
-            return redirect()->to($successRedirect)->with('success', 'Account created successfully! You can now record the initial payment.');
+            return redirect()->to($successRedirect)->with('success', 'Plan holder registration completed successfully. Record the initial payment to activate the membership.');
+        } catch (\Throwable $e) {
+            $securityService->recordRegistrationAttempt("user_{$createdBy}");
+            return redirect()->back()->withInput()->with('error', 'Plan registration failed: ' . $e->getMessage());
         }
-
-        error_log("STORE() ERROR: Reached end without handling mode");
-        return redirect()->back()->with('error', 'Registration mode is invalid.');
     }
 
     public function registrationForm()

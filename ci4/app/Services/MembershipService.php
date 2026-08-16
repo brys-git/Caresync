@@ -14,7 +14,15 @@ class MembershipService
 {
     public const PROGRAM_NAME = 'Damayan Burial Program';
     public const MONTHLY_FEE = 240.0;
-    public const TOTAL_CONTRIBUTION = 14500.0;
+    /**
+     * IMPORTANT: This is NOT a contribution total.
+     * TOTAL_CONTRIBUTION is a legacy name; the value 14500 is the Damayan BENEFIT VALUE.
+     * Contribution tracking uses monthly_fee * months_paid separately.
+     * See DamayanService::BENEFIT_VALUE for the canonical benefit constant.
+     */
+    public const TOTAL_CONTRIBUTION = 14500.0; // = Damayan benefit value (PHP 14,500)
+    public const DAMAYAN_BENEFIT_VALUE = 14500.0;
+    public const STANDARD_PACKAGE_VALUE = 20000.0;
     public const DEFAULT_PACKAGE_ID = 1;
 
     public static function getProgramInfo(): array
@@ -133,11 +141,16 @@ class MembershipService
             return null;
         }
 
-        return $this->planModel
-            ->where('plan_holder_id', $planHolderId)
-            ->where('status', 'active')
-            ->orderBy('plan_id', 'DESC')
-            ->first();
+        $row = db_connect()->table('plans p')
+            ->select('p.*, pk.package_name')
+            ->join('packages pk', 'pk.package_id = p.package_id', 'left')
+            ->where('p.plan_holder_id', $planHolderId)
+            ->where('p.status', 'active')
+            ->orderBy('p.plan_id', 'DESC')
+            ->get()
+            ->getRowArray();
+
+        return $row ?: null;
     }
 
     /**
@@ -152,11 +165,14 @@ class MembershipService
             return [];
         }
 
-        return $this->planModel
-            ->where('plan_holder_id', $planHolderId)
-            ->orderBy("CASE WHEN status = 'active' THEN 1 ELSE 2 END", 'ASC', false)
-            ->orderBy('plan_id', 'DESC')
-            ->findAll();
+        return db_connect()->table('plans p')
+            ->select('p.*, pk.package_name')
+            ->join('packages pk', 'pk.package_id = p.package_id', 'left')
+            ->where('p.plan_holder_id', $planHolderId)
+            ->orderBy("CASE WHEN p.status = 'active' THEN 1 ELSE 2 END", 'ASC', false)
+            ->orderBy('p.plan_id', 'DESC')
+            ->get()
+            ->getResultArray();
     }
 
     /**

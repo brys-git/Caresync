@@ -27,10 +27,125 @@
                 <div class="col-md-6"><strong>Branch ID:</strong> <?= esc((string) ($request['branch_id'] ?? '-')) ?></div>
                 <div class="col-md-6"><strong>Type:</strong> <?= esc((string) (($request['service_list_id'] ?? 0) > 0 ? 'Service' : 'Package')) ?></div>
                 <div class="col-md-6"><strong>Selected:</strong> <?= esc((string) ($request['service_name'] ?? $request['package_name'] ?? '-')) ?></div>
-                <div class="col-md-6"><strong>Price:</strong> P<?= esc(number_format((float) (($request['service_price'] ?? $request['package_price']) ?? 0), 2)) ?></div>
+                <div class="col-md-6"><strong>Base Price:</strong> P<?= esc(number_format((float) ($packagePrice ?? 0), 2)) ?></div>
             </div>
         </div>
     </div>
+
+    <!-- Damayan Benefit Calculation -->
+    <?php if (isset($benefitCalc) && isset($membershipSummary)): ?>
+    <div class="card mb-3 border-info">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0"><i class="mdi mdi-account-heart-outline me-2"></i>Damayan Burial Program - Benefit Calculation</h5>
+        </div>
+        <div class="card-body">
+            <div class="row gy-3 mb-3">
+                <div class="col-md-4">
+                    <div class="p-3 bg-light rounded">
+                        <div class="small text-muted">Member Status</div>
+                        <div class="fw-bold">
+                            <?= $benefitCalc['is_damayan_eligible']
+                                ? '<span class="badge bg-success">Qualified Damayan Member</span>'
+                                : '<span class="badge bg-warning text-dark">Non-Damayan / Not Qualified</span>' ?>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-3 bg-light rounded">
+                        <div class="small text-muted">Standard Package Value</div>
+                        <div class="fw-bold">₱<?= number_format(\App\Services\DamayanService::STANDARD_PACKAGE_VALUE, 2) ?></div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-3 bg-light rounded">
+                        <div class="small text-muted">Damayan Benefit Value</div>
+                        <div class="fw-bold">₱<?= number_format(\App\Services\DamayanService::BENEFIT_VALUE, 2) ?></div>
+                    </div>
+                </div>
+            </div>
+
+            <?php if ($benefitCalc['is_damayan_eligible']): ?>
+            <div class="alert alert-success mb-3">
+                <h6 class="alert-heading"><i class="mdi mdi-check-circle-outline me-2"></i>Member is eligible for Damayan benefits!</h6>
+                <hr>
+                <?php if ($benefitCalc['standard_entitlement']): ?>
+                <div class="mb-2">
+                    <strong>Standard Entitlement Applied:</strong> Package price (₱<?= number_format($packagePrice, 2) ?>) ≤ Standard Package Value (₱<?= number_format(\App\Services\DamayanService::STANDARD_PACKAGE_VALUE, 2) ?>)
+                </div>
+                <div class="mb-0">
+                    <strong>Family Pays:</strong> <span class="text-success fw-bold fs-5">₱0.00</span>
+                </div>
+                <div class="small text-muted mt-2">Note: Remaining contributions will be waived upon approval.</div>
+                <?php else: ?>
+                <div class="mb-2">
+                    <strong>Upgrade Package:</strong> Package price (₱<?= number_format($packagePrice, 2) ?>) > Standard Package Value (₱<?= number_format(\App\Services\DamayanService::STANDARD_PACKAGE_VALUE, 2) ?>)
+                </div>
+                <div class="row gy-2">
+                    <div class="col-md-6">
+                        <div class="p-2 bg-light rounded">
+                            <div class="small text-muted">Damayan Benefit Credit</div>
+                            <div class="fw-bold text-success">- ₱<?= number_format($benefitCalc['damayan_benefit_credit'], 2) ?></div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-2 bg-light rounded">
+                            <div class="small text-muted">Upgrade Amount (Family Pays)</div>
+                            <div class="fw-bold text-danger">₱<?= number_format($benefitCalc['upgrade_amount'], 2) ?></div>
+                        </div>
+                    </div>
+                </div>
+                <hr class="my-2">
+                <div class="d-flex justify-content-between">
+                    <strong>Final Amount Due:</strong>
+                    <strong class="fs-5 text-primary">₱<?= number_format($benefitCalc['final_amount_due'], 2) ?></strong>
+                </div>
+                <div class="small text-muted mt-2">Note: Remaining contributions will be waived upon approval.</div>
+                <?php endif; ?>
+            </div>
+
+            <?php if ($membershipSummary): ?>
+            <div class="card mb-0">
+                <div class="card-header">
+                    <h6 class="mb-0">Membership Contribution Summary</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row gy-3">
+                        <div class="col-md-3">
+                            <div class="small text-muted">Monthly Fee</div>
+                            <div class="fw-bold">₱<?= number_format($membershipSummary['monthly_fee'], 2) ?></div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">Months Paid</div>
+                            <div class="fw-bold"><?= (int) $membershipSummary['months_paid'] ?></div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">Total Paid</div>
+                            <div class="fw-bold">₱<?= number_format($membershipSummary['amount_paid'], 2) ?></div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="small text-muted">Remaining Balance</div>
+                            <div class="fw-bold text-warning">₱<?= number_format($membershipSummary['remaining_balance'], 2) ?></div>
+                        </div>
+                    </div>
+                    <?php if ($membershipSummary['remaining_balance'] > 0): ?>
+                    <div class="alert alert-warning py-2 mt-3 mb-0">
+                        <i class="mdi mdi-alert-outline me-2"></i>
+                        <strong>Upon approval:</strong> The remaining balance of <strong>₱<?= number_format($membershipSummary['remaining_balance'], 2) ?></strong> will be <strong>waived</strong> per KAAGAPAY Damayan policy.
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <?php else: ?>
+            <div class="alert alert-warning mb-3">
+                <h6 class="alert-heading"><i class="mdi mdi-alert-circle-outline me-2"></i>Member is NOT eligible for Damayan benefits</h6>
+                <p class="mb-0">Full package price applies. No benefit credit or contribution waiver.</p>
+            </div>
+            <?php endif; ?>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <div class="row g-3">
         <div class="col-lg-6">

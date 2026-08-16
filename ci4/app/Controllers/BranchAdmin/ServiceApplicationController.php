@@ -7,6 +7,7 @@ use App\Models\NotificationModel;
 use App\Models\ServiceApplicationDocumentModel;
 use App\Models\ServiceApplicationModel;
 use App\Models\ServiceModel;
+use App\Services\DamayanService;
 use App\Services\ServiceBalanceService;
 use CodeIgniter\Exceptions\PageNotFoundException;
 
@@ -15,12 +16,14 @@ class ServiceApplicationController extends BaseController
     private ServiceApplicationModel $serviceApplicationModel;
     private ServiceModel $serviceModel;
     private NotificationModel $notificationModel;
+    private DamayanService $damayanService;
 
     public function __construct()
     {
         $this->serviceApplicationModel = new ServiceApplicationModel();
         $this->serviceModel = new ServiceModel();
         $this->notificationModel = new NotificationModel();
+        $this->damayanService = new DamayanService();
     }
 
     public function index(): string
@@ -72,23 +75,39 @@ class ServiceApplicationController extends BaseController
             return redirect()->back()->with('error', 'Only pending requests can be approved.');
         }
 
+        // Check Damayan eligibility (qualified active member, not yet deceased)
+        $isDamayanEligible = $this->damayanService->isQualifiedMember((int) $request['plan_holder_id']);
+
+        $packagePrice = (int) ($request['service_list_id'] ?? 0) > 0
+            ? (float) ($request['service_price'] ?? 0)
+            : (float) ($request['package_price'] ?? 0);
+
+        $benefitCalc = $this->damayanService->calculateBenefitApplication($packagePrice, $isDamayanEligible);
+
         $db = db_connect();
         $db->transBegin();
 
         try {
-            $this->serviceApplicationModel->update($id, ['status' => 'approved']);
+            $this->serviceApplicationModel->update($id, [
+                'status' => 'approved',
+                'damayan_eligible' => $isDamayanEligible ? 1 : 0,
+            ]);
 
             $serviceRecordId = (int) $this->serviceModel->insert([
                 'plan_holder_id' => (int) $request['plan_holder_id'],
                 'branch_id' => $branchId,
                 'service_list_id' => (int) ($request['service_list_id'] ?? 0) > 0 ? (int) $request['service_list_id'] : null,
                 'package_id' => (int) ($request['package_id'] ?? 0) > 0 ? (int) $request['package_id'] : null,
-                'total_cost' => (string) ((int) ($request['service_list_id'] ?? 0) > 0 ? ($request['service_price'] ?? 0) : ($request['package_price'] ?? 0)),
+                'total_cost' => (string) $packagePrice,
+                'damayan_eligible' => $benefitCalc['is_damayan_eligible'] ? 1 : 0,
+                'damayan_benefit_credit' => number_format($benefitCalc['damayan_benefit_credit'], 2, '.', ''),
+                'upgrade_amount' => number_format($benefitCalc['upgrade_amount'], 2, '.', ''),
+                'final_amount_due' => number_format($benefitCalc['final_amount_due'], 2, '.', ''),
                 'service_date' => date('Y-m-d'),
                 'service_time' => null,
                 'burial_location' => null,
                 'assigned_staff' => null,
-                'notes' => 'Created from approved service request.',
+                'notes' => 'Created from approved service request.' . ($isDamayanEligible ? ' Damayan benefit applied.' : ''),
                 'status' => 'pending',
             ]);
 
@@ -103,9 +122,24 @@ class ServiceApplicationController extends BaseController
                 'service_name' => (string) ($request['service_name'] ?? $request['package_name'] ?? 'Selected service'),
                 'package_name' => (string) ($request['package_name'] ?? null),
                 'package_cost' => (float) ((int) ($request['service_list_id'] ?? 0) > 0 ? ($request['service_price'] ?? 0) : ($request['package_price'] ?? 0)),
+                'damayan_eligible' => $isDamayanEligible,
+                'damayan_benefit_credit' => $benefitCalc['damayan_benefit_credit'],
+                'upgrade_amount' => $benefitCalc['upgrade_amount'],
+                'final_amount_due' => $benefitCalc['final_amount_due'],
             ], [
                 'service_id' => $serviceRecordId,
             ]);
+
+            // If Damayan eligible: activate death benefits + waive remaining contributions
+            if ($isDamayanEligible) {
+                $deathDate = (string) ($request['deceased_date_of_death'] ?? date('Y-m-d'));
+                $this->damayanService->activateBenefitsOnDeath(
+                    (int) $request['plan_holder_id'],
+                    $deathDate,
+                    (int) session('user_id'),
+                    'Qualified Damayan member death — remaining contributions waived per KAAGAPAY policy.'
+                );
+            }
 
             if ($balanceId) {
                 $this->notificationModel->insert([
@@ -213,8 +247,10 @@ class ServiceApplicationController extends BaseController
     {
         $this->ensureBranchAdminAccess();
 
+        $branchId = (int) session('branch_id');
+
         $request = db_connect()->table('service_applications sa')
-            ->select('sa.*, ph.branch_id, ph.user_id, u.first_name, u.last_name, p.base_price AS package_price, p.package_name, sl.base_price AS service_price, sl.service_name')
+            ->select('sa.*, ph.branch_id, ph.user_id, ph.plan_holder_id, u.first_name, u.last_name, p.base_price AS package_price, p.package_name, sl.base_price AS service_price, sl.service_name')
             ->join('plan_holders ph', 'ph.plan_holder_id = sa.plan_holder_id', 'inner')
             ->join('users u', 'u.user_id = ph.user_id', 'inner')
             ->join('packages p', 'p.package_id = sa.package_id', 'left')
@@ -223,7 +259,7 @@ class ServiceApplicationController extends BaseController
             ->get()
             ->getRowArray();
 
-        if (! $request || (int) ($request['branch_id'] ?? 0) !== (int) session('branch_id')) {
+        if (! $request || (int) ($request['branch_id'] ?? 0) !== $branchId) {
             throw PageNotFoundException::forPageNotFound();
         }
 
@@ -236,10 +272,26 @@ class ServiceApplicationController extends BaseController
                 ->getResultArray();
         }
 
+        // Calculate Damayan benefit application for display
+        $packagePrice = (int) ($request['service_list_id'] ?? 0) > 0
+            ? (float) ($request['service_price'] ?? 0)
+            : (float) ($request['package_price'] ?? 0);
+
+        $planHolderId = (int) ($request['plan_holder_id'] ?? 0);
+        $isDamayanEligible = $planHolderId > 0 ? $this->damayanService->isQualifiedMember($planHolderId) : false;
+
+        $benefitCalc = $this->damayanService->calculateBenefitApplication($packagePrice, $isDamayanEligible);
+
+        // Get membership contribution summary for detailed display
+        $membershipSummary = $planHolderId > 0 ? $this->damayanService->getMembershipContributionSummary($planHolderId) : null;
+
         return view('branch_admin/service_package/request_show', [
             'role_layout' => 'layouts/branch_admin',
             'request' => $request,
             'documents' => $documents,
+            'benefitCalc' => $benefitCalc,
+            'membershipSummary' => $membershipSummary,
+            'packagePrice' => $packagePrice,
         ]);
     }
 

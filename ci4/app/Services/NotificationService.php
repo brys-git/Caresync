@@ -31,6 +31,7 @@ class NotificationService
             'payment_pending',
             'service_approved',
             'service_rejected',
+            'service_pending',
             'service_balance_created',
             'registration_pending',
             'service_completed',

@@ -1,0 +1,212 @@
+
+CodeIgniter v4.7.2 Command Line Tool - Server Time: 2026-08-08 17:33:57 UTC+00:00
+
++---------+--------------------------------------------------------------+------+---------------------------------------------------------------------------------+----------------+---------------+
+| Method  | Route                                                        | Name | Handler                                                                         | Before Filters | After Filters |
++---------+--------------------------------------------------------------+------+---------------------------------------------------------------------------------+----------------+---------------+
+| GET     | /                                                            | »    | \App\Controllers\Auth::login                                                    |                |               |
+| GET     | login                                                        | »    | \App\Controllers\Auth::login                                                    |                |               |
+| GET     | signin                                                       | »    | \App\Controllers\Auth::login                                                    |                |               |
+| GET     | logout                                                       | »    | \App\Controllers\Auth::logout                                                   | auth           | auth          |
+| GET     | register                                                     | »    | \App\Controllers\Auth::register                                                 |                |               |
+| GET     | change-password                                              | »    | \App\Controllers\Auth::changePassword                                           | auth           | auth          |
+| GET     | unauthorized                                                 | »    | \App\Controllers\Home::unauthorized                                             | auth           | auth          |
+| GET     | signup                                                       | »    | \App\Controllers\Auth::register                                                 |                |               |
+| GET     | admin/dashboard                                              | »    | \App\Controllers\Dashboard::admin                                               | auth role:1    | role:1 auth   |
+| GET     | admin/dashboard/data                                         | »    | \App\Controllers\Dashboard::adminData                                           | auth role:1    | role:1 auth   |
+| GET     | admin/registration-approvals                                 | »    | \App\Controllers\ClientPortal::registrationApprovals                            | auth role:1    | role:1 auth   |
+| GET     | admin/branch-management                                      | »    | \App\Controllers\Admin\BranchManagementController::index                        | auth role:1    | role:1 auth   |
+| GET     | admin/branch-management/export-transactions                  | »    | \App\Controllers\Admin\BranchManagementController::exportTransactions           | auth role:1    | role:1 auth   |
+| GET     | admin/client-management                                      | »    | \App\Controllers\Admin\ClientManagementController::index                        | auth role:1    | role:1 auth   |
+| GET     | admin/client-management/view/([0-9]+)                        | »    | \App\Controllers\Admin\ClientManagementController::view/$1                      | auth role:1    | role:1 auth   |
+| GET     | admin/client-management/edit/([0-9]+)                        | »    | \App\Controllers\Admin\ClientManagementController::edit/$1                      | auth role:1    | role:1 auth   |
+| GET     | admin/client-import                                          | »    | \App\Controllers\Admin\ClientImportController::index                            | auth role:1    | role:1 auth   |
+| GET     | admin/client-import/review/([0-9]+)                          | »    | \App\Controllers\Admin\ClientImportController::review/$1                        | auth role:1    | role:1 auth   |
+| GET     | admin/client-import/history                                  | »    | \App\Controllers\Admin\ClientImportController::history                          | auth role:1    | role:1 auth   |
+| GET     | admin/client-import/history/([0-9]+)                         | »    | \App\Controllers\Admin\ClientImportController::batchDetail/$1                   | auth role:1    | role:1 auth   |
+| GET     | admin/client-import/download/([0-9]+)                        | »    | \App\Controllers\Admin\ClientImportController::download/$1                      | auth role:1    | role:1 auth   |
+| GET     | admin/client-import/template/csv                             | »    | \App\Controllers\Admin\ClientImportController::templateCsv                      | auth role:1    | role:1 auth   |
+| GET     | admin/users/create                                           | »    | \App\Controllers\Users::create                                                  | auth role:1    | role:1 auth   |
+| GET     | admin/branches                                               | »    | \App\Controllers\Branches::index                                                | auth role:1    | role:1 auth   |
+| GET     | admin/branches/activity                                      | »    | \App\Controllers\Branches::activity                                             | auth role:1    | role:1 auth   |
+| GET     | admin/payment-monitoring                                     | »    | \App\Controllers\PaymentTracking::admin                                         | auth role:1    | role:1 auth   |
+| GET     | admin/payment-monitoring/export                              | »    | \App\Controllers\PaymentTracking::exportCsv                                     | auth role:1    | role:1 auth   |
+| GET     | admin/reports                                                | »    | \App\Controllers\Reports::index                                                 | auth role:1    | role:1 auth   |
+| GET     | admin/reports/remittance                                     | »    | \App\Controllers\Reports::remittance                                            | auth role:1    | role:1 auth   |
+| GET     | admin/analytics                                              | »    | \App\Controllers\Analytics::admin                                               | auth role:1    | role:1 auth   |
+| GET     | admin/service-offer                                          | »    | \App\Controllers\Admin\ServiceOfferController::index                            | auth role:1    | role:1 auth   |
+| GET     | admin/profile                                                | »    | \App\Controllers\Admin\ProfileController::index                                 | auth role:1    | role:1 auth   |
+| GET     | admin/profile/edit                                           | »    | \App\Controllers\Admin\ProfileController::edit                                  | auth role:1    | role:1 auth   |
+| GET     | branch-admin/dashboard                                       | »    | \App\Controllers\Dashboard::branchAdmin                                         | auth role:2    | role:2 auth   |
+| GET     | branch-admin/registration-approvals                          | »    | \App\Controllers\ClientPortal::registrationApprovals                            | auth role:2    | role:2 auth   |
+| GET     | branch-admin/client-management                               | »    | \App\Controllers\BranchAdmin\ClientController::index                            | auth role:2    | role:2 auth   |
+| GET     | branch-admin/client-management/view/([0-9]+)                 | »    | \App\Controllers\BranchAdmin\ClientController::view/$1                          | auth role:2    | role:2 auth   |
+| GET     | branch-admin/client-management/edit/([0-9]+)                 | »    | \App\Controllers\BranchAdmin\ClientController::edit/$1                          | auth role:2    | role:2 auth   |
+| GET     | branch-admin/client                                          | »    | \App\Controllers\BranchAdmin\ClientController::index                            | auth role:2    | role:2 auth   |
+| GET     | branch-admin/client/view/([0-9]+)                            | »    | \App\Controllers\BranchAdmin\ClientController::view/$1                          | auth role:2    | role:2 auth   |
+| GET     | branch-admin/client/edit/([0-9]+)                            | »    | \App\Controllers\BranchAdmin\ClientController::edit/$1                          | auth role:2    | role:2 auth   |
+| GET     | branch-admin/client/register                                 | »    | \App\Controllers\BranchAdmin\ClientController::registerForm                     | auth role:2    | role:2 auth   |
+| GET     | branch-admin/client-import                                   | »    | \App\Controllers\BranchAdmin\ClientImportController::index                      | auth role:2    | role:2 auth   |
+| GET     | branch-admin/client-import/review/([0-9]+)                   | »    | \App\Controllers\BranchAdmin\ClientImportController::review/$1                  | auth role:2    | role:2 auth   |
+| GET     | branch-admin/client-import/history                           | »    | \App\Controllers\BranchAdmin\ClientImportController::history                    | auth role:2    | role:2 auth   |
+| GET     | branch-admin/client-import/history/([0-9]+)                  | »    | \App\Controllers\BranchAdmin\ClientImportController::batchDetail/$1             | auth role:2    | role:2 auth   |
+| GET     | branch-admin/client-import/download/([0-9]+)                 | »    | \App\Controllers\BranchAdmin\ClientImportController::download/$1                | auth role:2    | role:2 auth   |
+| GET     | branch-admin/client-import/template/csv                      | »    | \App\Controllers\BranchAdmin\ClientImportController::templateCsv                | auth role:2    | role:2 auth   |
+| GET     | branch-admin/payment-tracking                                | »    | \App\Controllers\PaymentTracking::branchAdmin                                   | auth role:2    | role:2 auth   |
+| GET     | branch-admin/payment-tracking/id-document/([0-9]+)           | »    | \App\Controllers\PaymentTracking::idDocument/$1                                 | auth role:2    | role:2 auth   |
+| GET     | branch-admin/service-balances                                | »    | \App\Controllers\ServiceBalances::index                                         | auth role:2    | role:2 auth   |
+| GET     | branch-admin/service-balances/([0-9]+)                       | »    | \App\Controllers\ServiceBalances::show/$1                                       | auth role:2    | role:2 auth   |
+| GET     | branch-admin/cash-payment-record                             | »    | \App\Controllers\BranchAdmin\CashPaymentController::recordPaymentForm           | auth role:2    | role:2 auth   |
+| GET     | branch-admin/cash-payments                                   | »    | \App\Controllers\BranchAdmin\CashPaymentController::viewPayments                | auth role:2    | role:2 auth   |
+| GET     | branch-admin/service-package                                 | »    | \App\Controllers\BranchAdmin\ServiceOfferController::index                      | auth role:2    | role:2 auth   |
+| GET     | branch-admin/service-package/services                        | »    | \App\Controllers\BranchAdmin\ServiceOfferController::index                      | auth role:2    | role:2 auth   |
+| GET     | branch-admin/service-package/packages                        | »    | \App\Controllers\BranchAdmin\PackageController::index                           | auth role:2    | role:2 auth   |
+| GET     | branch-admin/service-package/requests                        | »    | \App\Controllers\BranchAdmin\ServiceApplicationController::index                | auth role:2    | role:2 auth   |
+| GET     | branch-admin/service-package/requests/([0-9]+)               | »    | \App\Controllers\BranchAdmin\ServiceApplicationController::show/$1              | auth role:2    | role:2 auth   |
+| GET     | branch-admin/service-package/requests/document/([0-9]+)      | »    | \App\Controllers\BranchAdmin\ServiceApplicationController::downloadDocument/$1  | auth role:2    | role:2 auth   |
+| GET     | branch-admin/service-package/ongoing                         | »    | \App\Controllers\BranchAdmin\ServiceController::index                           | auth role:2    | role:2 auth   |
+| GET     | branch-admin/service-package/schedule                        | »    | \App\Controllers\BranchAdmin\ServiceController::create                          | auth role:2    | role:2 auth   |
+| GET     | branch-admin/service-package/history/([0-9]+)                | »    | \App\Controllers\BranchAdmin\ServiceController::history/$1                      | auth role:2    | role:2 auth   |
+| GET     | branch-admin/services/create                                 | »    | \App\Controllers\BranchAdmin\ServiceOfferController::create                     | auth role:2    | role:2 auth   |
+| GET     | branch-admin/services/view/([0-9]+)                          | »    | \App\Controllers\BranchAdmin\ServiceOfferController::view/$1                    | auth role:2    | role:2 auth   |
+| GET     | branch-admin/services/edit/([0-9]+)                          | »    | \App\Controllers\BranchAdmin\ServiceOfferController::edit/$1                    | auth role:2    | role:2 auth   |
+| GET     | branch-admin/packages/create                                 | »    | \App\Controllers\BranchAdmin\PackageController::create                          | auth role:2    | role:2 auth   |
+| GET     | branch-admin/packages/view/([0-9]+)                          | »    | \App\Controllers\BranchAdmin\PackageController::view/$1                         | auth role:2    | role:2 auth   |
+| GET     | branch-admin/packages/edit/([0-9]+)                          | »    | \App\Controllers\BranchAdmin\PackageController::edit/$1                         | auth role:2    | role:2 auth   |
+| GET     | branch-admin/staff-monitoring                                | »    | \App\Controllers\BranchAdmin\StaffMonitoringController::index                   | auth role:2    | role:2 auth   |
+| GET     | branch-admin/staff-monitoring/assign                         | »    | \App\Controllers\BranchAdmin\StaffMonitoringController::assign                  | auth role:2    | role:2 auth   |
+| GET     | branch-admin/staff-monitoring/activities                     | »    | \App\Controllers\BranchAdmin\StaffMonitoringController::activities              | auth role:2    | role:2 auth   |
+| GET     | branch-admin/reports                                         | »    | \App\Controllers\BranchAdmin\ReportController::index                            | auth role:2    | role:2 auth   |
+| GET     | branch-admin/analytics                                       | »    | \App\Controllers\Analytics::branchAdmin                                         | auth role:2    | role:2 auth   |
+| GET     | branch-admin/profile                                         | »    | \App\Controllers\BranchAdmin\ProfileController::index                           | auth role:2    | role:2 auth   |
+| GET     | staff/dashboard                                              | »    | \App\Controllers\Dashboard::staff                                               | auth role:3    | role:3 auth   |
+| GET     | staff/client-management                                      | »    | \App\Controllers\Staff\ClientController::index                                  | auth role:3    | role:3 auth   |
+| GET     | staff/client                                                 | »    | \App\Controllers\Staff\ClientController::index                                  | auth role:3    | role:3 auth   |
+| GET     | staff/client/view/([0-9]+)                                   | »    | \App\Controllers\Staff\ClientController::view/$1                                | auth role:3    | role:3 auth   |
+| GET     | staff/client/edit/([0-9]+)                                   | »    | \App\Controllers\Staff\ClientController::edit/$1                                | auth role:3    | role:3 auth   |
+| GET     | staff/client/register                                        | »    | \App\Controllers\Staff\ClientController::create                                 | auth role:3    | role:3 auth   |
+| GET     | staff/payment-management                                     | »    | \App\Controllers\PaymentTracking::staff                                         | auth role:3    | role:3 auth   |
+| GET     | staff/record-payment                                         | »    | \App\Controllers\PaymentTracking::staffRecordPaymentForm                        | auth role:3    | role:3 auth   |
+| GET     | staff/payment-management/id-document/([0-9]+)                | »    | \App\Controllers\PaymentTracking::idDocument/$1                                 | auth role:3    | role:3 auth   |
+| GET     | staff/services                                               | »    | \App\Controllers\Staff\ServicesController::index                                | auth role:3    | role:3 auth   |
+| GET     | staff/services/requests                                      | »    | \App\Controllers\Staff\ServicesController::serviceRequests                      | auth role:3    | role:3 auth   |
+| GET     | staff/services/ongoing                                       | »    | \App\Controllers\Staff\ServicesController::ongoingServices                      | auth role:3    | role:3 auth   |
+| GET     | staff/reports                                                | »    | \App\Controllers\Staff\ReportsController::index                                 | auth role:3    | role:3 auth   |
+| GET     | staff/analytics                                              | »    | \App\Controllers\Analytics::staff                                               | auth role:3    | role:3 auth   |
+| GET     | staff/profile                                                | »    | \App\Controllers\Staff\ProfileController::index                                 | auth role:3    | role:3 auth   |
+| GET     | client/dashboard                                             | »    | \App\Controllers\Client\ClientDashboardController::dashboard                    | auth role:4    | role:4 auth   |
+| GET     | client/membership                                            | »    | \App\Controllers\Client\ClientMembershipController::membership                  | auth role:4    | role:4 auth   |
+| GET     | client/profile                                               | »    | \App\Controllers\Client\ClientProfileController::profile                        | auth role:4    | role:4 auth   |
+| GET     | client/profile/edit                                          | »    | \App\Controllers\Client\ClientProfileController::editProfile                    | auth role:4    | role:4 auth   |
+| GET     | client/profile/change-password                               | »    | \App\Controllers\Client\ClientProfileController::changePassword                 | auth role:4    | role:4 auth   |
+| GET     | client/payment                                               | »    | \App\Controllers\Client\ClientPaymentController::payment                        | auth role:4    | role:4 auth   |
+| GET     | client/payment/advance                                       | »    | \App\Controllers\Client\ClientPaymentController::advancePayment                 | auth role:4    | role:4 auth   |
+| GET     | client/payment/download-receipt                              | »    | \App\Controllers\Client\ClientPaymentController::downloadReceipt                | auth role:4    | role:4 auth   |
+| GET     | client/service-balances                                      | »    | \App\Controllers\ServiceBalances::index                                         | auth role:4    | role:4 auth   |
+| GET     | client/service-balances/([0-9]+)                             | »    | \App\Controllers\ServiceBalances::show/$1                                       | auth role:4    | role:4 auth   |
+| GET     | client/service                                               | »    | \App\Controllers\Client\ClientServiceController::services                       | auth role:4    | role:4 auth   |
+| GET     | client/service/([0-9]+)                                      | »    | \App\Controllers\Client\ClientServiceController::serviceDetails/$1              | auth role:4    | role:4 auth   |
+| GET     | client/package/([0-9]+)                                      | »    | \App\Controllers\Client\ClientServiceController::packageDetails/$1              | auth role:4    | role:4 auth   |
+| GET     | client/apply-service/([0-9]+)                                | »    | \App\Controllers\Client\ClientServiceController::applyServiceForm/$1            | auth role:4    | role:4 auth   |
+| GET     | client/apply-package/([0-9]+)                                | »    | \App\Controllers\Client\ClientServiceController::applyPackageForm/$1            | auth role:4    | role:4 auth   |
+| GET     | client/notification                                          | »    | \App\Controllers\Notifications::index                                           | auth role:4    | role:4 auth   |
+| GET     | plan-info                                                    | »    | \App\Controllers\Client\ClientRegistrationController::planInfo                  | auth role:4    | role:4 auth   |
+| GET     | plan-registration                                            | »    | \App\Controllers\Client\ClientRegistrationController::planRegistration          | auth role:4    | role:4 auth   |
+| GET     | plan-registration/([0-9]+)                                   | »    | \App\Controllers\Client\ClientRegistrationController::planRegistration/$1       | auth role:4    | role:4 auth   |
+| GET     | initial-payment                                              | »    | \App\Controllers\Client\ClientPaymentInitialController::initialPayment          | auth role:4    | role:4 auth   |
+| GET     | dashboard                                                    | »    | \App\Controllers\Dashboard::index                                               | auth           | auth          |
+| GET     | dashboard/admin                                              | »    | \App\Controllers\Dashboard::admin                                               | auth role:1    | role:1 auth   |
+| GET     | dashboard/branch-admin                                       | »    | \App\Controllers\Dashboard::branchAdmin                                         | auth role:2    | role:2 auth   |
+| GET     | dashboard/staff                                              | »    | \App\Controllers\Dashboard::staff                                               | auth role:3    | role:3 auth   |
+| GET     | dashboard/plan-holder                                        | »    | \App\Controllers\Client\ClientDashboardController::dashboard                    | auth role:4    | role:4 auth   |
+| GET     | plan-holders/register                                        | »    | \App\Controllers\PlanHolders::register                                          | auth           | auth          |
+| GET     | client/service/apply/service/(.*)                            | »    | apply-service/$1                                                                |                |               |
+| HEAD    | client/service/apply/service/(.*)                            | »    | apply-service/$1                                                                |                |               |
+| POST    | login                                                        | »    | \App\Controllers\Auth::attemptLogin                                             |                |               |
+| POST    | register                                                     | »    | \App\Controllers\Auth::attemptRegister                                          |                |               |
+| POST    | change-password                                              | »    | \App\Controllers\Auth::updatePassword                                           | auth           | auth          |
+| POST    | admin/branch-management/toggle-availability                  | »    | \App\Controllers\Admin\BranchManagementController::toggleAvailability           | auth role:1    | role:1 auth   |
+| POST    | admin/branch-management/approval/service/approve/([0-9]+)    | »    | \App\Controllers\Admin\BranchManagementController::approveService/$1            | auth role:1    | role:1 auth   |
+| POST    | admin/branch-management/approval/service/reject/([0-9]+)     | »    | \App\Controllers\Admin\BranchManagementController::rejectService/$1             | auth role:1    | role:1 auth   |
+| POST    | admin/branch-management/approval/package/approve/([0-9]+)    | »    | \App\Controllers\Admin\BranchManagementController::approvePackage/$1            | auth role:1    | role:1 auth   |
+| POST    | admin/branch-management/approval/package/reject/([0-9]+)     | »    | \App\Controllers\Admin\BranchManagementController::rejectPackage/$1             | auth role:1    | role:1 auth   |
+| POST    | admin/client-management/update/([0-9]+)                      | »    | \App\Controllers\Admin\ClientManagementController::update/$1                    | auth role:1    | role:1 auth   |
+| POST    | admin/client-import/upload                                   | »    | \App\Controllers\Admin\ClientImportController::upload                           | auth role:1    | role:1 auth   |
+| POST    | admin/client-import/record/([0-9]+)/save                     | »    | \App\Controllers\Admin\ClientImportController::saveRecord/$1                    | auth role:1    | role:1 auth   |
+| POST    | admin/client-import/record/([0-9]+)/decide                   | »    | \App\Controllers\Admin\ClientImportController::decideRecord/$1                  | auth role:1    | role:1 auth   |
+| POST    | admin/client-import/record/([0-9]+)/clear-credentials        | »    | \App\Controllers\Admin\ClientImportController::clearCredentials/$1              | auth role:1    | role:1 auth   |
+| POST    | admin/client-import/batch/([0-9]+)/commit                    | »    | \App\Controllers\Admin\ClientImportController::commit/$1                        | auth role:1    | role:1 auth   |
+| POST    | admin/users/store                                            | »    | \App\Controllers\Users::store                                                   | auth role:1    | role:1 auth   |
+| POST    | admin/branches/store                                         | »    | \App\Controllers\Branches::store                                                | auth role:1    | role:1 auth   |
+| POST    | admin/branches/assign-user                                   | »    | \App\Controllers\Branches::assignUser                                           | auth role:1    | role:1 auth   |
+| POST    | admin/reports/remittance/generate                            | »    | \App\Controllers\Reports::generate                                              | auth role:1    | role:1 auth   |
+| POST    | admin/service-offer/package/store                            | »    | \App\Controllers\Admin\ServiceOfferController::storePackage                     | auth role:1    | role:1 auth   |
+| POST    | admin/service-offer/service/store                            | »    | \App\Controllers\Admin\ServiceOfferController::storeService                     | auth role:1    | role:1 auth   |
+| POST    | admin/service-offer/approval/service/approve/([0-9]+)        | »    | \App\Controllers\Admin\ServiceOfferController::approveService/$1                | auth role:1    | role:1 auth   |
+| POST    | admin/service-offer/approval/service/reject/([0-9]+)         | »    | \App\Controllers\Admin\ServiceOfferController::rejectService/$1                 | auth role:1    | role:1 auth   |
+| POST    | admin/service-offer/approval/package/approve/([0-9]+)        | »    | \App\Controllers\Admin\ServiceOfferController::approvePackage/$1                | auth role:1    | role:1 auth   |
+| POST    | admin/service-offer/approval/package/reject/([0-9]+)         | »    | \App\Controllers\Admin\ServiceOfferController::rejectPackage/$1                 | auth role:1    | role:1 auth   |
+| POST    | admin/profile/update                                         | »    | \App\Controllers\Admin\ProfileController::update                                | auth role:1    | role:1 auth   |
+| POST    | admin/profile/change-password                                | »    | \App\Controllers\Admin\ProfileController::changePassword                        | auth role:1    | role:1 auth   |
+| POST    | branch-admin/client-management/update/([0-9]+)               | »    | \App\Controllers\BranchAdmin\ClientController::update/$1                        | auth role:2    | role:2 auth   |
+| POST    | branch-admin/client-management/approve/([0-9]+)              | »    | \App\Controllers\BranchAdmin\ClientController::approve/$1                       | auth role:2    | role:2 auth   |
+| POST    | branch-admin/client/update/([0-9]+)                          | »    | \App\Controllers\BranchAdmin\ClientController::update/$1                        | auth role:2    | role:2 auth   |
+| POST    | branch-admin/client/register-submit                          | »    | \App\Controllers\BranchAdmin\ClientController::submitRegister                   | auth role:2    | role:2 auth   |
+| POST    | branch-admin/client/store                                    | »    | \App\Controllers\BranchAdmin\ClientController::store                            | auth role:2    | role:2 auth   |
+| POST    | branch-admin/client-import/upload                            | »    | \App\Controllers\BranchAdmin\ClientImportController::upload                     | auth role:2    | role:2 auth   |
+| POST    | branch-admin/client-import/record/([0-9]+)/save              | »    | \App\Controllers\BranchAdmin\ClientImportController::saveRecord/$1              | auth role:2    | role:2 auth   |
+| POST    | branch-admin/client-import/record/([0-9]+)/decide            | »    | \App\Controllers\BranchAdmin\ClientImportController::decideRecord/$1            | auth role:2    | role:2 auth   |
+| POST    | branch-admin/client-import/record/([0-9]+)/clear-credentials | »    | \App\Controllers\BranchAdmin\ClientImportController::clearCredentials/$1        | auth role:2    | role:2 auth   |
+| POST    | branch-admin/client-import/batch/([0-9]+)/commit             | »    | \App\Controllers\BranchAdmin\ClientImportController::commit/$1                  | auth role:2    | role:2 auth   |
+| POST    | branch-admin/payment-tracking/record-cash                    | »    | \App\Controllers\PaymentTracking::recordCash                                    | auth role:2    | role:2 auth   |
+| POST    | branch-admin/payment-tracking/approve/([0-9]+)               | »    | \App\Controllers\PaymentTracking::approveGcash/$1                               | auth role:2    | role:2 auth   |
+| POST    | branch-admin/payment-tracking/reject/([0-9]+)                | »    | \App\Controllers\PaymentTracking::rejectGcash/$1                                | auth role:2    | role:2 auth   |
+| POST    | branch-admin/service-balances/pay/([0-9]+)                   | »    | \App\Controllers\ServiceBalances::pay/$1                                        | auth role:2    | role:2 auth   |
+| POST    | branch-admin/cash-payment-record/save                        | »    | \App\Controllers\BranchAdmin\CashPaymentController::savePaymentRecord           | auth role:2    | role:2 auth   |
+| POST    | branch-admin/service-package/requests/approve/([0-9]+)       | »    | \App\Controllers\BranchAdmin\ServiceApplicationController::approve/$1           | auth role:2    | role:2 auth   |
+| POST    | branch-admin/service-package/requests/reject/([0-9]+)        | »    | \App\Controllers\BranchAdmin\ServiceApplicationController::reject/$1            | auth role:2    | role:2 auth   |
+| POST    | branch-admin/service-package/ongoing/update-status/([0-9]+)  | »    | \App\Controllers\BranchAdmin\ServiceController::updateStatus/$1                 | auth role:2    | role:2 auth   |
+| POST    | branch-admin/service-package/schedule/store                  | »    | \App\Controllers\BranchAdmin\ServiceController::store                           | auth role:2    | role:2 auth   |
+| POST    | branch-admin/service-package/ongoing/reschedule/([0-9]+)     | »    | \App\Controllers\BranchAdmin\ServiceController::reschedule/$1                   | auth role:2    | role:2 auth   |
+| POST    | branch-admin/service-package/ongoing/cancel/([0-9]+)         | »    | \App\Controllers\BranchAdmin\ServiceController::cancel/$1                       | auth role:2    | role:2 auth   |
+| POST    | branch-admin/service-package/ongoing/complete/([0-9]+)       | »    | \App\Controllers\BranchAdmin\ServiceController::complete/$1                     | auth role:2    | role:2 auth   |
+| POST    | branch-admin/services/store                                  | »    | \App\Controllers\BranchAdmin\ServiceOfferController::store                      | auth role:2    | role:2 auth   |
+| POST    | branch-admin/services/update/([0-9]+)                        | »    | \App\Controllers\BranchAdmin\ServiceOfferController::update/$1                  | auth role:2    | role:2 auth   |
+| POST    | branch-admin/packages/store                                  | »    | \App\Controllers\BranchAdmin\PackageController::store                           | auth role:2    | role:2 auth   |
+| POST    | branch-admin/packages/update/([0-9]+)                        | »    | \App\Controllers\BranchAdmin\PackageController::update/$1                       | auth role:2    | role:2 auth   |
+| POST    | branch-admin/packages/add-item/([0-9]+)                      | »    | \App\Controllers\BranchAdmin\PackageController::addItem/$1                      | auth role:2    | role:2 auth   |
+| POST    | branch-admin/staff-monitoring/store                          | »    | \App\Controllers\BranchAdmin\StaffMonitoringController::store                   | auth role:2    | role:2 auth   |
+| POST    | branch-admin/profile/update                                  | »    | \App\Controllers\BranchAdmin\ProfileController::update                          | auth role:2    | role:2 auth   |
+| POST    | staff/client/update/([0-9]+)                                 | »    | \App\Controllers\Staff\ClientController::update/$1                              | auth role:3    | role:3 auth   |
+| POST    | staff/client/store                                           | »    | \App\Controllers\Staff\ClientController::store                                  | auth role:3    | role:3 auth   |
+| POST    | staff/payment-management/record-cash                         | »    | \App\Controllers\PaymentTracking::recordCash                                    | auth role:3    | role:3 auth   |
+| POST    | staff/record-payment/save                                    | »    | \App\Controllers\PaymentTracking::staffRecordPaymentSave                        | auth role:3    | role:3 auth   |
+| POST    | staff/services/update-status/([0-9]+)                        | »    | \App\Controllers\Staff\ServicesController::updateStatus/$1                      | auth role:3    | role:3 auth   |
+| POST    | staff/profile/update                                         | »    | \App\Controllers\Staff\ProfileController::update                                | auth role:3    | role:3 auth   |
+| POST    | client/profile/update                                        | »    | \App\Controllers\Client\ClientProfileController::updateProfile                  | auth role:4    | role:4 auth   |
+| POST    | client/profile/update-password                               | »    | \App\Controllers\Client\ClientProfileController::updatePassword                 | auth role:4    | role:4 auth   |
+| POST    | client/payment/submit-gcash                                  | »    | \App\Controllers\Client\ClientPaymentController::submitGcashPayment             | auth role:4    | role:4 auth   |
+| POST    | client/service-balances/acknowledge/([0-9]+)                 | »    | \App\Controllers\ServiceBalances::acknowledge/$1                                | auth role:4    | role:4 auth   |
+| POST    | client/service-balances/pay/([0-9]+)                         | »    | \App\Controllers\ServiceBalances::pay/$1                                        | auth role:4    | role:4 auth   |
+| POST    | client/apply-service/([0-9]+)                                | »    | \App\Controllers\Client\ClientServiceController::submitServiceApplication/$1    | auth role:4    | role:4 auth   |
+| POST    | client/apply-package/([0-9]+)                                | »    | \App\Controllers\Client\ClientServiceController::submitPackageApplication/$1    | auth role:4    | role:4 auth   |
+| POST    | client/notification/read                                     | »    | \App\Controllers\Notifications::markRead                                        | auth role:4    | role:4 auth   |
+| POST    | plan-registration                                            | »    | \App\Controllers\Client\ClientRegistrationController::submitPlanRegistration    | auth role:4    | role:4 auth   |
+| POST    | plan-registration/([0-9]+)                                   | »    | \App\Controllers\Client\ClientRegistrationController::submitPlanRegistration/$1 | auth role:4    | role:4 auth   |
+| POST    | initial-payment                                              | »    | \App\Controllers\Client\ClientPaymentInitialController::submitInitialPayment    | auth role:4    | role:4 auth   |
+| POST    | initial-payment-verify/([0-9]+)                              | »    | \App\Controllers\Client\ClientPaymentInitialController::verifyInitialPayment/$1 | auth role:4    | role:4 auth   |
+| POST    | plan-holders/store                                           | »    | \App\Controllers\PlanHolders::store                                             | auth           | auth          |
+| POST    | plan-holders/approvals/approve/([0-9]+)                      | »    | \App\Controllers\PlanHolders::approve/$1                                        | auth           | auth          |
+| POST    | plan-holders/approvals/reject/([0-9]+)                       | »    | \App\Controllers\PlanHolders::reject/$1                                         | auth           | auth          |
+| POST    | client/service/apply/service/(.*)                            | »    | apply-service/$1                                                                |                |               |
+| PATCH   | client/service/apply/service/(.*)                            | »    | apply-service/$1                                                                |                |               |
+| PUT     | client/service/apply/service/(.*)                            | »    | apply-service/$1                                                                |                |               |
+| DELETE  | client/service/apply/service/(.*)                            | »    | apply-service/$1                                                                |                |               |
+| OPTIONS | client/service/apply/service/(.*)                            | »    | apply-service/$1                                                                |                |               |
+| TRACE   | client/service/apply/service/(.*)                            | »    | apply-service/$1                                                                |                |               |
+| CONNECT | client/service/apply/service/(.*)                            | »    | apply-service/$1                                                                |                |               |
+| CLI     | client/service/apply/service/(.*)                            | »    | apply-service/$1                                                                |                |               |
++---------+--------------------------------------------------------------+------+---------------------------------------------------------------------------------+----------------+---------------+
+
+Required Before Filters: forcehttps
+ Required After Filters: performance, toolbar

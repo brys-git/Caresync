@@ -389,3 +389,81 @@
   .rw-form-row--4 { grid-template-columns: 1fr 1fr; }
   .rw-nav { flex-direction: column; gap: 10px; }
 }
+
+/* ------------------------------------------------------ Spouse (Married) --- */
+.rw-required-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  background: var(--rw-orange);
+  color: #fff;
+  vertical-align: middle;
+}
+
+.rw-card--spouse-required {
+  border: 1.5px solid var(--rw-orange) !important;
+  background: #fffdf5;
+}
+
+.rw-spouse-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: var(--rw-radius-sm);
+  font-size: 0.8rem;
+  color: #92610a;
+  background: #fdf3dc;
+}
+
+/* --------------------------------------------------------- OCR / ID scan --- */
+.rw-ocr-status {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: var(--rw-radius-sm);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.rw-ocr-status--working {
+  background: var(--rw-primary-soft);
+  color: var(--rw-primary);
+  border: 1px solid #cdd9ea;
+}
+
+.rw-ocr-status--error {
+  background: #fff5f5;
+  color: var(--rw-red);
+  border: 1px solid #fed7d7;
+}
+
+.rw-id-result {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: var(--rw-radius-sm);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.rw-id-result i.mdi { font-size: 1.3rem; margin-top: 1px; }
+
+.rw-id-result--ok {
+  background: var(--rw-green-soft);
+  color: #0f7a4d;
+  border: 1px solid #b6e6ce;
+}
+
+.rw-id-result--error {
+  background: #fff5f5;
+  color: var(--rw-red);
+  border: 1px solid #fed7d7;
+}

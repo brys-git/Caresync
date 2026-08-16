@@ -62,7 +62,7 @@ class ServiceManagementService
             ->get()
             ->getResultArray();
 
-        $service['add_ons'] = $db->table('add_ons')
+        $service['add_ons'] = $db->table('service_add_ons')
             ->select('add_on_id, service_id, item_name, price')
             ->where('service_id', $id)
             ->orderBy('add_on_id', 'DESC')

@@ -44,6 +44,15 @@
                                 <label class="form-label">Contact Number</label>
                                 <input type="text" name="contact_number" class="form-control" value="<?= esc(old('contact_number', $user['contact_number'] ?? '')) ?>">
                             </div>
+                            <div class="col-md-6">
+                                <label class="form-label">GCash Number (for client payments)</label>
+                                <input type="text" name="gcash_number" class="form-control" value="<?= esc(old('gcash_number', $user['gcash_number'] ?? '')) ?>" placeholder="09XX XXX XXXX">
+                                <small class="text-muted">Assigned clients will send their initial payment to this GCash account.</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">GCash Account Name</label>
+                                <input type="text" name="gcash_name" class="form-control" value="<?= esc(old('gcash_name', $user['gcash_name'] ?? '')) ?>" placeholder="Name shown on the GCash account">
+                            </div>
                         </div>
                         <div class="mt-3 d-flex justify-content-end">
                             <button type="submit" class="btn btn-primary">Save Profile</button>

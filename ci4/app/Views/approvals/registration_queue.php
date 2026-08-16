@@ -48,7 +48,7 @@
                                 <td><span class="badge text-bg-warning">Pending</span></td>
                                 <td class="text-end">
                                     <?php if (! empty($can_verify)): ?>
-                                        <form method="post" action="<?= base_url('payments/verify-initial/' . (int) $row['payment_id']) ?>">
+                                        <form method="post" action="<?= base_url('payment-tracking/approve/' . (int) $row['payment_id']) ?>">
                                             <?= csrf_field() ?>
                                             <button type="submit" class="btn btn-sm btn-primary">Verify</button>
                                         </form>
