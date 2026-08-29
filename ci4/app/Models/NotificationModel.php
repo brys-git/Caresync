@@ -13,6 +13,11 @@ class NotificationModel extends Model
     protected $allowedFields    = [
         'user_id',
         'message',
-        'status',
+        'notification_type',
+        'is_read',
+        'priority',
+        'read_at',
+        'is_archived',
+        'type',
     ];
 }

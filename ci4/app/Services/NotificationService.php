@@ -36,7 +36,8 @@ class NotificationService
                 'user_id' => $userId,
                 'message' => trim($message),
                 'type' => $type,
-                'status' => 'unread',
+                // No 'status' column exists on notifications - unread/read is
+                // tracked via is_read (defaults to 0) + read_at, not a string.
                 'created_at' => date('Y-m-d H:i:s'),
             ]);
         } catch (\Throwable $e) {
@@ -48,10 +49,12 @@ class NotificationService
 
     /**
      * Get notifications for a user
-     * 
+     *
      * @param int $userId
      * @param string $type Filter by type (optional)
-     * @param string $status Filter by status (optional)
+     * @param string $status Filter by read status: 'unread' or 'read' (optional).
+     *                       Kept as the public string API callers already use;
+     *                       mapped internally to the real is_read column.
      * @return array
      */
     public function getNotifications(int $userId, string $type = '', string $status = ''): array
@@ -68,8 +71,10 @@ class NotificationService
             $builder->where('type', $type);
         }
 
-        if (!empty($status)) {
-            $builder->where('status', $status);
+        if ($status === 'unread') {
+            $builder->where('is_read', 0);
+        } elseif ($status === 'read') {
+            $builder->where('is_read', 1);
         }
 
         return $builder->get()->getResultArray();
@@ -77,7 +82,7 @@ class NotificationService
 
     /**
      * Get unread notification count
-     * 
+     *
      * @param int $userId
      * @return int
      */
@@ -89,13 +94,13 @@ class NotificationService
 
         return (int) db_connect()->table('notifications')
             ->where('user_id', $userId)
-            ->where('status', 'unread')
+            ->where('is_read', 0)
             ->countAllResults();
     }
 
     /**
      * Mark notification as read
-     * 
+     *
      * @param int $notificationId
      * @return bool
      */
@@ -108,7 +113,7 @@ class NotificationService
         try {
             return (bool) db_connect()->table('notifications')
                 ->where('notification_id', $notificationId)
-                ->update(['status' => 'read']);
+                ->update(['is_read' => 1, 'read_at' => date('Y-m-d H:i:s')]);
         } catch (\Throwable $e) {
             log_message('error', 'NotificationService::markAsRead - ' . $e->getMessage());
 
@@ -118,7 +123,7 @@ class NotificationService
 
     /**
      * Mark all notifications as read for a user
-     * 
+     *
      * @param int $userId
      * @return bool
      */
@@ -131,7 +136,7 @@ class NotificationService
         try {
             return (bool) db_connect()->table('notifications')
                 ->where('user_id', $userId)
-                ->update(['status' => 'read']);
+                ->update(['is_read' => 1, 'read_at' => date('Y-m-d H:i:s')]);
         } catch (\Throwable $e) {
             log_message('error', 'NotificationService::markAllAsRead - ' . $e->getMessage());
 

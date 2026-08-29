@@ -14,7 +14,6 @@ if (! function_exists('add_notification')) {
         return (bool) $notificationModel->insert([
             'user_id' => $userId,
             'message' => $message,
-            'status' => 'unread',
         ]);
     }
 }

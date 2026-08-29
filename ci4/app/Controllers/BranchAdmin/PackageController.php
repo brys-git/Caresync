@@ -272,7 +272,6 @@ class PackageController extends BaseController
             $notificationModel->insert([
                 'user_id' => (int) ($admin['user_id'] ?? 0),
                 'message' => $message,
-                'status' => 'unread',
             ]);
         }
     }

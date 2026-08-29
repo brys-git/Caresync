@@ -46,7 +46,7 @@
                             <small class="text-muted"><?= esc((string) $notification['created_at']) ?></small>
                         </div>
                         <div>
-                            <?php if ($notification['status'] === 'unread'): ?>
+                            <?php if ((int) ($notification['is_read'] ?? 0) === 0): ?>
                                 <form method="post" action="<?= base_url('client/notification/read') ?>">
                                     <?= csrf_field() ?>
                                     <input type="hidden" name="notification_id" value="<?= esc((string) $notification['notification_id']) ?>">
