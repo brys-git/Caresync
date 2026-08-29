@@ -200,7 +200,7 @@ class ReportService
         $today = date('Y-m-d');
 
         $builder = db_connect()->table('plans pl')
-            ->select('pl.plan_id, pl.remaining_balance, pl.months_paid, pl.overdue_months, pl.status AS plan_status, pl.next_due_date, pl.membership_state, ph.plan_holder_id, ph.unique_identifier, u.first_name, u.last_name, u.contact_number, b.branch_name')
+            ->select('pl.plan_id, pl.remaining_balance, pl.months_paid, pl.overdue_months, pl.status AS plan_status, pl.next_due_date, pl.payment_coverage_until, pl.membership_state, ph.plan_holder_id, ph.unique_identifier, u.first_name, u.last_name, u.contact_number, b.branch_name')
             ->join('plan_holders ph', 'ph.plan_holder_id = pl.plan_holder_id', 'inner')
             ->join('users u', 'u.user_id = ph.user_id', 'inner')
             ->join('branches b', 'b.branch_id = ph.branch_id', 'left')
@@ -215,9 +215,20 @@ class ReportService
 
         $rows = $builder->get()->getResultArray();
 
+        $overduePolicy = new OverduePolicyService();
+
         foreach ($rows as &$row) {
             $dueDate = (string) ($row['next_due_date'] ?? '');
             $row['days_overdue'] = $dueDate !== '' ? max(0, (int) floor((strtotime($today) - strtotime($dueDate)) / 86400)) : 0;
+
+            // Panel brief, section 8: the forfeiture countdown is measured
+            // from payment_coverage_until (what OverduePolicyService itself
+            // checks), which is a day or two ahead of next_due_date.
+            $coverageUntil = (string) ($row['payment_coverage_until'] ?? '');
+            $daysPastCoverage = $coverageUntil !== '' ? max(0, (int) floor((strtotime($today) - strtotime($coverageUntil)) / 86400)) : 0;
+            $row['days_until_forfeiture'] = (int) $row['months_paid'] > 0
+                ? $overduePolicy->daysUntilForfeiture($daysPastCoverage)
+                : null;
         }
         unset($row);
 

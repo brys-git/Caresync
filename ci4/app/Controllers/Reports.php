@@ -67,7 +67,7 @@ class Reports extends BaseController
         if ((string) $this->request->getGet('mode') === 'csv') {
             return $this->csvResponse(
                 'overdue_report',
-                ['Plan Holder', 'Unique ID', 'Branch', 'Contact', 'Remaining Balance', 'Months Paid', 'Overdue Months', 'Days Overdue', 'Next Due Date'],
+                ['Plan Holder', 'Unique ID', 'Branch', 'Contact', 'Remaining Balance', 'Months Paid', 'Overdue Months', 'Days Overdue', 'Next Due Date', 'Days Until Forfeiture'],
                 $rows,
                 static fn (array $row): array => [
                     trim((string) ($row['first_name'] ?? '') . ' ' . (string) ($row['last_name'] ?? '')),
@@ -79,6 +79,7 @@ class Reports extends BaseController
                     (string) ($row['overdue_months'] ?? 0),
                     (string) ($row['days_overdue'] ?? 0),
                     (string) ($row['next_due_date'] ?? ''),
+                    $row['days_until_forfeiture'] === null ? 'N/A' : (string) $row['days_until_forfeiture'],
                 ]
             );
         }

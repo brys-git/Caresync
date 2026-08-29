@@ -64,7 +64,7 @@ class ReportController extends BaseController
         $rows = $this->reportService->getOverdueReport(['branch_id' => $branchId]);
 
         if ((string) $this->request->getGet('mode') === 'csv') {
-            return $this->simpleCsv('overdue_report', ['Plan Holder', 'Unique ID', 'Contact', 'Remaining Balance', 'Months Paid', 'Overdue Months', 'Days Overdue', 'Next Due Date'], $rows, static fn (array $row): array => [
+            return $this->simpleCsv('overdue_report', ['Plan Holder', 'Unique ID', 'Contact', 'Remaining Balance', 'Months Paid', 'Overdue Months', 'Days Overdue', 'Next Due Date', 'Days Until Forfeiture'], $rows, static fn (array $row): array => [
                 trim((string) ($row['first_name'] ?? '') . ' ' . (string) ($row['last_name'] ?? '')),
                 (string) ($row['unique_identifier'] ?? ''),
                 (string) ($row['contact_number'] ?? ''),
@@ -73,6 +73,7 @@ class ReportController extends BaseController
                 (string) ($row['overdue_months'] ?? 0),
                 (string) ($row['days_overdue'] ?? 0),
                 (string) ($row['next_due_date'] ?? ''),
+                $row['days_until_forfeiture'] === null ? 'N/A' : (string) $row['days_until_forfeiture'],
             ]);
         }
 

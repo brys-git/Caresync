@@ -25,11 +25,12 @@
                             <th>Overdue Months</th>
                             <th>Days Overdue</th>
                             <th>Next Due Date</th>
+                            <th>Forfeiture Countdown</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($rows)): ?>
-                            <tr><td colspan="8" class="text-center py-3">No overdue accounts found.</td></tr>
+                            <tr><td colspan="9" class="text-center py-3">No overdue accounts found.</td></tr>
                         <?php else: ?>
                             <?php foreach ($rows as $row): ?>
                                 <tr>
@@ -41,6 +42,18 @@
                                     <td><?= esc((string) ($row['overdue_months'] ?? 0)) ?></td>
                                     <td><span class="badge text-bg-danger"><?= esc((string) ($row['days_overdue'] ?? 0)) ?> days</span></td>
                                     <td><?= esc((string) ($row['next_due_date'] ?? '-')) ?></td>
+                                    <td>
+                                        <?php $daysLeft = $row['days_until_forfeiture'] ?? null; ?>
+                                        <?php if ($daysLeft === null): ?>
+                                            <span class="text-muted small">No months paid to forfeit</span>
+                                        <?php elseif ($daysLeft <= 0): ?>
+                                            <span class="badge text-bg-dark">Forfeited on next run</span>
+                                        <?php elseif ($daysLeft <= 14): ?>
+                                            <span class="badge text-bg-warning"><?= esc((string) $daysLeft) ?> days left</span>
+                                        <?php else: ?>
+                                            <span class="text-muted small"><?= esc((string) $daysLeft) ?> days left</span>
+                                        <?php endif; ?>
+                                    </td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php endif; ?>
