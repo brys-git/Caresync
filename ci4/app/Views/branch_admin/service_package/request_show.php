@@ -1,13 +1,24 @@
+<?php
+/**
+ * Claim detail/review page - shared by Branch Admin
+ * (BranchAdmin\ServiceApplicationController) and Staff
+ * (Staff\ServiceApplicationController), per the panel brief: claims are
+ * processed by staff or an Encoder, not just Branch Admin. Set
+ * $claim_base_path to the caller's own "requests" route prefix so the
+ * download/approve/reject/back links point at the right role.
+ */
+$claimBasePath = (string) ($claim_base_path ?? '/branch-admin/service-package/requests');
+?>
 <?= $this->extend($role_layout ?? 'layouts/branch_admin') ?>
 
 <?= $this->section('content') ?>
 <div class="container-fluid py-3">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
-            <h4 class="mb-0">Service Request Details</h4>
-            <p class="text-muted mb-0">Review the submitted application and supporting documents before approving or rejecting.</p>
+            <h4 class="mb-0">Claim Details</h4>
+            <p class="text-muted mb-0">Review the submitted claim and supporting documents before approving or rejecting.</p>
         </div>
-        <a href="<?= site_url('/branch-admin/service-package/requests') ?>" class="btn btn-outline-secondary">Back to Requests</a>
+        <a href="<?= site_url($claimBasePath) ?>" class="btn btn-outline-secondary">Back to Claims</a>
     </div>
 
     <?php if (session()->getFlashdata('success')): ?>
@@ -64,7 +75,7 @@
                             <?php foreach ($documents as $document): ?>
                                 <li class="list-group-item d-flex justify-content-between align-items-center">
                                     <span><?= esc((string) ($document['original_name'] ?? 'Unnamed document')) ?></span>
-                                    <a href="<?= site_url('/branch-admin/service-package/requests/document/' . (int) $document['document_id']) ?>" class="btn btn-sm btn-outline-primary">Download</a>
+                                    <a href="<?= site_url($claimBasePath . '/document/' . (int) $document['document_id']) ?>" class="btn btn-sm btn-outline-primary">Download</a>
                                 </li>
                             <?php endforeach; ?>
                         </ul>
@@ -75,16 +86,17 @@
                 <div class="card-header">Actions</div>
                 <div class="card-body">
                     <?php if (($request['status'] ?? '') === 'pending'): ?>
-                        <form action="<?= site_url('/branch-admin/service-package/requests/approve/' . (int) $request['application_id']) ?>" method="post" class="d-inline-block me-2">
+                        <form action="<?= site_url($claimBasePath . '/approve/' . (int) $request['application_id']) ?>" method="post" class="d-inline-block me-2">
                             <?= csrf_field() ?>
                             <button type="submit" class="btn btn-success">Approve</button>
                         </form>
-                        <form action="<?= site_url('/branch-admin/service-package/requests/reject/' . (int) $request['application_id']) ?>" method="post" class="d-inline-block">
+                        <form action="<?= site_url($claimBasePath . '/reject/' . (int) $request['application_id']) ?>" method="post" class="d-inline-block">
                             <?= csrf_field() ?>
+                            <input type="text" name="rejection_reason" class="form-control form-control-sm d-inline-block me-1" style="max-width: 220px;" placeholder="Reason (optional)">
                             <button type="submit" class="btn btn-danger">Reject</button>
                         </form>
                     <?php else: ?>
-                        <div class="text-muted">This request is <?= esc(ucfirst((string) ($request['status'] ?? 'unknown'))) ?>.</div>
+                        <div class="text-muted">This claim is <?= esc(ucfirst((string) ($request['status'] ?? 'unknown'))) ?>.</div>
                     <?php endif; ?>
                 </div>
             </div>

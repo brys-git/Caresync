@@ -251,9 +251,9 @@ $activeTab = (string) ($active_tab ?? 'services');
                                     <i class="bi bi-eye me-1"></i> View Details
                                 </a>
                                 <?php if ($isEligible): ?>
-                                    <a class="btn btn-primary btn-sm" 
+                                    <a class="btn btn-primary btn-sm"
                                        href="<?= site_url('/client/apply-package/' . (int) ($package['package_id'] ?? 0)) ?>"
-                                       title="Apply for this package">
+                                       title="Claim this package's benefits">
                                         <i class="bi bi-arrow-right"></i>
                                     </a>
                                 <?php else: ?>

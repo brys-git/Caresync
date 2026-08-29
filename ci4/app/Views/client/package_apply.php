@@ -8,8 +8,8 @@
 <div class="container-fluid">
     <div class="d-flex align-items-start justify-content-between mb-3">
         <div>
-            <h1 class="h3 mb-1">Apply for Package</h1>
-            <p class="text-muted mb-0">Confirm your package request.</p>
+            <h1 class="h3 mb-1">Claim Availed Plan</h1>
+            <p class="text-muted mb-0">Claim your package's benefits. Staff or an Encoder will review and process your claim.</p>
         </div>
         <a class="btn btn-outline-secondary" href="<?= site_url('/client/service/package/' . (int) ($package['package_id'] ?? 0)) ?>">Back</a>
     </div>
@@ -67,7 +67,7 @@
             <label class="form-label">Upload supporting documents (IDs, death certificate)</label>
             <input type="file" name="documents[]" multiple class="form-control" accept="image/*,application/pdf" />
         </div>
-        <button class="btn btn-primary" type="submit" <?= $canApply ? '' : 'disabled' ?>>Submit Application</button>
+        <button class="btn btn-primary" type="submit" <?= $canApply ? '' : 'disabled' ?>>Submit Claim</button>
         <a class="btn btn-outline-secondary" href="<?= site_url('/client/service?tab=packages') ?>">Cancel</a>
     </form>
 </div>

@@ -15,7 +15,7 @@
     <ul class="nav nav-tabs mb-3">
         <li class="nav-item"><a class="nav-link <?= ($active_tab ?? '') === 'services' ? 'active' : '' ?>" href="<?= site_url('/branch-admin/service-package/services') ?>">Services</a></li>
         <li class="nav-item"><a class="nav-link <?= ($active_tab ?? '') === 'packages' ? 'active' : '' ?>" href="<?= site_url('/branch-admin/service-package/packages') ?>">Packages</a></li>
-        <li class="nav-item"><a class="nav-link <?= ($active_tab ?? '') === 'requests' ? 'active' : '' ?>" href="<?= site_url('/branch-admin/service-package/requests') ?>">Service Requests</a></li>
+        <li class="nav-item"><a class="nav-link <?= ($active_tab ?? '') === 'requests' ? 'active' : '' ?>" href="<?= site_url('/branch-admin/service-package/requests') ?>">Claims</a></li>
         <li class="nav-item"><a class="nav-link <?= ($active_tab ?? '') === 'ongoing' ? 'active' : '' ?>" href="<?= site_url('/branch-admin/service-package/ongoing') ?>">Ongoing Services</a></li>
         <li class="nav-item"><a class="nav-link <?= ($active_tab ?? '') === 'schedule' ? 'active' : '' ?>" href="<?= site_url('/branch-admin/service-package/schedule') ?>">Schedule Service</a></li>
     </ul>
@@ -177,7 +177,7 @@
                         <thead>
                             <tr>
                                 <th>Plan Holder</th>
-                                <th>Package</th>
+                                <th>Claiming</th>
                                 <th>Status</th>
                                 <th>Date</th>
                                 <th>Action</th>
@@ -186,12 +186,12 @@
                         <tbody>
                             <?php $rows = $requests ?? []; ?>
                             <?php if (empty($rows)): ?>
-                                <tr><td colspan="5" class="text-center py-3">No service requests found.</td></tr>
+                                <tr><td colspan="5" class="text-center py-3">No claims found.</td></tr>
                             <?php else: ?>
                                 <?php foreach ($rows as $row): ?>
                                     <tr>
                                         <td><?= esc(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? '')) ?></td>
-                                        <td><?= esc($row['package_name'] ?? '-') ?></td>
+                                        <td><?= esc($row['claim_label'] ?? $row['package_name'] ?? $row['service_name'] ?? '-') ?></td>
                                         <td><?= esc(ucfirst((string) ($row['status'] ?? '-'))) ?></td>
                                         <td><?= esc($row['created_at'] ?? '-') ?></td>
                                         <td>
@@ -203,6 +203,7 @@
                                                 </form>
                                                 <form action="<?= site_url('/branch-admin/service-package/requests/reject/' . (int) $row['application_id']) ?>" method="post" class="d-inline">
                                                     <?= csrf_field() ?>
+                                                    <input type="text" name="rejection_reason" class="form-control form-control-sm d-inline-block" style="max-width: 160px;" placeholder="Reason (optional)">
                                                     <button class="btn btn-sm btn-danger" type="submit">Reject</button>
                                                 </form>
                                             <?php else: ?>

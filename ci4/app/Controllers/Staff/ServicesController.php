@@ -5,7 +5,6 @@ namespace App\Controllers\Staff;
 use App\Controllers\BaseController;
 use App\Models\PackageModel;
 use App\Models\PackageVersionModel;
-use App\Models\ServiceApplicationModel;
 use App\Models\ServiceModel;
 use App\Models\ServiceListModel;
 
@@ -14,7 +13,6 @@ class ServicesController extends BaseController
     protected ServiceModel $serviceModel;
     protected PackageModel $packageModel;
     protected PackageVersionModel $packageVersionModel;
-    protected ServiceApplicationModel $serviceApplicationModel;
     protected ServiceListModel $serviceListModel;
 
     public function __construct()
@@ -22,7 +20,6 @@ class ServicesController extends BaseController
         $this->serviceModel = new ServiceModel();
         $this->packageModel = new PackageModel();
         $this->packageVersionModel = new PackageVersionModel();
-        $this->serviceApplicationModel = new ServiceApplicationModel();
         $this->serviceListModel = new ServiceListModel();
     }
 
@@ -111,36 +108,6 @@ class ServicesController extends BaseController
             'selected_package_services' => $selectedPackageServices,
             'selected_package_versions' => $selectedPackageVersions,
             'service_list' => $this->serviceListModel->where('is_available', 1)->orderBy('service_name', 'ASC')->findAll(),
-            'branch_issue' => $branchIssue,
-            'role_layout' => 'layouts/staff',
-        ]);
-    }
-
-    public function serviceRequests(): string
-    {
-        $this->ensureStaffAccess();
-
-        $branchId = (int) session()->get('branch_id');
-
-        $branchIssue = null;
-        if ($branchId <= 0) {
-            $requests = [];
-            $branchIssue = 'No branch is assigned to your staff account. Please contact the branch admin.';
-        } else {
-            $requests = db_connect()->table('service_applications sa')
-                ->select('sa.application_id, sa.plan_holder_id, sa.package_id, sa.status, sa.created_at, ph.unique_identifier, u.first_name, u.last_name, p.package_name')
-                ->join('plan_holders ph', 'ph.plan_holder_id = sa.plan_holder_id', 'inner')
-                ->join('users u', 'u.user_id = ph.user_id', 'inner')
-                ->join('packages p', 'p.package_id = sa.package_id', 'left')
-                ->where('ph.branch_id', $branchId)
-                ->orderBy('sa.created_at', 'DESC')
-                ->orderBy('sa.application_id', 'DESC')
-                ->get()
-                ->getResultArray();
-        }
-
-        return view('staff/services/requests', [
-            'requests' => $requests,
             'branch_issue' => $branchIssue,
             'role_layout' => 'layouts/staff',
         ]);

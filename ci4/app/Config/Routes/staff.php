@@ -28,8 +28,15 @@ $routes->group('staff', ['filter' => 'auth'], static function (RouteCollection $
 
     // Service Management
     $routes->get('services', 'Staff\ServicesController::index', ['filter' => 'role:3']);
-    $routes->get('services/requests', 'Staff\ServicesController::serviceRequests', ['filter' => 'role:3']);
     $routes->get('services/ongoing', 'Staff\ServicesController::ongoingServices', ['filter' => 'role:3']);
+
+    // Claims (panel brief section 5/6: claims are processed by Staff/Encoder,
+    // not just Branch Admin - see App\Services\ClaimService)
+    $routes->get('services/requests', 'Staff\ServiceApplicationController::index', ['filter' => 'role:3']);
+    $routes->get('services/requests/(:num)', 'Staff\ServiceApplicationController::show/$1', ['filter' => 'role:3']);
+    $routes->get('services/requests/document/(:num)', 'Staff\ServiceApplicationController::downloadDocument/$1', ['filter' => 'role:3']);
+    $routes->post('services/requests/approve/(:num)', 'Staff\ServiceApplicationController::approve/$1', ['filter' => 'role:3']);
+    $routes->post('services/requests/reject/(:num)', 'Staff\ServiceApplicationController::reject/$1', ['filter' => 'role:3']);
 
     // Reports & Analytics
     $routes->get('reports', 'Staff\ReportsController::index', ['filter' => 'role:3']);
