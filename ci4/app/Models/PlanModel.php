@@ -13,6 +13,7 @@ class PlanModel extends Model
     protected $allowedFields    = [
         'plan_holder_id',
         'package_id',
+        'program_id',
         'monthly_fee',
         'passbook_fee',
         'start_date',
@@ -23,7 +24,7 @@ class PlanModel extends Model
         'payment_coverage_until',
         'membership_state',
         'overdue_months',
-        'total_plan_amount',
+        'coverage_until',
         'version_id',
     ];
 }
