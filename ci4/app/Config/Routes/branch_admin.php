@@ -84,7 +84,15 @@ $routes->group('branch-admin', ['filter' => 'auth'], static function (RouteColle
     $routes->get('staff-monitoring', 'BranchAdmin\StaffMonitoringController::index', ['filter' => 'role:2']);
 
     // Reports & Analytics
-    $routes->get('reports', 'BranchAdmin\ReportController::index', ['filter' => 'role:2']);
+    // Panel brief section 7: "reports" had no index() to land on - BranchAdmin\
+    // ReportController only ever defined remittance()/generate() - so this link
+    // in the sidebar 404'd. Landing on remittance (its main report) instead.
+    $routes->get('reports', 'BranchAdmin\ReportController::remittance', ['filter' => 'role:2']);
+    // Every filter/Print/PDF/CSV button on the remittance page posts here -
+    // this route did not exist at all before, so none of them worked.
+    $routes->post('reports/remittance/generate', 'BranchAdmin\ReportController::generate', ['filter' => 'role:2']);
+    $routes->get('reports/overdue', 'BranchAdmin\ReportController::overdue', ['filter' => 'role:2']);
+    $routes->get('reports/commission', 'BranchAdmin\ReportController::commission', ['filter' => 'role:2']);
     $routes->get('analytics', 'Analytics::branchAdmin', ['filter' => 'role:2']);
 
     // Profile Management

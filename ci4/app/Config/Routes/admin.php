@@ -35,8 +35,13 @@ $routes->group('admin', ['filter' => 'auth'], static function (RouteCollection $
     $routes->get('payment-monitoring', 'PaymentTracking::admin', ['filter' => 'role:1']);
     $routes->get('payment-monitoring/export', 'PaymentTracking::exportCsv', ['filter' => 'role:1']);
 
-    // Reports & Analytics
+    // Reports & Analytics (panel brief section 7)
     $routes->get('reports', 'Reports::index', ['filter' => 'role:1']);
+    $routes->get('reports/overdue', 'Reports::overdue', ['filter' => 'role:1']);
+    $routes->get('reports/ledger', 'Reports::ledger', ['filter' => 'role:1']);
+    $routes->get('reports/collections', 'Reports::collections', ['filter' => 'role:1']);
+    $routes->get('reports/commission', 'Reports::commission', ['filter' => 'role:1']);
+    $routes->get('reports/remittance', 'Reports::remittance', ['filter' => 'role:1']);
     $routes->get('analytics', 'Analytics::admin', ['filter' => 'role:1']);
 
     // Service Offer Management

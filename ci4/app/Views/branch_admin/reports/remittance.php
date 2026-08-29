@@ -43,6 +43,9 @@
         </div>
     </div>
 
+    <?php $this->setData(['reports_base_path' => '/branch-admin/reports', 'reports_hidden_tabs' => ['ledger', 'collections'], 'active_report' => 'remittance']) ?>
+    <?= $this->include('partials/reports_nav') ?>
+
     <div class="card mb-3 no-print">
         <div class="card-body">
             <form method="post" action="<?= site_url('/branch-admin/reports/remittance/generate') ?>">

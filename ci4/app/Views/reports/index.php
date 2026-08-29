@@ -9,6 +9,12 @@
         </div>
     </div>
 
+    <?php if (! empty($show_reports_nav)): ?>
+        <?php $this->setData(['reports_base_path' => $reports_base_path ?? '/admin/reports', 'active_report' => '']) ?>
+        <?= $this->include('partials/reports_nav') ?>
+        <p class="text-muted small mt-n2 mb-3">Overdue, Ledger, Collections, Commission, and Remittance are dedicated, exportable reports (panel brief section 7) - the dashboard below stays as a general at-a-glance summary.</p>
+    <?php endif; ?>
+
     <div class="row g-3 mb-4">
         <div class="col-lg-3">
             <div class="card"><div class="card-body"><div class="text-muted small">Payments</div><div class="h4 mb-0"><?= esc((string) count($payments)) ?></div></div></div>

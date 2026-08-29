@@ -49,6 +49,82 @@ class ReportController extends BaseController
         return view('branch_admin/reports/remittance', $this->buildViewData($filters, $mode === 'print'));
     }
 
+    /**
+     * Panel brief, section 7: Overdue Report, scoped to this branch.
+     */
+    public function overdue()
+    {
+        $this->ensureBranchAdminAccess();
+
+        $branchId = (int) session('branch_id');
+        if ($branchId <= 0) {
+            throw PageNotFoundException::forPageNotFound();
+        }
+
+        $rows = $this->reportService->getOverdueReport(['branch_id' => $branchId]);
+
+        if ((string) $this->request->getGet('mode') === 'csv') {
+            return $this->simpleCsv('overdue_report', ['Plan Holder', 'Unique ID', 'Contact', 'Remaining Balance', 'Months Paid', 'Overdue Months', 'Days Overdue', 'Next Due Date'], $rows, static fn (array $row): array => [
+                trim((string) ($row['first_name'] ?? '') . ' ' . (string) ($row['last_name'] ?? '')),
+                (string) ($row['unique_identifier'] ?? ''),
+                (string) ($row['contact_number'] ?? ''),
+                number_format((float) ($row['remaining_balance'] ?? 0), 2, '.', ''),
+                (string) ($row['months_paid'] ?? 0),
+                (string) ($row['overdue_months'] ?? 0),
+                (string) ($row['days_overdue'] ?? 0),
+                (string) ($row['next_due_date'] ?? ''),
+            ]);
+        }
+
+        return view('admin/reports/overdue', [
+            'role_layout' => 'layouts/branch_admin',
+            'reports_base_path' => '/branch-admin/reports',
+            'reports_hidden_tabs' => ['ledger', 'collections'],
+            'active_report' => 'overdue',
+            'rows' => $rows,
+        ]);
+    }
+
+    /**
+     * Panel brief, section 7/8: Commission Report, scoped to this branch.
+     */
+    public function commission()
+    {
+        $this->ensureBranchAdminAccess();
+
+        $branchId = (int) session('branch_id');
+        if ($branchId <= 0) {
+            throw PageNotFoundException::forPageNotFound();
+        }
+
+        $filters = $this->buildFilters([
+            'date_from' => (string) $this->request->getGet('date_from'),
+            'date_to' => (string) $this->request->getGet('date_to'),
+        ], $branchId);
+
+        $rows = $this->reportService->getCommissionReport($filters);
+
+        if ((string) $this->request->getGet('mode') === 'csv') {
+            return $this->simpleCsv('commission_report', ['Collector', 'Role', 'Transactions', 'Total Collected', 'Commission (10%)', 'Net Remitted'], $rows, static fn (array $row): array => [
+                trim((string) ($row['first_name'] ?? '') . ' ' . (string) ($row['last_name'] ?? '')),
+                (string) ($row['role_name'] ?? ''),
+                (string) ($row['transaction_count'] ?? 0),
+                number_format((float) ($row['total_collected'] ?? 0), 2, '.', ''),
+                number_format((float) ($row['commission'] ?? 0), 2, '.', ''),
+                number_format((float) ($row['net_remitted'] ?? 0), 2, '.', ''),
+            ]);
+        }
+
+        return view('admin/reports/commission', [
+            'role_layout' => 'layouts/branch_admin',
+            'reports_base_path' => '/branch-admin/reports',
+            'reports_hidden_tabs' => ['ledger', 'collections'],
+            'active_report' => 'commission',
+            'filters' => $filters,
+            'rows' => $rows,
+        ]);
+    }
+
     public function generate()
     {
         $this->ensureBranchAdminAccess();
@@ -266,6 +342,25 @@ class ReportController extends BaseController
             'payment_method' => $method,
             'received_by' => $receivedBy,
         ];
+    }
+
+    private function simpleCsv(string $baseFilename, array $headers, array $rows, callable $rowMapper)
+    {
+        $filename = $baseFilename . '_' . date('Ymd_His') . '.csv';
+
+        $stream = fopen('php://temp', 'w+');
+        fputcsv($stream, $headers);
+        foreach ($rows as $row) {
+            fputcsv($stream, $rowMapper($row));
+        }
+        rewind($stream);
+        $csv = stream_get_contents($stream);
+        fclose($stream);
+
+        return $this->response
+            ->setHeader('Content-Type', 'text/csv; charset=UTF-8')
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
+            ->setBody((string) $csv);
     }
 
     private function ensureBranchAdminAccess(): void
