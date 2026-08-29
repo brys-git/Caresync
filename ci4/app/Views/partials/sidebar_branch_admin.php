@@ -9,6 +9,7 @@
         <a class="nav-link" href="<?= base_url('branch-admin/payment-tracking') ?>">Payment Tracking</a>
         <a class="nav-link" href="<?= base_url('branch-admin/service-package') ?>">Service/Package</a>
         <a class="nav-link" href="<?= base_url('branch-admin/staff-monitoring') ?>">Staff Monitoring</a>
+        <a class="nav-link" href="<?= base_url('users/create') ?>">Create User Account</a>
         <a class="nav-link" href="<?= base_url('branch-admin/reports') ?>">Reports</a>
         <a class="nav-link" href="<?= base_url('branch-admin/profile') ?>">Profile</a>
         <a class="nav-link text-danger" href="<?= base_url('logout') ?>">Logout</a>

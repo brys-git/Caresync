@@ -245,6 +245,7 @@ class Auth extends BaseController
             2 => '/dashboard/branch-admin',
             3 => '/dashboard/staff',
             4 => '/client/dashboard',
+            5 => '/dashboard/collector',
             default => '/login',
         };
     }

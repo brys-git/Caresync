@@ -38,7 +38,7 @@ class Users extends BaseController
             'email' => 'required|valid_email|max_length[100]|is_unique[users.email]',
             'first_name' => 'required|max_length[50]',
             'last_name' => 'required|max_length[50]',
-            'role_id' => 'required|in_list[1,2,3,4]',
+            'role_id' => 'required|in_list[1,2,3,4,5]',
             'status' => 'required|in_list[active,inactive]',
             'account_status' => 'required|in_list[pending,verified]',
         ];
@@ -137,6 +137,10 @@ class Users extends BaseController
 
         if ($role === 3) {
             return 'layouts/staff';
+        }
+
+        if ($role === 5) {
+            return 'layouts/collector';
         }
 
         return 'layouts/plan_holder';

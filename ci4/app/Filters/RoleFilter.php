@@ -38,6 +38,7 @@ class RoleFilter implements FilterInterface
             2 => '/dashboard/branch-admin',
             3 => '/dashboard/staff',
             4 => '/dashboard/plan-holder',
+            5 => '/dashboard/collector',
             default => '/login',
         };
     }

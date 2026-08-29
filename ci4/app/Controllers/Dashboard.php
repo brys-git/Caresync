@@ -19,6 +19,8 @@ class Dashboard extends BaseController
             return redirect()->to('/dashboard/branch-admin');
         } elseif ($role === 3) {
             return redirect()->to('/dashboard/staff');
+        } elseif ($role === 5) {
+            return redirect()->to('/dashboard/collector');
         }
 
         return redirect()->to('/dashboard/plan-holder');
@@ -94,6 +96,15 @@ class Dashboard extends BaseController
         ]);
     }
 
+    public function collector(): string
+    {
+        return view('dashboards/collector', [
+            'role_layout' => $this->resolveLayoutView(),
+            'page_title' => 'Collector Dashboard',
+            'breadcrumb' => ['Dashboard'],
+        ]);
+    }
+
     private function resolveLayoutView(): string
     {
         $role = (int) session()->get('role_id');
@@ -104,6 +115,8 @@ class Dashboard extends BaseController
             return 'layouts/branch_admin';
         } elseif ($role === 3) {
             return 'layouts/staff';
+        } elseif ($role === 5) {
+            return 'layouts/collector';
         }
 
         return 'layouts/plan_holder';
