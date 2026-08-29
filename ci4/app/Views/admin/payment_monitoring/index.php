@@ -69,42 +69,42 @@
     <div class="card">
         <div class="card-body">
             <div class="table-responsive">
+                <?php $paymentService = new \App\Services\PaymentService(); ?>
                 <table class="table align-middle">
                     <thead>
                         <tr>
-                            <th>ID</th>
                             <th>Plan Holder</th>
                             <th>Branch</th>
-                            <th>Months</th>
+                            <th>Coverage Period</th>
                             <th>Amount</th>
                             <th>Date</th>
                             <th>Method</th>
                             <th>Reference / OR</th>
-                            <th>Status</th>
+                            <th>Staff Account</th>
                             <th>Proof</th>
-                            <th>Remarks</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach ($rows as $row): ?>
-                            <?php $status = strtolower((string) ($row['status'] ?? 'pending')); ?>
+                            <?php
+                            $coverageStart = (string) ($row['coverage_start'] ?? $row['payment_date'] ?? '');
+                            $coverageLabel = $coverageStart !== ''
+                                ? $paymentService->describeCoverage($coverageStart, (int) ($row['months_covered'] ?? 1))
+                                : (int) ($row['months_covered'] ?? 1) . ' month(s)';
+                            $staffName = trim((string) ($row['staff_first_name'] ?? '') . ' ' . (string) ($row['staff_last_name'] ?? ''));
+                            ?>
                             <tr>
-                                <td>#<?= esc((string) $row['payment_id']) ?></td>
                                 <td>
                                     <?= esc((string) ($row['first_name'] . ' ' . $row['last_name'])) ?><br>
                                     <small class="text-muted"><?= esc((string) ($row['unique_identifier'] ?: 'No ID')) ?></small>
                                 </td>
                                 <td><?= esc((string) ($row['branch_name'] ?? '-')) ?></td>
-                                <td><?= esc((string) ((int) ($row['months_covered'] ?? 1))) ?></td>
+                                <td><?= esc($coverageLabel) ?></td>
                                 <td>P<?= esc(number_format((float) $row['amount'], 2)) ?></td>
                                 <td><?= esc((string) $row['payment_date']) ?></td>
                                 <td><?= esc(strtoupper((string) $row['payment_method'])) ?></td>
                                 <td><?= esc((string) ($row['reference_number'] ?: ($row['official_receipt_number'] ?: '-'))) ?></td>
-                                <td>
-                                    <span class="badge text-bg-<?= $status === 'paid' ? 'success' : ($status === 'pending' ? 'warning' : 'danger') ?>">
-                                        <?= esc(ucfirst($status)) ?>
-                                    </span>
-                                </td>
+                                <td><?= $staffName !== '' ? esc($staffName) : '<span class="text-muted">-</span>' ?></td>
                                 <td>
                                     <?php if (! empty($supports_proof_upload) && ! empty($row['proof_image'] ?? null)): ?>
                                         <a href="<?= base_url('uploads/payment-proofs/' . $row['proof_image']) ?>" target="_blank">View</a>
@@ -112,13 +112,12 @@
                                         -
                                     <?php endif; ?>
                                 </td>
-                                <td><?= esc((string) ($row['remarks'] ?? '-')) ?></td>
                             </tr>
                         <?php endforeach; ?>
 
                         <?php if (empty($rows)): ?>
                             <tr>
-                                <td colspan="11" class="text-center text-muted py-4">No payment records found for selected filters.</td>
+                                <td colspan="9" class="text-center text-muted py-4">No payment records found for selected filters.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>

@@ -166,32 +166,35 @@
                                 <label class="form-label">Next Due Date</label>
                                 <input class="form-control" value="<?= esc((string) ($plan['next_due_date'] ?? '-')) ?>" readonly>
                             </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Months Prepaid In Advance</label>
+                                <input class="form-control" value="<?= esc((string) ($remaining_months_prepaid ?? 0)) ?>" readonly>
+                            </div>
                         </div>
 
                         <form method="post" action="<?= base_url('client/payment/submit-gcash') ?>" enctype="multipart/form-data" id="advance-payment-form">
                             <?= csrf_field() ?>
                             <input type="hidden" name="payment_method" value="gcash">
                             <div class="row g-3">
-                                <div class="col-md-4">
+                                <div class="col-md-6">
+                                    <label class="form-label" for="advance_reference">Reference Number</label>
+                                    <input id="advance_reference" name="reference_number" class="form-control" required>
+                                </div>
+                                <div class="col-md-3">
                                     <label class="form-label" for="advance_months">Number of Months to Pay</label>
                                     <select id="advance_months" name="months_covered" class="form-select" required>
-                                        <option value="1">1 Month</option>
-                                        <option value="3">3 Months</option>
-                                        <option value="6">6 Months</option>
-                                        <option value="12">12 Months</option>
+                                        <?php for ($m = 1; $m <= 59; $m++): ?>
+                                            <option value="<?= $m ?>"><?= $m ?> Month<?= $m === 1 ? '' : 's' ?></option>
+                                        <?php endfor; ?>
                                     </select>
                                 </div>
-                                <div class="col-md-4">
-                                    <label class="form-label" for="advance_amount">Amount</label>
-                                    <input id="advance_amount" name="amount" type="number" step="0.01" class="form-control" required>
+                                <div class="col-md-3">
+                                    <label class="form-label" for="advance_amount">Amount (auto-computed)</label>
+                                    <input id="advance_amount" name="amount" type="number" step="0.01" class="form-control" readonly required>
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label" for="advance_date">Payment Date</label>
                                     <input id="advance_date" name="payment_date" type="date" class="form-control" value="<?= date('Y-m-d') ?>" required>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label" for="advance_reference">Reference Number</label>
-                                    <input id="advance_reference" name="reference_number" class="form-control" required>
                                 </div>
                                 <?php if (! empty($supports_proof_upload)): ?>
                                     <div class="col-md-6">
@@ -209,16 +212,24 @@
 
         <div class="card">
             <div class="card-body">
-                <h5 class="mb-3">Payment History</h5>
+                <h5 class="mb-1">Payment History</h5>
+                <p class="text-muted small mb-3">Every payment on this plan, oldest first, with the calendar months it covers &mdash; including what you've paid in advance.</p>
                 <div class="table-responsive">
                     <table class="table align-middle">
-                        <thead><tr><th>Date</th><th>Months</th><th>Amount</th><th>Method</th><th>Reference</th><th>Status</th></tr></thead>
+                        <thead><tr><th>Date</th><th>Coverage Period</th><th>Amount</th><th>Method</th><th>Reference</th><th>Status</th></tr></thead>
                         <tbody>
+                            <?php $paymentService = new \App\Services\PaymentService(); ?>
                             <?php foreach ($payments as $payment): ?>
-                                <?php $status = strtolower((string) ($payment['status'] ?? 'pending')); ?>
+                                <?php
+                                $status = strtolower((string) ($payment['status'] ?? 'pending'));
+                                $coverageStart = (string) ($payment['coverage_start'] ?? $payment['payment_date'] ?? '');
+                                $coverageLabel = $coverageStart !== ''
+                                    ? $paymentService->describeCoverage($coverageStart, (int) ($payment['months_covered'] ?? 1))
+                                    : (int) ($payment['months_covered'] ?? 1) . ' month(s)';
+                                ?>
                                 <tr>
                                     <td><?= esc((string) $payment['payment_date']) ?></td>
-                                    <td><?= esc((string) ((int) ($payment['months_covered'] ?? 1))) ?></td>
+                                    <td><?= esc($coverageLabel) ?></td>
                                     <td>P<?= esc(number_format((float) $payment['amount'], 2)) ?></td>
                                     <td><?= esc(strtoupper((string) $payment['payment_method'])) ?></td>
                                     <td><?= esc((string) ($payment['reference_number'] ?? '-')) ?></td>

@@ -27,5 +27,7 @@ class PaymentModel extends Model
         'status',
         'discount_amount',
         'discount_reason',
+        'coverage_start',
+        'coverage_end',
     ];
 }

@@ -141,8 +141,9 @@ class PaymentService
             ->select('pay.payment_id, pay.plan_id, pay.amount, pay.months_covered, pay.payment_date, pay.payment_method, pay.reference_number, pay.official_receipt_number, pay.remarks, pay.status, pay.created_at, rb.first_name AS receiver_first_name, rb.last_name AS receiver_last_name')
             ->join('users rb', 'rb.user_id = pay.received_by', 'left')
             ->where('pay.plan_id', $planId)
-            ->orderBy('pay.payment_date', 'DESC')
-            ->orderBy('pay.payment_id', 'DESC')
+            // Panel brief, section 4: sort payment history ascending.
+            ->orderBy('pay.payment_date', 'ASC')
+            ->orderBy('pay.payment_id', 'ASC')
             ->get()
             ->getResultArray();
     }
@@ -354,6 +355,103 @@ class PaymentService
         $value = trim((string) $value);
 
         return $value === '' ? null : $value;
+    }
+
+    /**
+     * Auto-generates an official receipt number for a just-inserted payment.
+     * Panel brief, section 3: "Auto-generate the Receipt Number (no manual
+     * entry)." Built from the payment's own auto-increment id, so it's
+     * guaranteed unique with no separate sequence/counter table to maintain.
+     */
+    public function generateReceiptNumber(int $paymentId, string $paymentDate): string
+    {
+        $datePart = $paymentDate !== '' ? str_replace('-', '', $paymentDate) : date('Ymd');
+
+        return sprintf('OR-%s-%06d', $datePart, $paymentId);
+    }
+
+    /**
+     * Turns a coverage start date + a number of months into a real calendar
+     * label instead of a raw count. Panel brief, section 3/4: show actual
+     * month(s) paid ("July 2026", "August-October 2026") instead of "1", "3".
+     */
+    public function describeCoverage(string $coverageStart, int $monthsCovered): string
+    {
+        $monthsCovered = max(1, $monthsCovered);
+        $start = strtotime($coverageStart) ?: strtotime('today');
+
+        $startLabel = date('F Y', $start);
+        if ($monthsCovered === 1) {
+            return $startLabel;
+        }
+
+        $endTimestamp = strtotime('+' . ($monthsCovered - 1) . ' months', $start);
+        $endLabel = date('F Y', $endTimestamp);
+
+        if (date('Y', $start) === date('Y', $endTimestamp)) {
+            // Same year: "August-October 2026" (no need to repeat the year twice).
+            return date('F', $start) . '-' . $endLabel;
+        }
+
+        // Crosses a year boundary: "December 2026 - February 2027".
+        return $startLabel . ' - ' . $endLabel;
+    }
+
+    /**
+     * Projects the calendar period a new payment will cover, based on the
+     * plan's current coverage end date (or its start date / today if it has
+     * none yet) — same base-date rule applyMembershipCoverage() (below) uses
+     * when it actually extends coverage. Stored on the payment row so the UI
+     * can show a real "August-October 2026" label instead of a raw count,
+     * and it survives even if the plan's own coverage date later moves on.
+     *
+     * @param array{payment_coverage_until?: ?string, start_date?: ?string} $plan
+     * @return array{start: string, end: string}
+     */
+    public function projectCoverage(array $plan, int $monthsCovered): array
+    {
+        $baseDate = (string) ($plan['payment_coverage_until'] ?? $plan['start_date'] ?? date('Y-m-d'));
+        if ($baseDate === '' || strtotime($baseDate) === false) {
+            $baseDate = date('Y-m-d');
+        }
+
+        // If the plan already has coverage, a new payment picks up the day after
+        // it ends; otherwise it starts from that base date itself.
+        $hasExistingCoverage = ! empty($plan['payment_coverage_until']);
+        $start = $hasExistingCoverage
+            ? date('Y-m-d', strtotime('+1 day', strtotime($baseDate)))
+            : $baseDate;
+
+        $end = date('Y-m-d', strtotime('+' . (max(1, $monthsCovered) - 1) . ' months', strtotime($start)));
+
+        return ['start' => $start, 'end' => $end];
+    }
+
+    /**
+     * Whole months of advance coverage remaining from today. Panel brief,
+     * section 3: "Show remaining months left on the plan."
+     */
+    public function remainingMonths(?string $paymentCoverageUntil): int
+    {
+        if (! $paymentCoverageUntil) {
+            return 0;
+        }
+
+        $coverageUntil = strtotime($paymentCoverageUntil);
+        if ($coverageUntil === false) {
+            return 0;
+        }
+
+        $today = new \DateTimeImmutable('today');
+        $until = (new \DateTimeImmutable('@' . $coverageUntil))->setTime(0, 0);
+
+        if ($until <= $today) {
+            return 0;
+        }
+
+        $diff = $today->diff($until);
+
+        return max(0, ($diff->y * 12) + $diff->m + ($diff->d > 0 ? 1 : 0));
     }
 
     private function updateNextDueDate(int $planId, int $monthsCovered): void

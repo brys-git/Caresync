@@ -6,6 +6,7 @@ use App\Controllers\BaseController;
 use CodeIgniter\HTTP\ResponseInterface;
 use App\Models\PaymentModel;
 use App\Config\ValidationRules;
+use App\Services\PaymentService;
 
 /**
  * ClientPaymentController
@@ -63,7 +64,9 @@ class ClientPaymentController extends BaseController
         if ($plan) {
             $payments = (new PaymentModel())
                 ->where('plan_id', (int) $plan['plan_id'])
-                ->orderBy('payment_id', 'DESC')
+                // Panel brief, section 4: sort payment history ascending.
+                ->orderBy('payment_date', 'ASC')
+                ->orderBy('payment_id', 'ASC')
                 ->findAll();
         }
 
@@ -75,6 +78,7 @@ class ClientPaymentController extends BaseController
             'supports_proof_upload' => $this->supportsProofUpload(),
             'membership_plans' => $membershipPlans,
             'program' => $program,
+            'remaining_months_prepaid' => (new PaymentService())->remainingMonths($plan['payment_coverage_until'] ?? null),
         ]);
     }
 
@@ -130,6 +134,8 @@ class ClientPaymentController extends BaseController
             return redirect()->back()->withInput()->with('error', 'Duplicate reference number detected. Please verify your reference number.');
         }
 
+        $coverage = (new PaymentService())->projectCoverage($plan, $monthsCovered);
+
         $payload = [
             'plan_id' => (int) $plan['plan_id'],
             'amount' => $amount,
@@ -140,6 +146,8 @@ class ClientPaymentController extends BaseController
             'received_by' => null,
             'branch_id' => (int) ($planHolder['branch_id'] ?? 0),
             'status' => 'pending',
+            'coverage_start' => $coverage['start'],
+            'coverage_end' => $coverage['end'],
             'remarks' => 'Submitted by client, awaiting branch verification',
         ];
 
@@ -157,7 +165,15 @@ class ClientPaymentController extends BaseController
             $payload['proof_image'] = $proofName;
         }
 
-        (new PaymentModel())->insert($payload);
+        $paymentModel = new PaymentModel();
+        $paymentId = (int) $paymentModel->insert($payload, true);
+
+        if ($paymentId > 0) {
+            // Panel brief, section 3: auto-generate the receipt number, no manual entry.
+            $paymentModel->update($paymentId, [
+                'official_receipt_number' => (new PaymentService())->generateReceiptNumber($paymentId, $payload['payment_date']),
+            ]);
+        }
 
         return redirect()->to('/client/payment')->with('success', 'GCash payment submitted. Waiting for branch admin verification.');
     }

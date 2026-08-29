@@ -376,7 +376,9 @@ class ClientPortal extends BaseController
         if ($plan) {
             $payments = (new PaymentModel())
                 ->where('plan_id', (int) $plan['plan_id'])
-                ->orderBy('payment_id', 'DESC')
+                // Panel brief, section 4: sort payment history ascending.
+                ->orderBy('payment_date', 'ASC')
+                ->orderBy('payment_id', 'ASC')
                 ->findAll();
         }
 

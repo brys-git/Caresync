@@ -9,6 +9,7 @@ use App\Models\UserModel;
 use App\Services\ActivityLogService;
 use App\Services\MembershipService;
 use App\Services\NotificationService;
+use App\Services\PaymentService;
 
 class PaymentTracking extends BaseController
 {
@@ -39,37 +40,40 @@ class PaymentTracking extends BaseController
 
         $rows = $this->adminPaymentRows();
         $filename = 'payment-monitoring-' . date('Ymd-His') . '.csv';
+        $paymentService = new PaymentService();
 
         $headers = [
-            'Payment ID',
             'Plan Holder',
             'Unique Identifier',
             'Branch',
-            'Months Covered',
+            'Coverage Period',
             'Amount',
             'Payment Date',
             'Method',
             'Reference Number',
             'Official Receipt Number',
-            'Status',
-            'Remarks',
+            'Staff Account',
         ];
 
         $lines = [implode(',', $headers)];
         foreach ($rows as $row) {
+            $coverageStart = (string) ($row['coverage_start'] ?? $row['payment_date'] ?? '');
+            $coverageLabel = $coverageStart !== ''
+                ? $paymentService->describeCoverage($coverageStart, (int) ($row['months_covered'] ?? 1))
+                : (int) ($row['months_covered'] ?? 1) . ' month(s)';
+            $staffName = trim((string) ($row['staff_first_name'] ?? '') . ' ' . (string) ($row['staff_last_name'] ?? ''));
+
             $lines[] = implode(',', [
-                $this->csv((string) ($row['payment_id'] ?? '')),
                 $this->csv(trim((string) (($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? '')))),
                 $this->csv((string) ($row['unique_identifier'] ?? '')),
                 $this->csv((string) ($row['branch_name'] ?? '')),
-                $this->csv((string) ((int) ($row['months_covered'] ?? 1))),
+                $this->csv($coverageLabel),
                 $this->csv(number_format((float) ($row['amount'] ?? 0), 2, '.', '')),
                 $this->csv((string) ($row['payment_date'] ?? '')),
                 $this->csv(strtoupper((string) ($row['payment_method'] ?? ''))),
                 $this->csv((string) ($row['reference_number'] ?? '')),
                 $this->csv((string) ($row['official_receipt_number'] ?? '')),
-                $this->csv((string) ($row['status'] ?? '')),
-                $this->csv((string) ($row['remarks'] ?? '')),
+                $this->csv($staffName),
             ]);
         }
 
@@ -135,8 +139,8 @@ class PaymentTracking extends BaseController
             // Panel brief, section 3: advance payment must support 1-59 months.
             'months_covered' => 'required|is_natural_no_zero|less_than_equal_to[59]',
             'payment_date' => 'required|valid_date[Y-m-d]',
-            'payment_method' => 'required|in_list[cash]',
-            'official_receipt_number' => $roleId === 2 ? 'required|max_length[100]' : 'permit_empty|max_length[100]',
+            // Panel brief, section 3: support both cash and GCash here, not just cash.
+            'payment_method' => 'required|in_list[cash,gcash]',
         ];
 
         if (! $this->validate($rules)) {
@@ -147,6 +151,12 @@ class PaymentTracking extends BaseController
         $amount = (float) $this->request->getPost('amount');
         $monthsCovered = max(1, (int) $this->request->getPost('months_covered'));
         $branchId = (int) session('branch_id');
+        $paymentMethod = (string) $this->request->getPost('payment_method');
+        $referenceNumber = trim((string) $this->request->getPost('reference_number'));
+
+        if ($paymentMethod === 'gcash' && $referenceNumber === '') {
+            return redirect()->back()->withInput()->with('error', 'Reference number is required for GCash payments.');
+        }
 
         $plan = (new PlanModel())->find($planId);
         if (! $plan) {
@@ -173,43 +183,51 @@ class PaymentTracking extends BaseController
             return redirect()->back()->withInput()->with('error', 'Selected plan does not belong to your branch.');
         }
 
-        // NEW STATUS TERMINOLOGY: verified (was 'paid'), awaiting_verification (was 'pending')
-        $status = $roleId === 2 ? 'paid' : 'pending';
-        
+        // Cash keeps its existing role-based status (Branch Admin's own counter
+        // entries are immediately paid; Staff's need Branch Admin verification).
+        // GCash recorded here always goes through the same pending-verification
+        // pipeline as client-submitted GCash (duplicate-reference check
+        // included), rather than a second, less-verified GCash path.
+        $status = $paymentMethod === 'gcash' ? 'pending' : ($roleId === 2 ? 'paid' : 'pending');
+
+        $coverage = (new PaymentService())->projectCoverage($plan, $monthsCovered);
+
         $paymentData = [
             'plan_id' => $planId,
             'amount' => $amount,
             'months_covered' => $monthsCovered,
             'payment_date' => (string) $this->request->getPost('payment_date'),
-            'payment_method' => 'cash',
-            'reference_number' => $this->request->getPost('official_receipt_number') ?: null,
+            'payment_method' => $paymentMethod,
+            'reference_number' => $referenceNumber !== '' ? $referenceNumber : null,
             'received_by' => (int) session('user_id'),
             'branch_id' => $branchId,
             'status' => $status,
-            'official_receipt_number' => $this->request->getPost('official_receipt_number') ?: null,
-            'remarks' => $status === 'paid' ? 'Recorded at branch counter' : 'Recorded by staff, pending approval',
+            'coverage_start' => $coverage['start'],
+            'coverage_end' => $coverage['end'],
+            'remarks' => $status === 'paid' ? 'Recorded at branch counter' : 'Recorded by ' . ($roleId === 2 ? 'branch admin' : 'staff') . ', pending verification',
             'verified_by' => $status === 'paid' ? (int) session('user_id') : null,
             'verified_at' => $status === 'paid' ? date('Y-m-d H:i:s') : null,
         ];
-        
+
         // Filter to only include columns that exist in the payments table
         $paymentData = $this->filterPaymentData($paymentData);
-        
-        $paymentId = (int) (new PaymentModel())->insert($paymentData, true);
+
+        $paymentModel = new PaymentModel();
+        $paymentId = (int) $paymentModel->insert($paymentData, true);
 
         if ($paymentId <= 0) {
             return redirect()->back()->withInput()->with('error', 'Unable to record payment.');
         }
 
+        // Panel brief, section 3: auto-generate the receipt number, no manual entry.
+        $receiptNumber = (new PaymentService())->generateReceiptNumber($paymentId, $paymentData['payment_date']);
+        $paymentModel->update($paymentId, $this->filterPaymentData(['official_receipt_number' => $receiptNumber]));
+
         $autoApproved = false;
         if ($status === 'paid') {
-            error_log("RECORD_CASH DEBUG: Status is paid, checking if initial payment");
-            if ($this->isInitialPayment((int) $paymentId, (int) $plan['plan_id'], (int) $plan['plan_holder_id'])) {
-                error_log("RECORD_CASH DEBUG: Is initial payment, calling autoApprovePlanHolderFromInitialPayment");
+            if ($this->isInitialPayment($paymentId, (int) $plan['plan_id'], (int) $plan['plan_holder_id'])) {
                 $autoApproved = $this->autoApprovePlanHolderFromInitialPayment($plan, $monthsCovered);
-                error_log("RECORD_CASH DEBUG: autoApproved result = " . ($autoApproved ? 'true' : 'false'));
             } else {
-                error_log("RECORD_CASH DEBUG: Not an initial payment, applying membership coverage");
                 (new MembershipService())->applyMembershipCoverage((int) $plan['plan_id'], $monthsCovered);
             }
         }
@@ -222,7 +240,7 @@ class PaymentTracking extends BaseController
             if ($status === 'paid') {
                 $notificationService->notify($userId, $this->paymentApprovedMessage($monthsCovered, $plan), 'payment_approved');
             } else {
-                $notificationService->notify($userId, 'Your cash payment was recorded and is pending branch verification.', 'payment_pending');
+                $notificationService->notify($userId, 'Your ' . strtoupper($paymentMethod) . ' payment was recorded and is pending branch verification.', 'payment_pending');
             }
         }
 
@@ -231,19 +249,19 @@ class PaymentTracking extends BaseController
             'created',
             'payment',
             $paymentId,
-            'Recorded cash payment for plan #' . (int) $plan['plan_id'],
+            'Recorded ' . $paymentMethod . ' payment for plan #' . (int) $plan['plan_id'],
             null,
             [
                 'plan_id' => (int) $plan['plan_id'],
                 'amount' => $amount,
-                'payment_method' => 'cash',
-                'status' => 'paid',
+                'payment_method' => $paymentMethod,
+                'status' => $status,
             ]
         );
 
         $successMessage = $autoApproved
             ? 'Initial payment approved and registration activated.'
-            : 'Cash payment recorded and confirmed.';
+            : ($status === 'paid' ? 'Cash payment recorded and confirmed.' : 'Payment recorded and pending branch verification.');
 
         return redirect()->back()->with('success', $successMessage);
     }
@@ -664,18 +682,20 @@ class PaymentTracking extends BaseController
     {
         $status = strtolower(trim((string) $this->request->getGet('status')));
         
-        $sql = "SELECT payments.*, users.first_name, users.last_name, plan_holders.unique_identifier, plan_holders.plan_holder_id
+        $sql = "SELECT payments.*, users.first_name, users.last_name, plan_holders.unique_identifier, plan_holders.plan_holder_id,
+                staff_u.first_name AS staff_first_name, staff_u.last_name AS staff_last_name, plans.payment_coverage_until
             FROM payments
             INNER JOIN plans ON plans.plan_id = payments.plan_id
             INNER JOIN plan_holders ON plan_holders.plan_holder_id = plans.plan_holder_id
             INNER JOIN users ON users.user_id = plan_holders.user_id
+            LEFT JOIN users staff_u ON staff_u.user_id = payments.received_by
             WHERE payments.branch_id = ?
             ORDER BY payments.payment_id DESC";
-        
+
         $db = db_connect();
         $query = $db->query($sql, [$branchId]);
         $result = $query->getResultArray();
-        
+
         if (!in_array($status, ['pending', 'paid', 'cancelled'], true)) {
             return $this->ensurePaymentColumns($result);
         }
@@ -690,11 +710,13 @@ class PaymentTracking extends BaseController
 
     private function initialPaymentRows(int $branchId): array
     {
-        $sql = "SELECT payments.*, users.first_name, users.last_name, plan_holders.unique_identifier, plan_holders.plan_holder_id
+        $sql = "SELECT payments.*, users.first_name, users.last_name, plan_holders.unique_identifier, plan_holders.plan_holder_id,
+                staff_u.first_name AS staff_first_name, staff_u.last_name AS staff_last_name, plans.payment_coverage_until
             FROM payments
             INNER JOIN plans ON plans.plan_id = payments.plan_id
             INNER JOIN plan_holders ON plan_holders.plan_holder_id = plans.plan_holder_id
             INNER JOIN users ON users.user_id = plan_holders.user_id
+            LEFT JOIN users staff_u ON staff_u.user_id = payments.received_by
             WHERE payments.branch_id = ?
             GROUP BY payments.payment_id
             ORDER BY payments.payment_id DESC";
@@ -721,12 +743,14 @@ class PaymentTracking extends BaseController
     {
         $filters = $this->adminFilters();
 
-        $sql = "SELECT payments.*, users.first_name, users.last_name, plan_holders.unique_identifier, branches.branch_name
+        $sql = "SELECT payments.*, users.first_name, users.last_name, plan_holders.unique_identifier, branches.branch_name,
+                staff_u.first_name AS staff_first_name, staff_u.last_name AS staff_last_name, plans.payment_coverage_until
             FROM payments
             INNER JOIN plans ON plans.plan_id = payments.plan_id
             INNER JOIN plan_holders ON plan_holders.plan_holder_id = plans.plan_holder_id
             INNER JOIN users ON users.user_id = plan_holders.user_id
             LEFT JOIN branches ON branches.branch_id = payments.branch_id
+            LEFT JOIN users staff_u ON staff_u.user_id = payments.received_by
             WHERE 1=1";
         
         $params = [];
