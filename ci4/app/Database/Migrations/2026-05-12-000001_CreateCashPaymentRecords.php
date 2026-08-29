@@ -67,7 +67,9 @@ class CreateCashPaymentRecords extends Migration
 
         $this->forge->addKey('cash_record_id', true);
         $this->forge->addKey('branch_id');
-        $this->forge->addKey('receipt_number');
+        // receipt_number already gets a unique index from 'unique' => true above;
+        // addKey() here would try to create a second index with the same
+        // auto-generated name ("Duplicate key name 'receipt_number'").
         $this->forge->addKey('verified');
         $this->forge->createTable('cash_payment_records');
     }
