@@ -132,7 +132,8 @@ class PaymentTracking extends BaseController
         $rules = [
             'plan_id' => 'required|is_natural_no_zero',
             'amount' => 'required|decimal',
-            'months_covered' => 'required|is_natural_no_zero',
+            // Panel brief, section 3: advance payment must support 1-59 months.
+            'months_covered' => 'required|is_natural_no_zero|less_than_equal_to[59]',
             'payment_date' => 'required|valid_date[Y-m-d]',
             'payment_method' => 'required|in_list[cash]',
             'official_receipt_number' => $roleId === 2 ? 'required|max_length[100]' : 'permit_empty|max_length[100]',

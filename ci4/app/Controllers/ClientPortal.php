@@ -409,7 +409,8 @@ class ClientPortal extends BaseController
         }
 
         $rules = [
-            'months_covered' => 'required|in_list[1,3,6,12]',
+            // Panel brief, section 3: advance payment must support 1-59 months.
+            'months_covered' => 'required|is_natural_no_zero|less_than_equal_to[59]',
             'amount' => 'required|decimal',
             'payment_date' => 'required|valid_date[Y-m-d]',
             'payment_method' => 'required|in_list[gcash]',

@@ -25,5 +25,7 @@ class PaymentModel extends Model
         'branch_id',
         'remarks',
         'status',
+        'discount_amount',
+        'discount_reason',
     ];
 }

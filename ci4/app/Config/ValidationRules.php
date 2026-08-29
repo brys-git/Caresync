@@ -61,7 +61,9 @@ class ValidationRules
     public static function getPaymentRules(): array
     {
         return [
-            'months_covered' => 'required|in_list[1,3,6,12]',
+            // Panel brief, section 3: advance payment must support 1-59 months,
+            // not just the fixed 1/3/6/12 set.
+            'months_covered' => 'required|is_natural_no_zero|less_than_equal_to[59]',
             'amount' => 'required|decimal',
             'payment_method' => 'required|in_list[gcash,cash]',
             'reference_number' => 'required|max_length[100]',

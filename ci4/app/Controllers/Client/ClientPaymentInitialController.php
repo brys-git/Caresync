@@ -100,7 +100,8 @@ class ClientPaymentInitialController extends BaseController
 
         $rules = [
             'payment_method' => 'required|in_list[gcash,cash]',
-            'months_covered' => 'required|is_natural_no_zero',
+            // Panel brief, section 3: advance payment must support 1-59 months.
+            'months_covered' => 'required|is_natural_no_zero|less_than_equal_to[59]',
             'reference_number' => 'required|string|min_length[5]|max_length[50]',
         ];
 
