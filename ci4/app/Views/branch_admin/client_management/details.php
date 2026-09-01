@@ -27,15 +27,17 @@
             <div class="card h-100">
                 <div class="card-body">
                     <h5 class="mb-3">Client Profile</h5>
-                    <table class="table table-sm mb-0">
-                        <tbody>
-                            <tr><th style="width:40%;">Name</th><td><?= esc((string) ($holder['first_name'] . ' ' . $holder['last_name'])) ?></td></tr>
-                            <tr><th>Email</th><td><?= esc((string) ($holder['email'] ?? '-')) ?></td></tr>
-                            <tr><th>Unique ID</th><td><?= esc((string) ($holder['unique_identifier'] ?: 'Not assigned')) ?></td></tr>
-                            <tr><th>Address</th><td><?= esc(trim((string) (($holder['address_barangay'] ?? '') . ', ' . ($holder['address_city'] ?? '')), ' ,')) ?></td></tr>
-                            <tr><th>Plan Holder Status</th><td><span class="badge text-bg-<?= $holderStatus === 'active' ? 'success' : 'secondary' ?>"><?= esc(ucfirst($holderStatus)) ?></span></td></tr>
-                        </tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <tbody>
+                                <tr><th style="width:40%;">Name</th><td><?= esc((string) ($holder['first_name'] . ' ' . $holder['last_name'])) ?></td></tr>
+                                <tr><th>Email</th><td><?= esc((string) ($holder['email'] ?? '-')) ?></td></tr>
+                                <tr><th>Unique ID</th><td><?= esc((string) ($holder['unique_identifier'] ?: 'Not assigned')) ?></td></tr>
+                                <tr><th>Address</th><td><?= esc(trim((string) (($holder['address_barangay'] ?? '') . ', ' . ($holder['address_city'] ?? '')), ' ,')) ?></td></tr>
+                                <tr><th>Plan Holder Status</th><td><span class="badge text-bg-<?= $holderStatus === 'active' ? 'success' : 'secondary' ?>"><?= esc(ucfirst($holderStatus)) ?></span></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -45,16 +47,18 @@
                 <div class="card-body">
                     <h5 class="mb-3">Initial Payment Verification</h5>
                     <?php if (! empty($initial_payment)): ?>
-                        <table class="table table-sm mb-3">
-                            <tbody>
-                                <tr><th style="width:40%;">Payment ID</th><td>#<?= esc((string) ($initial_payment['payment_id'] ?? '-')) ?></td></tr>
-                                <tr><th>Amount</th><td>P<?= esc(number_format((float) ($initial_payment['amount'] ?? 0), 2)) ?></td></tr>
-                                <tr><th>Date</th><td><?= esc((string) ($initial_payment['payment_date'] ?? '-')) ?></td></tr>
-                                <tr><th>Method</th><td><?= esc(strtoupper((string) ($initial_payment['payment_method'] ?? '-'))) ?></td></tr>
-                                <tr><th>Reference</th><td><?= esc((string) ($initial_payment['reference_number'] ?? '-')) ?></td></tr>
-                                <tr><th>Status</th><td><span class="badge text-bg-<?= esc($paymentClass) ?>"><?= esc(ucfirst($paymentStatus)) ?></span></td></tr>
-                            </tbody>
-                        </table>
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-3">
+                                <tbody>
+                                    <tr><th style="width:40%;">Payment ID</th><td>#<?= esc((string) ($initial_payment['payment_id'] ?? '-')) ?></td></tr>
+                                    <tr><th>Amount</th><td>P<?= esc(number_format((float) ($initial_payment['amount'] ?? 0), 2)) ?></td></tr>
+                                    <tr><th>Date</th><td><?= esc((string) ($initial_payment['payment_date'] ?? '-')) ?></td></tr>
+                                    <tr><th>Method</th><td><?= esc(strtoupper((string) ($initial_payment['payment_method'] ?? '-'))) ?></td></tr>
+                                    <tr><th>Reference</th><td><?= esc((string) ($initial_payment['reference_number'] ?? '-')) ?></td></tr>
+                                    <tr><th>Status</th><td><span class="badge text-bg-<?= esc($paymentClass) ?>"><?= esc(ucfirst($paymentStatus)) ?></span></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                     <?php else: ?>
                         <div class="alert alert-secondary">No initial payment record found.</div>
                     <?php endif; ?>

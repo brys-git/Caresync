@@ -34,7 +34,7 @@ $beneficiaries = $beneficiaries ?? [];
                         <h5 class="mb-3">Membership Record</h5>
                         <table class="table">
                             <tbody>
-                                <tr><th>Plan</th><td><?= esc((string) ($program['name'] ?? 'Damayan Burial Program')) ?></td></tr>
+                                <tr><th>Package</th><td><?= esc((string) ($membership_summary['program_name'] ?? $program['name'] ?? 'Damayan Burial Program')) ?></td></tr>
                                 <tr><th>Status</th><td>Restricted</td></tr>
                                 <tr><th>Monthly Fee</th><td>P<?= number_format((float) ($program['monthly_fee'] ?? 240), 2) ?></td></tr>
                             </tbody>
@@ -57,10 +57,10 @@ $beneficiaries = $beneficiaries ?? [];
             <div class="card-body">
                 <h5 class="mb-3">Membership Status Summary</h5>
                 <div class="row g-3">
-                    <div class="col-md-6"><div class="border rounded p-3 bg-light"><small class="text-muted d-block">Program</small><strong><?= esc((string) ($program['name'] ?? 'Damayan Burial Program')) ?></strong></div></div>
+                    <div class="col-md-6"><div class="border rounded p-3 bg-light"><small class="text-muted d-block">Package</small><strong><?= esc((string) ($membership_summary['program_name'] ?? $program['name'] ?? 'Damayan Burial Program')) ?></strong></div></div>
                     <div class="col-md-6"><div class="border rounded p-3 bg-light"><small class="text-muted d-block">Status</small>
                         <?php $membershipState = strtolower((string) ($plan['membership_state'] ?? 'active')); ?>
-                        <strong><span class="badge text-bg-<?= $membershipState === 'active' ? 'success' : ($membershipState === 'delinquent' ? 'warning' : 'danger') ?>\"><?= esc(ucfirst($membershipState)) ?></span></strong>
+                        <strong><span class="badge text-bg-<?= $membershipState === 'active' ? 'success' : ($membershipState === 'delinquent' ? 'warning' : 'danger') ?>"><?= esc(ucfirst($membershipState)) ?></span></strong>
                     </div></div>
                 </div>
             </div>
@@ -72,7 +72,7 @@ $beneficiaries = $beneficiaries ?? [];
                 <div class="row g-3">
                     <div class="col-md-4"><div class="border rounded p-3"><small class="text-muted d-block">Payment Coverage Until</small><strong><?= esc((string) ($plan['payment_coverage_until'] ?? date('F Y'))) ?></strong></div></div>
                     <div class="col-md-4"><div class="border rounded p-3"><small class="text-muted d-block">Next Due Date</small><strong><?= esc((string) ($plan['next_due_date'] ?? date('F d, Y', strtotime('+1 month')))) ?></strong></div></div>
-                    <div class="col-md-4"><div class="border rounded p-3"><small class="text-muted d-block">Overdue Months</small><strong><span class="badge text-bg-<?= ((int) ($plan['overdue_months'] ?? 0)) > 0 ? 'warning' : 'success' ?>\"><?= esc((string) ((int) ($plan['overdue_months'] ?? 0))) ?></span></strong></div></div>
+                    <div class="col-md-4"><div class="border rounded p-3"><small class="text-muted d-block">Overdue Months</small><strong><span class="badge text-bg-<?= ((int) ($plan['overdue_months'] ?? 0)) > 0 ? 'warning' : 'success' ?>"><?= esc((string) ((int) ($plan['overdue_months'] ?? 0))) ?></span></strong></div></div>
                     <div class="col-md-6"><div class="border rounded p-3"><small class="text-muted d-block">Monthly Contribution</small><strong>P<?= esc(number_format((float) ($plan['monthly_fee'] ?? ($program['monthly_fee'] ?? 240)), 2)) ?></strong></div></div>
                     <div class="col-md-6"><div class="border rounded p-3"><small class="text-muted d-block">Member Identifier</small><strong><?= esc((string) ($plan_holder['unique_identifier'] ?? 'Not assigned')) ?></strong></div></div>
                     <div class="col-md-6"><div class="border rounded p-3"><small class="text-muted d-block">Months Paid</small><strong><?= esc((string) ((int) ($plan['months_paid'] ?? 0))) ?></strong></div></div>

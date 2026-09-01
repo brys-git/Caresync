@@ -17,6 +17,32 @@ class MembershipService
     public const TOTAL_CONTRIBUTION = 14500.0;
     public const DEFAULT_PACKAGE_ID = 1;
 
+    /**
+     * Panel brief, section 10: "ensure package/plan type is clearly
+     * distinguished throughout the interface." getProgramInfo() below
+     * always names the one generic legacy program regardless of which
+     * package a plan holder is actually on - since Packages::
+     * assignToPlan() (section 1) lets a plan holder be moved onto a real,
+     * different package, client-facing screens need to show that package's
+     * real name, not always "Damayan Burial Program."
+     */
+    public function resolvePackageName(int $packageId): string
+    {
+        if ($packageId > 0) {
+            $package = db_connect()->table('packages')
+                ->select('package_name')
+                ->where('package_id', $packageId)
+                ->get()
+                ->getRowArray();
+
+            if ($package && ! empty($package['package_name'])) {
+                return (string) $package['package_name'];
+            }
+        }
+
+        return self::PROGRAM_NAME;
+    }
+
     public static function getProgramInfo(): array
     {
         $db = db_connect();
@@ -521,7 +547,7 @@ class MembershipService
             'payment_coverage_until' => (string) ($activePlan['payment_coverage_until'] ?? ''),
             'overdue_months' => (int) ($activePlan['overdue_months'] ?? 0),
             'package_id' => (int) ($activePlan['package_id'] ?? 0),
-            'program_name' => self::PROGRAM_NAME,
+            'program_name' => $this->resolvePackageName((int) ($activePlan['package_id'] ?? 0)),
             'can_access_services' => $this->canAccessServices($planHolderId),
         ];
     }

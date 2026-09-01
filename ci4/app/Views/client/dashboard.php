@@ -97,7 +97,7 @@ $eligibilityClass = $state === 'active' ? 'success' : 'warning';
                 <div class="d-flex flex-wrap gap-2">
                     <span class="badge rounded-pill text-bg-light text-dark">Membership ID: <?= esc((string) ($plan_holder['unique_identifier'] ?? 'N/A')) ?></span>
                     <span class="badge rounded-pill text-bg-light text-dark">Branch: <?= esc($branch_name !== '' ? $branch_name : 'N/A') ?></span>
-                    <span class="badge rounded-pill text-bg-light text-dark">Plan: <?= esc((string) ($program['name'] ?? 'Damayan Burial Program')) ?></span>
+                    <span class="badge rounded-pill text-bg-light text-dark">Package: <?= esc((string) ($plan['program_name'] ?? $program['name'] ?? 'Damayan Burial Program')) ?></span>
                 </div>
             </div>
             <div class="col-lg-4 text-lg-end mt-4 mt-lg-0">
@@ -129,7 +129,7 @@ $eligibilityClass = $state === 'active' ? 'success' : 'warning';
                     <ul class="list-unstyled mb-0 small text-muted">
                         <li class="mb-2"><strong>Membership ID:</strong> <?= esc((string) ($plan_holder['unique_identifier'] ?? 'N/A')) ?></li>
                         <li class="mb-2"><strong>Branch:</strong> <?= esc($branch_name !== '' ? $branch_name : 'N/A') ?></li>
-                        <li class="mb-2"><strong>Plan:</strong> <?= esc((string) ($program['name'] ?? 'Damayan Burial Program')) ?></li>
+                        <li class="mb-2"><strong>Package:</strong> <?= esc((string) ($plan['program_name'] ?? $program['name'] ?? 'Damayan Burial Program')) ?></li>
                         <li><strong>Plan Status:</strong> <?= esc(ucfirst((string) ($plan['status'] ?? 'inactive'))) ?></li>
                     </ul>
                 </div>

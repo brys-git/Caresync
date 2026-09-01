@@ -65,8 +65,14 @@ class ClientService
             ->getRowArray();
 
         if ($plan) {
-            $plan['package_name'] = MembershipService::PROGRAM_NAME;
-            $plan['program_name'] = MembershipService::PROGRAM_NAME;
+            // Panel brief, section 10: "ensure package/plan type is
+            // clearly distinguished throughout the interface" - this used
+            // to hardcode the generic legacy program name here even though
+            // package_id (selected above) is the client's real, possibly
+            // different package (see Packages::assignToPlan(), section 1).
+            $resolvedName = (new MembershipService())->resolvePackageName((int) ($plan['package_id'] ?? 0));
+            $plan['package_name'] = $resolvedName;
+            $plan['program_name'] = $resolvedName;
         }
 
         $beneficiaries = [];
