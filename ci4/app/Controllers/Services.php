@@ -410,12 +410,9 @@ class Services extends BaseController
         return 'layouts/plan_holder';
     }
 
-    private function nullablePost(string $field): ?string
-    {
-        $value = trim((string) $this->request->getPost($field));
-
-        return $value === '' ? null : $value;
-    }
+    // nullablePost() is inherited from BaseController - this class used to
+    // redeclare it as private, which is invalid PHP (narrows the parent's
+    // protected visibility) and made the whole class fail to load.
 
     private function tableHasColumn(string $table, string $column): bool
     {

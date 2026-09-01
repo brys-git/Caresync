@@ -48,7 +48,10 @@ abstract class BaseController extends Controller
      */
     protected function nullablePost(string $key): ?string
     {
-        $value = trim((string) $this->request->getPost($key, ''));
+        // getPost()'s 2nd argument is a sanitize-filter (int|null), not a
+        // default value - passing '' throws a TypeError the moment this is
+        // actually called with real form data.
+        $value = trim((string) $this->request->getPost($key));
         return $value === '' ? null : $value;
     }
 

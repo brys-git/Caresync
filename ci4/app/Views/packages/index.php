@@ -131,7 +131,8 @@
         <div class="col-xl-6">
             <div class="card h-100">
                 <div class="card-body">
-                    <h2 class="h6">4. Assign Package to Plan</h2>
+                    <h2 class="h6">4. Create / Upgrade Plan</h2>
+                    <p class="text-muted small mb-2">Assign a package to a plan holder. If they already have an active plan, this replaces it (their current plan is marked completed) rather than creating a duplicate.</p>
                     <form method="post" action="<?= base_url('packages/assign-plan') ?>">
                         <?= csrf_field() ?>
                         <div class="row g-3">
@@ -140,11 +141,14 @@
                                 <select id="plan_holder_id" name="plan_holder_id" class="form-select" required>
                                     <option value="">Select plan holder</option>
                                     <?php foreach ($plan_holders as $holder): ?>
-                                        <option value="<?= esc((string) $holder['plan_holder_id']) ?>">
+                                        <option value="<?= esc((string) $holder['plan_holder_id']) ?>"
+                                            data-current-package="<?= esc((string) ($holder['current_package_name'] ?? '')) ?>"
+                                            data-current-fee="<?= esc((string) ($holder['current_monthly_fee'] ?? '')) ?>">
                                             <?= esc($holder['first_name'] . ' ' . $holder['last_name']) ?> (<?= esc($holder['unique_identifier']) ?>)
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
+                                <small id="current_plan_info" class="text-muted d-block mt-1"></small>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label" for="plan_package_id">Package</label>
@@ -243,6 +247,25 @@
     (function () {
         const packageSelect = document.getElementById('plan_package_id');
         const versionSelect = document.getElementById('version_id');
+        const planHolderSelect = document.getElementById('plan_holder_id');
+        const currentPlanInfo = document.getElementById('current_plan_info');
+
+        function showCurrentPlan() {
+            const option = planHolderSelect.options[planHolderSelect.selectedIndex];
+            const currentPackage = option ? option.getAttribute('data-current-package') : '';
+            const currentFee = option ? option.getAttribute('data-current-fee') : '';
+
+            if (!option || !option.value) {
+                currentPlanInfo.textContent = '';
+            } else if (currentPackage) {
+                currentPlanInfo.textContent = 'Current plan: ' + currentPackage + ' (P' + currentFee + '/month)';
+            } else {
+                currentPlanInfo.textContent = 'No active plan yet - this will be their first.';
+            }
+        }
+
+        planHolderSelect.addEventListener('change', showCurrentPlan);
+        showCurrentPlan();
 
         function filterVersions() {
             const selectedPackageId = packageSelect.value;

@@ -8,6 +8,7 @@
         <a class="nav-link" href="<?= base_url('staff/client-management') ?>">Client Management</a>
         <a class="nav-link" href="<?= base_url('staff/payment-management') ?>">Payment Management</a>
         <a class="nav-link" href="<?= base_url('staff/services') ?>">Services</a>
+        <a class="nav-link" href="<?= base_url('packages') ?>">Create Plan</a>
         <a class="nav-link" href="<?= base_url('staff/reports') ?>">Reports</a>
         <a class="nav-link" href="<?= base_url('staff/profile') ?>">Profile</a>
         <a class="nav-link text-danger" href="<?= base_url('logout') ?>">Logout</a>

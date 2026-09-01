@@ -49,3 +49,16 @@ $routes->post('plan-holders/store', 'PlanHolders::store', ['filter' => 'auth']);
 // which also meant the new Collector role had nowhere to actually be assigned.
 $routes->get('users/create', 'Users::create', ['filter' => 'role:1,2,3']);
 $routes->post('users/create', 'Users::store', ['filter' => 'role:1,2,3']);
+
+// Create Plan (panel brief section 1: create a plan supporting different
+// packages/benefit tiers, and offer upgrade/cross-sell paths based on a
+// plan holder's current plan). Admin: 1, BranchAdmin: 2, Staff: 3 - the
+// controller's own ensureAccess() is the same set, this is defense in
+// depth. Previously unrouted entirely - this whole feature (including the
+// one place that can assign a package to a plan holder's plan at all)
+// existed in code but had no route pointing at it.
+$routes->get('packages', 'Packages::index', ['filter' => 'role:1,2,3']);
+$routes->post('packages/create', 'Packages::storePackage', ['filter' => 'role:1,2,3']);
+$routes->post('packages/add-item', 'Packages::storeItem', ['filter' => 'role:1,2,3']);
+$routes->post('packages/add-version', 'Packages::storeVersion', ['filter' => 'role:1,2,3']);
+$routes->post('packages/assign-plan', 'Packages::assignToPlan', ['filter' => 'role:1,2,3']);
