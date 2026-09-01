@@ -12,14 +12,20 @@ namespace App\Services;
 class NotificationService
 {
     /**
-     * Send a notification with type classification
-     * 
+     * Send a notification with type classification. Always creates the
+     * in-app record; $sendEmail/$sendSms (panel brief section 9: "deliver
+     * notifications via email and/or SMS") additionally push it out over
+     * those channels. Both default to false so every existing call site
+     * keeps its current in-app-only behavior unless it opts in.
+     *
      * @param int $userId
      * @param string $message
      * @param string $type
-     * @return bool
+     * @return bool Whether the in-app notification was created (email/SMS
+     *              outcomes don't affect this - see sendEmail()/sendSms()
+     *              in App\Services\SmsService, which degrade silently).
      */
-    public function notify(int $userId, string $message, string $type = 'general'): bool
+    public function notify(int $userId, string $message, string $type = 'general', bool $sendEmail = false, bool $sendSms = false): bool
     {
         if ($userId <= 0 || empty($message)) {
             return false;
@@ -31,10 +37,12 @@ class NotificationService
             $type = 'general';
         }
 
+        $message = trim($message);
+
         try {
-            return (bool) db_connect()->table('notifications')->insert([
+            $created = (bool) db_connect()->table('notifications')->insert([
                 'user_id' => $userId,
-                'message' => trim($message),
+                'message' => $message,
                 'type' => $type,
                 // No 'status' column exists on notifications - unread/read is
                 // tracked via is_read (defaults to 0) + read_at, not a string.
@@ -44,6 +52,48 @@ class NotificationService
             log_message('error', 'NotificationService::notify - ' . $e->getMessage());
 
             return false;
+        }
+
+        if ($sendEmail || $sendSms) {
+            $user = db_connect()->table('users')
+                ->select('email, contact_number, first_name')
+                ->where('user_id', $userId)
+                ->get()
+                ->getRowArray();
+
+            if ($user) {
+                if ($sendEmail && ! empty($user['email'])) {
+                    $this->sendEmail((string) $user['email'], (string) ($user['first_name'] ?? ''), $message);
+                }
+
+                if ($sendSms && ! empty($user['contact_number'])) {
+                    (new SmsService())->send((string) $user['contact_number'], $message);
+                }
+            }
+        }
+
+        return $created;
+    }
+
+    /**
+     * Emails a notification. No-ops (logged) if SMTP isn't configured -
+     * see the EMAIL section of .env - rather than failing the caller.
+     */
+    private function sendEmail(string $toAddress, string $firstName, string $message): void
+    {
+        try {
+            $email = \Config\Services::email();
+            $greetingName = $firstName !== '' ? $firstName : 'there';
+
+            $email->setTo($toAddress);
+            $email->setSubject('CareSync Notification');
+            $email->setMessage("Hi {$greetingName},\n\n{$message}\n\n- CareSync");
+
+            if (! $email->send(false)) {
+                log_message('error', 'NotificationService::sendEmail - failed to send to ' . $toAddress . ': ' . $email->printDebugger(['headers']));
+            }
+        } catch (\Throwable $e) {
+            log_message('error', 'NotificationService::sendEmail - ' . $e->getMessage());
         }
     }
 

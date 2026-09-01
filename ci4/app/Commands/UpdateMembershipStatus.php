@@ -34,6 +34,25 @@ class UpdateMembershipStatus extends BaseCommand
             return 1;
         }
 
+        $overduePolicyService = new OverduePolicyService();
+
+        // Panel brief, section 9: "Notify plan holder when overdue." Runs
+        // before the forfeiture sweep below so a backlog account that's
+        // already past both thresholds in the same run is at least notified
+        // first, rather than the two checks racing in an arbitrary order.
+        CLI::write('Sending overdue notifications...', 'yellow');
+
+        try {
+            $overdueResult = $overduePolicyService->notifyOverdueAccounts();
+
+            CLI::write('Overdue notification check completed:', 'green');
+            CLI::write('  - Plans checked: ' . $overdueResult['checked'], 'white');
+            CLI::write('  - Plan holders notified: ' . $overdueResult['notified'], 'cyan');
+        } catch (\Throwable $e) {
+            CLI::error('Error: ' . $e->getMessage());
+            return 1;
+        }
+
         // Panel brief, section 8: overdue/forfeiture policy (60-day grace
         // period, then months_paid resets to 0). Runs on the same daily
         // cadence as the membership state update above, but is a distinct
@@ -41,7 +60,6 @@ class UpdateMembershipStatus extends BaseCommand
         CLI::write('Applying overdue forfeiture policy...', 'yellow');
 
         try {
-            $overduePolicyService = new OverduePolicyService();
             $forfeitureResult = $overduePolicyService->applyForfeitures();
 
             CLI::write('Overdue forfeiture check completed:', 'green');

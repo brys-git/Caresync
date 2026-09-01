@@ -26,5 +26,6 @@ class PlanModel extends Model
         'overdue_months',
         'coverage_until',
         'version_id',
+        'overdue_notified_at',
     ];
 }

@@ -291,6 +291,12 @@ class PaymentService
                 'remaining_balance' => number_format($remainingBalance, 2, '.', ''),
                 'months_paid' => $monthsPaid,
                 'status' => $status,
+                // Panel brief, section 9: a payment just came in, so clear
+                // the overdue-notice flag - if they fall behind again, the
+                // daily sweep (OverduePolicyService::notifyOverdueAccounts())
+                // treats it as a fresh cycle and sends a new notice rather
+                // than staying silent because one was sent last time.
+                'overdue_notified_at' => null,
             ]);
     }
 

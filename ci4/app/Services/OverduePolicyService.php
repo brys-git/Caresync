@@ -80,15 +80,75 @@ class OverduePolicyService
 
             $userId = (int) ($plan['user_id'] ?? 0);
             if ($userId > 0) {
-                // Panel brief, section 9: "Notify plan holder when forfeited."
+                // Panel brief, section 9: "Notify plan holder when
+                // forfeited," delivered via email and/or SMS in addition to
+                // the in-app record.
                 $notificationService->notify(
                     $userId,
                     "Your contribution was not settled within the {$this->graceDays()}-day grace period, so your {$monthsForfeited} paid month(s) have been forfeited and reset to 0. Your plan remains active - simply resume your monthly contribution to start building it back up.",
-                    'general'
+                    'general',
+                    true,
+                    true
                 );
             }
 
             $result['forfeited']++;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Panel brief, section 9: "Notify plan holder when overdue." Fires once
+     * per unpaid cycle (gated by plans.overdue_notified_at, cleared by
+     * PaymentService::recomputePlan() whenever a payment comes in) rather
+     * than every single day an account stays overdue.
+     *
+     * @return array{checked: int, notified: int}
+     */
+    public function notifyOverdueAccounts(): array
+    {
+        $db = db_connect();
+        $today = date('Y-m-d');
+        $result = ['checked' => 0, 'notified' => 0];
+
+        $candidates = $db->table('plans p')
+            ->select('p.plan_id, p.next_due_date, ph.user_id')
+            ->join('plan_holders ph', 'ph.plan_holder_id = p.plan_holder_id', 'inner')
+            ->where('p.status', 'active')
+            ->where('p.next_due_date IS NOT NULL', null, false)
+            ->where('p.next_due_date <', $today)
+            ->where('p.overdue_notified_at IS NULL', null, false)
+            ->get()
+            ->getResultArray();
+
+        $notificationService = new NotificationService();
+
+        foreach ($candidates as $plan) {
+            $result['checked']++;
+
+            $planId = (int) $plan['plan_id'];
+            $userId = (int) ($plan['user_id'] ?? 0);
+            $daysOverdue = (int) floor((strtotime($today) - strtotime((string) $plan['next_due_date'])) / 86400);
+            $daysLeft = $this->daysUntilForfeiture($daysOverdue);
+
+            if ($userId > 0) {
+                // Panel brief, section 9: "Notify plan holder when overdue,"
+                // delivered via email and/or SMS in addition to the in-app
+                // record.
+                $notificationService->notify(
+                    $userId,
+                    "Your monthly contribution is now overdue. Please settle it within {$daysLeft} day(s) to avoid forfeiting your paid months (a {$this->graceDays()}-day grace period applies from your due date).",
+                    'general',
+                    true,
+                    true
+                );
+                $result['notified']++;
+            }
+
+            $db->table('plans')->where('plan_id', $planId)->update([
+                'overdue_notified_at' => date('Y-m-d H:i:s'),
+            ]);
         }
 
         return $result;
