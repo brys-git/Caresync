@@ -82,12 +82,13 @@ class ServicesController extends BaseController
             }
 
             if ($selectedPackage !== null) {
-                $selectedPackageServices = db_connect()->table('package_services ps')
-                    ->select('ps.service_list_id, sl.service_name, sl.description, sl.base_price, sl.status')
-                    ->join('service_list sl', 'sl.service_list_id = ps.service_list_id', 'inner')
-                    ->where('sl.is_available', 1)
-                    ->where('ps.package_id', $selectedPackageId)
-                    ->orderBy('sl.service_name', 'ASC')
+                // package_services is self-contained (its own service_id/
+                // service_name/description) - no service_list_id column to
+                // join service_list on, despite what this used to assume.
+                $selectedPackageServices = db_connect()->table('package_services')
+                    ->select('service_id, service_name, description')
+                    ->where('package_id', $selectedPackageId)
+                    ->orderBy('service_name', 'ASC')
                     ->get()
                     ->getResultArray();
 

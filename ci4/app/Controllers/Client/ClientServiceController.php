@@ -122,11 +122,13 @@ class ClientServiceController extends BaseController
             return redirect()->to('/client/service?tab=packages')->with('error', 'Package not found.');
         }
 
-        $packageServices = db_connect()->table('package_services ps')
-            ->select('sl.service_list_id, sl.service_name, sl.description, sl.base_price')
-            ->join('service_list sl', 'sl.service_list_id = ps.service_list_id', 'inner')
-            ->where('ps.package_id', $packageId)
-            ->orderBy('sl.service_name', 'ASC')
+        // package_services is self-contained (its own service_id/service_name/
+        // description) - it doesn't have a service_list_id column to join
+        // service_list on, despite what this query used to assume.
+        $packageServices = db_connect()->table('package_services')
+            ->select('service_id, service_name, description')
+            ->where('package_id', $packageId)
+            ->orderBy('service_name', 'ASC')
             ->get()
             ->getResultArray();
 

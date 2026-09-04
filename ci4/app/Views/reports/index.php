@@ -54,14 +54,14 @@
                     <tbody>
                         <?php foreach ($payments as $payment): ?>
                             <tr>
-                                <td><?= esc($payment['payment_date']) ?></td>
-                                <td><?= esc($payment['branch_name']) ?></td>
-                                <td><?= esc($payment['first_name'] . ' ' . $payment['last_name']) ?></td>
+                                <td><?= esc((string) ($payment['payment_date'] ?? '-')) ?></td>
+                                <td><?= esc((string) ($payment['branch_name'] ?? '-')) ?></td>
+                                <td><?= esc(trim((string) ($payment['client_first'] ?? '') . ' ' . (string) ($payment['client_last'] ?? ''))) ?></td>
                                 <td><?= esc((string) ((int) ($payment['months_covered'] ?? 1))) ?></td>
-                                <td><?= esc((string) $payment['amount']) ?></td>
-                                <td><?= esc(strtoupper((string) $payment['payment_method'])) ?></td>
+                                <td><?= esc((string) ($payment['amount'] ?? '0')) ?></td>
+                                <td><?= esc(strtoupper((string) ($payment['payment_method'] ?? ''))) ?></td>
                                 <td><?= esc((string) ($payment['reference_number'] ?? ($payment['official_receipt_number'] ?? '-'))) ?></td>
-                                <td><?= esc((string) $payment['status']) ?></td>
+                                <td><?= esc((string) ($payment['status'] ?? '-')) ?></td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>

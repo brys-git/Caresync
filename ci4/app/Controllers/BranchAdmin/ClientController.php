@@ -136,11 +136,31 @@ class ClientController extends BaseController
                 ->getRowArray();
         }
 
+        // The view's "Approve Registration" button/message needs to know
+        // whether there's actually a pending payment to approve - this was
+        // previously never computed here at all (undefined variable, 500
+        // on every visit), even though approve() below implements exactly
+        // this same eligibility check for the button's target action.
+        $pendingPayment = $planId
+            ? db_connect()->table('payments')
+                ->where('plan_id', $planId)
+                ->where('status', 'pending')
+                ->orderBy('payment_date', 'DESC')
+                ->get()
+                ->getRowArray()
+            : null;
+        $canApprove = (bool) $pendingPayment;
+        $approvalMessage = $canApprove
+            ? ''
+            : ($planId ? 'No pending payment found for approval.' : 'This client has no plan yet.');
+
         return view('branch_admin/client_management/details', [
             'holder' => $client,
             'initial_payment' => $initialPayment,
             'payments' => $payments,
             'services' => $services,
+            'can_approve' => $canApprove,
+            'approval_message' => $approvalMessage,
             'role_layout' => 'layouts/branch_admin',
         ]);
     }
@@ -283,9 +303,13 @@ class ClientController extends BaseController
         $this->enforceBranchOwnership($client);
 
         // Check if client has pending initial payment
+        // getClientDetails() returns the plan nested under 'plan', not a
+        // top-level 'plan_id' - this always evaluated to 0, meaning
+        // approve() could never actually find the pending payment it's
+        // supposed to approve.
         $pendingPayment = db_connect()->table('payments')
             ->select('payment_id, amount, payment_method, reference_number, months_covered')
-            ->where('plan_id', (int) $client['plan_id'])
+            ->where('plan_id', (int) ($client['plan']['plan_id'] ?? 0))
             ->where('status', 'pending')
             ->orderBy('payment_date', 'DESC')
             ->get()

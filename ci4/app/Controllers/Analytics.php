@@ -49,7 +49,13 @@ class Analytics extends BaseController
         $branchId = (int) session('branch_id');
         $analytics = $this->getBranchAnalytics($branchId);
 
-        return view('dashboards/branch_admin', [
+        // dashboards/branch_admin.php is the full operations dashboard - it
+        // needs a much larger data contract (branch_name, member_stats,
+        // payment_alerts, etc.) than this controller builds, and crashed
+        // with "Undefined variable $branch_name" on every visit. Analytics
+        // has always had its own self-contained $analytics shape; it just
+        // needed a view sized to match it.
+        return view('dashboards/branch_admin_analytics', [
             'role_layout' => 'layouts/branch_admin',
             'analytics' => $analytics,
         ]);

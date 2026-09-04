@@ -98,9 +98,10 @@
                                         </td>
                                         <td><?= esc((string) ($client['email'] ?? '-')) ?></td>
                                         <td><?= esc((string) ($client['contact_number'] ?? '-')) ?></td>
+                                        <?php $clientStatus = (string) ($client['plan_holder_status'] ?? 'inactive'); ?>
                                         <td>
-                                            <span class="badge text-bg-<?= $client['status'] === 'active' ? 'success' : 'secondary' ?>">
-                                                <?= esc(ucfirst((string) $client['status'])) ?>
+                                            <span class="badge text-bg-<?= $clientStatus === 'active' ? 'success' : 'secondary' ?>">
+                                                <?= esc(ucfirst($clientStatus)) ?>
                                             </span>
                                         </td>
                                         <td class="text-end">

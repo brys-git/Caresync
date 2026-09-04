@@ -48,7 +48,18 @@ class ClientPaymentInitialController extends BaseController
         $planHolderId = (int) $planHolder['plan_holder_id'];
         $plan = $this->latestPlan($planHolderId);
         if (! $plan) {
-            return redirect()->to('/plan-info')->with('error', 'Plan information not found.');
+            // This used to redirect back to /plan-info - but plan-info
+            // redirects here whenever access.state is 'awaiting_activation'
+            // (a registered plan holder with no *active* plan), which is
+            // also true whenever there's no plan record at all. A plan
+            // holder with a plan_holders row but zero plans rows (possible
+            // from older data, or a registration path that never called
+            // ClientRegistrationService::createMembershipPlan()) bounced
+            // between these two routes forever. There's nothing the plan
+            // holder can self-service here - they need staff to assign a
+            // plan first (Packages::assignToPlan(), section 1) - so land
+            // somewhere that doesn't loop and says so.
+            return redirect()->to('/client/dashboard')->with('error', 'Your plan holder registration has no plan assigned yet. Please contact your branch for assistance.');
         }
 
         $program = MembershipService::getProgramInfo();

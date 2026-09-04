@@ -27,7 +27,7 @@ class ReportService
     public function getRemittanceReport(array $filters): array
     {
         $builder = $this->baseQuery($filters)
-            ->select('p.payment_id, p.payment_date, p.amount, p.months_covered, p.payment_method, p.reference_number, p.official_receipt_number, p.status, rb.first_name AS staff_first, rb.last_name AS staff_last, cu.first_name AS client_first, cu.last_name AS client_last, ph.plan_holder_id, ph.unique_identifier, pl.start_date');
+            ->select('p.payment_id, p.payment_date, p.amount, p.months_covered, p.payment_method, p.reference_number, p.official_receipt_number, p.status, rb.first_name AS staff_first, rb.last_name AS staff_last, cu.first_name AS client_first, cu.last_name AS client_last, ph.plan_holder_id, ph.unique_identifier, pl.start_date, b.branch_name');
 
         return $builder
             ->orderBy('p.payment_date', 'DESC')
@@ -402,6 +402,7 @@ class ReportService
             ->join('plans pl', 'pl.plan_id = p.plan_id', 'inner')
             ->join('plan_holders ph', 'ph.plan_holder_id = pl.plan_holder_id', 'inner')
             ->join('users cu', 'cu.user_id = ph.user_id', 'inner')
+            ->join('branches b', 'b.branch_id = ph.branch_id', 'left')
             ->where('p.payment_date >=', (string) $filters['date_from'])
             ->where('p.payment_date <=', (string) $filters['date_to']);
 
