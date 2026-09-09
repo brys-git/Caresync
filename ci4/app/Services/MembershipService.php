@@ -382,6 +382,29 @@ class MembershipService
     }
 
     /**
+     * Services & Packages redesign: whether a plan has fully re-paid the
+     * standard ₱14,500 contribution target for its current cycle - the
+     * gate for claiming the Regular Wood Casket (Damayan) entitlement
+     * again. `total_plan_amount` isn't an actual plans column today, so
+     * this always falls back to TOTAL_CONTRIBUTION, same as
+     * getMembershipSummary() already does elsewhere.
+     *
+     * @param array $plan A plan row (as returned by PlanModel/getActivePlan)
+     */
+    public function hasFullyPaidContribution(array $plan): bool
+    {
+        $monthsPaid = (int) ($plan['months_paid'] ?? 0);
+        $monthlyFee = (float) ($plan['monthly_fee'] ?? self::MONTHLY_FEE);
+        $target = (float) ($plan['total_plan_amount'] ?? self::TOTAL_CONTRIBUTION);
+
+        if ($monthlyFee <= 0) {
+            $monthlyFee = self::MONTHLY_FEE;
+        }
+
+        return ($monthsPaid * $monthlyFee) >= $target;
+    }
+
+    /**
      * Check if a member can access services
      * 
      * Service eligibility requires:
@@ -549,6 +572,7 @@ class MembershipService
             'package_id' => (int) ($activePlan['package_id'] ?? 0),
             'program_name' => $this->resolvePackageName((int) ($activePlan['package_id'] ?? 0)),
             'can_access_services' => $this->canAccessServices($planHolderId),
+            'has_fully_paid_contribution' => $this->hasFullyPaidContribution($activePlan),
         ];
     }
 }

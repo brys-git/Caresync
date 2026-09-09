@@ -27,5 +27,6 @@ class PlanModel extends Model
         'coverage_until',
         'version_id',
         'overdue_notified_at',
+        'last_damayan_claim_at',
     ];
 }

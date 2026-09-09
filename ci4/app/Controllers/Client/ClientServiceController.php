@@ -9,13 +9,28 @@ use App\Services\NotificationService;
 
 /**
  * ClientServiceController
- * 
+ *
  * Handles service and package browsing, details, and applications
  * Part of the refactored ClientPortal controller
+ *
+ * Services & Packages redesign: the Regular Wood Casket package
+ * (packages.is_damayan_entitlement = 1) is the standard Damayan Plan
+ * Holder entitlement - it shows CLAIM (free, once the ₱14,500 contribution
+ * target is fully paid) instead of AVAILABLE. Everything else in this
+ * controller (browsing, details, apply forms, submission, document
+ * uploads) is the same architecture used before the redesign, just
+ * extended with the entitlement/benefit-preview data the new views need.
  */
 class ClientServiceController extends BaseController
 {
     use ClientPortalTrait;
+
+    /**
+     * Flat ₱1,500 optional add-on price used across every package's apply
+     * flow, per the brief's own worked example (₱20,000 + ₱1,500 =
+     * ₱21,500).
+     */
+    private const BURIAL_ATTIRE_PRICE = 1500.0;
 
     /**
      * Display services and packages catalog
@@ -34,32 +49,51 @@ class ClientServiceController extends BaseController
         }
 
         $services = db_connect()->table('service_list')
-            ->select('service_list_id, service_name, description, base_price')
+            ->select('service_list_id, service_name, description, base_price, image_path')
             ->where('is_available', 1)
             ->orderBy('service_name', 'ASC')
             ->get()
             ->getResultArray();
 
+        $routesByService = $this->routesGroupedByService(array_column($services, 'service_list_id'));
+        foreach ($services as &$svc) {
+            $svc['routes'] = $routesByService[(int) $svc['service_list_id']] ?? [];
+        }
+        unset($svc);
+
         $packages = db_connect()->table('packages')
-            ->select('package_id, package_name, description, base_price')
-            ->orderBy('package_name', 'ASC')
+            ->select('package_id, package_name, description, base_price, is_damayan_entitlement, image_path')
+            ->where('is_available', 1)
+            ->orderBy('is_damayan_entitlement', 'DESC')
+            ->orderBy('base_price', 'ASC')
             ->get()
             ->getResultArray();
 
-        $planHolderId = (int) ($access['plan_holder']['plan_holder_id'] ?? 0);
-        $activePlan = $planHolderId > 0 ? $this->activePlan($planHolderId) : null;
-        $monthsPaid = (int) ($activePlan['months_paid'] ?? 0);
+        [$canApply, $membership] = $this->resolveEligibility($access);
+        $hasFullyPaid = $this->hasFullyPaidContribution($membership);
 
-        // Get membership information for eligibility display and compute can_apply
-        $membershipService = new MembershipService();
-        $membership = $planHolderId > 0 ? $membershipService->getMembershipSummary($planHolderId) : null;
-
-        if (is_array($membership) && $membership !== []) {
-            $monthsPaid = (int) ($membership['months_paid'] ?? $monthsPaid);
-            $canApply = (! empty($membership['can_access_services'])) && $monthsPaid >= 2;
-        } else {
-            $canApply = (($access['state'] ?? 'unregistered') === 'active') && $monthsPaid >= 2;
+        foreach ($packages as &$pkg) {
+            $isEntitlement = (int) ($pkg['is_damayan_entitlement'] ?? 0) === 1;
+            if ($isEntitlement) {
+                $eligible = $canApply && $hasFullyPaid;
+                $pkg['badge_label'] = $eligible ? 'CLAIM' : 'YOUR ENTITLEMENT';
+                $pkg['badge_class'] = $eligible ? 'success' : 'secondary';
+                $pkg['action_label'] = 'CLAIM';
+                $pkg['can_claim'] = $eligible;
+                $pkg['claim_locked_reason'] = $eligible
+                    ? null
+                    : ($canApply
+                        ? 'Available once your ₱14,500 contribution cycle is fully paid.'
+                        : 'Become an active, eligible Plan Holder to claim this entitlement.');
+            } else {
+                $pkg['badge_label'] = 'AVAILABLE';
+                $pkg['badge_class'] = 'info';
+                $pkg['action_label'] = 'AVAIL PACKAGE';
+                $pkg['can_claim'] = false;
+                $pkg['claim_locked_reason'] = null;
+            }
         }
+        unset($pkg);
 
         return view('client/services', [
             'role_layout' => 'layouts/plan_holder',
@@ -73,7 +107,8 @@ class ClientServiceController extends BaseController
     }
 
     /**
-     * Display service details
+     * Display service details (e.g. Balik Probinsya, with its per-route
+     * pricing).
      */
     public function serviceDetails(int $serviceListId): ResponseInterface|string
     {
@@ -84,7 +119,7 @@ class ClientServiceController extends BaseController
         }
 
         $service = db_connect()->table('service_list')
-            ->select('service_list_id, service_name, description, base_price')
+            ->select('service_list_id, service_name, description, base_price, image_path')
             ->where('service_list_id', $serviceListId)
             ->where('is_available', 1)
             ->get()
@@ -94,15 +129,37 @@ class ClientServiceController extends BaseController
             return redirect()->to('/client/service?tab=services')->with('error', 'Service not found.');
         }
 
+        $routes = db_connect()->table('service_routes')
+            ->where('service_list_id', $serviceListId)
+            ->orderBy('sort_order', 'ASC')
+            ->orderBy('price', 'DESC')
+            ->get()
+            ->getResultArray();
+
+        [$canApply, $membership] = $this->resolveEligibility($access);
+
+        // Casket benefit note: a qualified Plan Holder's Damayan casket
+        // entitlement is covered separately (the Regular Wood Casket
+        // claim) - it never reduces this transport service's own route
+        // price, it's simply disclosed here so the plan holder knows they
+        // won't be asked to pay for a casket again on top of this.
+        foreach ($routes as &$route) {
+            $route['casket_benefit_covered'] = $canApply;
+        }
+        unset($route);
+
         return view('client/service_details', [
             'role_layout' => 'layouts/plan_holder',
             'access' => $access,
             'service' => $service,
+            'routes' => $routes,
+            'can_apply' => $canApply,
         ]);
     }
 
     /**
-     * Display package details with included services
+     * Display package details with inclusions and, where relevant, the
+     * Damayan entitlement/benefit information.
      */
     public function packageDetails(int $packageId): ResponseInterface|string
     {
@@ -113,7 +170,7 @@ class ClientServiceController extends BaseController
         }
 
         $package = db_connect()->table('packages')
-            ->select('package_id, package_name, description, base_price, is_customizable')
+            ->select('package_id, package_name, description, base_price, is_customizable, is_damayan_entitlement, image_path')
             ->where('package_id', $packageId)
             ->get()
             ->getRowArray();
@@ -122,21 +179,40 @@ class ClientServiceController extends BaseController
             return redirect()->to('/client/service?tab=packages')->with('error', 'Package not found.');
         }
 
-        // package_services is self-contained (its own service_id/service_name/
-        // description) - it doesn't have a service_list_id column to join
-        // service_list on, despite what this query used to assume.
-        $packageServices = db_connect()->table('package_services')
-            ->select('service_id, service_name, description')
+        $inclusions = db_connect()->table('package_items')
+            ->select('item_id, item_name, description')
             ->where('package_id', $packageId)
-            ->orderBy('service_name', 'ASC')
+            ->orderBy('item_id', 'ASC')
             ->get()
             ->getResultArray();
+
+        [$canApply, $membership] = $this->resolveEligibility($access);
+        $isEntitlement = (int) ($package['is_damayan_entitlement'] ?? 0) === 1;
+        $hasFullyPaid = $this->hasFullyPaidContribution($membership);
+
+        $entitlement = null;
+        $benefitCredit = 0.0;
+        if ($isEntitlement) {
+            $entitlement = [
+                'eligible' => $canApply && $hasFullyPaid,
+                'has_fully_paid' => $hasFullyPaid,
+            ];
+        } elseif ($canApply) {
+            // Panel damayan credit: exactly TOTAL_CONTRIBUTION, capped so it
+            // can never exceed the package price itself.
+            $benefitCredit = min((float) $package['base_price'], MembershipService::TOTAL_CONTRIBUTION);
+        }
 
         return view('client/package_details', [
             'role_layout' => 'layouts/plan_holder',
             'access' => $access,
             'package' => $package,
-            'package_services' => $packageServices,
+            'inclusions' => $inclusions,
+            'is_entitlement' => $isEntitlement,
+            'entitlement' => $entitlement,
+            'benefit_credit' => $benefitCredit,
+            'can_apply' => $canApply,
+            'attire_price' => self::BURIAL_ATTIRE_PRICE,
         ]);
     }
 
@@ -152,7 +228,7 @@ class ClientServiceController extends BaseController
         }
 
         $service = db_connect()->table('service_list')
-            ->select('service_list_id, service_name, description, base_price')
+            ->select('service_list_id, service_name, description, base_price, image_path')
             ->where('service_list_id', $serviceListId)
             ->where('is_available', 1)
             ->get()
@@ -162,22 +238,19 @@ class ClientServiceController extends BaseController
             return redirect()->to('/client/service?tab=services')->with('error', 'Service not found.');
         }
 
-        $planHolderId = (int) ($access['plan_holder']['plan_holder_id'] ?? 0);
-        $activePlan = $planHolderId > 0 ? $this->activePlan($planHolderId) : null;
-        $monthsPaid = (int) ($activePlan['months_paid'] ?? 0);
+        $routes = db_connect()->table('service_routes')
+            ->where('service_list_id', $serviceListId)
+            ->orderBy('sort_order', 'ASC')
+            ->get()
+            ->getResultArray();
 
-        $membership = $planHolderId > 0 ? (new MembershipService())->getMembershipSummary($planHolderId) : null;
-        if (is_array($membership) && $membership !== []) {
-            $monthsPaid = (int) ($membership['months_paid'] ?? $monthsPaid);
-            $canApply = (! empty($membership['can_access_services'])) && $monthsPaid >= 2;
-        } else {
-            $canApply = (($access['state'] ?? 'unregistered') === 'active') && $monthsPaid >= 2;
-        }
+        [$canApply, $membership] = $this->resolveEligibility($access);
 
         return view('client/service_apply', [
             'role_layout' => 'layouts/plan_holder',
             'access' => $access,
             'service' => $service,
+            'routes' => $routes,
             'can_apply' => $canApply,
         ]);
     }
@@ -194,7 +267,7 @@ class ClientServiceController extends BaseController
         }
 
         $package = db_connect()->table('packages')
-            ->select('package_id, package_name, description, base_price, is_customizable')
+            ->select('package_id, package_name, description, base_price, is_customizable, is_damayan_entitlement, image_path')
             ->where('package_id', $packageId)
             ->get()
             ->getRowArray();
@@ -203,23 +276,27 @@ class ClientServiceController extends BaseController
             return redirect()->to('/client/service?tab=packages')->with('error', 'Package not found.');
         }
 
-        $planHolderId = (int) ($access['plan_holder']['plan_holder_id'] ?? 0);
-        $activePlan = $planHolderId > 0 ? $this->activePlan($planHolderId) : null;
-        $monthsPaid = (int) ($activePlan['months_paid'] ?? 0);
+        [$canApply, $membership] = $this->resolveEligibility($access);
+        $isEntitlement = (int) ($package['is_damayan_entitlement'] ?? 0) === 1;
+        $hasFullyPaid = $this->hasFullyPaidContribution($membership);
 
-        $membership = $planHolderId > 0 ? (new MembershipService())->getMembershipSummary($planHolderId) : null;
-        if (is_array($membership) && $membership !== []) {
-            $monthsPaid = (int) ($membership['months_paid'] ?? $monthsPaid);
-            $canApply = (! empty($membership['can_access_services'])) && $monthsPaid >= 2;
-        } else {
-            $canApply = (($access['state'] ?? 'unregistered') === 'active') && $monthsPaid >= 2;
+        if ($isEntitlement && ! ($canApply && $hasFullyPaid)) {
+            return redirect()->to('/client/service?tab=packages')
+                ->with('error', 'This entitlement is not available to claim yet - your ₱14,500 contribution cycle must be fully paid first.');
         }
+
+        $benefitCredit = (! $isEntitlement && $canApply)
+            ? min((float) $package['base_price'], MembershipService::TOTAL_CONTRIBUTION)
+            : 0.0;
 
         return view('client/package_apply', [
             'role_layout' => 'layouts/plan_holder',
             'access' => $access,
             'package' => $package,
+            'is_entitlement' => $isEntitlement,
+            'benefit_credit' => $benefitCredit,
             'can_apply' => $canApply,
+            'attire_price' => self::BURIAL_ATTIRE_PRICE,
         ]);
     }
 
@@ -268,7 +345,7 @@ class ClientServiceController extends BaseController
         }
 
         $service = db_connect()->table('service_list')
-            ->select('service_list_id, service_name')
+            ->select('service_list_id, service_name, base_price')
             ->where('service_list_id', $serviceListId)
             ->where('is_available', 1)
             ->get()
@@ -276,6 +353,24 @@ class ClientServiceController extends BaseController
 
         if (! $service) {
             return redirect()->back()->with('error', 'Selected service is unavailable.');
+        }
+
+        // Resolve the selected route (if any) - the route price is what's
+        // actually owed, the casket benefit note never reduces it.
+        $routeId = (int) $this->request->getPost('route_id');
+        $applicationAmount = (float) $service['base_price'];
+        if ($routeId > 0) {
+            $route = db_connect()->table('service_routes')
+                ->where('route_id', $routeId)
+                ->where('service_list_id', $serviceListId)
+                ->get()
+                ->getRowArray();
+
+            if (! $route) {
+                return redirect()->back()->withInput()->with('error', 'Selected route is invalid.');
+            }
+
+            $applicationAmount = (float) $route['price'];
         }
 
         $db = db_connect();
@@ -293,6 +388,8 @@ class ClientServiceController extends BaseController
                 'beneficiary_name' => trim((string) $this->request->getPost('beneficiary_name')) ?: null,
                 'beneficiary_contact' => trim((string) $this->request->getPost('beneficiary_contact')) ?: null,
                 'application_notes' => trim((string) $this->request->getPost('application_notes')) ?: null,
+                'selected_route_id' => $routeId > 0 ? $routeId : null,
+                'application_amount' => $applicationAmount,
             ];
 
             $db->table('service_applications')->insert($insert);
@@ -347,7 +444,8 @@ class ClientServiceController extends BaseController
     }
 
     /**
-     * Submit package application
+     * Submit package application (also the CLAIM path, when $packageId is
+     * the Damayan entitlement package).
      */
     public function submitPackageApplication(int $packageId)
     {
@@ -391,13 +489,41 @@ class ClientServiceController extends BaseController
         }
 
         $package = db_connect()->table('packages')
-            ->select('package_id, package_name')
+            ->select('package_id, package_name, base_price, is_damayan_entitlement')
             ->where('package_id', $packageId)
             ->get()
             ->getRowArray();
 
         if (! $package) {
             return redirect()->back()->with('error', 'Selected package is unavailable.');
+        }
+
+        $isEntitlement = (int) ($package['is_damayan_entitlement'] ?? 0) === 1;
+        $membership = $membershipService->getMembershipSummary($planHolderId);
+        $hasFullyPaid = $this->hasFullyPaidContribution($membership);
+
+        // Re-verify server-side, never trust the CLAIM button's visibility
+        // client-side alone - a plan holder who hasn't finished this
+        // contribution cycle can't claim again yet.
+        if ($isEntitlement && ! $hasFullyPaid) {
+            return redirect()->back()->with('error', 'This entitlement is not available to claim yet - your ₱14,500 contribution cycle must be fully paid first.');
+        }
+
+        $burialAttireSelected = $this->request->getPost('burial_attire') ? true : false;
+        $burialAttirePrice = $burialAttireSelected ? self::BURIAL_ATTIRE_PRICE : null;
+
+        $basePrice = (float) $package['base_price'];
+        $damayanBenefitApplied = null;
+        if ($isEntitlement) {
+            // Fully covered - the whole casket price is the benefit itself.
+            $damayanBenefitApplied = $basePrice;
+            $applicationAmount = $burialAttireSelected ? self::BURIAL_ATTIRE_PRICE : 0.0;
+        } else {
+            $damayanBenefitApplied = 0.0;
+            if (! empty($membership) && (! empty($membership['can_access_services']))) {
+                $damayanBenefitApplied = min($basePrice, MembershipService::TOTAL_CONTRIBUTION);
+            }
+            $applicationAmount = $basePrice - $damayanBenefitApplied + ($burialAttireSelected ? self::BURIAL_ATTIRE_PRICE : 0.0);
         }
 
         $db = db_connect();
@@ -415,6 +541,10 @@ class ClientServiceController extends BaseController
                 'beneficiary_name' => trim((string) $this->request->getPost('beneficiary_name')) ?: null,
                 'beneficiary_contact' => trim((string) $this->request->getPost('beneficiary_contact')) ?: null,
                 'application_notes' => trim((string) $this->request->getPost('application_notes')) ?: null,
+                'burial_attire_selected' => $burialAttireSelected ? 1 : 0,
+                'burial_attire_price' => $burialAttirePrice,
+                'damayan_benefit_applied' => $damayanBenefitApplied,
+                'application_amount' => $applicationAmount,
             ];
 
             $db->table('service_applications')->insert($insert);
@@ -451,7 +581,7 @@ class ClientServiceController extends BaseController
 
             (new NotificationService())->notify(
                 (int) $user['user_id'],
-                'Your application for ' . (string) $package['package_name'] . ' has been submitted.',
+                ($isEntitlement ? 'Your claim for ' : 'Your application for ') . (string) $package['package_name'] . ' has been submitted.',
                 'registration_pending'
             );
 
@@ -461,10 +591,76 @@ class ClientServiceController extends BaseController
 
             $db->transCommit();
 
-            return redirect()->to('/client/service?tab=packages')->with('success', 'Package application submitted successfully.');
+            $message = $isEntitlement ? 'Claim submitted successfully.' : 'Package application submitted successfully.';
+
+            return redirect()->to('/client/service?tab=packages')->with('success', $message);
         } catch (\Throwable $e) {
             $db->transRollback();
             return redirect()->back()->withInput()->with('error', $e->getMessage());
         }
+    }
+
+    /**
+     * Shared can_apply + membership summary resolution (same rule used
+     * throughout this controller: active/good-standing plan with at least
+     * 2 months paid).
+     *
+     * @return array{0: bool, 1: array|null}
+     */
+    private function resolveEligibility(array $access): array
+    {
+        $planHolderId = (int) ($access['plan_holder']['plan_holder_id'] ?? 0);
+        $activePlan = $planHolderId > 0 ? $this->activePlan($planHolderId) : null;
+        $monthsPaid = (int) ($activePlan['months_paid'] ?? 0);
+
+        $membership = $planHolderId > 0 ? (new MembershipService())->getMembershipSummary($planHolderId) : null;
+
+        if (is_array($membership) && $membership !== []) {
+            $monthsPaid = (int) ($membership['months_paid'] ?? $monthsPaid);
+            $canApply = (! empty($membership['can_access_services'])) && $monthsPaid >= 2;
+        } else {
+            $canApply = (($access['state'] ?? 'unregistered') === 'active') && $monthsPaid >= 2;
+        }
+
+        return [$canApply, $membership];
+    }
+
+    private function hasFullyPaidContribution(?array $membership): bool
+    {
+        if (! is_array($membership) || $membership === []) {
+            return false;
+        }
+
+        if (array_key_exists('has_fully_paid_contribution', $membership)) {
+            return (bool) $membership['has_fully_paid_contribution'];
+        }
+
+        return (new MembershipService())->hasFullyPaidContribution($membership);
+    }
+
+    /**
+     * @param array<int, int> $serviceListIds
+     * @return array<int, array>
+     */
+    private function routesGroupedByService(array $serviceListIds): array
+    {
+        $serviceListIds = array_values(array_unique(array_map('intval', $serviceListIds)));
+        if ($serviceListIds === []) {
+            return [];
+        }
+
+        $rows = db_connect()->table('service_routes')
+            ->whereIn('service_list_id', $serviceListIds)
+            ->orderBy('sort_order', 'ASC')
+            ->orderBy('price', 'DESC')
+            ->get()
+            ->getResultArray();
+
+        $grouped = [];
+        foreach ($rows as $row) {
+            $grouped[(int) $row['service_list_id']][] = $row;
+        }
+
+        return $grouped;
     }
 }

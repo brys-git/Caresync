@@ -4,8 +4,9 @@
 <?php
     $state = (string) ($access['state'] ?? 'new');
     $canApply = (bool) ($can_apply ?? false);
+    $routes = $routes ?? [];
 ?>
-<div class="container-fluid">
+<div class="container-fluid" style="max-width: 760px;">
     <div class="d-flex align-items-start justify-content-between mb-3">
         <div>
             <h1 class="h3 mb-1">Apply for Service</h1>
@@ -27,16 +28,38 @@
         <?php endif; ?>
     <?php endif; ?>
 
-    <div class="card">
+    <div class="card mb-3">
         <div class="card-body">
             <h5 class="mb-2"><?= esc((string) ($service['service_name'] ?? '-')) ?></h5>
             <p class="text-muted mb-3"><?= esc((string) ($service['description'] ?? 'No description available.')) ?></p>
-            <div class="fw-semibold">Price: P<?= esc(number_format((float) ($service['base_price'] ?? 0), 2)) ?></div>
+            <?php if (empty($routes)): ?>
+                <div class="fw-semibold">Price: P<?= esc(number_format((float) ($service['base_price'] ?? 0), 2)) ?></div>
+            <?php endif; ?>
         </div>
     </div>
 
     <form class="mt-3" method="post" enctype="multipart/form-data" action="<?= site_url('/client/apply-service/' . (int) ($service['service_list_id'] ?? 0)) ?>">
         <?= csrf_field() ?>
+
+        <?php if (! empty($routes)): ?>
+            <div class="mb-3">
+                <label class="form-label">Select route</label>
+                <?php foreach ($routes as $i => $route): ?>
+                    <div class="form-check border rounded p-2 mb-2">
+                        <input class="form-check-input route-option" type="radio" name="route_id" id="route-<?= (int) $route['route_id'] ?>" value="<?= (int) $route['route_id'] ?>" data-price="<?= (float) $route['price'] ?>" <?= $i === 0 ? 'checked' : '' ?> required>
+                        <label class="form-check-label d-flex justify-content-between" for="route-<?= (int) $route['route_id'] ?>">
+                            <span><?= esc((string) $route['route_name']) ?></span>
+                            <span class="fw-semibold">₱<?= number_format((float) $route['price'], 2) ?></span>
+                        </label>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+            <div class="alert alert-secondary d-flex justify-content-between">
+                <span>Total Amount</span>
+                <span class="fw-bold" id="route-total">₱<?= number_format((float) ($routes[0]['price'] ?? 0), 2) ?></span>
+            </div>
+        <?php endif; ?>
+
         <div class="mb-3">
             <label class="form-label">Deceased full name</label>
             <input type="text" name="deceased_name" class="form-control" value="<?= old('deceased_name') ?>" required />
@@ -71,4 +94,17 @@
         <a class="btn btn-outline-secondary" href="<?= site_url('/client/service?tab=services') ?>">Cancel</a>
     </form>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var total = document.getElementById('route-total');
+    if (! total) { return; }
+    document.querySelectorAll('.route-option').forEach(function (input) {
+        input.addEventListener('change', function () {
+            var price = parseFloat(this.dataset.price || '0');
+            total.textContent = '₱' + price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        });
+    });
+});
+</script>
 <?= $this->endSection() ?>

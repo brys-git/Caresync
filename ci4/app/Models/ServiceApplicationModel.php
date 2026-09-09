@@ -22,5 +22,10 @@ class ServiceApplicationModel extends Model
         'beneficiary_name',
         'beneficiary_contact',
         'application_notes',
+        'burial_attire_selected',
+        'burial_attire_price',
+        'selected_route_id',
+        'damayan_benefit_applied',
+        'application_amount',
     ];
 }

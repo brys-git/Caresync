@@ -74,11 +74,24 @@ trait ClientPortalTrait
     {
         $db = db_connect();
 
+        // Services & Packages redesign: prefer the explicit Damayan
+        // entitlement flag over the assumed DEFAULT_PACKAGE_ID=1 - package
+        // ids are no longer guaranteed to start at 1 once the catalog has
+        // been re-seeded.
         $package = $db->table('packages')
             ->select('package_id')
-            ->where('package_id', MembershipService::DEFAULT_PACKAGE_ID)
+            ->where('is_damayan_entitlement', 1)
+            ->orderBy('package_id', 'ASC')
             ->get()
             ->getRowArray();
+
+        if (! $package) {
+            $package = $db->table('packages')
+                ->select('package_id')
+                ->where('package_id', MembershipService::DEFAULT_PACKAGE_ID)
+                ->get()
+                ->getRowArray();
+        }
 
         if (! $package) {
             $package = $db->table('packages')

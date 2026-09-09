@@ -16,5 +16,8 @@ class PackageModel extends Model
         'base_price',
         'is_customizable',
         'is_available',
+        'is_damayan_entitlement',
+        'image_path',
+        'status',
     ];
 }

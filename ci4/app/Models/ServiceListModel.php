@@ -16,5 +16,6 @@ class ServiceListModel extends Model
         'base_price',
         'status',
         'is_available',
+        'image_path',
     ];
 }

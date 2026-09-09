@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\NotificationModel;
+use App\Models\PlanModel;
 use App\Models\ServiceApplicationModel;
 use App\Models\ServiceModel;
 
@@ -85,6 +86,8 @@ class ClaimService
 
         try {
             $this->serviceApplicationModel->update($applicationId, ['status' => 'approved']);
+
+            $this->resetContributionCycleIfEntitlementClaim((int) $request['package_id'], (int) $request['plan_holder_id']);
 
             $serviceRecordId = (int) $this->serviceModel->insert([
                 'plan_holder_id' => (int) $request['plan_holder_id'],
@@ -261,6 +264,48 @@ class ClaimService
         }
 
         return $document;
+    }
+
+    /**
+     * Services & Packages redesign: approving a claim for the Regular
+     * Wood Casket (Damayan) entitlement starts a fresh contribution
+     * cycle for that plan holder, the same way the existing overdue/
+     * forfeiture policy already resets months_paid to 0 - so the next
+     * CLAIM is only enabled once they've fully re-paid the ₱14,500
+     * target again (MembershipService::hasFullyPaidContribution()).
+     * A no-op for any other package or service claim.
+     */
+    private function resetContributionCycleIfEntitlementClaim(int $packageId, int $planHolderId): void
+    {
+        if ($packageId <= 0 || $planHolderId <= 0) {
+            return;
+        }
+
+        $package = db_connect()->table('packages')
+            ->select('is_damayan_entitlement')
+            ->where('package_id', $packageId)
+            ->get()
+            ->getRowArray();
+
+        if (! $package || (int) ($package['is_damayan_entitlement'] ?? 0) !== 1) {
+            return;
+        }
+
+        $planModel = new PlanModel();
+        $activePlan = $planModel
+            ->where('plan_holder_id', $planHolderId)
+            ->where('status', 'active')
+            ->orderBy('plan_id', 'DESC')
+            ->first();
+
+        if (! $activePlan) {
+            return;
+        }
+
+        $planModel->update((int) $activePlan['plan_id'], [
+            'months_paid' => 0,
+            'last_damayan_claim_at' => date('Y-m-d H:i:s'),
+        ]);
     }
 
     private function findClaimForBranch(int $applicationId, int $branchId): ?array
