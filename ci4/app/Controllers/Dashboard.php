@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Helpers\QueryHelper;
 use App\Services\ActivityLogService;
+use App\Services\AnalyticsService;
 use App\Services\PaymentService;
 use Config\Database;
 
@@ -28,10 +29,19 @@ class Dashboard extends BaseController
 
     public function admin(): string
     {
+        // Was a static "Coming Soon" placeholder with no data at all.
+        // Reuses the exact same query set as Analytics::admin() (moved into
+        // the shared AnalyticsService so both routes stay in sync) - found
+        // during the 2026-09-09 system scan.
+        $analytics = (new AnalyticsService())->getSystemWideAnalytics();
+        $recentActivity = (new ActivityLogService())->getAllLogs(8);
+
         return view('dashboards/admin', [
             'role_layout' => $this->resolveLayoutView(),
             'page_title' => 'System Admin Dashboard',
             'breadcrumb' => ['Dashboard'],
+            'analytics' => $analytics,
+            'recent_activity' => $recentActivity,
         ]);
     }
 
@@ -80,10 +90,16 @@ class Dashboard extends BaseController
 
     public function staff(): string
     {
+        // Was a static "Coming Soon" placeholder with no data at all.
+        // Found during the 2026-09-09 system scan.
+        $branchId = (int) session('branch_id');
+        $analytics = (new AnalyticsService())->getStaffAnalytics($branchId);
+
         return view('dashboards/staff', [
             'role_layout' => $this->resolveLayoutView(),
             'page_title' => 'Staff Dashboard',
             'breadcrumb' => ['Dashboard'],
+            'analytics' => $analytics,
         ]);
     }
 
@@ -98,10 +114,21 @@ class Dashboard extends BaseController
 
     public function collector(): string
     {
+        // Was a static "Coming Soon" placeholder with no data at all.
+        // The Collector role has no dedicated collection-entry feature
+        // built yet, so this reuses payments.received_by - the same
+        // "who actually recorded this payment" column the Reports suite's
+        // Collections/Commission reports already rely on - to show what
+        // this collector has actually recorded. Found during the
+        // 2026-09-09 system scan.
+        $userId = (int) session('user_id');
+        $summary = (new AnalyticsService())->getCollectorSummary($userId);
+
         return view('dashboards/collector', [
             'role_layout' => $this->resolveLayoutView(),
             'page_title' => 'Collector Dashboard',
             'breadcrumb' => ['Dashboard'],
+            'summary' => $summary,
         ]);
     }
 

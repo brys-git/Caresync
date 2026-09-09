@@ -35,11 +35,20 @@ class ClientProfileController extends BaseController
         $user = $access['user'];
         $planHolder = $access['plan_holder'];
 
+        // "Edit Profile" used to link to a /client/profile/edit route that
+        // never existed, and edit_mode was never set at all - so the edit
+        // form on this same page could never actually be reached. Toggle it
+        // via a query flag instead, matching the pattern already used for
+        // ?tab= elsewhere in the client portal. Found during the
+        // 2026-09-09 system scan.
+        $editMode = $this->request->getGet('edit') === '1';
+
         return view('client/profile', [
             'role_layout' => 'layouts/plan_holder',
             'user' => $user,
             'plan_holder' => $planHolder,
             'access' => $access,
+            'edit_mode' => $editMode,
         ]);
     }
 

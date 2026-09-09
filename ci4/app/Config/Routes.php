@@ -42,6 +42,21 @@ $routes->group('dashboard', ['filter' => 'auth'], static function (RouteCollecti
 // Plan Holder Registration Routes (accessible by Admin: 1, BranchAdmin: 2)
 $routes->get('plan-holders/register', 'PlanHolders::register', ['filter' => 'auth']);
 $routes->post('plan-holders/store', 'PlanHolders::store', ['filter' => 'auth']);
+// Approve/reject a pending plan holder registration - PlanHolders::approve()/
+// reject() already existed fully implemented (role check + branch scoping
+// done inside the controller, same as register/store above) but were never
+// wired to a route, so the Approve/Reject buttons on the approvals tab of
+// plan-holders/register 404'd. Found during the 2026-09-09 system scan.
+$routes->post('plan-holders/approvals/approve/(:num)', 'PlanHolders::approve/$1', ['filter' => 'auth']);
+$routes->post('plan-holders/approvals/reject/(:num)', 'PlanHolders::reject/$1', ['filter' => 'auth']);
+
+// Verify a pending GCash initial payment from the registration-approvals
+// queue (approvals/registration_queue.php's "Verify" button) - the button
+// already posted to this exact path, and ClientPortal::verifyInitialPayment()
+// already fully implemented it (branch-scoped, checks the GCash reference,
+// marks the payment paid), but no route existed for it at all. Found
+// during the 2026-09-09 system scan.
+$routes->post('payments/verify-initial/(:num)', 'ClientPortal::verifyInitialPayment/$1', ['filter' => 'role:2']);
 
 // User account creation (Admin: 1, BranchAdmin: 2, Staff: 3 — Users::store forces
 // Staff-created accounts to role_id 4 regardless of what's submitted). Previously

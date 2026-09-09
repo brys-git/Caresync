@@ -245,7 +245,7 @@
                         <div class="d-flex gap-2 mt-4 justify-content-end">
                             <a href="<?= base_url('staff/client') ?>" class="btn btn-outline-secondary">Clear</a>
                             <a 
-                                href="<?= base_url('staff/client/create') ?>" 
+                                href="<?= base_url('staff/client/register') ?>"
                                 class="btn btn-outline-info me-2"
                                 title="Open full registration form"
                             >

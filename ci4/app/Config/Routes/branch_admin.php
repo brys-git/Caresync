@@ -81,7 +81,22 @@ $routes->group('branch-admin', ['filter' => 'auth'], static function (RouteColle
     $routes->post('packages/add-item/(:num)', 'BranchAdmin\PackageController::addItem/$1', ['filter' => 'role:2']);
 
     // Staff & Monitoring
+    // assign()/activities()/store() were fully implemented but never routed -
+    // only index() (the Staff List tab) was reachable, so the Assign Tasks
+    // and Staff Activities nav tabs, and the assign-staff form, all 404'd.
+    // Found during the 2026-09-09 system scan.
     $routes->get('staff-monitoring', 'BranchAdmin\StaffMonitoringController::index', ['filter' => 'role:2']);
+    $routes->get('staff-monitoring/assign', 'BranchAdmin\StaffMonitoringController::assign', ['filter' => 'role:2']);
+    $routes->post('staff-monitoring/store', 'BranchAdmin\StaffMonitoringController::store', ['filter' => 'role:2']);
+    $routes->get('staff-monitoring/activities', 'BranchAdmin\StaffMonitoringController::activities', ['filter' => 'role:2']);
+
+    // Staff Management (edit a staff member's email/contact/status) - a
+    // complete, working controller that was simply never wired to any
+    // route, so the "Edit Staff" button on Staff Monitoring 404'd. Found
+    // during the 2026-09-09 system scan.
+    $routes->get('staff-management', 'BranchAdmin\StaffManagementController::index', ['filter' => 'role:2']);
+    $routes->get('staff-management/edit/(:num)', 'BranchAdmin\StaffManagementController::edit/$1', ['filter' => 'role:2']);
+    $routes->post('staff-management/update/(:num)', 'BranchAdmin\StaffManagementController::update/$1', ['filter' => 'role:2']);
 
     // Reports & Analytics
     // Panel brief section 7: "reports" had no index() to land on - BranchAdmin\

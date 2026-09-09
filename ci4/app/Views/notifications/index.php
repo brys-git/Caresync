@@ -14,7 +14,7 @@
 
     <div class="card">
         <div class="card-body">
-            <form class="row g-2 mb-3" method="get" action="<?= base_url('notifications') ?>">
+            <form class="row g-2 mb-3" method="get" action="<?= base_url('client/notification') ?>">
                 <div class="col-md-3">
                     <select class="form-select" name="type">
                         <option value="">All Types</option>

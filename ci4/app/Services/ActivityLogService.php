@@ -133,7 +133,8 @@ class ActivityLogService
             return [];
         }
 
-        return db_connect()->table('activity_logs')
+        // Same missing-alias bug as getAllLogs() above - fixed alongside it.
+        return db_connect()->table('activity_logs al')
             ->select('al.*, u.first_name, u.last_name')
             ->join('users u', 'u.user_id = al.user_id', 'left')
             ->where('al.module', $module)
@@ -151,7 +152,12 @@ class ActivityLogService
      */
     public function getAllLogs(int $limit = 500): array
     {
-        return db_connect()->table('activity_logs')
+        // table('activity_logs') without the 'al' alias left every 'al.'
+        // reference in select()/join()/orderBy() pointing at a table that
+        // didn't exist ("Unknown table 'al'") - this method had no caller
+        // until the 2026-09-09 system scan wired up the Admin dashboard,
+        // so the bug was never actually triggered before.
+        return db_connect()->table('activity_logs al')
             ->select('al.*, u.first_name, u.last_name')
             ->join('users u', 'u.user_id = al.user_id', 'left')
             ->orderBy('al.created_at', 'DESC')

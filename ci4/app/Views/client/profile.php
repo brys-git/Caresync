@@ -10,7 +10,7 @@
         </div>
         <?php if (! ($edit_mode ?? false)): ?>
             <div class="d-flex gap-2 flex-wrap">
-                <a href="<?= base_url('client/profile/edit') ?>" class="btn btn-primary btn-sm">
+                <a href="<?= base_url('client/profile') ?>?edit=1" class="btn btn-primary btn-sm">
                     <i class="bi bi-pencil-square me-1"></i> Edit Profile
                 </a>
                 <a href="#password-section" class="btn btn-outline-secondary btn-sm">
