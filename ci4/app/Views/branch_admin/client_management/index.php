@@ -64,8 +64,9 @@
                                 <td class="text-end">
                                     <a href="<?= base_url('branch-admin/client-management/view/' . (int) $holder['plan_holder_id']) ?>" class="btn btn-sm btn-outline-primary me-1">View Details</a>
                                     <?php if ($paymentStatus === 'pending'): ?>
-                                        <form method="post" action="<?= base_url('branch-admin/client-management/approve/' . (int) $holder['plan_holder_id']) ?>" class="d-inline" 
+                                        <form method="post" action="<?= base_url('branch-admin/client-management/approve/' . (int) $holder['plan_holder_id']) ?>" class="d-inline"
                                               onsubmit="return confirm('Are you sure you want to approve this initial payment? This will activate the membership.')">
+                                            <?= csrf_field() ?>
                                             <button type="submit" class="btn btn-sm btn-success">Approve Payment</button>
                                         </form>
                                     <?php endif; ?>

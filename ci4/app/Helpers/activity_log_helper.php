@@ -3,6 +3,16 @@
 /**
  * Activity Logging Helper
  * Provides convenient functions for logging activities throughout the application.
+ *
+ * Renamed from ActivityHelper.php - CodeIgniter's helper() loader (and
+ * Composer, since this file has no namespace/PSR-4 mapping) only finds
+ * files named '{name}_helper.php'. The old filename meant helper(
+ * 'activity_log') never actually loaded this file, so every call to
+ * log_activity() threw "Call to undefined function" - silently rolling
+ * back the one caller, ApprovalService::approveInitialPayment(), inside
+ * its catch block. That made Branch Admin's "Approve Payment" action on
+ * the Client Management page always report success while never actually
+ * activating the plan holder. Found during the 2026-09-10 system scan.
  */
 
 if (!function_exists('log_activity')) {
