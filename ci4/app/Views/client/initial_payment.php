@@ -9,7 +9,7 @@ $monthlyFee = (float) ($monthly_fee ?? ($program['monthly_fee'] ?? 240));
 <div class="container-fluid">
     <div class="mb-3">
         <h1 class="h3 mb-1">Initial Payment</h1>
-        <p class="text-muted mb-0">Submit your first monthly contribution for verification.</p>
+        <p class="text-muted mb-0">Submit your initial contribution (minimum 2 months) for verification.</p>
     </div>
 
     <div class="row g-3 mb-4">
@@ -48,17 +48,22 @@ $monthlyFee = (float) ($monthly_fee ?? ($program['monthly_fee'] ?? 240));
                 <div class="card">
                     <div class="card-body">
                         <div class="row g-3 mb-3">
-                            <div class="col-md-4"><div class="border rounded p-3"><small class="text-muted d-block">Monthly Contribution</small><strong>P<?= number_format($monthlyFee, 2) ?></strong></div></div>
-                            <div class="col-md-4"><div class="border rounded p-3"><small class="text-muted d-block">Plan</small><strong><?= esc((string) ($program['name'] ?? 'Damayan Burial Program')) ?></strong></div></div>
-                            <div class="col-md-4"><div class="border rounded p-3"><small class="text-muted d-block">Status</small><strong><?= esc((string) ($plan['status'] ?? 'inactive')) ?></strong></div></div>
+                            <div class="col-md-3"><div class="border rounded p-3"><small class="text-muted d-block">Monthly Contribution</small><strong>P<?= number_format($monthlyFee, 2) ?></strong></div></div>
+                            <div class="col-md-3"><div class="border rounded p-3"><small class="text-muted d-block">Plan</small><strong><?= esc((string) ($program['name'] ?? 'Damayan Burial Program')) ?></strong></div></div>
+                            <div class="col-md-3"><div class="border rounded p-3"><small class="text-muted d-block">Status</small><strong><?= esc((string) ($plan['status'] ?? 'inactive')) ?></strong></div></div>
+                            <div class="col-md-3"><div class="border rounded p-3 bg-light"><small class="text-muted d-block">Initial Payment Due</small><strong id="initial_amount_preview">P<?= number_format($monthlyFee * 2, 2) ?></strong></div></div>
+                        </div>
+
+                        <div class="alert alert-info py-2 px-3 mb-3">
+                            <small><i class="bi bi-info-circle me-1"></i>Your initial payment must cover at least <strong>2 months</strong> so your membership is immediately eligible to avail or claim services after it's verified.</small>
                         </div>
 
                         <form method="post" action="<?= base_url('initial-payment') ?>">
                             <?= csrf_field() ?>
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label" for="months_covered">Months Covered</label>
-                            <input id="months_covered" name="months_covered" type="number" min="1" class="form-control" value="<?= esc(old('months_covered', '1')) ?>" required <?= in_array($initialStatus, ['pending', 'paid'], true) ? 'readonly' : '' ?>>
+                            <label class="form-label" for="months_covered">Months Covered (minimum 2)</label>
+                            <input id="months_covered" name="months_covered" type="number" min="2" data-monthly-fee="<?= esc((string) $monthlyFee) ?>" class="form-control" value="<?= esc(old('months_covered', '2')) ?>" required <?= in_array($initialStatus, ['pending', 'paid'], true) ? 'readonly' : '' ?>>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label" for="payment_method">Payment Method</label>
@@ -146,6 +151,24 @@ $monthlyFee = (float) ($monthly_fee ?? ($program['monthly_fee'] ?? 240));
 
         method.addEventListener('change', toggleReferenceField);
         toggleReferenceField();
+    })();
+
+    (function () {
+        const monthsInput = document.getElementById('months_covered');
+        const preview = document.getElementById('initial_amount_preview');
+        if (!monthsInput || !preview) {
+            return;
+        }
+        const monthlyFee = parseFloat(monthsInput.dataset.monthlyFee || '0');
+
+        function updatePreview() {
+            const months = Math.max(2, parseInt(monthsInput.value, 10) || 2);
+            const total = monthlyFee * months;
+            preview.textContent = 'P' + total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+
+        monthsInput.addEventListener('input', updatePreview);
+        updatePreview();
     })();
 </script>
 <?= $this->endSection() ?>
