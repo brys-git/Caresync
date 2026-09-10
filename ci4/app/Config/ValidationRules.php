@@ -48,6 +48,13 @@ class ValidationRules
             'contact_number' => 'required|regex_match[/^[0-9+\-()\s]+$/]|min_length[10]|max_length[20]',
             'address_barangay' => 'required|max_length[100]',
             'address_city' => 'required|max_length[100]',
+            // PSGC Cloud address integration: the barangay/city name fields
+            // above are only ever set by JS after a dropdown selection, but
+            // these codes are the ones actually checked against PSGC Cloud
+            // server-side (ClientRegistrationController::submitPlanRegistration())
+            // before saving - the codes, not the names, are the source of truth.
+            'city_municipality_code' => 'required|max_length[20]',
+            'barangay_code' => 'required|max_length[20]',
             'civil_status' => 'required|in_list[Single,Married,Divorced,Widowed]',
             'citizenship' => 'required|max_length[50]',
             'branch_id' => 'required|numeric',
