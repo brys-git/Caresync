@@ -42,8 +42,18 @@
                     </div>
                     <div class="col-md-3">
                         <label class="form-label" for="role_id">Role</label>
+                        <?php
+                            // A creator may never assign a role equal to or
+                            // above their own - Users::store() enforces this
+                            // server-side too; this just keeps the choices
+                            // shown here from implying otherwise.
+                            $assignableRoles = $roles;
+                            if ($current_role_id === 2) {
+                                $assignableRoles = array_values(array_filter($roles, static fn ($r) => in_array((int) $r['role_id'], [3, 4, 5], true)));
+                            }
+                        ?>
                         <select class="form-select" id="role_id" name="role_id" <?= $current_role_id === 3 ? 'disabled' : '' ?> required>
-                            <?php foreach ($roles as $role): ?>
+                            <?php foreach ($assignableRoles as $role): ?>
                                 <option value="<?= esc((string) $role['role_id']) ?>" <?= old('role_id') == $role['role_id'] ? 'selected' : '' ?>>
                                     <?= esc($role['role_name']) ?>
                                 </option>
@@ -52,18 +62,25 @@
                         <?php if ($current_role_id === 3): ?>
                             <input type="hidden" name="role_id" value="4">
                             <small class="text-muted">Staff can only create Plan Holder accounts.</small>
+                        <?php elseif ($current_role_id === 2): ?>
+                            <small class="text-muted">Branch Admins can only create Staff, Plan Holder, or Collector accounts.</small>
                         <?php endif; ?>
                     </div>
                     <div class="col-md-3">
                         <label class="form-label" for="branch_id">Branch</label>
-                        <select class="form-select" id="branch_id" name="branch_id">
+                        <?php $ownBranchLocked = in_array($current_role_id, [2, 3], true); ?>
+                        <select class="form-select" id="branch_id" name="branch_id" <?= $ownBranchLocked ? 'disabled' : '' ?>>
                             <option value="">No Branch</option>
                             <?php foreach ($branches as $branch): ?>
-                                <option value="<?= esc((string) $branch['branch_id']) ?>" <?= old('branch_id') == $branch['branch_id'] ? 'selected' : '' ?>>
+                                <option value="<?= esc((string) $branch['branch_id']) ?>" <?= ($ownBranchLocked ? (int) session('branch_id') === (int) $branch['branch_id'] : old('branch_id') == $branch['branch_id']) ? 'selected' : '' ?>>
                                     <?= esc($branch['branch_name']) ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
+                        <?php if ($ownBranchLocked): ?>
+                            <input type="hidden" name="branch_id" value="<?= esc((string) session('branch_id')) ?>">
+                            <small class="text-muted">New accounts are always assigned to your own branch.</small>
+                        <?php endif; ?>
                     </div>
 
                     <?php if ($current_role_id === 1): ?>

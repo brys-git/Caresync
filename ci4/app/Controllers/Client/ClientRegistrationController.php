@@ -10,6 +10,8 @@ use App\Models\BranchModel;
 use App\Models\PlanHolderModel;
 use App\Models\PlanModel;
 use App\Services\MembershipService;
+use App\Services\PsgcService;
+use App\Services\GovernmentIdVerificationService;
 
 /**
  * ClientRegistrationController
@@ -44,10 +46,54 @@ class ClientRegistrationController extends BaseController
 
         $program = MembershipService::getProgramInfo();
 
+        $db = db_connect();
+
+        // The Regular Wood Casket (Damayan entitlement) and its inclusions -
+        // same data the Services & Packages page uses, reused here so a
+        // prospective plan holder sees accurate figures before registering
+        // instead of the old generic/static benefits list.
+        $entitlementPackage = $db->table('packages')
+            ->select('package_id, package_name, base_price')
+            ->where('is_damayan_entitlement', 1)
+            ->orderBy('package_id', 'ASC')
+            ->get()
+            ->getRowArray();
+
+        $inclusions = [];
+        if ($entitlementPackage) {
+            $inclusions = $db->table('package_items')
+                ->select('item_id, item_name, description')
+                ->where('package_id', (int) $entitlementPackage['package_id'])
+                ->orderBy('item_id', 'ASC')
+                ->get()
+                ->getResultArray();
+        }
+
+        $otherPackages = $db->table('packages')
+            ->select('package_id, package_name, base_price')
+            ->where('is_damayan_entitlement', 0)
+            ->where('is_available', 1)
+            ->orderBy('base_price', 'ASC')
+            ->get()
+            ->getResultArray();
+
+        $services = $db->table('service_list')
+            ->select('service_list_id, service_name, description')
+            ->where('is_available', 1)
+            ->orderBy('service_name', 'ASC')
+            ->get()
+            ->getResultArray();
+
         return view('client/plan_info', [
             'role_layout' => 'layouts/plan_holder',
             'access' => $access,
             'program' => $program,
+            'entitlement_package' => $entitlementPackage,
+            'inclusions' => $inclusions,
+            'other_packages' => $otherPackages,
+            'services' => $services,
+            'monthly_fee' => MembershipService::MONTHLY_FEE,
+            'total_contribution' => MembershipService::TOTAL_CONTRIBUTION,
         ]);
     }
 
@@ -85,6 +131,8 @@ class ClientRegistrationController extends BaseController
         $currentUser = $access['user'];
         $planHolder = $access['plan_holder'] ?? [];
 
+        $idVerificationService = new GovernmentIdVerificationService();
+
         return view('client/plan_registration', [
             'role_layout' => 'layouts/plan_holder',
             'access' => $access,
@@ -95,6 +143,8 @@ class ClientRegistrationController extends BaseController
             'user' => $currentUser,
             'user_email' => $currentUser['email'] ?? '',
             'user_phone' => $currentUser['contact_number'] ?? '',
+            'id_types' => $idVerificationService->idTypes(),
+            'latest_verification' => $idVerificationService->latestForUser((int) $currentUser['user_id']),
         ]);
     }
 
@@ -149,6 +199,63 @@ class ClientRegistrationController extends BaseController
                 ->with('errors', $this->validator->getErrors());
         }
 
+        // The wizard's Government ID step only gates "Next" client-side -
+        // never trust that alone. Require a real verification attempt to
+        // exist for this user before the registration can be finalized.
+        if ((new GovernmentIdVerificationService())->latestForUser((int) $user['user_id']) === null) {
+            return redirect()->back()->withInput()
+                ->with('error', 'Please complete the Government ID Verification step before submitting.');
+        }
+
+        // PSGC Cloud address validation: the browser only ever sends codes
+        // that came from our own /api/address/* endpoints, but a submitted
+        // code pair is never trusted at face value - re-verify against
+        // PSGC Cloud (via the same cached PsgcService) that the city code
+        // is real and the barangay code actually belongs to it. The
+        // human-readable names saved below come from PSGC's own data for
+        // the matched codes, not from whatever text the browser sent.
+        $cityCode = trim((string) $this->request->getPost('city_municipality_code'));
+        $barangayCode = trim((string) $this->request->getPost('barangay_code'));
+
+        $psgc = new PsgcService();
+        $cities = $psgc->getCities();
+        if ($cities === null) {
+            return redirect()->back()->withInput()
+                ->with('error', 'Unable to verify the selected address right now. Please try again.');
+        }
+
+        $cityMatch = null;
+        foreach ($cities as $city) {
+            if ($city['code'] === $cityCode) {
+                $cityMatch = $city;
+                break;
+            }
+        }
+
+        if ($cityMatch === null) {
+            return redirect()->back()->withInput()
+                ->with('errors', ['city_municipality_code' => 'Please select a valid Town/City from the list.']);
+        }
+
+        $barangays = $psgc->getBarangaysForCity($cityCode);
+        if ($barangays === null) {
+            return redirect()->back()->withInput()
+                ->with('error', 'Unable to verify the selected address right now. Please try again.');
+        }
+
+        $barangayMatch = null;
+        foreach ($barangays as $barangay) {
+            if ($barangay['code'] === $barangayCode) {
+                $barangayMatch = $barangay;
+                break;
+            }
+        }
+
+        if ($barangayMatch === null) {
+            return redirect()->back()->withInput()
+                ->with('errors', ['barangay_code' => 'Please select a valid Barangay for the chosen Town/City.']);
+        }
+
         try {
             $db = db_connect();
             $db->transStart();
@@ -160,8 +267,10 @@ class ClientRegistrationController extends BaseController
                 'application_date' => $this->nullablePost('application_date'),
                 'address_no' => trim((string) $this->request->getPost('address_no')),
                 'address_street' => trim((string) $this->request->getPost('address_street')),
-                'address_barangay' => trim((string) $this->request->getPost('address_barangay')),
-                'address_city' => trim((string) $this->request->getPost('address_city')),
+                'address_barangay' => $barangayMatch['name'],
+                'barangay_code' => $barangayMatch['code'],
+                'address_city' => $cityMatch['name'],
+                'city_municipality_code' => $cityMatch['code'],
                 'date_of_birth' => $this->nullablePost('date_of_birth'),
                 'place_of_birth' => trim((string) $this->request->getPost('place_of_birth')),
                 'age' => $this->nullableIntPost('age'),

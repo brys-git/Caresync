@@ -1,0 +1,75 @@
+<?php
+
+namespace App\Controllers\Api;
+
+use App\Controllers\BaseController;
+use App\Services\GovernmentIdVerificationService;
+use CodeIgniter\HTTP\ResponseInterface;
+
+/**
+ * Thin, role-agnostic API surface over GovernmentIdVerificationService -
+ * mirrors Api\AddressController's pattern (a plain service class doing
+ * all the real work, a small controller just shaping the HTTP request/
+ * response around it). Every registration flow's Government ID step
+ * calls this same endpoint; only session('user_id') is ever trusted for
+ * whose identity is being verified - never a value submitted from the
+ * browser - so a user can only ever verify their own submission.
+ */
+class IdVerificationController extends BaseController
+{
+    private const FRIENDLY_ERROR = 'Unable to verify your ID right now. Please try again.';
+
+    public function verify(): ResponseInterface
+    {
+        $userId = (int) session('user_id');
+        if ($userId <= 0) {
+            return $this->response->setStatusCode(401)->setJSON(['error' => 'Please sign in first.']);
+        }
+
+        $idType = trim((string) $this->request->getPost('id_type'));
+        $firstName = trim((string) $this->request->getPost('first_name'));
+        $middleName = trim((string) $this->request->getPost('middle_name'));
+        $lastName = trim((string) $this->request->getPost('last_name'));
+        $dateOfBirth = trim((string) $this->request->getPost('date_of_birth'));
+
+        $file = $this->request->getFile('id_image');
+        if (! $file) {
+            return $this->response->setStatusCode(422)->setJSON(['error' => 'Please choose or capture an ID image.']);
+        }
+
+        try {
+            $service = new GovernmentIdVerificationService();
+            $result = $service->verify($userId, $idType, $file, [
+                'first_name'    => $firstName,
+                'middle_name'   => $middleName,
+                'last_name'     => $lastName,
+                'date_of_birth' => $dateOfBirth,
+            ]);
+
+            return $this->response->setJSON([
+                'status'          => $result['status'],
+                'message'         => $result['message'],
+                'verification_id' => $result['verification_id'],
+            ]);
+        } catch (\Throwable $e) {
+            log_message('error', 'IdVerificationController::verify - ' . $e->getMessage());
+
+            return $this->response->setStatusCode(502)->setJSON(['error' => self::FRIENDLY_ERROR]);
+        }
+    }
+
+    /**
+     * The available ID types for the dropdown - configurable in
+     * Config\GovernmentIdVerification, not hard-coded per form.
+     */
+    public function idTypes(): ResponseInterface
+    {
+        if (! session()->has('user_id')) {
+            return $this->response->setStatusCode(401)->setJSON(['error' => 'Please sign in first.']);
+        }
+
+        $service = new GovernmentIdVerificationService();
+
+        return $this->response->setJSON(['data' => $service->idTypes()]);
+    }
+}

@@ -54,12 +54,28 @@ class Users extends BaseController
 
         $requestedRoleId = (int) $this->request->getPost('role_id');
 
+        // Security fix (2026-09-10 scan): role_id was previously trusted
+        // as-is for any creator except Staff, so a Branch Admin could
+        // submit role_id=1 and mint themselves (or anyone) a System Admin
+        // account - the view's "disabled" select for Staff was never a
+        // real server-side control for Admin/Branch Admin. A creator may
+        // never assign a role equal to or above their own.
         if ($creatorRole === 3) {
             $requestedRoleId = 4;
+        } elseif ($creatorRole === 2 && ! in_array($requestedRoleId, [3, 4, 5], true)) {
+            return redirect()->back()->withInput()->with('error', 'Branch Admins may only create Staff, Plan Holder, or Collector accounts.');
+        } elseif ($creatorRole !== 1 && $creatorRole !== 2) {
+            return redirect()->to('/unauthorized');
         }
 
         $branchIdInput = $this->request->getPost('branch_id');
         $branchId = ($branchIdInput === null || $branchIdInput === '') ? null : (int) $branchIdInput;
+
+        // Branch Admin/Staff can only ever populate their own branch, never
+        // an arbitrary one submitted from the form - same fix as above.
+        if ($creatorRole === 2 || $creatorRole === 3) {
+            $branchId = (int) session('branch_id') ?: null;
+        }
 
         $isPlanHolder = (int) $this->request->getPost('is_plan_holder');
         if ($isPlanHolder !== 1) {
@@ -69,7 +85,13 @@ class Users extends BaseController
         $mustChangePassword = (int) $this->request->getPost('must_change_password') === 1 ? 1 : 0;
         $plainPassword = (string) $this->request->getPost('password');
 
-        if ($creatorRole === 3) {
+        // Bug fix (2026-09-10 scan): the view only ever renders password
+        // fields for creatorRole === 1 - for a Branch-Admin-created (role
+        // 2) account, $plainPassword was silently '' (no field submitted),
+        // so every such account got password_hash('', ...) instead of a
+        // real temporary password. Branch Admin now gets the same
+        // generate-and-email flow Staff already had.
+        if ($creatorRole === 2 || $creatorRole === 3) {
             $plainPassword = $this->generateTemporaryPassword();
             $mustChangePassword = 1;
         }
@@ -105,7 +127,7 @@ class Users extends BaseController
         $notificationService = new NotificationService();
         $activityLogService = new ActivityLogService();
 
-        if ($creatorRole === 3) {
+        if ($creatorRole === 2 || $creatorRole === 3) {
             $emailSent = $this->sendTemporaryPasswordEmail($payload['email'], $payload['username'], $plainPassword);
             if (! $emailSent) {
                 return redirect()->back()->with('error', 'User created but temporary password email failed to send.');
