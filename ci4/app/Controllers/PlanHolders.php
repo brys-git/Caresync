@@ -7,6 +7,7 @@ use App\Models\UserModel;
 use App\Services\ActivityLogService;
 use App\Services\NotificationService;
 use App\Services\ClientRegistrationService;
+use App\Services\GovernmentIdVerificationService;
 use App\Services\SecurityEnhancementService;
 use CodeIgniter\HTTP\ResponseInterface;
 
@@ -64,6 +65,7 @@ class PlanHolders extends BaseController
             'has_pending_table' => $hasPendingTable,
             'approval_registrations' => $approvalRegistrations,
             'role_layout' => $this->resolveLayoutView(),
+            'id_types' => (new GovernmentIdVerificationService())->idTypes(),
         ]);
     }
 
@@ -84,6 +86,18 @@ class PlanHolders extends BaseController
         if (!in_array($mode, ['existing', 'new'], true)) {
             error_log("STORE() ERROR: Invalid mode '{$mode}', expected 'existing' or 'new'");
             return redirect()->back()->withInput()->with('error', 'Invalid registration mode selected.');
+        }
+
+        // Government ID Verification, applied here the same way it's
+        // applied to every other CareSync registration flow - the form's
+        // step-gating is client-side UX only, never trusted alone. The
+        // subject of the ID (an existing OR brand-new plan holder) isn't
+        // necessarily the logged-in user (that's the staff member doing
+        // the registering), so this uses the same pending-token pattern
+        // as Users::create() rather than session('user_id').
+        $pendingVerificationToken = trim((string) $this->request->getPost('government_id_pending_token'));
+        if ($pendingVerificationToken === '') {
+            return redirect()->back()->withInput()->with('error', 'Please complete the Government ID Verification step before submitting.');
         }
 
         $branchId = (int) $this->request->getPost('branch_id');
@@ -111,25 +125,25 @@ class PlanHolders extends BaseController
 
         // Collect common plan holder data
         $planHolderData = [
-            'unique_identifier' => trim((string) $this->request->getPost('unique_identifier', '')),
-            'address_no' => trim((string) $this->request->getPost('address_no', '')),
-            'address_street' => trim((string) $this->request->getPost('address_street', '')),
-            'address_barangay' => trim((string) $this->request->getPost('address_barangay', '')),
-            'address_city' => trim((string) $this->request->getPost('address_city', '')),
+            'unique_identifier' => trim((string) $this->request->getPost('unique_identifier')),
+            'address_no' => trim((string) $this->request->getPost('address_no')),
+            'address_street' => trim((string) $this->request->getPost('address_street')),
+            'address_barangay' => trim((string) $this->request->getPost('address_barangay')),
+            'address_city' => trim((string) $this->request->getPost('address_city')),
             'date_of_birth' => $this->nullablePost('date_of_birth'),
-            'place_of_birth' => trim((string) $this->request->getPost('place_of_birth', '')),
-            'gender' => trim((string) $this->request->getPost('gender', '')),
-            'civil_status' => trim((string) $this->request->getPost('civil_status', '')),
-            'citizenship' => trim((string) $this->request->getPost('citizenship', '')),
+            'place_of_birth' => trim((string) $this->request->getPost('place_of_birth')),
+            'gender' => trim((string) $this->request->getPost('gender')),
+            'civil_status' => trim((string) $this->request->getPost('civil_status')),
+            'citizenship' => trim((string) $this->request->getPost('citizenship')),
             'height' => $this->nullableDecimalPost('height'),
             'weight' => $this->nullableDecimalPost('weight'),
-            'spouse_name' => trim((string) $this->request->getPost('spouse_name', '')),
+            'spouse_name' => trim((string) $this->request->getPost('spouse_name')),
             'spouse_birthdate' => $this->nullablePost('spouse_birthdate'),
-            'spouse_occupation' => trim((string) $this->request->getPost('spouse_occupation', '')),
-            'senior_citizen_id' => trim((string) $this->request->getPost('senior_citizen_id', '')),
-            'organization_affiliation' => trim((string) $this->request->getPost('organization_affiliation', '')),
+            'spouse_occupation' => trim((string) $this->request->getPost('spouse_occupation')),
+            'senior_citizen_id' => trim((string) $this->request->getPost('senior_citizen_id')),
+            'organization_affiliation' => trim((string) $this->request->getPost('organization_affiliation')),
         ];
-        $ageRaw = trim((string) $this->request->getPost('age', ''));
+        $ageRaw = trim((string) $this->request->getPost('age'));
         if ($ageRaw !== '') {
             $planHolderData['age'] = max(0, (int) $ageRaw);
         }
@@ -154,7 +168,7 @@ class PlanHolders extends BaseController
             error_log("STORE() DEBUG: user_id from POST = {$userId}");
 
             if ($userId <= 0) {
-                $emailLookup = strtolower(trim((string) $this->request->getPost('existing_user_email', '')));
+                $emailLookup = strtolower(trim((string) $this->request->getPost('existing_user_email')));
                 error_log("STORE() DEBUG: user_id missing, attempting email lookup for {$emailLookup}");
 
                 if ($emailLookup !== '') {
@@ -194,7 +208,8 @@ class PlanHolders extends BaseController
             // Clear rate limiting on successful registration
             $securityService->clearRegistrationAttempts("user_{$createdBy}");
             $securityService->logSecurityEvent('REGISTRATION_SUCCESS', $createdBy, "Registered existing user {$userId}");
-            
+            (new GovernmentIdVerificationService())->commitPending($pendingVerificationToken, $userId);
+
             $successRedirect = $roleId === 2 ? '/payment-tracking?tab=initial' : '/admin/payment-monitoring';
             error_log("STORE() SUCCESS: Redirecting to {$successRedirect}");
             return redirect()->to($successRedirect)->with('success', 'Plan holder registration completed successfully. You can now record the initial payment.');
@@ -203,17 +218,17 @@ class PlanHolders extends BaseController
         if ($mode === 'new') {
             error_log("STORE() DEBUG: Processing new user registration");
             $userData = [
-                'username' => trim((string) $this->request->getPost('username', '')),
-                'email' => trim((string) $this->request->getPost('email', '')),
-                'password' => (string) $this->request->getPost('password', ''),
-                'first_name' => trim((string) $this->request->getPost('first_name', '')),
-                'last_name' => trim((string) $this->request->getPost('last_name', '')),
-                'contact_number' => trim((string) $this->request->getPost('contact_number', '')),
+                'username' => trim((string) $this->request->getPost('username')),
+                'email' => trim((string) $this->request->getPost('email')),
+                'password' => (string) $this->request->getPost('password'),
+                'first_name' => trim((string) $this->request->getPost('first_name')),
+                'last_name' => trim((string) $this->request->getPost('last_name')),
+                'contact_number' => trim((string) $this->request->getPost('contact_number')),
             ];
             error_log("STORE() DEBUG: userData = " . json_encode($userData));
 
             // Validate password confirmation
-            $password_confirm = (string) $this->request->getPost('password_confirm', '');
+            $password_confirm = (string) $this->request->getPost('password_confirm');
             if ($userData['password'] !== $password_confirm) {
                 error_log("STORE() ERROR: Password confirmation does not match");
                 $securityService->recordRegistrationAttempt("user_{$createdBy}");
@@ -233,6 +248,7 @@ class PlanHolders extends BaseController
             // Clear rate limiting on successful registration
             $securityService->clearRegistrationAttempts("user_{$createdBy}");
             $securityService->logSecurityEvent('REGISTRATION_SUCCESS', $result['user_id'], "New account created by {$createdBy}");
+            (new GovernmentIdVerificationService())->commitPending($pendingVerificationToken, (int) $result['user_id']);
 
             $successRedirect = $roleId === 2 ? '/payment-tracking?tab=initial' : '/admin/payment-monitoring';
             error_log("STORE() SUCCESS: Redirecting to {$successRedirect}");

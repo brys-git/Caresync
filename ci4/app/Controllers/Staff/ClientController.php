@@ -4,6 +4,7 @@ namespace App\Controllers\Staff;
 
 use App\Controllers\BaseController;
 use App\Services\ClientService;
+use App\Services\GovernmentIdVerificationService;
 use App\Services\MembershipService;
 use CodeIgniter\Exceptions\PageNotFoundException;
 
@@ -146,6 +147,7 @@ class ClientController extends BaseController
         return view('staff/clients/register', [
             'program' => MembershipService::getProgramInfo(),
             'role_layout' => 'layouts/staff',
+            'id_types' => (new GovernmentIdVerificationService())->idTypes(),
         ]);
     }
 
@@ -155,6 +157,13 @@ class ClientController extends BaseController
 
         if ($branchId <= 0) {
             return redirect()->back()->with('error', 'Branch information is missing.');
+        }
+
+        // Government ID Verification - same reusable component and
+        // pending-token pattern as Users::create()/PlanHolders::store().
+        $pendingVerificationToken = trim((string) $this->request->getPost('government_id_pending_token'));
+        if ($pendingVerificationToken === '') {
+            return redirect()->back()->withInput()->with('error', 'Please complete the Government ID Verification step before submitting.');
         }
 
         $rules = [
@@ -200,6 +209,11 @@ class ClientController extends BaseController
                 'senior_citizen_id' => trim((string) $this->request->getPost('senior_citizen_id')),
                 'organization_affiliation' => trim((string) $this->request->getPost('organization_affiliation')),
             ], $branchId);
+
+            $registeredUser = $this->clientService->findUserByEmail(trim((string) $this->request->getPost('email')));
+            if ($registeredUser) {
+                (new GovernmentIdVerificationService())->commitPending($pendingVerificationToken, (int) $registeredUser['user_id']);
+            }
 
             return redirect()->to('/staff/client/view/' . $planHolderId)->with('success', 'Plan holder registered successfully!');
         } catch (\Throwable $e) {

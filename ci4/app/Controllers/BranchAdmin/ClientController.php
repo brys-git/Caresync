@@ -5,6 +5,7 @@ namespace App\Controllers\BranchAdmin;
 use App\Controllers\BaseController;
 use App\Services\ActivityLogService;
 use App\Services\ClientService;
+use App\Services\GovernmentIdVerificationService;
 use App\Services\MembershipService;
 use App\Services\NotificationService;
 use CodeIgniter\Exceptions\PageNotFoundException;
@@ -187,6 +188,7 @@ class ClientController extends BaseController
             'existing_users' => $existingUsers,
             'program' => MembershipService::getProgramInfo(),
             'role_layout' => 'layouts/branch_admin',
+            'id_types' => (new GovernmentIdVerificationService())->idTypes(),
         ]);
     }
 
@@ -201,6 +203,13 @@ class ClientController extends BaseController
         $mode = (string) $this->request->getPost('client_account_mode');
         if (! in_array($mode, ['existing', 'new'], true)) {
             $mode = 'existing';
+        }
+
+        // Government ID Verification - same reusable component and
+        // pending-token pattern as Users::create()/PlanHolders::store().
+        $pendingVerificationToken = trim((string) $this->request->getPost('government_id_pending_token'));
+        if ($pendingVerificationToken === '') {
+            return redirect()->back()->withInput()->with('error', 'Please complete the Government ID Verification step before submitting.');
         }
 
         $rules = [
@@ -269,6 +278,8 @@ class ClientController extends BaseController
             }
 
             if ($targetUserId > 0) {
+                (new GovernmentIdVerificationService())->commitPending($pendingVerificationToken, $targetUserId);
+
                 (new NotificationService())->notify(
                     $targetUserId,
                     'Your account was linked as a plan holder and your Damayan Burial Program plan was registered by branch admin.',

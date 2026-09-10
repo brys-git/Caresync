@@ -211,7 +211,12 @@
                     </div>
                 </div>
 
-                <button type="submit" class="btn btn-primary mt-4">Save Plan Holder</button>
+                <div class="mt-4">
+                    <?php $this->setData(['id_types' => $id_types ?? []]); ?>
+                    <?= $this->include('partials/id_verification_section') ?>
+                </div>
+
+                <button type="submit" class="btn btn-primary mt-4" id="planHolderSubmitBtn">Save Plan Holder</button>
             </form>
         </div>
     </div>
@@ -295,6 +300,7 @@
     <?php endif; ?>
 </div>
 
+<script src="<?= base_url('assets/js/id-verification-widget.js') ?>"></script>
 <script>
     (function () {
         const modeExisting = document.getElementById('registration_mode_existing');
@@ -389,6 +395,37 @@
 
         syncMode();
         syncExistingUserFromEmail();
+
+        // ---- Government ID Verification (shared widget) ----
+        const idVerificationWidget = initIdVerificationWidget({
+            endpoint: '<?= base_url('api/id-verification/verify-pending') ?>',
+            csrfName: document.querySelector('input[name="<?= csrf_token() ?>"]').name,
+            csrfValue: document.querySelector('input[name="<?= csrf_token() ?>"]').value,
+            getIdentity: function () {
+                if (getMode() === 'existing') {
+                    return {
+                        first_name: existingFirstName.value.trim(),
+                        last_name: existingLastName.value.trim(),
+                    };
+                }
+                return {
+                    first_name: document.getElementById('first_name') ? document.getElementById('first_name').value.trim() : '',
+                    last_name: document.getElementById('last_name') ? document.getElementById('last_name').value.trim() : '',
+                };
+            },
+            resultFieldId: 'government_id_pending_token',
+            resultFieldKey: 'pending_token',
+            initialStatus: null,
+        });
+
+        document.querySelector('form').addEventListener('submit', function (event) {
+            if (!idVerificationWidget || !idVerificationWidget.wasAttempted()) {
+                event.preventDefault();
+                document.getElementById('verifyHint').textContent = 'Please verify the applicant\'s ID before submitting.';
+                document.getElementById('verifyHint').classList.add('text-danger');
+                document.getElementById('verifyHint').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        });
     })();
 </script>
 <?= $this->endSection() ?>

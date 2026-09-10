@@ -319,24 +319,41 @@ class ClientRegistrationService
             
             $programInfo = MembershipService::getProgramInfo();
             error_log("createMembershipPlan: programInfo = " . json_encode($programInfo));
-            
+
             MembershipService::ensureDefaultPackageVersion();
             MembershipService::ensureMembershipProgram();
 
+            // Bug fix (found via Phase 3 live testing): package_id=1/
+            // version_id=1 were hardcoded and no longer exist once the
+            // catalog was rebuilt (package_versions.version_id has an FK
+            // - inserting a non-existent version_id always failed).
+            // Resolve the real Damayan entitlement package the same
+            // robust way every other call site in the app does (prefer
+            // the explicit flag, then MembershipService::
+            // DEFAULT_PACKAGE_ID, then the lowest package_id) instead of
+            // assuming ids that only held true at first-seed time.
+            $packageAndVersion = $this->resolvePackageAndVersion();
+
             $planData = [
                 'plan_holder_id' => $planHolderId,
-                'package_id' => (int) ($programInfo['package_id'] ?? 1),
+                'package_id' => $packageAndVersion['package_id'],
                 'program_id' => (int) ($programInfo['id'] ?? 1),
                 'monthly_fee' => (float) ($programInfo['monthly_fee'] ?? 240.0),
                 'months_paid' => 0,
-                'start_date' => null,  // Will be set on first payment
+                // Bug fix (found via Phase 3 live testing): plans.start_date
+                // is NOT NULL - passing null here always failed the insert
+                // (silently, since this runs inside a transaction; CI4
+                // suppresses the query exception and just returns false).
+                // Registration date, not activation date - matches how
+                // every other plan-creation path in the app sets it.
+                'start_date' => date('Y-m-d'),
                 'status' => 'inactive',  // Awaiting initial payment
                 'membership_state' => 'inactive',
                 'overdue_months' => 0,
                 'payment_coverage_until' => null,
                 'next_due_date' => null,
                 'legacy_remaining_balance' => (float) ($programInfo['monthly_fee'] ?? 240.0),
-                'version_id' => 1,
+                'version_id' => $packageAndVersion['version_id'],
                 'branch_id' => $branchId,
             ];
 
@@ -356,6 +373,80 @@ class ClientRegistrationService
             error_log("createMembershipPlan: EXCEPTION - " . $e->getMessage() . " | " . $e->getTraceAsString());
             return ['success' => false, 'plan_id' => null, 'error' => $e->getMessage()];
         }
+    }
+
+    /**
+     * Resolve the real Damayan entitlement package + an active version
+     * for it - same robust pattern used by ClientPortalTrait::
+     * resolvePackageAndVersion() and its siblings elsewhere in the app:
+     * prefer the explicit is_damayan_entitlement flag, fall back to
+     * MembershipService::DEFAULT_PACKAGE_ID, then the lowest package_id.
+     * Creates an active package_versions row if none exists yet.
+     *
+     * @return array{package_id: int, version_id: int}
+     */
+    private function resolvePackageAndVersion(): array
+    {
+        $db = db_connect();
+
+        $package = $db->table('packages')
+            ->select('package_id')
+            ->where('is_damayan_entitlement', 1)
+            ->orderBy('package_id', 'ASC')
+            ->get()
+            ->getRowArray();
+
+        if (! $package) {
+            $package = $db->table('packages')
+                ->select('package_id')
+                ->where('package_id', MembershipService::DEFAULT_PACKAGE_ID)
+                ->get()
+                ->getRowArray();
+        }
+
+        if (! $package) {
+            $package = $db->table('packages')
+                ->select('package_id')
+                ->orderBy('package_id', 'ASC')
+                ->get()
+                ->getRowArray();
+        }
+
+        if (! $package) {
+            throw new \RuntimeException('No package is configured yet. Please ask admin to create a package first.');
+        }
+
+        $packageId = (int) $package['package_id'];
+
+        $version = $db->table('package_versions')
+            ->select('version_id')
+            ->where('package_id', $packageId)
+            ->where('status', 'active')
+            ->orderBy('version_id', 'DESC')
+            ->get()
+            ->getRowArray();
+
+        if (! $version) {
+            $version = $db->table('package_versions')
+                ->select('version_id')
+                ->where('package_id', $packageId)
+                ->orderBy('version_id', 'DESC')
+                ->get()
+                ->getRowArray();
+        }
+
+        if (! $version) {
+            $db->table('package_versions')->insert([
+                'package_id' => $packageId,
+                'price' => MembershipService::MONTHLY_FEE,
+                'effective_date' => date('Y-m-d'),
+                'status' => 'active',
+            ]);
+
+            return ['package_id' => $packageId, 'version_id' => (int) $db->insertID()];
+        }
+
+        return ['package_id' => $packageId, 'version_id' => (int) $version['version_id']];
     }
 
     /**

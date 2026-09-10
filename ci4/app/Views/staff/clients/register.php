@@ -309,6 +309,12 @@
                     </div>
                 </div>
 
+                <!-- Government ID Verification -->
+                <div class="mb-4">
+                    <?php $this->setData(['id_types' => $id_types ?? []]); ?>
+                    <?= $this->include('partials/id_verification_section') ?>
+                </div>
+
                 <!-- Form Actions -->
                 <div class="d-flex gap-2 justify-content-end">
                     <a href="<?= base_url('staff/client') ?>" class="btn btn-outline-secondary">Cancel</a>
@@ -319,4 +325,33 @@
     </div>
 </div>
 
+<script src="<?= base_url('assets/js/id-verification-widget.js') ?>"></script>
+<script>
+(function () {
+    const idVerificationWidget = initIdVerificationWidget({
+        endpoint: '<?= base_url('api/id-verification/verify-pending') ?>',
+        csrfName: document.querySelector('input[name="<?= csrf_token() ?>"]').name,
+        csrfValue: document.querySelector('input[name="<?= csrf_token() ?>"]').value,
+        getIdentity: function () {
+            return {
+                first_name: document.getElementById('first_name').value.trim(),
+                middle_name: document.getElementById('middle_name').value.trim(),
+                last_name: document.getElementById('last_name').value.trim(),
+            };
+        },
+        resultFieldId: 'government_id_pending_token',
+        resultFieldKey: 'pending_token',
+        initialStatus: null,
+    });
+
+    document.querySelector('form').addEventListener('submit', function (event) {
+        if (!idVerificationWidget || !idVerificationWidget.wasAttempted()) {
+            event.preventDefault();
+            document.getElementById('verifyHint').textContent = 'Please verify the applicant\'s ID before submitting.';
+            document.getElementById('verifyHint').classList.add('text-danger');
+            document.getElementById('verifyHint').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    });
+})();
+</script>
 <?= $this->endSection() ?>

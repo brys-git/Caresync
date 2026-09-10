@@ -242,7 +242,27 @@ class ClientService
                 ]);
             } else {
                 // CASE 1: Create new user account
+                //
+                // Bug fix (found via Phase 3 live testing): this never set
+                // username/password_hash, both NOT NULL + UNIQUE on users.
+                // In this environment's non-strict SQL mode the *first*
+                // such registration silently succeeded with username=''/
+                // password_hash='' (a permanently unusable account - can
+                // never sign in), and every registration after that hard-
+                // failed on the duplicate-'' unique constraint. Generate
+                // real, unique login credentials instead - this form has
+                // no username/password fields by design, so the plan
+                // holder is expected to sign in later (e.g. via a
+                // password reset) rather than being told the temp
+                // password directly here.
                 $newUser = [
+                    'username' => $this->generateUniqueUsername(
+                        (string) ($data['email'] ?? ''),
+                        (string) ($data['first_name'] ?? ''),
+                        (string) ($data['last_name'] ?? '')
+                    ),
+                    'password_hash' => password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT),
+                    'must_change_password' => 1,
                     'first_name' => (string) ($data['first_name'] ?? ''),
                     'middle_name' => (string) ($data['middle_name'] ?? ''),
                     'last_name' => (string) ($data['last_name'] ?? ''),
@@ -464,6 +484,33 @@ class ClientService
         $timestamp = substr((string) time(), -6);
 
         return $base . '-' . $timestamp;
+    }
+
+    /**
+     * Generate a unique, non-empty username for a plan holder account
+     * created without one (see registerPlanHolder()) - prefers the
+     * email's local part, falls back to name, always disambiguated
+     * against the real users.username unique constraint.
+     */
+    private function generateUniqueUsername(string $email, string $firstName, string $lastName): string
+    {
+        $base = strtolower(trim((string) strstr($email, '@', true)));
+        if ($base === '' || $base === false) {
+            $base = strtolower(preg_replace('/[^a-z0-9]/i', '', $firstName . $lastName) ?: 'client');
+        }
+        $base = preg_replace('/[^a-z0-9_]/', '', $base) ?: 'client';
+        $base = substr($base, 0, 40);
+
+        $userModel = new UserModel();
+        $candidate = $base;
+        $suffix = 0;
+
+        while ($userModel->where('username', $candidate)->first()) {
+            $suffix++;
+            $candidate = $base . $suffix;
+        }
+
+        return $candidate;
     }
 
     /**

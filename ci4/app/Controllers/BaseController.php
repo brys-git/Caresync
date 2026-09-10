@@ -60,7 +60,8 @@ abstract class BaseController extends Controller
      */
     protected function nullableDecimalPost(string $key): ?float
     {
-        $value = trim((string) $this->request->getPost($key, ''));
+        // Same fix as nullablePost() above - '' is not a valid $filter arg.
+        $value = trim((string) $this->request->getPost($key));
         if ($value === '') {
             return null;
         }
