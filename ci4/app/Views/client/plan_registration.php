@@ -557,6 +557,7 @@ $latestVerification = $latest_verification ?? null;
     }
 </style>
 
+<script src="<?= base_url('assets/js/id-verification-widget.js') ?>"></script>
 <script>
 (function () {
     // ==================================================================
@@ -634,7 +635,7 @@ $latestVerification = $latest_verification ?? null;
             // ID verification is encouraged, not force-blocked - a
             // provider outage or a low-confidence result shouldn't trap
             // the applicant. We do require that an attempt was made.
-            if (!window.__idVerificationAttempted) {
+            if (!idVerificationWidget || !idVerificationWidget.wasAttempted()) {
                 document.getElementById('verifyHint').textContent = 'Please verify your ID before continuing (or contact staff if you are unable to).';
                 document.getElementById('verifyHint').classList.add('text-danger');
                 return false;
@@ -734,8 +735,9 @@ $latestVerification = $latest_verification ?? null;
 
         const idTypeSelect = document.getElementById('id_type');
         const idTypeLabel = idTypeSelect.selectedOptions[0] ? idTypeSelect.selectedOptions[0].text : 'Not selected';
-        const statusText = window.__idVerificationStatus
-            ? window.__idVerificationStatus.charAt(0).toUpperCase() + window.__idVerificationStatus.slice(1).replace('_', ' ')
+        const currentIdStatus = idVerificationWidget ? idVerificationWidget.getStatus() : null;
+        const statusText = currentIdStatus
+            ? currentIdStatus.charAt(0).toUpperCase() + currentIdStatus.slice(1).replace('_', ' ')
             : 'Not yet verified';
         document.getElementById('reviewIdVerification').innerHTML = row('ID Type', esc(idTypeLabel)) + row('Status', esc(statusText));
 
@@ -761,181 +763,25 @@ $latestVerification = $latest_verification ?? null;
     });
 
     // ==================================================================
-    // Government ID Verification (Step 2)
+    // Government ID Verification (Step 2) - shared widget, see
+    // public/assets/js/id-verification-widget.js. The same widget backs
+    // users/create.php's Government ID step.
     // ==================================================================
-    const ID_VERIFY_ENDPOINT = '<?= base_url('api/id-verification/verify') ?>';
-
-    const idFileInput = document.getElementById('idFileInput');
-    const btnChooseUpload = document.getElementById('btnChooseUpload');
-    const btnChooseCamera = document.getElementById('btnChooseCamera');
-    const cameraPanel = document.getElementById('cameraPanel');
-    const cameraVideo = document.getElementById('cameraVideo');
-    const cameraError = document.getElementById('cameraError');
-    const btnCapture = document.getElementById('btnCapture');
-    const btnCancelCamera = document.getElementById('btnCancelCamera');
-    const captureCanvas = document.getElementById('captureCanvas');
-    const idPreviewWrap = document.getElementById('idPreviewWrap');
-    const idPreviewImg = document.getElementById('idPreviewImg');
-    const btnRetake = document.getElementById('btnRetake');
-    const btnVerifyId = document.getElementById('btnVerifyId');
-    const verifyHint = document.getElementById('verifyHint');
-    const verificationResult = document.getElementById('verificationResult');
-    const idTypeSelect = document.getElementById('id_type');
-    const verificationIdField = document.getElementById('government_id_verification_id');
-
-    let selectedBlob = null;
-    let cameraStream = null;
-    window.__idVerificationAttempted = <?= $latestVerification ? 'true' : 'false' ?>;
-    window.__idVerificationStatus = <?= $latestVerification ? json_encode((string) $latestVerification['verification_status']) : 'null' ?>;
-
-    if (window.__idVerificationAttempted) {
-        showResult(window.__idVerificationStatus, 'A previous verification attempt is on file. You can retake or re-verify if needed.');
-    }
-
-    function resetPreview() {
-        selectedBlob = null;
-        idPreviewWrap.classList.add('d-none');
-        idPreviewImg.src = '';
-        btnVerifyId.disabled = true;
-        verifyHint.textContent = 'Choose or capture an image first.';
-        verifyHint.classList.remove('text-danger');
-    }
-
-    function setPreview(blob) {
-        selectedBlob = blob;
-        idPreviewImg.src = URL.createObjectURL(blob);
-        idPreviewWrap.classList.remove('d-none');
-        cameraPanel.classList.add('d-none');
-        stopCamera();
-        btnVerifyId.disabled = false;
-        verifyHint.textContent = 'Ready to verify.';
-        verifyHint.classList.remove('text-danger');
-    }
-
-    btnChooseUpload.addEventListener('click', function () {
-        idFileInput.click();
-    });
-
-    idFileInput.addEventListener('change', function () {
-        if (idFileInput.files && idFileInput.files[0]) {
-            setPreview(idFileInput.files[0]);
-        }
-    });
-
-    btnChooseCamera.addEventListener('click', function () {
-        cameraError.classList.add('d-none');
-        cameraPanel.classList.remove('d-none');
-        idPreviewWrap.classList.add('d-none');
-
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            cameraError.textContent = 'Camera is not available on this browser/device. Please upload a file instead.';
-            cameraError.classList.remove('d-none');
-            return;
-        }
-
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-            .then(function (stream) {
-                cameraStream = stream;
-                cameraVideo.srcObject = stream;
-            })
-            .catch(function () {
-                cameraError.textContent = 'Camera access was denied or is unavailable. Please upload a file instead.';
-                cameraError.classList.remove('d-none');
-                cameraPanel.classList.add('d-none');
-            });
-    });
-
-    function stopCamera() {
-        if (cameraStream) {
-            cameraStream.getTracks().forEach(function (track) { track.stop(); });
-            cameraStream = null;
-        }
-    }
-
-    btnCancelCamera.addEventListener('click', function () {
-        stopCamera();
-        cameraPanel.classList.add('d-none');
-    });
-
-    btnCapture.addEventListener('click', function () {
-        if (!cameraVideo.videoWidth) {
-            return;
-        }
-        captureCanvas.width = cameraVideo.videoWidth;
-        captureCanvas.height = cameraVideo.videoHeight;
-        captureCanvas.getContext('2d').drawImage(cameraVideo, 0, 0);
-        captureCanvas.toBlob(function (blob) {
-            if (blob) {
-                setPreview(blob);
-            }
-        }, 'image/jpeg', 0.92);
-    });
-
-    btnRetake.addEventListener('click', function () {
-        resetPreview();
-        idFileInput.value = '';
-    });
-
-    function showResult(status, message) {
-        const map = {
-            verified: { cls: 'alert-success', icon: 'ti-circle-check', title: 'Government ID Verified' },
-            needs_review: { cls: 'alert-warning', icon: 'ti-alert-triangle', title: 'Verification Needs Review' },
-            failed: { cls: 'alert-danger', icon: 'ti-circle-x', title: 'Verification Failed' },
-        };
-        const info = map[status] || map.needs_review;
-        verificationResult.className = 'alert ' + info.cls;
-        verificationResult.innerHTML = '<i class="ti ' + info.icon + ' me-1"></i><strong>' + info.title + '</strong><div class="small mt-1">' + esc(message || '') + '</div>';
-        verificationResult.classList.remove('d-none');
-        window.__idVerificationStatus = status;
-        window.__idVerificationAttempted = true;
-        verifyHint.classList.remove('text-danger');
-        verifyHint.textContent = 'You can retake and verify again if needed.';
-    }
-
-    btnVerifyId.addEventListener('click', function () {
-        if (!selectedBlob) {
-            return;
-        }
-        if (!idTypeSelect.value) {
-            idTypeSelect.focus();
-            return;
-        }
-
-        btnVerifyId.disabled = true;
-        btnVerifyId.textContent = 'Verifying...';
-        verificationResult.classList.add('d-none');
-
-        const formData = new FormData();
-        formData.append('id_image', selectedBlob, 'id_image.jpg');
-        formData.append('id_type', idTypeSelect.value);
-        formData.append('first_name', fieldValue('first_name'));
-        formData.append('middle_name', fieldValue('middle_name'));
-        formData.append('last_name', fieldValue('last_name'));
-        formData.append('date_of_birth', fieldValue('date_of_birth'));
-
-        const csrfName = document.querySelector('input[name="<?= csrf_token() ?>"]').name;
-        const csrfValue = document.querySelector('input[name="<?= csrf_token() ?>"]').value;
-        formData.append(csrfName, csrfValue);
-
-        fetch(ID_VERIFY_ENDPOINT, { method: 'POST', body: formData })
-            .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
-            .then(function (result) {
-                btnVerifyId.disabled = false;
-                btnVerifyId.textContent = 'Verify ID';
-
-                if (!result.ok && !result.data.status) {
-                    showResult('needs_review', result.data.error || 'Unable to verify your ID right now. Please try again.');
-                    return;
-                }
-
-                verificationIdField.value = result.data.verification_id || '';
-                showResult(result.data.status, result.data.message);
-            })
-            .catch(function () {
-                btnVerifyId.disabled = false;
-                btnVerifyId.textContent = 'Verify ID';
-                showResult('needs_review', 'Unable to reach the verification service. Please check your connection and try again.');
-            });
+    const idVerificationWidget = initIdVerificationWidget({
+        endpoint: '<?= base_url('api/id-verification/verify') ?>',
+        csrfName: document.querySelector('input[name="<?= csrf_token() ?>"]').name,
+        csrfValue: document.querySelector('input[name="<?= csrf_token() ?>"]').value,
+        getIdentity: function () {
+            return {
+                first_name: fieldValue('first_name'),
+                middle_name: fieldValue('middle_name'),
+                last_name: fieldValue('last_name'),
+                date_of_birth: fieldValue('date_of_birth'),
+            };
+        },
+        resultFieldId: 'government_id_verification_id',
+        resultFieldKey: 'verification_id',
+        initialStatus: <?= $latestVerification ? json_encode((string) $latestVerification['verification_status']) : 'null' ?>,
     });
 
     // ==================================================================

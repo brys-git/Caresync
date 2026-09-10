@@ -58,6 +58,9 @@ class GovernmentIdVerificationService
      * being submitted; 'needs_review' just means a human should look at
      * it afterward).
      *
+     * For a user verifying their OWN identity (the account already
+     * exists - e.g. Client/Plan Holder self-service registration).
+     *
      * @param array{first_name:string, middle_name?:string, last_name:string, date_of_birth?:string} $claimedIdentity
      * @return array{status: string, message: string, verification_id: ?int}
      */
@@ -67,66 +70,215 @@ class GovernmentIdVerificationService
             return $this->result('failed', 'Unable to process verification. Please try again.');
         }
 
-        if (! array_key_exists($idType, $this->config->idTypes)) {
-            return $this->result('failed', 'Please select a valid ID type.');
-        }
-
-        $fileError = $this->validateFile($file);
+        $fileError = $this->validateRequest($idType, $file);
         if ($fileError !== null) {
             return $this->result('failed', $fileError);
         }
 
-        $stored = $this->storeFile($userId, $file);
+        $stored = $this->storeFileTo('' . $userId, $file);
         if ($stored === null) {
             log_message('error', 'GovernmentIdVerificationService::verify - failed to store uploaded ID image for user ' . $userId);
 
             return $this->result('failed', 'Unable to save the uploaded image. Please try again.');
         }
 
-        if ($this->config->anthropicApiKey === '') {
-            log_message('info', 'GovernmentIdVerificationService::verify - no Anthropic API key configured, marking needs_review for user ' . $userId);
-            $verificationId = $this->persist($userId, $idType, $stored, [
-                'verification_status' => 'needs_review',
-                'mismatch_reason' => 'Automatic verification is not configured.',
-            ]);
+        $outcome = $this->runExtractionAndCompare($idType, $stored, $file, $claimedIdentity);
 
-            return $this->result('needs_review', 'Your ID was received. Staff will review it as part of your application.', $verificationId);
+        $verificationId = $this->persist($userId, $idType, $stored, $outcome['fields']);
+
+        return $this->result($outcome['status'], $outcome['message'], $verificationId);
+    }
+
+    /**
+     * Same as verify(), but for a creator (Admin/Branch Admin/Staff)
+     * verifying SOMEONE ELSE'S identity as part of creating a brand new
+     * account on Users::create() - the new user_id doesn't exist yet at
+     * upload time, so the result is stashed under a random, unguessable
+     * token instead of a user_id and only persisted for real once
+     * commitPending() is called after the account is actually created.
+     * Nothing about the extracted/matched result is ever trusted back
+     * from the browser - only the token, which just points at what this
+     * service itself already computed and saved server-side.
+     *
+     * @param array{first_name:string, middle_name?:string, last_name:string, date_of_birth?:string} $claimedIdentity
+     * @return array{status: string, message: string, pending_token: ?string}
+     */
+    public function verifyPending(string $idType, UploadedFile $file, array $claimedIdentity): array
+    {
+        $fileError = $this->validateRequest($idType, $file);
+        if ($fileError !== null) {
+            return ['status' => 'failed', 'message' => $fileError, 'pending_token' => null];
+        }
+
+        $token = bin2hex(random_bytes(20));
+        $stored = $this->storeFileTo('_pending' . DIRECTORY_SEPARATOR . $token, $file);
+        if ($stored === null) {
+            log_message('error', 'GovernmentIdVerificationService::verifyPending - failed to store uploaded ID image.');
+
+            return ['status' => 'failed', 'message' => 'Unable to save the uploaded image. Please try again.', 'pending_token' => null];
+        }
+
+        $outcome = $this->runExtractionAndCompare($idType, $stored, $file, $claimedIdentity);
+
+        $sidecar = array_merge([
+            'id_type'       => $idType,
+            'file_path'     => $stored['relative_path'],
+            'original_name' => $stored['original_name'],
+            'mime_type'     => $stored['mime_type'],
+        ], $outcome['fields']);
+
+        $sidecarPath = dirname($stored['full_path']) . DIRECTORY_SEPARATOR . 'result.json';
+        if (file_put_contents($sidecarPath, json_encode($sidecar)) === false) {
+            log_message('error', 'GovernmentIdVerificationService::verifyPending - failed to write sidecar for token ' . $token);
+
+            return ['status' => 'failed', 'message' => 'Unable to save the verification result. Please try again.', 'pending_token' => null];
+        }
+
+        return ['status' => $outcome['status'], 'message' => $outcome['message'], 'pending_token' => $token];
+    }
+
+    /**
+     * Finalizes a verifyPending() result once the real account has been
+     * created - moves the temp image into the user's own directory and
+     * writes the government_id_verifications row with the real user_id.
+     * Returns null (logged, non-fatal) if the token is missing/expired/
+     * already committed - account creation itself must never fail just
+     * because of this.
+     */
+    public function commitPending(string $pendingToken, int $userId): ?int
+    {
+        $pendingToken = preg_replace('/[^a-f0-9]/', '', $pendingToken) ?? '';
+        if ($pendingToken === '' || $userId <= 0) {
+            return null;
+        }
+
+        $pendingDir = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'government_ids' . DIRECTORY_SEPARATOR . '_pending' . DIRECTORY_SEPARATOR . $pendingToken;
+        $sidecarPath = $pendingDir . DIRECTORY_SEPARATOR . 'result.json';
+
+        if (! is_file($sidecarPath)) {
+            log_message('warning', 'GovernmentIdVerificationService::commitPending - no pending verification found for token.');
+
+            return null;
+        }
+
+        $sidecar = json_decode((string) file_get_contents($sidecarPath), true);
+        if (! is_array($sidecar) || empty($sidecar['file_path'])) {
+            return null;
+        }
+
+        $oldFullPath = WRITEPATH . str_replace('/', DIRECTORY_SEPARATOR, (string) $sidecar['file_path']);
+        $targetDir = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'government_ids' . DIRECTORY_SEPARATOR . $userId;
+
+        if (! is_dir($targetDir) && ! mkdir($targetDir, 0755, true) && ! is_dir($targetDir)) {
+            return null;
+        }
+
+        $newFullPath = $targetDir . DIRECTORY_SEPARATOR . basename($oldFullPath);
+        if (is_file($oldFullPath) && ! @rename($oldFullPath, $newFullPath)) {
+            return null;
+        }
+
+        $relativePath = str_replace('\\', '/', str_replace(WRITEPATH, '', $newFullPath));
+
+        $verificationId = (int) $this->model->insert([
+            'user_id'                     => $userId,
+            'id_type'                     => (string) ($sidecar['id_type'] ?? 'other'),
+            'file_path'                   => $relativePath,
+            'original_name'               => $sidecar['original_name'] ?? null,
+            'mime_type'                   => $sidecar['mime_type'] ?? null,
+            'verification_status'         => (string) ($sidecar['verification_status'] ?? 'needs_review'),
+            'match_result'                => $sidecar['match_result'] ?? null,
+            'extracted_name'              => $sidecar['extracted_name'] ?? null,
+            'extracted_birth_date'        => $sidecar['extracted_birth_date'] ?? null,
+            'extracted_gender'            => $sidecar['extracted_gender'] ?? null,
+            'extracted_id_number_masked'  => $sidecar['extracted_id_number_masked'] ?? null,
+            'mismatch_reason'             => $sidecar['mismatch_reason'] ?? null,
+            'verification_attempts'       => 1,
+            'verified_at'                 => $sidecar['verified_at'] ?? null,
+        ], true);
+
+        // Best-effort cleanup - a leftover empty _pending/{token} dir is
+        // harmless, never worth failing account creation over.
+        @unlink($sidecarPath);
+        @rmdir($pendingDir);
+
+        return $verificationId > 0 ? $verificationId : null;
+    }
+
+    /**
+     * Shared by verify() and verifyPending() - runs OCR extraction and
+     * identity matching and returns the DB-shaped fields plus a status/
+     * message, without touching the database itself (the two callers
+     * persist differently: immediately vs. stashed-then-committed).
+     *
+     * @param array{full_path: string, relative_path: string, original_name: string, mime_type: string} $stored
+     * @param array{first_name:string, middle_name?:string, last_name:string, date_of_birth?:string} $claimedIdentity
+     * @return array{status: string, message: string, fields: array<string, mixed>}
+     */
+    private function runExtractionAndCompare(string $idType, array $stored, UploadedFile $file, array $claimedIdentity): array
+    {
+        if ($this->config->anthropicApiKey === '') {
+            log_message('info', 'GovernmentIdVerificationService - no Anthropic API key configured, marking needs_review.');
+
+            return [
+                'status'  => 'needs_review',
+                'message' => 'Your ID was received. Staff will review it as part of your application.',
+                'fields'  => [
+                    'verification_status' => 'needs_review',
+                    'mismatch_reason'      => 'Automatic verification is not configured.',
+                ],
+            ];
         }
 
         $extraction = $this->extractFromImage($stored['full_path'], (string) $file->getClientMimeType());
 
         if ($extraction === null) {
-            $verificationId = $this->persist($userId, $idType, $stored, [
-                'verification_status' => 'needs_review',
-                'mismatch_reason' => 'Automatic verification was temporarily unavailable.',
-            ]);
-
-            return $this->result('needs_review', 'We could not automatically verify this ID right now. Your registration can still be submitted - staff will review it.', $verificationId);
+            return [
+                'status'  => 'needs_review',
+                'message' => 'We could not automatically verify this ID right now. Your registration can still be submitted - staff will review it.',
+                'fields'  => [
+                    'verification_status' => 'needs_review',
+                    'mismatch_reason'      => 'Automatic verification was temporarily unavailable.',
+                ],
+            ];
         }
 
         if (! $extraction['readable']) {
-            $verificationId = $this->persist($userId, $idType, $stored, [
-                'verification_status' => 'needs_review',
-                'mismatch_reason' => 'Image quality too low to read.',
-            ]);
-
-            return $this->result('needs_review', 'The ID image is difficult to read. Please upload a clearer image or take another photo.', $verificationId);
+            return [
+                'status'  => 'needs_review',
+                'message' => 'The ID image is difficult to read. Please upload a clearer image or take another photo.',
+                'fields'  => [
+                    'verification_status' => 'needs_review',
+                    'mismatch_reason'      => 'Image quality too low to read.',
+                ],
+            ];
         }
 
         $comparison = $this->compareIdentity($extraction, $claimedIdentity);
 
-        $verificationId = $this->persist($userId, $idType, $stored, [
-            'verification_status'        => $comparison['status'],
-            'match_result'                => $comparison['match_result'],
-            'extracted_name'              => $extraction['full_name'],
-            'extracted_birth_date'        => $this->toDbDate($extraction['date_of_birth']),
-            'extracted_gender'            => $extraction['gender'],
-            'extracted_id_number_masked'  => $this->maskIdNumber($extraction['id_number']),
-            'mismatch_reason'             => $comparison['reason'],
-            'verified_at'                 => $comparison['status'] === 'verified' ? date('Y-m-d H:i:s') : null,
-        ]);
+        return [
+            'status'  => $comparison['status'],
+            'message' => $comparison['message'],
+            'fields'  => [
+                'verification_status'        => $comparison['status'],
+                'match_result'                => $comparison['match_result'],
+                'extracted_name'              => $extraction['full_name'],
+                'extracted_birth_date'        => $this->toDbDate($extraction['date_of_birth']),
+                'extracted_gender'            => $extraction['gender'],
+                'extracted_id_number_masked'  => $this->maskIdNumber($extraction['id_number']),
+                'mismatch_reason'             => $comparison['reason'],
+                'verified_at'                 => $comparison['status'] === 'verified' ? date('Y-m-d H:i:s') : null,
+            ],
+        ];
+    }
 
-        return $this->result($comparison['status'], $comparison['message'], $verificationId);
+    private function validateRequest(string $idType, UploadedFile $file): ?string
+    {
+        if (! array_key_exists($idType, $this->config->idTypes)) {
+            return 'Please select a valid ID type.';
+        }
+
+        return $this->validateFile($file);
     }
 
     // ------------------------------------------------------------------
@@ -154,11 +306,13 @@ class GovernmentIdVerificationService
     }
 
     /**
+     * @param string $subDir Either a user_id, or '_pending/{token}' for a
+     * not-yet-created account.
      * @return array{full_path: string, relative_path: string, original_name: string, mime_type: string}|null
      */
-    private function storeFile(int $userId, UploadedFile $file): ?array
+    private function storeFileTo(string $subDir, UploadedFile $file): ?array
     {
-        $targetDir = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'government_ids' . DIRECTORY_SEPARATOR . $userId;
+        $targetDir = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'government_ids' . DIRECTORY_SEPARATOR . $subDir;
 
         if (! is_dir($targetDir) && ! mkdir($targetDir, 0755, true) && ! is_dir($targetDir)) {
             return null;

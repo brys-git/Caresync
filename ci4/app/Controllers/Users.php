@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Models\UserModel;
 use App\Services\ActivityLogService;
+use App\Services\GovernmentIdVerificationService;
 use App\Services\NotificationService;
 use Config\Services;
 
@@ -26,6 +27,7 @@ class Users extends BaseController
             'branches' => $branches,
             'current_role_id' => (int) session('role_id'),
             'role_layout' => $this->resolveLayoutView(),
+            'id_types' => (new GovernmentIdVerificationService())->idTypes(),
         ]);
     }
 
@@ -50,6 +52,18 @@ class Users extends BaseController
 
         if (! $this->validate($rules)) {
             return redirect()->back()->withInput()->with('error', implode(' ', $this->validator->getErrors()));
+        }
+
+        // Government ID Verification, applied here the same way it's
+        // applied to Client/Plan Holder self-registration: the wizard's
+        // step-gating is client-side UX only, never trusted alone. The
+        // new account doesn't exist yet at upload time, so the browser
+        // only ever holds a random token pointing at a result this
+        // service already computed server-side (see
+        // GovernmentIdVerificationService::verifyPending()).
+        $pendingVerificationToken = trim((string) $this->request->getPost('government_id_pending_token'));
+        if ($pendingVerificationToken === '') {
+            return redirect()->back()->withInput()->with('error', 'Please complete the Government ID Verification step before submitting.');
         }
 
         $requestedRoleId = (int) $this->request->getPost('role_id');
@@ -100,6 +114,7 @@ class Users extends BaseController
             'username' => trim((string) $this->request->getPost('username')),
             'email' => trim((string) $this->request->getPost('email')),
             'first_name' => trim((string) $this->request->getPost('first_name')),
+            'middle_name' => trim((string) $this->request->getPost('middle_name')) ?: null,
             'last_name' => trim((string) $this->request->getPost('last_name')),
             'contact_number' => trim((string) $this->request->getPost('contact_number')),
             'role_id' => $requestedRoleId,
@@ -123,6 +138,8 @@ class Users extends BaseController
         if (! $newUserId) {
             return redirect()->back()->withInput()->with('error', 'Failed to create user account.');
         }
+
+        (new GovernmentIdVerificationService())->commitPending($pendingVerificationToken, (int) $newUserId);
 
         $notificationService = new NotificationService();
         $activityLogService = new ActivityLogService();

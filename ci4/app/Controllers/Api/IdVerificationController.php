@@ -59,6 +59,52 @@ class IdVerificationController extends BaseController
     }
 
     /**
+     * Same as verify(), but for Users::create() (Admin/Branch Admin/
+     * Staff creating someone else's account) - the new account doesn't
+     * exist yet, so the result is stashed under a random token instead
+     * of a user_id. Users::store() calls GovernmentIdVerificationService::
+     * commitPending() with this token once the account is actually
+     * created. Restricted to the same roles allowed to reach users/
+     * create in the first place.
+     */
+    public function verifyPending(): ResponseInterface
+    {
+        $roleId = (int) session('role_id');
+        if (! in_array($roleId, [1, 2, 3], true)) {
+            return $this->response->setStatusCode(403)->setJSON(['error' => 'Not authorized.']);
+        }
+
+        $idType = trim((string) $this->request->getPost('id_type'));
+        $firstName = trim((string) $this->request->getPost('first_name'));
+        $middleName = trim((string) $this->request->getPost('middle_name'));
+        $lastName = trim((string) $this->request->getPost('last_name'));
+
+        $file = $this->request->getFile('id_image');
+        if (! $file) {
+            return $this->response->setStatusCode(422)->setJSON(['error' => 'Please choose or capture an ID image.']);
+        }
+
+        try {
+            $service = new GovernmentIdVerificationService();
+            $result = $service->verifyPending($idType, $file, [
+                'first_name'  => $firstName,
+                'middle_name' => $middleName,
+                'last_name'   => $lastName,
+            ]);
+
+            return $this->response->setJSON([
+                'status'        => $result['status'],
+                'message'       => $result['message'],
+                'pending_token' => $result['pending_token'],
+            ]);
+        } catch (\Throwable $e) {
+            log_message('error', 'IdVerificationController::verifyPending - ' . $e->getMessage());
+
+            return $this->response->setStatusCode(502)->setJSON(['error' => self::FRIENDLY_ERROR]);
+        }
+    }
+
+    /**
      * The available ID types for the dropdown - configurable in
      * Config\GovernmentIdVerification, not hard-coded per form.
      */
