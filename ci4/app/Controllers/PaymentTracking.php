@@ -24,6 +24,8 @@ class PaymentTracking extends BaseController
 
         return view('admin/payment_monitoring/index', [
             'role_layout' => 'layouts/admin',
+            'page_title' => 'Payment Monitoring',
+            'page_sub' => 'System-wide transaction visibility across all branches.',
             'rows' => $this->adminPaymentRows(),
             'branches' => $this->branchOptions(),
             'filters' => $this->adminFilters(),

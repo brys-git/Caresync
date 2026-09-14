@@ -91,6 +91,8 @@ class ClientManagementController extends BaseController
             'payments' => $payments,
             'services' => $services,
             'role_layout' => 'layouts/admin',
+            'page_title' => 'Client Details',
+            'page_sub' => 'Plan Holder #' . (string) ($client['plan_holder_id'] ?? $id),
         ]);
     }
 
@@ -107,6 +109,7 @@ class ClientManagementController extends BaseController
         return view('admin/client_management/edit', [
             'client' => $client,
             'role_layout' => 'layouts/admin',
+            'page_title' => 'Edit Client',
         ]);
     }
 
