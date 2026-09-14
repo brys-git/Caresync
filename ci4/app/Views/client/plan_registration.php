@@ -11,22 +11,8 @@ $gender = (string) old('gender', (string) ($plan_holder['gender'] ?? ''));
 $idTypes = $id_types ?? [];
 $latestVerification = $latest_verification ?? null;
 ?>
-<div class="container-fluid" style="max-width: 1000px;">
-    <div class="mb-3">
-        <h1 class="h3 mb-1"><?= esc((string) ($program['name'] ?? 'Damayan Burial Program')) ?></h1>
-        <p class="text-muted mb-0">Plan registration - complete each step, then review before submitting.</p>
-    </div>
-
-    <?php if (session()->getFlashdata('error')): ?>
-        <div class="alert alert-danger">
-            <strong>Error:</strong> <?= esc(session()->getFlashdata('error')) ?>
-        </div>
-    <?php endif; ?>
-
-    <?php if (session()->getFlashdata('success')): ?>
-        <div class="alert alert-success"><?= esc(session()->getFlashdata('success')) ?></div>
-    <?php endif; ?>
-
+<div style="max-width: 1000px;">
+    <?php // Plain error/success flash already handled by layouts/_shell.php's toast. The "errors" list below is a validation-array flash, a different shape the shell's toast loop doesn't cover, so it stays. ?>
     <?php $errors = session()->getFlashdata('errors') ?? []; ?>
     <?php if (! empty($errors)): ?>
         <div class="alert alert-danger">

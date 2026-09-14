@@ -45,6 +45,8 @@ class ClientProfileController extends BaseController
 
         return view('client/profile', [
             'role_layout' => 'layouts/plan_holder',
+            'page_title' => 'My Profile',
+            'page_sub' => 'Login credentials and personal information',
             'user' => $user,
             'plan_holder' => $planHolder,
             'access' => $access,

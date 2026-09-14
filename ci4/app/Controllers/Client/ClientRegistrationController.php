@@ -86,6 +86,8 @@ class ClientRegistrationController extends BaseController
 
         return view('client/plan_info', [
             'role_layout' => 'layouts/plan_holder',
+            'page_title' => 'Plan Information',
+            'page_sub' => 'Review the ' . (string) ($program['name'] ?? 'Damayan Burial Program') . ' details before proceeding.',
             'access' => $access,
             'program' => $program,
             'entitlement_package' => $entitlementPackage,
@@ -135,6 +137,8 @@ class ClientRegistrationController extends BaseController
 
         return view('client/plan_registration', [
             'role_layout' => 'layouts/plan_holder',
+            'page_title' => (string) ($program['name'] ?? 'Damayan Burial Program'),
+            'page_sub' => 'Plan registration - complete each step, then review before submitting.',
             'access' => $access,
             'program' => $program,
             'plan_id' => $planId,
