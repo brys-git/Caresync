@@ -97,6 +97,8 @@ class ClientServiceController extends BaseController
 
         return view('client/services', [
             'role_layout' => 'layouts/plan_holder',
+            'page_title' => 'Services & Packages',
+            'page_sub' => 'Browse available funeral services and casket packages.',
             'access' => $access,
             'active_tab' => $activeTab,
             'services' => $services,

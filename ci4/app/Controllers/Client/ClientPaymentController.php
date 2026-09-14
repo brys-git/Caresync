@@ -47,6 +47,8 @@ class ClientPaymentController extends BaseController
         if (($access['state'] ?? 'unregistered') === 'unregistered' || ! $planHolder) {
             return view('client/payment', [
                 'role_layout' => 'layouts/plan_holder',
+                'page_title' => 'Payment',
+                'page_sub' => 'Track contribution records.',
                 'access' => $access,
                 'plan' => null,
                 'payments' => [],
@@ -72,6 +74,8 @@ class ClientPaymentController extends BaseController
 
         return view('client/payment', [
             'role_layout' => 'layouts/plan_holder',
+            'page_title' => 'Payment',
+            'page_sub' => 'Track contribution records.',
             'access' => $access,
             'plan' => $plan,
             'payments' => $payments,
