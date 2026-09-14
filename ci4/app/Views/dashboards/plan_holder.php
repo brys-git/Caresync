@@ -3,334 +3,210 @@
 <?= $this->section('content') ?>
 <?php
 $isPlanHolder = (bool) ($is_plan_holder ?? true);
-$serviceStats = [
-    'services' => count($service_requests ?? []),
-    'payments' => count($payment_history ?? []),
-    'packages' => count($packages ?? []),
-];
+$m            = $membership ?? [];
+$payments     = $payment_history  ?? [];
+$requests     = $service_requests ?? [];
+
+$locked    = (float) ($m['locked_price'] ?? 0);
+$remaining = (float) ($m['remaining_balance'] ?? 0);
+$paid      = max(0, $locked - $remaining);
+$progress  = $locked > 0 ? min(100, round(($paid / $locked) * 100)) : 0;
 ?>
 
-<style>
-    .plan-holder-shell {
-        position: relative;
-    }
+<?php if (! $isPlanHolder): ?>
+    <?php $pendingStatus = (string) ($pending_registration['status'] ?? ''); ?>
 
-    .plan-holder-hero {
-        background:
-            radial-gradient(circle at top left, rgba(15, 118, 110, 0.16), transparent 34%),
-            radial-gradient(circle at top right, rgba(37, 99, 235, 0.16), transparent 28%),
-            linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(247, 250, 252, 0.94));
-        border: 1px solid rgba(148, 163, 184, 0.25);
-        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
-        border-radius: 28px;
-        overflow: hidden;
-    }
+    <section class="cs-panel">
+        <div class="cs-panel__body" style="max-width:56ch">
+            <?= cs_status($pendingStatus !== '' ? $pendingStatus : 'draft') ?>
 
-    .plan-holder-hero__badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.45rem;
-        padding: 0.45rem 0.8rem;
-        border-radius: 999px;
-        background: rgba(15, 118, 110, 0.08);
-        color: #0f766e;
-        font-weight: 700;
-        font-size: 0.8rem;
-        letter-spacing: 0.03em;
-        text-transform: uppercase;
-    }
+            <h2 class="cs-serif mt-3 mb-2" style="font-size:1.5rem;letter-spacing:-.01em">
+                <?php if ($pendingStatus === 'pending'): ?>
+                    Your registration is with your branch
+                <?php elseif ($pendingStatus === 'rejected'): ?>
+                    Your registration needs changes
+                <?php else: ?>
+                    One step left before your plan starts
+                <?php endif; ?>
+            </h2>
 
-    .plan-holder-hero__panel {
-        background: linear-gradient(160deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.96));
-        color: rgba(255, 255, 255, 0.92);
-        border-radius: 24px;
-        padding: 1.5rem;
-        height: 100%;
-        position: relative;
-        overflow: hidden;
-    }
+            <p class="cs-muted">
+                <?php if ($pendingStatus === 'pending'): ?>
+                    Submitted <?= cs_date($pending_registration['created_at'] ?? null) ?>.
+                    A branch officer reviews it and you'll be notified here once it's approved.
+                <?php elseif ($pendingStatus === 'rejected'): ?>
+                    Your branch asked for corrections. Update your details and send it again.
+                <?php else: ?>
+                    Payments, service requests, and your plan record unlock once you register
+                    as a plan holder and a branch approves it.
+                <?php endif; ?>
+            </p>
 
-    .plan-holder-hero__panel::after {
-        content: '';
-        position: absolute;
-        inset: auto -3rem -3rem auto;
-        width: 10rem;
-        height: 10rem;
-        border-radius: 50%;
-        background: rgba(37, 99, 235, 0.28);
-        filter: blur(22px);
-    }
+            <a class="btn btn-primary" href="<?= esc((string) ($registration_url ?? base_url('plan-holder-registration'))) ?>">
+                <?= $pendingStatus === 'pending' ? 'Check registration status' : 'Continue registration' ?>
+            </a>
+        </div>
+    </section>
 
-    .stat-pill {
-        border-radius: 20px;
-        background: rgba(255, 255, 255, 0.82);
-        border: 1px solid rgba(148, 163, 184, 0.18);
-        box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
-        padding: 1rem 1.1rem;
-        height: 100%;
-    }
+<?php else: ?>
 
-    .service-card__icon {
-        width: 3rem;
-        height: 3rem;
-        border-radius: 18px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: linear-gradient(135deg, rgba(15, 118, 110, 0.12), rgba(37, 99, 235, 0.12));
-        color: #0f766e;
-    }
-</style>
-
-<div class="container-fluid plan-holder-shell">
-    <?php if (! $isPlanHolder): ?>
-        <?php $pendingStatus = (string) ($pending_registration['status'] ?? ''); ?>
-        <div class="plan-holder-hero mb-4 p-4 p-lg-5">
-            <div class="row align-items-center g-4">
-                <div class="col-lg-8">
-                    <div class="plan-holder-hero__badge mb-3">
-                        <i class="ti ti-lock"></i>
-                        <span>Limited Access</span>
-                    </div>
-                    <h1 class="display-6 fw-bold mb-3">Complete your plan holder registration first.</h1>
-                    <p class="text-secondary mb-0" style="max-width: 44rem;">Your account is active, but service applications, membership management, and payment features are locked until you register as a plan holder.</p>
-                    <?php if ($pendingStatus === 'pending'): ?>
-                        <div class="alert alert-info mt-3 mb-0" style="max-width: 44rem;">
-                            Your registration was submitted on <?= esc((string) ($pending_registration['created_at'] ?? '-')) ?> and is pending approval.
+    <div class="row g-3 mb-3">
+        <div class="col-lg-7">
+            <section class="cs-panel h-100">
+                <div class="cs-panel__body">
+                    <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                        <div>
+                            <div class="cs-muted" style="font-size:.8125rem">Plan number</div>
+                            <div class="cs-serif cs-num" style="font-size:1.375rem;font-weight:600">
+                                <?= esc((string) ($m['unique_identifier'] ?? '—')) ?>
+                            </div>
                         </div>
-                    <?php elseif ($pendingStatus === 'rejected'): ?>
-                        <div class="alert alert-warning mt-3 mb-0" style="max-width: 44rem;">
-                            Your latest registration was rejected. Update your details and submit again.
+                        <?= cs_status((string) ($m['plan_status'] ?? 'inactive')) ?>
+                    </div>
+
+                    <!-- The balance is the one thing a plan holder opens this page to see. -->
+                    <div class="cs-meterrow">
+                        <span>Paid so far</span>
+                        <span><?= esc((string) $progress) ?>% of <?= cs_money($locked) ?></span>
+                    </div>
+                    <div class="cs-meter" role="img"
+                         aria-label="<?= esc($progress) ?> percent of your plan is paid">
+                        <div class="cs-meter__fill <?= $progress < 25 ? 'cs-meter__fill--warn' : '' ?>"
+                             style="width: <?= esc((string) $progress) ?>%"></div>
+                    </div>
+
+                    <div class="row g-3 mt-2">
+                        <div class="col-sm-6">
+                            <div class="cs-muted" style="font-size:.8125rem">Paid to date</div>
+                            <div class="cs-num" style="font-size:1.125rem;font-weight:600;color:var(--cs-ok)">
+                                <?= cs_money($paid) ?>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="cs-muted" style="font-size:.8125rem">Remaining balance</div>
+                            <div class="cs-num" style="font-size:1.125rem;font-weight:600;color:var(--cs-brass)">
+                                <?= cs_money($remaining) ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cs-panel__foot d-flex justify-content-between align-items-center">
+                    <span class="cs-muted">Price locked at enrolment and never re-priced.</span>
+                    <a class="btn btn-primary btn-sm" href="<?= base_url('client/payment') ?>">Make a payment</a>
+                </div>
+            </section>
+        </div>
+
+        <div class="col-lg-5">
+            <section class="cs-panel h-100">
+                <div class="cs-panel__head">
+                    <h2 class="cs-panel__title">Plan details</h2>
+                </div>
+                <div class="cs-panel__body">
+                    <?php
+                    $rows = [
+                        ['Membership', ucfirst((string) ($m['membership_status'] ?? '—'))],
+                        ['Branch',     (string) ($m['branch_name'] ?? '—')],
+                        ['Package',    (string) ($m['package_name'] ?? '—')],
+                        ['Start date', cs_date($m['effective_date'] ?? null)],
+                    ];
+                    ?>
+                    <?php foreach ($rows as $i => [$label, $value]): ?>
+                        <div class="d-flex justify-content-between align-items-baseline gap-3 <?= $i < count($rows) - 1 ? 'mb-2 pb-2' : '' ?>"
+                             style="<?= $i < count($rows) - 1 ? 'border-bottom:1px solid var(--cs-line-soft)' : '' ?>">
+                            <span class="cs-muted"><?= esc($label) ?></span>
+                            <span class="fw-semibold text-end"><?= $value ?></span>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-7">
+            <section class="cs-panel h-100">
+                <div class="cs-panel__head">
+                    <div>
+                        <h2 class="cs-panel__title">Payment history</h2>
+                        <p class="cs-panel__note">Every payment recorded against your plan.</p>
+                    </div>
+                    <a class="btn btn-ghost btn-sm" href="<?= base_url('client/payment') ?>">All</a>
+                </div>
+
+                <div class="cs-panel__body cs-panel__body--flush">
+                    <?php if ($payments === []): ?>
+                        <?= view('components/empty_state', [
+                            'icon'   => 'ti-receipt',
+                            'title'  => 'No payments recorded yet',
+                            'text'   => 'Once your first payment is posted by your branch or collector, it appears here with a receipt.',
+                            'action' => ['label' => 'Make a payment', 'url' => 'client/payment'],
+                        ]) ?>
+                    <?php else: ?>
+                        <div class="cs-tablewrap">
+                            <table class="cs-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Method</th>
+                                        <th>Status</th>
+                                        <th class="cs-num">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($payments as $payment): ?>
+                                        <tr>
+                                            <td class="text-nowrap"><?= cs_date($payment['payment_date'] ?? null) ?></td>
+                                            <td><?= esc(ucfirst(str_replace('_', ' ', (string) ($payment['payment_method'] ?? '—')))) ?></td>
+                                            <td><?= cs_status((string) ($payment['status'] ?? 'pending')) ?></td>
+                                            <td class="cs-num fw-semibold"><?= cs_money($payment['amount'] ?? 0) ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
                         </div>
                     <?php endif; ?>
                 </div>
-                <div class="col-lg-4">
-                    <div class="plan-holder-hero__panel">
-                        <div class="position-relative" style="z-index: 1;">
-                            <div class="text-white-50 small text-uppercase fw-semibold mb-2">Next step</div>
-                            <h2 class="h3 fw-bold mb-3">Submit your registration details</h2>
-                            <p class="text-white-75 mb-4">Once submitted, your dashboard will unlock services, membership details, and payment tracking.</p>
-                            <a href="<?= esc((string) ($registration_url ?? base_url('plan-holder-registration'))) ?>" class="btn btn-light fw-semibold px-4">
-                                <?= $pendingStatus === 'pending' ? 'View Registration Status' : 'Register as Plan Holder' ?>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            </section>
         </div>
 
-        <div class="row g-3">
-            <div class="col-md-4">
-                <div class="card h-100">
-                    <div class="card-body d-flex align-items-center gap-3 opacity-75">
-                        <div class="service-card__icon"><i class="ti ti-clipboard-list"></i></div>
-                        <div>
-                            <div class="small text-muted fw-semibold">Service Applications</div>
-                            <div class="h6 mb-0">Locked until registration</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card h-100">
-                    <div class="card-body d-flex align-items-center gap-3 opacity-75">
-                        <div class="service-card__icon"><i class="ti ti-id-badge"></i></div>
-                        <div>
-                            <div class="small text-muted fw-semibold">Membership Details</div>
-                            <div class="h6 mb-0">Locked until registration</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card h-100">
-                    <div class="card-body d-flex align-items-center gap-3 opacity-75">
-                        <div class="service-card__icon"><i class="ti ti-receipt"></i></div>
-                        <div>
-                            <div class="small text-muted fw-semibold">Payments</div>
-                            <div class="h6 mb-0">Locked until registration</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    <?php else: ?>
-    <div class="plan-holder-hero mb-4 p-4 p-lg-5">
-        <div class="row g-4 align-items-stretch">
-            <div class="col-lg-7">
-                <div class="plan-holder-hero__badge mb-3">
-                    <i class="ti ti-stars"></i>
-                    <span>Plan Holder Dashboard</span>
-                </div>
-                <h1 class="display-6 fw-bold mb-3">Your membership at a glance.</h1>
-                <p class="text-secondary mb-4" style="max-width: 42rem;">Track your plan status, payments, and service requests from one dashboard. Service options are now available under the Services page.</p>
-
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <div class="stat-pill">
-                            <div class="small text-uppercase text-muted fw-semibold mb-1">Membership</div>
-                            <div class="h4 mb-0"><?= esc((string) ($membership['membership_status'] ?? 'n/a')) ?></div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="stat-pill">
-                            <div class="small text-uppercase text-muted fw-semibold mb-1">Plan Status</div>
-                            <div class="h4 mb-0"><?= esc((string) ($membership['plan_status'] ?? 'n/a')) ?></div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="stat-pill">
-                            <div class="small text-uppercase text-muted fw-semibold mb-1">Remaining Balance</div>
-                            <div class="h4 mb-0">P<?= number_format((float) ($membership['remaining_balance'] ?? 0), 2) ?></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-5">
-                <div class="plan-holder-hero__panel">
-                    <div class="position-relative" style="z-index: 1;">
-                        <div class="d-flex justify-content-between align-items-start mb-4">
-                            <div>
-                                <div class="text-white-50 small text-uppercase fw-semibold">Account summary</div>
-                                <div class="h3 fw-bold mb-0"><?= esc((string) ($membership['unique_identifier'] ?? '-')) ?></div>
-                            </div>
-                            <div class="rounded-circle bg-white bg-opacity-10 d-inline-flex align-items-center justify-content-center" style="width: 3.25rem; height: 3.25rem;">
-                                <i class="ti ti-layout-dashboard fs-4"></i>
-                            </div>
-                        </div>
-
-                        <div class="d-grid gap-3">
-                            <div class="d-flex align-items-center justify-content-between p-3 rounded-4" style="background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.08);">
-                                <div>
-                                    <div class="text-white-50 small">Branch</div>
-                                    <div class="fw-semibold"><?= esc((string) ($membership['branch_name'] ?? '-')) ?></div>
-                                </div>
-                                <i class="ti ti-building text-white-50 fs-4"></i>
-                            </div>
-                            <div class="d-flex align-items-center justify-content-between p-3 rounded-4" style="background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.08);">
-                                <div>
-                                    <div class="text-white-50 small">Locked Price</div>
-                                    <div class="fw-semibold">P<?= number_format((float) ($membership['locked_price'] ?? 0), 2) ?></div>
-                                </div>
-                                <i class="ti ti-currency-peso text-white-50 fs-4"></i>
-                            </div>
-                            <div class="d-flex align-items-center justify-content-between p-3 rounded-4" style="background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.08);">
-                                <div>
-                                    <div class="text-white-50 small">Start Date</div>
-                                    <div class="fw-semibold"><?= esc((string) ($membership['effective_date'] ?? '-')) ?></div>
-                                </div>
-                                <i class="ti ti-calendar-event text-white-50 fs-4"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row g-3 mb-4">
-        <div class="col-md-4">
-            <div class="card h-100">
-                <div class="card-body d-flex align-items-center gap-3">
-                    <div class="service-card__icon"><i class="ti ti-package"></i></div>
-                    <div>
-                        <div class="small text-muted fw-semibold">Packages Available</div>
-                        <div class="h3 mb-0"><?= esc((string) $serviceStats['packages']) ?></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card h-100">
-                <div class="card-body d-flex align-items-center gap-3">
-                    <div class="service-card__icon"><i class="ti ti-receipt"></i></div>
-                    <div>
-                        <div class="small text-muted fw-semibold">Recent Payments</div>
-                        <div class="h3 mb-0"><?= esc((string) $serviceStats['payments']) ?></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card h-100">
-                <div class="card-body d-flex align-items-center gap-3">
-                    <div class="service-card__icon"><i class="ti ti-clipboard-list"></i></div>
-                    <div>
-                        <div class="small text-muted fw-semibold">Service Requests</div>
-                        <div class="h3 mb-0"><?= esc((string) $serviceStats['services']) ?></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row g-3 mt-4">
-        <div class="col-lg-7">
-            <div class="card h-100">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <div>
-                            <h3 class="h5 mb-1">Payment History</h3>
-                            <p class="text-secondary mb-0">Most recent transactions tied to your current plan.</p>
-                        </div>
-                        <i class="ti ti-receipt-2 text-primary fs-3"></i>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="table align-middle mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Amount</th>
-                                    <th>Method</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($payment_history as $payment): ?>
-                                    <tr>
-                                        <td><?= esc((string) $payment['payment_date']) ?></td>
-                                        <td>P<?= number_format((float) ($payment['amount'] ?? 0), 2) ?></td>
-                                        <td><?= esc(strtoupper((string) $payment['payment_method'])) ?></td>
-                                        <td><span class="badge text-bg-<?= ((string) ($payment['status'] ?? '') === 'paid') ? 'success' : 'warning' ?>"><?= esc((string) $payment['status']) ?></span></td>
-                                    </tr>
-                                <?php endforeach; ?>
-                                <?php if (empty($payment_history)): ?>
-                                    <tr><td colspan="4" class="text-center text-secondary py-4">No payment history yet.</td></tr>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
         <div class="col-lg-5">
-            <div class="card h-100">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <div>
-                            <h3 class="h5 mb-1">Service Requests</h3>
-                            <p class="text-secondary mb-0">Your latest submitted requests and their progress.</p>
-                        </div>
-                        <i class="ti ti-clipboard-check text-primary fs-3"></i>
+            <section class="cs-panel h-100">
+                <div class="cs-panel__head">
+                    <div>
+                        <h2 class="cs-panel__title">Service requests</h2>
+                        <p class="cs-panel__note">What you've asked your branch to arrange.</p>
                     </div>
-                    <div class="d-grid gap-3">
-                        <?php foreach ($service_requests as $request): ?>
-                            <div class="d-flex justify-content-between align-items-start p-3 rounded-4" style="background: rgba(15,23,42,.02); border: 1px solid rgba(148,163,184,.16);">
-                                <div>
-                                    <div class="fw-bold">#<?= esc((string) $request['application_id']) ?> <?= esc((string) ($request['package_name'] ?? '-')) ?></div>
-                                    <div class="small text-secondary">Submitted <?= esc((string) ($request['created_at'] ?? '-')) ?></div>
+                </div>
+
+                <div class="cs-panel__body <?= $requests === [] ? 'cs-panel__body--flush' : '' ?>">
+                    <?php if ($requests === []): ?>
+                        <?= view('components/empty_state', [
+                            'icon'   => 'ti-clipboard-list',
+                            'title'  => 'No requests yet',
+                            'text'   => 'When you need to use your plan, start a request and your branch will take it from there.',
+                            'action' => ['label' => 'Request a service', 'url' => 'client/service'],
+                        ]) ?>
+                    <?php else: ?>
+                        <?php foreach ($requests as $i => $request): ?>
+                            <div class="d-flex justify-content-between align-items-start gap-2 <?= $i > 0 ? 'mt-2 pt-2' : '' ?>"
+                                 style="<?= $i > 0 ? 'border-top:1px solid var(--cs-line-soft)' : '' ?>">
+                                <div class="lh-sm">
+                                    <div class="fw-semibold"><?= esc((string) ($request['package_name'] ?? 'Service request')) ?></div>
+                                    <div class="cs-table__sub">
+                                        Request #<?= esc((string) ($request['application_id'] ?? '—')) ?>
+                                        · <?= cs_date($request['created_at'] ?? null) ?>
+                                    </div>
                                 </div>
-                                <span class="badge text-bg-<?= ((string) ($request['status'] ?? '') === 'approved' || (string) ($request['status'] ?? '') === 'completed') ? 'success' : 'primary' ?>"><?= esc((string) $request['status']) ?></span>
+                                <?= cs_status((string) ($request['status'] ?? 'pending')) ?>
                             </div>
                         <?php endforeach; ?>
-                        <?php if (empty($service_requests)): ?>
-                            <div class="text-center text-secondary py-4">No service requests yet.</div>
-                        <?php endif; ?>
-                    </div>
+                    <?php endif; ?>
                 </div>
-            </div>
+            </section>
         </div>
     </div>
-    <?php endif; ?>
-</div>
+
+<?php endif; ?>
 <?= $this->endSection() ?>

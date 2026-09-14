@@ -1,20 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>System Admin Dashboard</title>
-    <link rel="stylesheet" href="<?= base_url('assets/css/main.css') ?>">
-    <link rel="stylesheet" href="<?= base_url('assets/css/custom-style.css') ?>">
-</head>
-<body>
-<div class="main-wrapper d-flex">
-    <?= $this->include('partials/sidebar_admin') ?>
-    <main class="app-main p-4 w-100">
-        <?= $this->renderSection('content') ?>
-    </main>
-</div>
-<script src="<?= base_url('assets/js/ui-consistency.js') ?>" defer></script>
-<script src="<?= base_url('assets/js/main.js') ?>" type="module"></script>
-</body>
-</html>
+<?php
+/**
+ * Role layout for "admin".
+ *
+ * Kept as a file name so existing controllers can go on passing
+ * 'role_layout' => 'layouts/admin' without any change. All markup lives
+ * in layouts/_shell.php.
+ */
+$this->setData(['cs_role' => 'admin'], 'raw');
+?>
+<?= $this->include('layouts/_shell') ?>

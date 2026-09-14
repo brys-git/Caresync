@@ -28,10 +28,16 @@ class Auth extends BaseController
         }
 
         $userModel = new UserModel();
-        $user      = $userModel
+        // Joins branches/roles so the topbar's name/branch chip (CareSync UI)
+        // has what it needs without a second query - left join on branches
+        // since a System Admin may have no branch_id.
+        $user = $userModel
+            ->select('users.*, branches.branch_name AS branch_name, roles.role_name AS role_name')
+            ->join('branches', 'branches.branch_id = users.branch_id', 'left')
+            ->join('roles', 'roles.role_id = users.role_id', 'left')
             ->groupStart()
-            ->where('username', $identifier)
-            ->orWhere('email', $identifier)
+            ->where('users.username', $identifier)
+            ->orWhere('users.email', $identifier)
             ->groupEnd()
             ->first();
 
@@ -49,6 +55,11 @@ class Auth extends BaseController
             'branch_id' => $user['branch_id'] === null ? null : (int) $user['branch_id'],
             'is_plan_holder' => (int) ($user['is_plan_holder'] ?? 0),
             'must_change_password' => (int) ($user['must_change_password'] ?? 0),
+            // For the CareSync UI topbar (name + branch chip) - see BaseController::shareCareSyncViewData().
+            'first_name'  => (string) ($user['first_name'] ?? ''),
+            'last_name'   => (string) ($user['last_name'] ?? ''),
+            'branch_name' => (string) ($user['branch_name'] ?? ''),
+            'role_name'   => (string) ($user['role_name'] ?? ''),
         ]);
 
         $userModel->update((int) $user['user_id'], ['last_login' => date('Y-m-d H:i:s')]);

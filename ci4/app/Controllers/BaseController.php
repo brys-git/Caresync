@@ -41,6 +41,40 @@ abstract class BaseController extends Controller
 
         // Preload any models, libraries, etc, here.
         // $this->session = service('session');
+
+        $this->shareCareSyncViewData();
+    }
+
+    /**
+     * Makes cs_user/cs_branch available to every view rendered by any
+     * controller, without editing each controller's view() call.
+     *
+     * Chosen over a Filter: filters run before the controller method, but
+     * the view() call (and its $data array) happens inside the method
+     * itself, so a filter has no clean way to inject into it. This works
+     * instead because service('renderer') is shared (singleton) per
+     * request - CI4's view() helper always fetches that same instance,
+     * and View::setData() merges into it rather than replacing - so
+     * setting cs_user/cs_branch here, once, before any controller method
+     * runs, makes them present in every view() call that follows. A
+     * controller that later passes its own cs_user/cs_branch explicitly
+     * still wins, since that merge happens after this one.
+     */
+    private function shareCareSyncViewData(): void
+    {
+        if (! session()->has('user_id')) {
+            return;
+        }
+
+        $name = trim((string) session('first_name') . ' ' . (string) session('last_name'));
+
+        service('renderer')->setData([
+            'cs_user' => [
+                'name' => $name,
+                'role' => (string) session('role_name'),
+            ],
+            'cs_branch' => (string) session('branch_name'),
+        ], 'raw');
     }
 
     /**
