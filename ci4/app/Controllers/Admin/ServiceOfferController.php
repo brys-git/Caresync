@@ -96,6 +96,8 @@ class ServiceOfferController extends BaseController
 
         return view('admin/service_offer/index', [
             'role_layout' => 'layouts/admin',
+            'page_title' => 'Service Offer',
+            'page_sub' => 'Create live packages and services, then review branch-admin requests in one place.',
             'tab' => $tab,
             'approval_tab' => $approvalTab,
             'services' => $services,

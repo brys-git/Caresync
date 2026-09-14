@@ -105,6 +105,7 @@ class ProfileController extends BaseController
 
         return view('admin/profile/index', [
             'role_layout' => 'layouts/admin',
+            'page_title' => 'System Admin Profile',
             'user' => $user,
             'edit_mode' => $editMode,
         ]);

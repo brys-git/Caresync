@@ -107,6 +107,8 @@ class BranchManagementController extends BaseController
 
         return view('admin/branch_management/index', [
             'role_layout' => 'layouts/admin',
+            'page_title' => 'Branch Management',
+            'page_sub' => 'Monitor branch availability, operations, contribution, and approval queues.',
             'tab' => $tab,
             'approval_tab' => $approvalTab,
             'branches' => $branches,
