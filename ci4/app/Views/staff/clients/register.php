@@ -1,21 +1,13 @@
 <?= $this->extend($role_layout) ?>
 
 <?= $this->section('content') ?>
+<div class="mb-3 text-end">
+    <a href="<?= base_url('staff/client') ?>" class="btn btn-outline-secondary btn-sm">Back to List</a>
+</div>
+
+<?php // Flash messages are already surfaced as toasts by layouts/_shell.php - no need to render them again here. ?>
+
 <div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-            <h1 class="h4 mb-0">Register Plan Holder</h1>
-            <small class="text-muted">Add a new plan holder to your branch</small>
-        </div>
-        <div>
-            <a href="<?= base_url('staff/client') ?>" class="btn btn-outline-secondary btn-sm">Back to List</a>
-        </div>
-    </div>
-
-    <?php if (session()->getFlashdata('error')): ?>
-        <div class="alert alert-danger"><?= esc(session()->getFlashdata('error')) ?></div>
-    <?php endif; ?>
-
     <div class="card">
         <div class="card-body">
             <form method="post" action="<?= base_url('staff/client/store') ?>" novalidate>

@@ -30,6 +30,7 @@ class ClientController extends BaseController
         }
 
         return view('staff/clients/index', [
+            'page_title' => 'Client Management',
             'clients' => $clients,
             'program' => MembershipService::getProgramInfo(),
             'branch_issue' => $branchIssue,
@@ -48,6 +49,7 @@ class ClientController extends BaseController
         $this->enforceBranchOwnership($client);
 
         return view('staff/clients/edit', [
+            'page_title' => 'Edit Client',
             'client' => $client,
             'role_layout' => 'layouts/staff',
         ]);
@@ -129,6 +131,8 @@ class ClientController extends BaseController
         $services = $this->clientService->getClientServices($id);
 
         return view('staff/clients/view', [
+            'page_title' => 'Client Details',
+            'page_sub' => 'Plan Holder #' . (string) ($client['plan_holder_id'] ?? $id),
             'client' => $client,
             'payments' => $payments,
             'services' => $services,
@@ -145,6 +149,8 @@ class ClientController extends BaseController
         }
 
         return view('staff/clients/register', [
+            'page_title' => 'Register Plan Holder',
+            'page_sub' => 'Add a new plan holder to your branch',
             'program' => MembershipService::getProgramInfo(),
             'role_layout' => 'layouts/staff',
             'id_types' => (new GovernmentIdVerificationService())->idTypes(),

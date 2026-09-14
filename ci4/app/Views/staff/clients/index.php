@@ -1,119 +1,96 @@
 <?= $this->extend($role_layout) ?>
 
 <?= $this->section('content') ?>
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1 class="h4 mb-0">Client Management</h1>
-    </div>
+<?php // Flash messages are already surfaced as toasts by layouts/_shell.php - no need to render them again here. ?>
 
-    <?php if (session()->getFlashdata('error')): ?>
-        <div class="alert alert-danger"><?= esc(session()->getFlashdata('error')) ?></div>
-    <?php endif; ?>
+<?php if (! empty($branch_issue)): ?>
+    <div class="alert alert-warning"><?= esc($branch_issue) ?></div>
+<?php endif; ?>
 
-    <?php if (session()->getFlashdata('success')): ?>
-        <div class="alert alert-success"><?= esc(session()->getFlashdata('success')) ?></div>
-    <?php endif; ?>
-
-    <?php if (! empty($branch_issue)): ?>
-        <div class="alert alert-warning"><?= esc($branch_issue) ?></div>
-    <?php endif; ?>
-
-    <div class="card">
-        <div class="card-body">
-            <!-- Navigation Tabs -->
-            <ul class="nav nav-tabs" id="clientTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button 
-                        class="nav-link active" 
-                        id="holders-tab" 
-                        data-bs-toggle="tab" 
-                        data-bs-target="#holders-panel" 
-                        type="button" 
-                        role="tab" 
-                        aria-controls="holders-panel" 
-                        aria-selected="true"
-                    >
-                        Branch Plan Holders
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button 
-                        class="nav-link" 
-                        id="register-tab" 
-                        data-bs-toggle="tab" 
-                        data-bs-target="#register-panel" 
-                        type="button" 
-                        role="tab" 
-                        aria-controls="register-panel" 
-                        aria-selected="false"
-                    >
-                        Register Plan Holder
-                    </button>
-                </li>
-            </ul>
-
-            <!-- Tab Content -->
-            <div class="tab-content pt-3" id="clientTabsContent">
-                <!-- TAB 1: Branch Plan Holders -->
-                <div 
-                    class="tab-pane fade show active" 
-                    id="holders-panel" 
-                    role="tabpanel" 
-                    aria-labelledby="holders-tab" 
-                    tabindex="0"
+<section class="cs-panel">
+    <div class="cs-panel__body">
+        <ul class="nav nav-tabs" id="clientTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button
+                    class="nav-link active"
+                    id="holders-tab"
+                    data-bs-toggle="tab"
+                    data-bs-target="#holders-panel"
+                    type="button"
+                    role="tab"
+                    aria-controls="holders-panel"
+                    aria-selected="true"
                 >
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="mb-0">View and manage all registered plan holders in your branch</h5>
-                    </div>
-                    
-                    <div class="table-responsive">
-                        <table class="table table-striped align-middle">
+                    Branch Plan Holders
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button
+                    class="nav-link"
+                    id="register-tab"
+                    data-bs-toggle="tab"
+                    data-bs-target="#register-panel"
+                    type="button"
+                    role="tab"
+                    aria-controls="register-panel"
+                    aria-selected="false"
+                >
+                    Register Plan Holder
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content pt-3" id="clientTabsContent">
+            <div
+                class="tab-pane fade show active"
+                id="holders-panel"
+                role="tabpanel"
+                aria-labelledby="holders-tab"
+                tabindex="0"
+            >
+                <p class="cs-muted mb-3">View and manage all registered plan holders in your branch</p>
+
+                <?php if (empty($clients)): ?>
+                    <?= view('components/empty_state', [
+                        'icon'  => 'ti-users',
+                        'title' => 'No plan holders found for this branch',
+                    ]) ?>
+                <?php else: ?>
+                    <div class="cs-tablewrap">
+                        <table class="cs-table">
                             <thead>
                                 <tr>
                                     <th>Name</th>
                                     <th>Email</th>
                                     <th>Contact</th>
                                     <th>Status</th>
-                                    <th class="text-end">Actions</th>
+                                    <th class="cs-table__actions">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php if (empty($clients)): ?>
-                                    <tr>
-                                        <td colspan="5" class="text-center text-muted py-4">
-                                            No plan holders found for this branch.
-                                        </td>
-                                    </tr>
-                                <?php endif; ?>
-
                                 <?php foreach ($clients as $client): ?>
                                     <tr>
                                         <td>
-                                            <a 
-                                                href="<?= base_url('staff/client/view/' . $client['plan_holder_id']) ?>" 
-                                                class="text-decoration-none fw-semibold"
+                                            <a
+                                                href="<?= base_url('staff/client/view/' . $client['plan_holder_id']) ?>"
+                                                class="cs-table__primary"
                                             >
                                                 <?= esc($client['first_name'] . ' ' . $client['last_name']) ?>
                                             </a>
                                         </td>
                                         <td><?= esc((string) ($client['email'] ?? '-')) ?></td>
                                         <td><?= esc((string) ($client['contact_number'] ?? '-')) ?></td>
-                                        <?php $clientStatus = (string) ($client['plan_holder_status'] ?? 'inactive'); ?>
-                                        <td>
-                                            <span class="badge text-bg-<?= $clientStatus === 'active' ? 'success' : 'secondary' ?>">
-                                                <?= esc(ucfirst($clientStatus)) ?>
-                                            </span>
-                                        </td>
-                                        <td class="text-end">
-                                            <a 
-                                                href="<?= base_url('staff/client/edit/' . $client['plan_holder_id']) ?>" 
+                                        <td><?= cs_status((string) ($client['plan_holder_status'] ?? 'inactive')) ?></td>
+                                        <td class="cs-table__actions">
+                                            <a
+                                                href="<?= base_url('staff/client/edit/' . $client['plan_holder_id']) ?>"
                                                 class="btn btn-sm btn-outline-primary"
                                                 title="Edit client"
                                             >
                                                 Edit
                                             </a>
-                                            <a 
-                                                href="<?= base_url('staff/client/view/' . $client['plan_holder_id']) ?>" 
+                                            <a
+                                                href="<?= base_url('staff/client/view/' . $client['plan_holder_id']) ?>"
                                                 class="btn btn-sm btn-primary"
                                                 title="View full details"
                                             >
@@ -125,147 +102,137 @@
                             </tbody>
                         </table>
                     </div>
+                <?php endif; ?>
+            </div>
+
+            <div
+                class="tab-pane fade"
+                id="register-panel"
+                role="tabpanel"
+                aria-labelledby="register-tab"
+                tabindex="0"
+            >
+                <p class="cs-muted mb-3">Register a new plan holder in your branch</p>
+
+                <div class="alert alert-info mb-3">
+                    <strong>Heads up!</strong> You can register a walk-in client or link an existing user account to a new plan holder.
                 </div>
 
-                <!-- TAB 2: Register Plan Holder -->
-                <div 
-                    class="tab-pane fade" 
-                    id="register-panel" 
-                    role="tabpanel" 
-                    aria-labelledby="register-tab" 
-                    tabindex="0"
-                >
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="mb-0">Register a new plan holder in your branch</h5>
-                    </div>
+                <form method="post" action="<?= base_url('staff/client/store') ?>" novalidate>
+                    <?= csrf_field() ?>
 
-                    <div class="alert alert-info mb-3">
-                        <strong>Heads up!</strong> You can register a walk-in client or link an existing user account to a new plan holder.
-                    </div>
-
-                    <!-- Quick Form - Minimal fields for registration -->
-                    <form method="post" action="<?= base_url('staff/client/store') ?>" novalidate>
-                        <?= csrf_field() ?>
-
-                        <div class="row g-3">
-                            <!-- Basic Personal Info -->
-                            <div class="col-md-6">
-                                <label for="quick_first_name" class="form-label">First Name <span class="text-danger">*</span></label>
-                                <input 
-                                    type="text" 
-                                    class="form-control" 
-                                    id="quick_first_name" 
-                                    name="first_name" 
-                                    required
-                                >
-                            </div>
-                            <div class="col-md-6">
-                                <label for="quick_last_name" class="form-label">Last Name <span class="text-danger">*</span></label>
-                                <input 
-                                    type="text" 
-                                    class="form-control" 
-                                    id="quick_last_name" 
-                                    name="last_name" 
-                                    required
-                                >
-                            </div>
-                            <div class="col-md-6">
-                                <label for="quick_email" class="form-label">Email <span class="text-danger">*</span></label>
-                                <input 
-                                    type="email" 
-                                    class="form-control" 
-                                    id="quick_email" 
-                                    name="email" 
-                                    required
-                                >
-                            </div>
-                            <div class="col-md-6">
-                                <label for="quick_contact" class="form-label">Contact Number</label>
-                                <input 
-                                    type="tel" 
-                                    class="form-control" 
-                                    id="quick_contact" 
-                                    name="contact_number"
-                                >
-                            </div>
-
-                            <!-- City/Address -->
-                            <div class="col-md-6">
-                                <label for="quick_city" class="form-label">City/Municipality</label>
-                                <input 
-                                    type="text" 
-                                    class="form-control" 
-                                    id="quick_city" 
-                                    name="address_city"
-                                >
-                            </div>
-                            <div class="col-md-6">
-                                <label for="quick_barangay" class="form-label">Barangay</label>
-                                <input 
-                                    type="text" 
-                                    class="form-control" 
-                                    id="quick_barangay" 
-                                    name="address_barangay"
-                                >
-                            </div>
-
-                            <!-- Membership Program -->
-                            <div class="col-md-6">
-                                <label class="form-label">Program</label>
-                                <div class="form-control-plaintext fw-semibold">
-                                    <?= esc((string) (($program['name'] ?? '') ?: 'Damayan Burial Program')) ?>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Monthly Fee</label>
-                                <div class="form-control-plaintext fw-semibold">
-                                    P<?= number_format((float) ($program['monthly_fee'] ?? 240), 2) ?>
-                                </div>
-                            </div>
-
-                            <!-- Hidden Fields for unused optional fields -->
-                            <input type="hidden" name="middle_name" value="">
-                            <input type="hidden" name="date_of_birth" value="">
-                            <input type="hidden" name="place_of_birth" value="">
-                            <input type="hidden" name="age" value="">
-                            <input type="hidden" name="gender" value="">
-                            <input type="hidden" name="civil_status" value="">
-                            <input type="hidden" name="citizenship" value="">
-                            <input type="hidden" name="height" value="">
-                            <input type="hidden" name="weight" value="">
-                            <input type="hidden" name="address_no" value="">
-                            <input type="hidden" name="address_street" value="">
-                            <input type="hidden" name="spouse_name" value="">
-                            <input type="hidden" name="spouse_birthdate" value="">
-                            <input type="hidden" name="spouse_occupation" value="">
-                            <input type="hidden" name="senior_citizen_id" value="">
-                            <input type="hidden" name="organization_affiliation" value="">
-                        </div>
-
-                        <div class="d-flex gap-2 mt-4 justify-content-end">
-                            <a href="<?= base_url('staff/client') ?>" class="btn btn-outline-secondary">Clear</a>
-                            <a 
-                                href="<?= base_url('staff/client/register') ?>"
-                                class="btn btn-outline-info me-2"
-                                title="Open full registration form"
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="quick_first_name" class="form-label">First Name <span class="text-danger">*</span></label>
+                            <input
+                                type="text"
+                                class="form-control"
+                                id="quick_first_name"
+                                name="first_name"
+                                required
                             >
-                                Full Form
-                            </a>
-                            <button type="submit" class="btn btn-success">Quick Register</button>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="quick_last_name" class="form-label">Last Name <span class="text-danger">*</span></label>
+                            <input
+                                type="text"
+                                class="form-control"
+                                id="quick_last_name"
+                                name="last_name"
+                                required
+                            >
+                        </div>
+                        <div class="col-md-6">
+                            <label for="quick_email" class="form-label">Email <span class="text-danger">*</span></label>
+                            <input
+                                type="email"
+                                class="form-control"
+                                id="quick_email"
+                                name="email"
+                                required
+                            >
+                        </div>
+                        <div class="col-md-6">
+                            <label for="quick_contact" class="form-label">Contact Number</label>
+                            <input
+                                type="tel"
+                                class="form-control"
+                                id="quick_contact"
+                                name="contact_number"
+                            >
                         </div>
 
-                        <div class="alert alert-light mt-3">
-                            <small class="text-muted">
-                                <strong>Quick Register:</strong> Minimal fields for fast registration. <br>
-                                <strong>Full Form:</strong> Complete form for detailed information including personal details, address, beneficiaries, and more.
-                            </small>
+                        <div class="col-md-6">
+                            <label for="quick_city" class="form-label">City/Municipality</label>
+                            <input
+                                type="text"
+                                class="form-control"
+                                id="quick_city"
+                                name="address_city"
+                            >
                         </div>
-                    </form>
-                </div>
+                        <div class="col-md-6">
+                            <label for="quick_barangay" class="form-label">Barangay</label>
+                            <input
+                                type="text"
+                                class="form-control"
+                                id="quick_barangay"
+                                name="address_barangay"
+                            >
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Program</label>
+                            <div class="form-control-plaintext fw-semibold">
+                                <?= esc((string) (($program['name'] ?? '') ?: 'Damayan Burial Program')) ?>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Monthly Fee</label>
+                            <div class="form-control-plaintext fw-semibold">
+                                <?= cs_money($program['monthly_fee'] ?? 240) ?>
+                            </div>
+                        </div>
+
+                        <input type="hidden" name="middle_name" value="">
+                        <input type="hidden" name="date_of_birth" value="">
+                        <input type="hidden" name="place_of_birth" value="">
+                        <input type="hidden" name="age" value="">
+                        <input type="hidden" name="gender" value="">
+                        <input type="hidden" name="civil_status" value="">
+                        <input type="hidden" name="citizenship" value="">
+                        <input type="hidden" name="height" value="">
+                        <input type="hidden" name="weight" value="">
+                        <input type="hidden" name="address_no" value="">
+                        <input type="hidden" name="address_street" value="">
+                        <input type="hidden" name="spouse_name" value="">
+                        <input type="hidden" name="spouse_birthdate" value="">
+                        <input type="hidden" name="spouse_occupation" value="">
+                        <input type="hidden" name="senior_citizen_id" value="">
+                        <input type="hidden" name="organization_affiliation" value="">
+                    </div>
+
+                    <div class="d-flex gap-2 mt-4 justify-content-end">
+                        <a href="<?= base_url('staff/client') ?>" class="btn btn-outline-secondary">Clear</a>
+                        <a
+                            href="<?= base_url('staff/client/register') ?>"
+                            class="btn btn-outline-info me-2"
+                            title="Open full registration form"
+                        >
+                            Full Form
+                        </a>
+                        <button type="submit" class="btn btn-success">Quick Register</button>
+                    </div>
+
+                    <div class="alert alert-light mt-3">
+                        <small class="text-muted">
+                            <strong>Quick Register:</strong> Minimal fields for fast registration. <br>
+                            <strong>Full Form:</strong> Complete form for detailed information including personal details, address, beneficiaries, and more.
+                        </small>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
-</div>
-
+</section>
 <?= $this->endSection() ?>
-
