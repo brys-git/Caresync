@@ -86,6 +86,8 @@ class Reports extends BaseController
 
         return view('admin/reports/overdue', [
             'role_layout' => 'layouts/admin',
+            'page_title' => 'Overdue Report',
+            'page_sub' => 'Plan holders behind on their contribution, oldest due date first.',
             'active_report' => 'overdue',
             'rows' => $rows,
         ]);
@@ -105,6 +107,8 @@ class Reports extends BaseController
 
         return view('admin/reports/ledger', [
             'role_layout' => 'layouts/admin',
+            'page_title' => 'Ledger of Plan Holder',
+            'page_sub' => 'Full payment/transaction history for a single plan holder.',
             'active_report' => 'ledger',
             'query' => $query,
             'matches' => $matches,
@@ -137,6 +141,8 @@ class Reports extends BaseController
 
         return view('admin/reports/collections', [
             'role_layout' => 'layouts/admin',
+            'page_title' => 'Collections Report',
+            'page_sub' => 'Amounts collected per collector (whoever recorded the payment - Staff, Branch Admin, or Collector).',
             'active_report' => 'collections',
             'filters' => $filters,
             'rows' => $rows,
@@ -170,6 +176,8 @@ class Reports extends BaseController
 
         return view('admin/reports/commission', [
             'role_layout' => 'layouts/admin',
+            'page_title' => 'Commission Report',
+            'page_sub' => 'Commission earned per collector - 10% of the amount collected, computed automatically.',
             'active_report' => 'commission',
             'filters' => $filters,
             'rows' => $rows,
@@ -211,6 +219,8 @@ class Reports extends BaseController
 
         return view('admin/reports/remittance', [
             'role_layout' => 'layouts/admin',
+            'page_title' => 'Remittance Report',
+            'page_sub' => 'System-wide payment remittance across all branches. Branch Admin and Staff have their own branch-scoped version with print/PDF export for cash reconciliation.',
             'active_report' => 'remittance',
             'filters' => $filters,
             'rows' => $rows,

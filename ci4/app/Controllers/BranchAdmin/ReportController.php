@@ -79,6 +79,8 @@ class ReportController extends BaseController
 
         return view('admin/reports/overdue', [
             'role_layout' => 'layouts/branch_admin',
+            'page_title' => 'Overdue Report',
+            'page_sub' => 'Plan holders behind on their contribution, oldest due date first.',
             'reports_base_path' => '/branch-admin/reports',
             'reports_hidden_tabs' => ['ledger', 'collections'],
             'active_report' => 'overdue',
@@ -118,6 +120,8 @@ class ReportController extends BaseController
 
         return view('admin/reports/commission', [
             'role_layout' => 'layouts/branch_admin',
+            'page_title' => 'Commission Report',
+            'page_sub' => 'Commission earned per collector - 10% of the amount collected, computed automatically.',
             'reports_base_path' => '/branch-admin/reports',
             'reports_hidden_tabs' => ['ledger', 'collections'],
             'active_report' => 'commission',
