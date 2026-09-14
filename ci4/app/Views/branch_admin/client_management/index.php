@@ -1,30 +1,25 @@
 <?= $this->extend($role_layout) ?>
 
 <?= $this->section('content') ?>
-<div class="container-fluid">
-    <div class="mb-3">
-        <h1 class="h3 mb-1">Client Management</h1>
-        <p class="text-muted mb-0">Review registration payment status and open plan holder details for activation approval.</p>
-    </div>
+<?php // Flash messages are already surfaced as toasts by layouts/_shell.php - no need to render them again here. ?>
 
-    <?php if (session()->getFlashdata('error')): ?>
-        <div class="alert alert-danger"><?= esc(session()->getFlashdata('error')) ?></div>
-    <?php endif; ?>
-    <?php if (session()->getFlashdata('success')): ?>
-        <div class="alert alert-success"><?= esc(session()->getFlashdata('success')) ?></div>
-    <?php endif; ?>
-
-    <div class="card">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table align-middle">
+<section class="cs-panel">
+    <div class="cs-panel__body cs-panel__body--flush">
+        <?php if (empty($holders)): ?>
+            <?= view('components/empty_state', [
+                'icon'  => 'ti-users',
+                'title' => 'No plan holders found for your branch',
+            ]) ?>
+        <?php else: ?>
+            <div class="cs-tablewrap">
+                <table class="cs-table">
                     <thead>
                         <tr>
                             <th>Plan Holder</th>
                             <th>Unique ID</th>
                             <th>Plan Holder Status</th>
                             <th>Initial Payment</th>
-                            <th class="text-end">Action</th>
+                            <th class="cs-table__actions">Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -32,36 +27,22 @@
                             <?php
                                 $holderStatus = strtolower((string) ($holder['plan_holder_status'] ?? 'inactive'));
                                 $paymentStatus = strtolower((string) ($holder['initial_payment_status'] ?? 'none'));
-                                $paymentLabel = 'No payment';
-                                $paymentClass = 'secondary';
-                                if ($paymentStatus === 'pending') {
-                                    $paymentLabel = 'Pending Payment';
-                                    $paymentClass = 'warning';
-                                } elseif ($paymentStatus === 'paid') {
-                                    $paymentLabel = 'Paid';
-                                    $paymentClass = 'success';
-                                } elseif ($paymentStatus === 'cancelled') {
-                                    $paymentLabel = 'Cancelled';
-                                    $paymentClass = 'danger';
-                                }
+                                $paymentLabel = match ($paymentStatus) {
+                                    'pending' => 'Pending Payment',
+                                    'paid' => 'Paid',
+                                    'cancelled' => 'Cancelled',
+                                    default => 'No payment',
+                                };
                             ?>
                             <tr>
                                 <td>
-                                    <?= esc((string) ($holder['first_name'] . ' ' . $holder['last_name'])) ?><br>
-                                    <small class="text-muted"><?= esc((string) ($holder['email'] ?? '-')) ?></small>
+                                    <?= esc((string) ($holder['first_name'] . ' ' . $holder['last_name'])) ?>
+                                    <div class="cs-table__sub"><?= esc((string) ($holder['email'] ?? '-')) ?></div>
                                 </td>
                                 <td><?= esc((string) ($holder['unique_identifier'] ?: 'Not assigned')) ?></td>
-                                <td>
-                                    <span class="badge text-bg-<?= $holderStatus === 'active' ? 'success' : 'secondary' ?>">
-                                        <?= esc(ucfirst($holderStatus)) ?>
-                                    </span>
-                                </td>
-                                <td>
-                                    <span class="badge text-bg-<?= esc($paymentClass) ?>">
-                                        <?= esc($paymentLabel) ?>
-                                    </span>
-                                </td>
-                                <td class="text-end">
+                                <td><?= cs_status($holderStatus) ?></td>
+                                <td><?= cs_status($paymentStatus, $paymentLabel) ?></td>
+                                <td class="cs-table__actions">
                                     <a href="<?= base_url('branch-admin/client-management/view/' . (int) $holder['plan_holder_id']) ?>" class="btn btn-sm btn-outline-primary me-1">View Details</a>
                                     <?php if ($paymentStatus === 'pending'): ?>
                                         <form method="post" action="<?= base_url('branch-admin/client-management/approve/' . (int) $holder['plan_holder_id']) ?>" class="d-inline"
@@ -73,16 +54,10 @@
                                 </td>
                             </tr>
                         <?php endforeach; ?>
-
-                        <?php if (empty($holders)): ?>
-                            <tr>
-                                <td colspan="5" class="text-center text-muted py-4">No plan holders found for your branch.</td>
-                            </tr>
-                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
-        </div>
+        <?php endif; ?>
     </div>
-</div>
+</section>
 <?= $this->endSection() ?>

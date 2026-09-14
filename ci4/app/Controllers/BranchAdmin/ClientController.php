@@ -30,6 +30,8 @@ class ClientController extends BaseController
             'holders' => $clients,
             'program' => MembershipService::getProgramInfo(),
             'role_layout' => 'layouts/branch_admin',
+            'page_title' => 'Client Management',
+            'page_sub' => 'Review registration payment status and open plan holder details for activation approval.',
         ]);
     }
 
@@ -46,6 +48,7 @@ class ClientController extends BaseController
         return view('branch_admin/clients/edit', [
             'client' => $client,
             'role_layout' => 'layouts/branch_admin',
+            'page_title' => 'Edit Client',
         ]);
     }
 
@@ -156,6 +159,8 @@ class ClientController extends BaseController
             : ($planId ? 'No pending payment found for approval.' : 'This client has no plan yet.');
 
         return view('branch_admin/client_management/details', [
+            'page_title' => 'Plan Holder Details',
+            'page_sub' => 'Approve registration only after initial payment has been verified.',
             'holder' => $client,
             'initial_payment' => $initialPayment,
             'payments' => $payments,
@@ -188,6 +193,8 @@ class ClientController extends BaseController
             'existing_users' => $existingUsers,
             'program' => MembershipService::getProgramInfo(),
             'role_layout' => 'layouts/branch_admin',
+            'page_title' => 'Register Plan Holder',
+            'page_sub' => 'Add a new plan holder to your branch',
             'id_types' => (new GovernmentIdVerificationService())->idTypes(),
         ]);
     }
