@@ -100,6 +100,8 @@ class PaymentTracking extends BaseController
 
         return view('branch_admin/payment_tracking/index', [
             'role_layout' => 'layouts/branch_admin',
+            'page_title' => 'Payment Tracking',
+            'page_sub' => 'Record advance payments and verify pending GCash/cash submissions.',
             'plan_options' => $this->branchPlanOptions($branchId),
             'initial_plan_options' => $this->branchInitialPlanOptions($branchId),
             'rows' => $this->paymentRows($branchId),

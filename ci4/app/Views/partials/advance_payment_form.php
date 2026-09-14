@@ -13,9 +13,9 @@
  */
 $prefix = (string) ($ap_prefix ?? 'ap');
 ?>
-<div class="card mb-3">
-    <div class="card-body">
-        <h5 class="mb-3"><?= esc((string) ($ap_heading ?? 'Advance Payment Entry')) ?></h5>
+<section class="cs-panel mb-3">
+    <div class="cs-panel__head"><h2 class="cs-panel__title"><?= esc((string) ($ap_heading ?? 'Advance Payment Entry')) ?></h2></div>
+    <div class="cs-panel__body">
         <form method="post" action="<?= esc((string) $ap_action, 'attr') ?>">
             <?= csrf_field() ?>
             <div class="row g-3">
@@ -64,7 +64,7 @@ $prefix = (string) ($ap_prefix ?? 'ap');
             <button type="submit" class="btn btn-primary mt-3"><?= esc((string) ($ap_button_label ?? 'Record Advance Payment')) ?></button>
         </form>
     </div>
-</div>
+</section>
 <script>
     (function () {
         const scope = document.getElementById('<?= $prefix ?>_plan_id')?.closest('form');

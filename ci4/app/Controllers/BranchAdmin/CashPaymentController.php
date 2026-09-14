@@ -27,6 +27,8 @@ class CashPaymentController extends BaseController
 
         return view('branch_admin/cash_payment_record', [
             'branch_id' => $branch_id,
+            'page_title' => 'Record Cash Payment',
+            'page_sub' => 'Register client cash payments for initial membership fees. Client will verify using the official receipt number.',
         ]);
     }
 
@@ -114,6 +116,8 @@ class CashPaymentController extends BaseController
 
         return view('branch_admin/cash_payments_list', [
             'payments' => $payments,
+            'page_title' => 'Cash Payments Recorded',
+            'page_sub' => 'List of cash payments waiting for client verification.',
         ]);
     }
 }
