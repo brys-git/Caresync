@@ -123,6 +123,8 @@ class PaymentTracking extends BaseController
 
         return view('staff/payment_management/index', [
             'role_layout' => 'layouts/staff',
+            'page_title' => 'Payment Management',
+            'page_sub' => 'Record advance payments and monitor transaction statuses.',
             'plan_options' => $this->branchPlanOptions($branchId),
             'rows' => $this->paymentRows($branchId),
             'can_approve' => false,
