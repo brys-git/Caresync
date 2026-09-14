@@ -54,6 +54,8 @@ class ServiceApplicationController extends BaseController
 
         return view('branch_admin/service_package/request_show', [
             'role_layout' => 'layouts/staff',
+            'page_title' => 'Claim Details',
+            'page_sub' => 'Review the submitted claim and supporting documents before approving or rejecting.',
             'claim_base_path' => self::BASE_PATH,
             'request' => $request,
             'documents' => $this->claimService->getClaimDocuments($id),

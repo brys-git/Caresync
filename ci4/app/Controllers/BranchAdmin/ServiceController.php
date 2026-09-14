@@ -48,6 +48,7 @@ class ServiceController extends BaseController
             : [];
 
         return view('branch_admin/service_package/index', [
+            'page_title' => 'Service / Package Management',
             'active_tab' => 'ongoing',
             'ongoing_services' => $ongoingServices,
             'staff' => $staff,
@@ -132,6 +133,7 @@ class ServiceController extends BaseController
         }
 
         return view('branch_admin/service_package/index', [
+            'page_title' => 'Service / Package Management',
             'active_tab' => 'schedule',
             'plan_holders' => $planHolders,
             'packages' => $packages,

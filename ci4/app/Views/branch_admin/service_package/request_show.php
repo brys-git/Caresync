@@ -12,95 +12,84 @@ $claimBasePath = (string) ($claim_base_path ?? '/branch-admin/service-package/re
 <?= $this->extend($role_layout ?? 'layouts/branch_admin') ?>
 
 <?= $this->section('content') ?>
-<div class="container-fluid py-3">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-            <h4 class="mb-0">Claim Details</h4>
-            <p class="text-muted mb-0">Review the submitted claim and supporting documents before approving or rejecting.</p>
-        </div>
-        <a href="<?= site_url($claimBasePath) ?>" class="btn btn-outline-secondary">Back to Claims</a>
-    </div>
+<div class="mb-3 text-end">
+    <a href="<?= site_url($claimBasePath) ?>" class="btn btn-outline-secondary btn-sm">Back to Claims</a>
+</div>
 
-    <?php if (session()->getFlashdata('success')): ?>
-        <div class="alert alert-success"><?= esc(session()->getFlashdata('success')) ?></div>
-    <?php endif; ?>
-    <?php if (session()->getFlashdata('error')): ?>
-        <div class="alert alert-danger"><?= esc(session()->getFlashdata('error')) ?></div>
-    <?php endif; ?>
+<?php // Flash messages are already surfaced as toasts by layouts/_shell.php - no need to render them again here. ?>
 
-    <div class="card mb-3">
-        <div class="card-body">
-            <div class="row gy-3">
-                <div class="col-md-4"><strong>Applicant:</strong> <?= esc((string) ($request['first_name'] ?? '') . ' ' . (string) ($request['last_name'] ?? '')) ?></div>
-                <div class="col-md-4"><strong>Request ID:</strong> <?= esc((string) ($request['application_id'] ?? '-')) ?></div>
-                <div class="col-md-4"><strong>Status:</strong> <?= esc(ucfirst((string) ($request['status'] ?? '-'))) ?></div>
-                <div class="col-md-6"><strong>Requested on:</strong> <?= esc((string) ($request['created_at'] ?? '-')) ?></div>
-                <div class="col-md-6"><strong>Branch ID:</strong> <?= esc((string) ($request['branch_id'] ?? '-')) ?></div>
-                <div class="col-md-6"><strong>Type:</strong> <?= esc((string) (($request['service_list_id'] ?? 0) > 0 ? 'Service' : 'Package')) ?></div>
-                <div class="col-md-6"><strong>Selected:</strong> <?= esc((string) ($request['service_name'] ?? $request['package_name'] ?? '-')) ?></div>
-                <div class="col-md-6"><strong>Price:</strong> P<?= esc(number_format((float) (($request['service_price'] ?? $request['package_price']) ?? 0), 2)) ?></div>
-            </div>
+<section class="cs-panel mb-3">
+    <div class="cs-panel__body">
+        <div class="row gy-3">
+            <div class="col-md-4"><strong>Applicant:</strong> <?= esc((string) ($request['first_name'] ?? '') . ' ' . (string) ($request['last_name'] ?? '')) ?></div>
+            <div class="col-md-4"><strong>Request ID:</strong> <?= esc((string) ($request['application_id'] ?? '-')) ?></div>
+            <div class="col-md-4"><strong>Status:</strong> <?= cs_status((string) ($request['status'] ?? '')) ?></div>
+            <div class="col-md-6"><strong>Requested on:</strong> <?= cs_date($request['created_at'] ?? null) ?></div>
+            <div class="col-md-6"><strong>Branch ID:</strong> <?= esc((string) ($request['branch_id'] ?? '-')) ?></div>
+            <div class="col-md-6"><strong>Type:</strong> <?= esc((string) (($request['service_list_id'] ?? 0) > 0 ? 'Service' : 'Package')) ?></div>
+            <div class="col-md-6"><strong>Selected:</strong> <?= esc((string) ($request['service_name'] ?? $request['package_name'] ?? '-')) ?></div>
+            <div class="col-md-6"><strong>Price:</strong> <?= cs_money(($request['service_price'] ?? $request['package_price']) ?? 0) ?></div>
         </div>
     </div>
+</section>
 
-    <div class="row g-3">
-        <div class="col-lg-6">
-            <div class="card mb-3">
-                <div class="card-header">Deceased Information</div>
-                <div class="card-body">
-                    <div class="mb-3"><strong>Name:</strong> <?= esc((string) ($request['deceased_name'] ?? '-')) ?></div>
-                    <div class="mb-3"><strong>Date of death:</strong> <?= esc((string) ($request['deceased_date_of_death'] ?? '-')) ?></div>
-                    <div class="mb-3"><strong>Relationship:</strong> <?= esc((string) ($request['relationship_to_deceased'] ?? '-')) ?></div>
-                    <div class="mb-3"><strong>Address:</strong> <?= esc((string) ($request['deceased_address'] ?? '-')) ?></div>
-                </div>
+<div class="row g-3">
+    <div class="col-lg-6">
+        <section class="cs-panel mb-3">
+            <div class="cs-panel__head"><h2 class="cs-panel__title">Deceased Information</h2></div>
+            <div class="cs-panel__body">
+                <div class="mb-3"><strong>Name:</strong> <?= esc((string) ($request['deceased_name'] ?? '-')) ?></div>
+                <div class="mb-3"><strong>Date of death:</strong> <?= cs_date($request['deceased_date_of_death'] ?? null) ?></div>
+                <div class="mb-3"><strong>Relationship:</strong> <?= esc((string) ($request['relationship_to_deceased'] ?? '-')) ?></div>
+                <div class="mb-3"><strong>Address:</strong> <?= esc((string) ($request['deceased_address'] ?? '-')) ?></div>
             </div>
-            <div class="card mb-3">
-                <div class="card-header">Beneficiary Details</div>
-                <div class="card-body">
-                    <div class="mb-3"><strong>Name:</strong> <?= esc((string) ($request['beneficiary_name'] ?? '-')) ?></div>
-                    <div class="mb-3"><strong>Contact:</strong> <?= esc((string) ($request['beneficiary_contact'] ?? '-')) ?></div>
-                    <div class="mb-3"><strong>Notes:</strong> <?= esc((string) ($request['application_notes'] ?? '-')) ?></div>
-                </div>
+        </section>
+        <section class="cs-panel mb-3">
+            <div class="cs-panel__head"><h2 class="cs-panel__title">Beneficiary Details</h2></div>
+            <div class="cs-panel__body">
+                <div class="mb-3"><strong>Name:</strong> <?= esc((string) ($request['beneficiary_name'] ?? '-')) ?></div>
+                <div class="mb-3"><strong>Contact:</strong> <?= esc((string) ($request['beneficiary_contact'] ?? '-')) ?></div>
+                <div class="mb-3"><strong>Notes:</strong> <?= esc((string) ($request['application_notes'] ?? '-')) ?></div>
             </div>
-        </div>
+        </section>
+    </div>
 
-        <div class="col-lg-6">
-            <div class="card mb-3">
-                <div class="card-header">Supporting Documents</div>
-                <div class="card-body">
-                    <?php if (empty($documents)): ?>
-                        <div class="text-muted">No documents uploaded yet.</div>
-                    <?php else: ?>
-                        <ul class="list-group list-group-flush">
-                            <?php foreach ($documents as $document): ?>
-                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    <span><?= esc((string) ($document['original_name'] ?? 'Unnamed document')) ?></span>
-                                    <a href="<?= site_url($claimBasePath . '/document/' . (int) $document['document_id']) ?>" class="btn btn-sm btn-outline-primary">Download</a>
-                                </li>
-                            <?php endforeach; ?>
-                        </ul>
-                    <?php endif; ?>
-                </div>
+    <div class="col-lg-6">
+        <section class="cs-panel mb-3">
+            <div class="cs-panel__head"><h2 class="cs-panel__title">Supporting Documents</h2></div>
+            <div class="cs-panel__body">
+                <?php if (empty($documents)): ?>
+                    <div class="text-muted">No documents uploaded yet.</div>
+                <?php else: ?>
+                    <ul class="list-group list-group-flush">
+                        <?php foreach ($documents as $document): ?>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><?= esc((string) ($document['original_name'] ?? 'Unnamed document')) ?></span>
+                                <a href="<?= site_url($claimBasePath . '/document/' . (int) $document['document_id']) ?>" class="btn btn-sm btn-outline-primary">Download</a>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                <?php endif; ?>
             </div>
-            <div class="card">
-                <div class="card-header">Actions</div>
-                <div class="card-body">
-                    <?php if (($request['status'] ?? '') === 'pending'): ?>
-                        <form action="<?= site_url($claimBasePath . '/approve/' . (int) $request['application_id']) ?>" method="post" class="d-inline-block me-2">
-                            <?= csrf_field() ?>
-                            <button type="submit" class="btn btn-success">Approve</button>
-                        </form>
-                        <form action="<?= site_url($claimBasePath . '/reject/' . (int) $request['application_id']) ?>" method="post" class="d-inline-block">
-                            <?= csrf_field() ?>
-                            <input type="text" name="rejection_reason" class="form-control form-control-sm d-inline-block me-1" style="max-width: 220px;" placeholder="Reason (optional)">
-                            <button type="submit" class="btn btn-danger">Reject</button>
-                        </form>
-                    <?php else: ?>
-                        <div class="text-muted">This claim is <?= esc(ucfirst((string) ($request['status'] ?? 'unknown'))) ?>.</div>
-                    <?php endif; ?>
-                </div>
+        </section>
+        <section class="cs-panel">
+            <div class="cs-panel__head"><h2 class="cs-panel__title">Actions</h2></div>
+            <div class="cs-panel__body">
+                <?php if (($request['status'] ?? '') === 'pending'): ?>
+                    <form action="<?= site_url($claimBasePath . '/approve/' . (int) $request['application_id']) ?>" method="post" class="d-inline-block me-2">
+                        <?= csrf_field() ?>
+                        <button type="submit" class="btn btn-success">Approve</button>
+                    </form>
+                    <form action="<?= site_url($claimBasePath . '/reject/' . (int) $request['application_id']) ?>" method="post" class="d-inline-block">
+                        <?= csrf_field() ?>
+                        <input type="text" name="rejection_reason" class="form-control form-control-sm d-inline-block me-1" style="max-width: 220px;" placeholder="Reason (optional)">
+                        <button type="submit" class="btn btn-danger">Reject</button>
+                    </form>
+                <?php else: ?>
+                    <div class="text-muted">This claim is <?= esc(ucfirst((string) ($request['status'] ?? 'unknown'))) ?>.</div>
+                <?php endif; ?>
             </div>
-        </div>
+        </section>
     </div>
 </div>
 <?= $this->endSection() ?>

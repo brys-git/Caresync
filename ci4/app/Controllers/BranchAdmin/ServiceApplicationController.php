@@ -22,6 +22,7 @@ class ServiceApplicationController extends BaseController
         $branchId = (int) session('branch_id');
 
         return view('branch_admin/service_package/index', [
+            'page_title' => 'Service / Package Management',
             'active_tab' => 'requests',
             'requests' => $this->claimService->getBranchClaims($branchId),
             'role_layout' => 'layouts/branch_admin',
@@ -76,6 +77,8 @@ class ServiceApplicationController extends BaseController
 
         return view('branch_admin/service_package/request_show', [
             'role_layout' => 'layouts/branch_admin',
+            'page_title' => 'Claim Details',
+            'page_sub' => 'Review the submitted claim and supporting documents before approving or rejecting.',
             'claim_base_path' => '/branch-admin/service-package/requests',
             'request' => $request,
             'documents' => $this->claimService->getClaimDocuments($id),

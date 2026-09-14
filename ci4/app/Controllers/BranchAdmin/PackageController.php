@@ -31,6 +31,7 @@ class PackageController extends BaseController
         $this->ensureBranchAdminAccess();
 
         return view('branch_admin/service_package/index', [
+            'page_title' => 'Service / Package Management',
             'active_tab' => 'packages',
             'packages' => $this->packageModel->orderBy('package_name', 'ASC')->findAll(),
             'role_layout' => 'layouts/branch_admin',
@@ -114,6 +115,7 @@ class PackageController extends BaseController
         $package['versions'] = $this->packageVersionModel->where('package_id', $id)->orderBy('effective_date', 'DESC')->orderBy('version_id', 'DESC')->findAll();
 
         return view('branch_admin/service_package/packages_view', [
+            'page_title' => 'Package Details',
             'package' => $package,
             'service_list' => $this->serviceListModel->where('is_available', 1)->orderBy('service_name', 'ASC')->findAll(),
             'role_layout' => 'layouts/branch_admin',
@@ -131,6 +133,7 @@ class PackageController extends BaseController
         }
 
         return view('branch_admin/service_package/packages_edit', [
+            'page_title' => 'Edit Package',
             'package' => $package,
             'service_list' => $this->serviceListModel->where('is_available', 1)->orderBy('service_name', 'ASC')->findAll(),
             'role_layout' => 'layouts/branch_admin',

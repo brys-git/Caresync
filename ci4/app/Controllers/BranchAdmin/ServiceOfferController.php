@@ -33,6 +33,7 @@ class ServiceOfferController extends BaseController
             ->findAll();
 
         return view('branch_admin/service_package/index', [
+            'page_title' => 'Service / Package Management',
             'active_tab' => 'services',
             'services' => $services,
             'role_layout' => 'layouts/branch_admin',

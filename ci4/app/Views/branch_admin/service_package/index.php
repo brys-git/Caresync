@@ -1,230 +1,225 @@
 <?= $this->extend($role_layout ?? 'layouts/branch_admin') ?>
 
 <?= $this->section('content') ?>
-<div class="container-fluid py-3">
-    <h4 class="mb-3">Service / Package Management</h4>
+<?php // Flash messages are already surfaced as toasts by layouts/_shell.php - no need to render them again here. ?>
 
-    <?php if (session()->getFlashdata('error')): ?>
-        <div class="alert alert-danger"><?= esc(session()->getFlashdata('error')) ?></div>
-    <?php endif; ?>
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item"><a class="nav-link <?= ($active_tab ?? '') === 'services' ? 'active' : '' ?>" href="<?= site_url('/branch-admin/service-package/services') ?>">Services</a></li>
+    <li class="nav-item"><a class="nav-link <?= ($active_tab ?? '') === 'packages' ? 'active' : '' ?>" href="<?= site_url('/branch-admin/service-package/packages') ?>">Packages</a></li>
+    <li class="nav-item"><a class="nav-link <?= ($active_tab ?? '') === 'requests' ? 'active' : '' ?>" href="<?= site_url('/branch-admin/service-package/requests') ?>">Claims</a></li>
+    <li class="nav-item"><a class="nav-link <?= ($active_tab ?? '') === 'ongoing' ? 'active' : '' ?>" href="<?= site_url('/branch-admin/service-package/ongoing') ?>">Ongoing Services</a></li>
+    <li class="nav-item"><a class="nav-link <?= ($active_tab ?? '') === 'schedule' ? 'active' : '' ?>" href="<?= site_url('/branch-admin/service-package/schedule') ?>">Schedule Service</a></li>
+</ul>
 
-    <?php if (session()->getFlashdata('success')): ?>
-        <div class="alert alert-success"><?= esc(session()->getFlashdata('success')) ?></div>
-    <?php endif; ?>
-
-    <ul class="nav nav-tabs mb-3">
-        <li class="nav-item"><a class="nav-link <?= ($active_tab ?? '') === 'services' ? 'active' : '' ?>" href="<?= site_url('/branch-admin/service-package/services') ?>">Services</a></li>
-        <li class="nav-item"><a class="nav-link <?= ($active_tab ?? '') === 'packages' ? 'active' : '' ?>" href="<?= site_url('/branch-admin/service-package/packages') ?>">Packages</a></li>
-        <li class="nav-item"><a class="nav-link <?= ($active_tab ?? '') === 'requests' ? 'active' : '' ?>" href="<?= site_url('/branch-admin/service-package/requests') ?>">Claims</a></li>
-        <li class="nav-item"><a class="nav-link <?= ($active_tab ?? '') === 'ongoing' ? 'active' : '' ?>" href="<?= site_url('/branch-admin/service-package/ongoing') ?>">Ongoing Services</a></li>
-        <li class="nav-item"><a class="nav-link <?= ($active_tab ?? '') === 'schedule' ? 'active' : '' ?>" href="<?= site_url('/branch-admin/service-package/schedule') ?>">Schedule Service</a></li>
-    </ul>
-
-    <?php if (($active_tab ?? '') === 'services'): ?>
-        <div class="d-flex justify-content-end mb-3">
-            <a href="<?= site_url('/branch-admin/services/create') ?>" class="btn btn-primary">Create Service</a>
-        </div>
-        <div class="card">
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-striped mb-0">
+<?php if (($active_tab ?? '') === 'services'): ?>
+    <div class="d-flex justify-content-end mb-3">
+        <a href="<?= site_url('/branch-admin/services/create') ?>" class="btn btn-primary">Create Service</a>
+    </div>
+    <section class="cs-panel">
+        <div class="cs-panel__body cs-panel__body--flush">
+            <?php $rows = $services ?? []; ?>
+            <?php if (empty($rows)): ?>
+                <?= view('components/empty_state', ['icon' => 'ti-truck', 'title' => 'No services found']) ?>
+            <?php else: ?>
+                <div class="cs-tablewrap">
+                    <table class="cs-table">
                         <thead>
                             <tr>
                                 <th>Service Name</th>
                                 <th>Description</th>
-                                <th>Base Price</th>
+                                <th class="cs-num">Base Price</th>
                                 <th>Status</th>
-                                <th>Action</th>
+                                <th class="cs-table__actions">Action</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php $rows = $services ?? []; ?>
-                            <?php if (empty($rows)): ?>
-                                <tr><td colspan="5" class="text-center py-3">No services found.</td></tr>
-                            <?php else: ?>
-                                <?php foreach ($rows as $row): ?>
-                                    <?php $serviceId = (int) ($row['service_list_id'] ?? ($row['offer_id'] ?? ($row['id'] ?? 0))); ?>
-                                    <tr>
-                                        <td><?= esc($row['service_name'] ?? '-') ?></td>
-                                        <td><?= esc($row['description'] ?? '-') ?></td>
-                                        <td><?= number_format((float) ($row['base_price'] ?? 0), 2) ?></td>
-                                        <td><?= esc(ucfirst((string) ($row['status'] ?? '-'))) ?></td>
-                                        <td>
-                                            <a href="<?= site_url('/branch-admin/services/view/' . $serviceId) ?>" class="btn btn-sm btn-outline-secondary">View</a>
-                                            <a href="<?= site_url('/branch-admin/services/edit/' . $serviceId) ?>" class="btn btn-sm btn-outline-primary">Edit</a>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
+                            <?php foreach ($rows as $row): ?>
+                                <?php $serviceId = (int) ($row['service_list_id'] ?? ($row['offer_id'] ?? ($row['id'] ?? 0))); ?>
+                                <tr>
+                                    <td><?= esc($row['service_name'] ?? '-') ?></td>
+                                    <td><?= esc($row['description'] ?? '-') ?></td>
+                                    <td class="cs-num"><?= cs_money($row['base_price'] ?? 0) ?></td>
+                                    <td><?= cs_status((string) ($row['status'] ?? '')) ?></td>
+                                    <td class="cs-table__actions">
+                                        <a href="<?= site_url('/branch-admin/services/view/' . $serviceId) ?>" class="btn btn-sm btn-outline-secondary">View</a>
+                                        <a href="<?= site_url('/branch-admin/services/edit/' . $serviceId) ?>" class="btn btn-sm btn-outline-primary">Edit</a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
                         </tbody>
                     </table>
                 </div>
-            </div>
+            <?php endif; ?>
         </div>
-    <?php endif; ?>
+    </section>
+<?php endif; ?>
 
-    <?php if (($active_tab ?? '') === 'packages'): ?>
-        <div class="d-flex justify-content-end mb-3">
-            <a href="<?= site_url('/branch-admin/packages/create') ?>" class="btn btn-primary">Create Package</a>
-        </div>
-        <div class="card">
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-striped mb-0">
+<?php if (($active_tab ?? '') === 'packages'): ?>
+    <div class="d-flex justify-content-end mb-3">
+        <a href="<?= site_url('/branch-admin/packages/create') ?>" class="btn btn-primary">Create Package</a>
+    </div>
+    <section class="cs-panel">
+        <div class="cs-panel__body cs-panel__body--flush">
+            <?php $rows = $packages ?? []; ?>
+            <?php if (empty($rows)): ?>
+                <?= view('components/empty_state', ['icon' => 'ti-package', 'title' => 'No packages found']) ?>
+            <?php else: ?>
+                <div class="cs-tablewrap">
+                    <table class="cs-table">
                         <thead>
                             <tr>
                                 <th>Package Name</th>
                                 <th>Description</th>
-                                <th>Base Price</th>
+                                <th class="cs-num">Base Price</th>
                                 <th>Customizable</th>
-                                <th>Action</th>
+                                <th class="cs-table__actions">Action</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php $rows = $packages ?? []; ?>
-                            <?php if (empty($rows)): ?>
-                                <tr><td colspan="5" class="text-center py-3">No packages found.</td></tr>
-                            <?php else: ?>
-                                <?php foreach ($rows as $row): ?>
-                                    <tr>
-                                        <td><?= esc($row['package_name'] ?? '-') ?></td>
-                                        <td><?= esc($row['description'] ?? '-') ?></td>
-                                        <td><?= number_format((float) ($row['base_price'] ?? 0), 2) ?></td>
-                                        <td><?= ((int) ($row['is_customizable'] ?? 0) === 1) ? 'Yes' : 'No' ?></td>
-                                        <td>
-                                            <a href="<?= site_url('/branch-admin/packages/view/' . (int) $row['package_id']) ?>" class="btn btn-sm btn-outline-secondary">View</a>
-                                            <a href="<?= site_url('/branch-admin/packages/edit/' . (int) $row['package_id']) ?>" class="btn btn-sm btn-outline-primary">Edit</a>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
+                            <?php foreach ($rows as $row): ?>
+                                <tr>
+                                    <td><?= esc($row['package_name'] ?? '-') ?></td>
+                                    <td><?= esc($row['description'] ?? '-') ?></td>
+                                    <td class="cs-num"><?= cs_money($row['base_price'] ?? 0) ?></td>
+                                    <td><?= ((int) ($row['is_customizable'] ?? 0) === 1) ? 'Yes' : 'No' ?></td>
+                                    <td class="cs-table__actions">
+                                        <a href="<?= site_url('/branch-admin/packages/view/' . (int) $row['package_id']) ?>" class="btn btn-sm btn-outline-secondary">View</a>
+                                        <a href="<?= site_url('/branch-admin/packages/edit/' . (int) $row['package_id']) ?>" class="btn btn-sm btn-outline-primary">Edit</a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
                         </tbody>
                     </table>
                 </div>
-            </div>
+            <?php endif; ?>
         </div>
-    <?php endif; ?>
+    </section>
+<?php endif; ?>
 
-    <?php if (($active_tab ?? '') === 'schedule'): ?>
-        <div class="card">
-            <div class="card-body">
-                <h2 class="h6 mb-3">Schedule Service</h2>
-                <form method="post" action="<?= site_url('/branch-admin/service-package/schedule/store') ?>">
-                    <?= csrf_field() ?>
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Plan Holder</label>
-                            <select name="plan_holder_id" class="form-select" required>
-                                <option value="">Select plan holder</option>
-                                <?php foreach (($plan_holders ?? []) as $holder): ?>
-                                    <option value="<?= (int) $holder['plan_holder_id'] ?>" <?= (int) old('plan_holder_id') === (int) $holder['plan_holder_id'] ? 'selected' : '' ?>>
-                                        <?= esc(($holder['first_name'] ?? '') . ' ' . ($holder['last_name'] ?? '')) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Package</label>
-                            <select id="schedule_package_id" name="package_id" class="form-select" required>
-                                <option value="">Select package</option>
-                                <?php foreach (($packages ?? []) as $package): ?>
-                                    <option value="<?= (int) $package['package_id'] ?>" <?= (int) old('package_id') === (int) $package['package_id'] ? 'selected' : '' ?>>
-                                        <?= esc($package['package_name']) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Service Definition (Optional)</label>
-                            <select id="schedule_service_list_id" name="service_list_id" class="form-select">
-                                <option value="">No specific service</option>
-                                <?php foreach (($service_list ?? []) as $service): ?>
-                                    <option value="<?= (int) $service['service_list_id'] ?>" data-label="<?= esc($service['service_name']) ?>" <?= (int) old('service_list_id') === (int) $service['service_list_id'] ? 'selected' : '' ?>>
-                                        <?= esc($service['service_name']) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <small id="schedule_service_help" class="text-muted">Pick package first to narrow service suggestions.</small>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Service Date</label>
-                            <input type="date" name="service_date" class="form-control" value="<?= esc(old('service_date', date('Y-m-d'))) ?>" required>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Service Time</label>
-                            <input type="time" name="service_time" class="form-control" value="<?= esc(old('service_time')) ?>">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Burial Location</label>
-                            <input type="text" name="burial_location" class="form-control" value="<?= esc(old('burial_location')) ?>">
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label">Notes</label>
-                            <textarea name="notes" class="form-control" rows="3"><?= esc(old('notes')) ?></textarea>
-                        </div>
+<?php if (($active_tab ?? '') === 'schedule'): ?>
+    <section class="cs-panel">
+        <div class="cs-panel__head"><h2 class="cs-panel__title">Schedule Service</h2></div>
+        <div class="cs-panel__body">
+            <form method="post" action="<?= site_url('/branch-admin/service-package/schedule/store') ?>">
+                <?= csrf_field() ?>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Plan Holder</label>
+                        <select name="plan_holder_id" class="form-select" required>
+                            <option value="">Select plan holder</option>
+                            <?php foreach (($plan_holders ?? []) as $holder): ?>
+                                <option value="<?= (int) $holder['plan_holder_id'] ?>" <?= (int) old('plan_holder_id') === (int) $holder['plan_holder_id'] ? 'selected' : '' ?>>
+                                    <?= esc(($holder['first_name'] ?? '') . ' ' . ($holder['last_name'] ?? '')) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
-                    <button type="submit" class="btn btn-primary mt-3">Schedule Service</button>
-                </form>
-            </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Package</label>
+                        <select id="schedule_package_id" name="package_id" class="form-select" required>
+                            <option value="">Select package</option>
+                            <?php foreach (($packages ?? []) as $package): ?>
+                                <option value="<?= (int) $package['package_id'] ?>" <?= (int) old('package_id') === (int) $package['package_id'] ? 'selected' : '' ?>>
+                                    <?= esc($package['package_name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Service Definition (Optional)</label>
+                        <select id="schedule_service_list_id" name="service_list_id" class="form-select">
+                            <option value="">No specific service</option>
+                            <?php foreach (($service_list ?? []) as $service): ?>
+                                <option value="<?= (int) $service['service_list_id'] ?>" data-label="<?= esc($service['service_name']) ?>" <?= (int) old('service_list_id') === (int) $service['service_list_id'] ? 'selected' : '' ?>>
+                                    <?= esc($service['service_name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <small id="schedule_service_help" class="text-muted">Pick package first to narrow service suggestions.</small>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Service Date</label>
+                        <input type="date" name="service_date" class="form-control" value="<?= esc(old('service_date', date('Y-m-d'))) ?>" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Service Time</label>
+                        <input type="time" name="service_time" class="form-control" value="<?= esc(old('service_time')) ?>">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Burial Location</label>
+                        <input type="text" name="burial_location" class="form-control" value="<?= esc(old('burial_location')) ?>">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Notes</label>
+                        <textarea name="notes" class="form-control" rows="3"><?= esc(old('notes')) ?></textarea>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary mt-3">Schedule Service</button>
+            </form>
         </div>
-    <?php endif; ?>
+    </section>
+<?php endif; ?>
 
-    <?php if (($active_tab ?? '') === 'requests'): ?>
-        <div class="card">
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-striped mb-0">
+<?php if (($active_tab ?? '') === 'requests'): ?>
+    <section class="cs-panel">
+        <div class="cs-panel__body cs-panel__body--flush">
+            <?php $rows = $requests ?? []; ?>
+            <?php if (empty($rows)): ?>
+                <?= view('components/empty_state', ['icon' => 'ti-clipboard-list', 'title' => 'No claims found']) ?>
+            <?php else: ?>
+                <div class="cs-tablewrap">
+                    <table class="cs-table">
                         <thead>
                             <tr>
                                 <th>Plan Holder</th>
                                 <th>Claiming</th>
                                 <th>Status</th>
                                 <th>Date</th>
-                                <th>Action</th>
+                                <th class="cs-table__actions">Action</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php $rows = $requests ?? []; ?>
-                            <?php if (empty($rows)): ?>
-                                <tr><td colspan="5" class="text-center py-3">No claims found.</td></tr>
-                            <?php else: ?>
-                                <?php foreach ($rows as $row): ?>
-                                    <tr>
-                                        <td><?= esc(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? '')) ?></td>
-                                        <td><?= esc($row['claim_label'] ?? $row['package_name'] ?? $row['service_name'] ?? '-') ?></td>
-                                        <td><?= esc(ucfirst((string) ($row['status'] ?? '-'))) ?></td>
-                                        <td><?= esc($row['created_at'] ?? '-') ?></td>
-                                        <td>
-                                            <a href="<?= site_url('/branch-admin/service-package/requests/' . (int) $row['application_id']) ?>" class="btn btn-sm btn-primary me-1">View</a>
-                                            <?php if (($row['status'] ?? '') === 'pending'): ?>
-                                                <form action="<?= site_url('/branch-admin/service-package/requests/approve/' . (int) $row['application_id']) ?>" method="post" class="d-inline">
-                                                    <?= csrf_field() ?>
-                                                    <button class="btn btn-sm btn-success" type="submit">Approve</button>
-                                                </form>
-                                                <form action="<?= site_url('/branch-admin/service-package/requests/reject/' . (int) $row['application_id']) ?>" method="post" class="d-inline">
-                                                    <?= csrf_field() ?>
-                                                    <input type="text" name="rejection_reason" class="form-control form-control-sm d-inline-block" style="max-width: 160px;" placeholder="Reason (optional)">
-                                                    <button class="btn btn-sm btn-danger" type="submit">Reject</button>
-                                                </form>
-                                            <?php else: ?>
-                                                <span class="text-muted">No actions</span>
-                                            <?php endif; ?>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
+                            <?php foreach ($rows as $row): ?>
+                                <tr>
+                                    <td><?= esc(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? '')) ?></td>
+                                    <td><?= esc($row['claim_label'] ?? $row['package_name'] ?? $row['service_name'] ?? '-') ?></td>
+                                    <td><?= cs_status((string) ($row['status'] ?? '')) ?></td>
+                                    <td class="text-nowrap"><?= cs_date($row['created_at'] ?? null) ?></td>
+                                    <td class="cs-table__actions">
+                                        <a href="<?= site_url('/branch-admin/service-package/requests/' . (int) $row['application_id']) ?>" class="btn btn-sm btn-primary me-1">View</a>
+                                        <?php if (($row['status'] ?? '') === 'pending'): ?>
+                                            <form action="<?= site_url('/branch-admin/service-package/requests/approve/' . (int) $row['application_id']) ?>" method="post" class="d-inline">
+                                                <?= csrf_field() ?>
+                                                <button class="btn btn-sm btn-success" type="submit">Approve</button>
+                                            </form>
+                                            <form action="<?= site_url('/branch-admin/service-package/requests/reject/' . (int) $row['application_id']) ?>" method="post" class="d-inline">
+                                                <?= csrf_field() ?>
+                                                <input type="text" name="rejection_reason" class="form-control form-control-sm d-inline-block" style="max-width: 160px;" placeholder="Reason (optional)">
+                                                <button class="btn btn-sm btn-danger" type="submit">Reject</button>
+                                            </form>
+                                        <?php else: ?>
+                                            <span class="text-muted">No actions</span>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
                         </tbody>
                     </table>
                 </div>
-            </div>
+            <?php endif; ?>
         </div>
-    <?php endif; ?>
+    </section>
+<?php endif; ?>
 
-    <?php if (($active_tab ?? '') === 'ongoing'): ?>
-        <div class="card">
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-striped mb-0">
+<?php if (($active_tab ?? '') === 'ongoing'): ?>
+    <section class="cs-panel">
+        <div class="cs-panel__body cs-panel__body--flush">
+            <?php $rows = $ongoing_services ?? []; ?>
+            <?php if (empty($rows)): ?>
+                <?= view('components/empty_state', ['icon' => 'ti-truck', 'title' => 'No ongoing services found']) ?>
+            <?php else: ?>
+                <div class="cs-tablewrap">
+                    <table class="cs-table">
                         <thead>
                             <tr>
                                 <th>Client</th>
@@ -233,53 +228,48 @@
                                 <th>Package</th>
                                 <th>Status</th>
                                 <th>Assigned Staff</th>
-                                <th>Action</th>
+                                <th class="cs-table__actions">Action</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php $rows = $ongoing_services ?? []; ?>
-                            <?php if (empty($rows)): ?>
-                                <tr><td colspan="7" class="text-center py-3">No ongoing services found.</td></tr>
-                            <?php else: ?>
-                                <?php foreach ($rows as $row): ?>
-                                    <tr>
-                                        <td><?= esc(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? '')) ?></td>
-                                        <td><?= esc($row['service_name'] ?? '-') ?></td>
-                                        <td><?= esc($row['service_date'] ?? '-') ?></td>
-                                        <td><?= esc($row['package_name'] ?? '-') ?></td>
-                                        <td><?= esc(ucfirst((string) ($row['status'] ?? '-'))) ?></td>
-                                        <td><?= esc(trim((string) (($row['staff_first_name'] ?? '') . ' ' . ($row['staff_last_name'] ?? '')))) ?: '-' ?></td>
-                                        <td>
-                                            <form action="<?= site_url('/branch-admin/service-package/ongoing/update-status/' . (int) $row['service_id']) ?>" method="post" class="d-inline-block mt-1">
-                                                <?= csrf_field() ?>
-                                                <div class="d-flex gap-1">
-                                                    <select name="status" class="form-select form-select-sm">
-                                                        <?php foreach (['pending', 'ongoing', 'completed', 'cancelled'] as $status): ?>
-                                                            <option value="<?= $status ?>" <?= ($row['status'] ?? '') === $status ? 'selected' : '' ?>><?= ucfirst($status) ?></option>
-                                                        <?php endforeach; ?>
-                                                    </select>
-                                                    <select name="assigned_staff" class="form-select form-select-sm">
-                                                        <option value="">Unassigned</option>
-                                                        <?php foreach (($staff ?? []) as $member): ?>
-                                                            <option value="<?= (int) $member['user_id'] ?>" <?= (int) ($row['assigned_staff'] ?? 0) === (int) $member['user_id'] ? 'selected' : '' ?>>
-                                                                <?= esc($member['first_name'] . ' ' . $member['last_name']) ?>
-                                                            </option>
-                                                        <?php endforeach; ?>
-                                                    </select>
-                                                    <button class="btn btn-sm btn-primary" type="submit">Save</button>
-                                                </div>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
+                            <?php foreach ($rows as $row): ?>
+                                <tr>
+                                    <td><?= esc(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? '')) ?></td>
+                                    <td><?= esc($row['service_name'] ?? '-') ?></td>
+                                    <td class="text-nowrap"><?= cs_date($row['service_date'] ?? null) ?></td>
+                                    <td><?= esc($row['package_name'] ?? '-') ?></td>
+                                    <td><?= cs_status((string) ($row['status'] ?? '')) ?></td>
+                                    <td><?= esc(trim((string) (($row['staff_first_name'] ?? '') . ' ' . ($row['staff_last_name'] ?? '')))) ?: '-' ?></td>
+                                    <td class="cs-table__actions">
+                                        <form action="<?= site_url('/branch-admin/service-package/ongoing/update-status/' . (int) $row['service_id']) ?>" method="post" class="d-inline-block mt-1">
+                                            <?= csrf_field() ?>
+                                            <div class="d-flex gap-1">
+                                                <select name="status" class="form-select form-select-sm">
+                                                    <?php foreach (['pending', 'ongoing', 'completed', 'cancelled'] as $status): ?>
+                                                        <option value="<?= $status ?>" <?= ($row['status'] ?? '') === $status ? 'selected' : '' ?>><?= ucfirst($status) ?></option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                                <select name="assigned_staff" class="form-select form-select-sm">
+                                                    <option value="">Unassigned</option>
+                                                    <?php foreach (($staff ?? []) as $member): ?>
+                                                        <option value="<?= (int) $member['user_id'] ?>" <?= (int) ($row['assigned_staff'] ?? 0) === (int) $member['user_id'] ? 'selected' : '' ?>>
+                                                            <?= esc($member['first_name'] . ' ' . $member['last_name']) ?>
+                                                        </option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                                <button class="btn btn-sm btn-primary" type="submit">Save</button>
+                                            </div>
+                                        </form>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
                         </tbody>
                     </table>
                 </div>
-            </div>
+            <?php endif; ?>
         </div>
-    <?php endif; ?>
-</div>
+    </section>
+<?php endif; ?>
 
 <?php if (($active_tab ?? '') === 'schedule'): ?>
 <script>
