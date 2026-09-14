@@ -11,6 +11,7 @@ $attirePrice = (float) ($attire_price ?? 0);
 $basePrice = (float) ($package['base_price'] ?? 0);
 $eligibleToClaim = $isEntitlement && (bool) ($entitlement['eligible'] ?? false);
 ?>
+<?php /* Product-hero + entitlement-panel layout - no cs-panel equivalent for this shape, so it stays a scoped custom style block (see client/services.php for the same call). Icons converted bi-* -> ti-*. */ ?>
 <style>
     .pkg-hero { border-radius: 16px; overflow: hidden; border: 1px solid #e5e7eb; background: #fff; }
     .pkg-hero-image { height: 280px; background: linear-gradient(135deg, #f1f5f9, #e2e8f0); display: flex; align-items: center; justify-content: center; }
@@ -31,24 +32,19 @@ $eligibleToClaim = $isEntitlement && (bool) ($entitlement['eligible'] ?? false);
     .attire-box { border: 1px solid #e5e7eb; border-radius: 12px; padding: 1rem 1.25rem; background: #f8fafc; }
 </style>
 
-<div class="container-fluid py-4" style="max-width: 960px;">
+<div style="max-width: 960px;">
     <a class="text-decoration-none text-muted mb-3 d-inline-block" href="<?= site_url('/client/service?tab=packages') ?>">
-        <i class="bi bi-arrow-left me-1"></i> Back to Packages
+        <i class="ti ti-arrow-left me-1"></i> Back to Packages
     </a>
 
-    <?php if (session()->getFlashdata('error')): ?>
-        <div class="alert alert-danger"><?= esc(session()->getFlashdata('error')) ?></div>
-    <?php endif; ?>
-    <?php if (session()->getFlashdata('success')): ?>
-        <div class="alert alert-success"><?= esc(session()->getFlashdata('success')) ?></div>
-    <?php endif; ?>
+    <?php // Flash messages are already surfaced as toasts by layouts/_shell.php - no need to render them again here. ?>
 
     <div class="pkg-hero mb-4">
         <div class="pkg-hero-image">
             <?php if (! empty($package['image_path'])): ?>
-                <img src="<?= esc((string) $package['image_path']) ?>" alt="<?= esc((string) ($package['package_name'] ?? 'Package')) ?>" onerror="this.style.display='none'; this.parentElement.innerHTML='<i class=\'bi bi-box2-fill placeholder-icon\'></i>';">
+                <img src="<?= esc((string) $package['image_path']) ?>" alt="<?= esc((string) ($package['package_name'] ?? 'Package')) ?>" onerror="this.style.display='none'; this.parentElement.innerHTML='<i class=\'ti ti-package placeholder-icon\'></i>';">
             <?php else: ?>
-                <i class="bi bi-box2-fill placeholder-icon"></i>
+                <i class="ti ti-package placeholder-icon"></i>
             <?php endif; ?>
         </div>
         <div class="p-4">
@@ -56,28 +52,28 @@ $eligibleToClaim = $isEntitlement && (bool) ($entitlement['eligible'] ?? false);
                 <h2 class="h4 mb-0"><?= esc((string) ($package['package_name'] ?? '-')) ?></h2>
                 <?php if ($isEntitlement): ?>
                     <span class="badge-pill <?= $eligibleToClaim ? 'badge-entitlement-eligible' : 'badge-entitlement-locked' ?>">
-                        <i class="bi bi-gift me-1"></i> <?= $eligibleToClaim ? 'CLAIM' : 'YOUR ENTITLEMENT' ?>
+                        <i class="ti ti-gift me-1"></i> <?= $eligibleToClaim ? 'CLAIM' : 'YOUR ENTITLEMENT' ?>
                     </span>
                 <?php else: ?>
-                    <span class="badge-pill badge-available"><i class="bi bi-check2 me-1"></i>AVAILABLE</span>
+                    <span class="badge-pill badge-available"><i class="ti ti-check me-1"></i>AVAILABLE</span>
                 <?php endif; ?>
             </div>
             <p class="text-muted mb-3"><?= esc((string) ($package['description'] ?? 'No description available.')) ?></p>
-            <div class="h3 mb-0 text-dark">₱<?= number_format($basePrice, 2) ?></div>
+            <div class="h3 mb-0 text-dark"><?= cs_money($basePrice) ?></div>
         </div>
     </div>
 
-    <div class="card mb-4">
-        <div class="card-header bg-white fw-semibold"><i class="bi bi-list-check me-1"></i> What's Included</div>
-        <div class="card-body">
+    <section class="cs-panel mb-4">
+        <div class="cs-panel__head"><h2 class="cs-panel__title"><i class="ti ti-list-check me-1"></i> What's Included</h2></div>
+        <div class="cs-panel__body">
             <?php $this->setData(['inclusions' => $inclusions ?? []]); ?>
             <?= $this->include('client/partials/inclusions_list') ?>
         </div>
-    </div>
+    </section>
 
     <?php if ($isEntitlement): ?>
         <div class="entitlement-panel mb-4">
-            <h5 class="mb-3"><i class="bi bi-award me-2"></i>Your Damayan Entitlement</h5>
+            <h5 class="mb-3"><i class="ti ti-award me-2"></i>Your Damayan Entitlement</h5>
             <?php if ($eligibleToClaim): ?>
                 <p class="mb-3"><strong>Status: <span class="text-success">ELIGIBLE TO CLAIM</span></strong><br>
                     <span class="text-muted small">Your ₱14,500 contribution cycle is fully paid - this Regular Wood Casket is covered at no cost.</span>
@@ -99,21 +95,21 @@ $eligibleToClaim = $isEntitlement && (bool) ($entitlement['eligible'] ?? false);
             <?php endif; ?>
         </div>
     <?php else: ?>
-        <div class="card mb-4">
-            <div class="card-header bg-white fw-semibold"><i class="bi bi-cash-coin me-1"></i> Available Package</div>
-            <div class="card-body">
+        <section class="cs-panel mb-4">
+            <div class="cs-panel__head"><h2 class="cs-panel__title"><i class="ti ti-cash me-1"></i> Available Package</h2></div>
+            <div class="cs-panel__body">
                 <?php if ($canApply && $benefitCredit > 0): ?>
                     <div class="benefit-line">
                         <span>Package Price</span>
-                        <span>₱<?= number_format($basePrice, 2) ?></span>
+                        <span><?= cs_money($basePrice) ?></span>
                     </div>
                     <div class="benefit-line text-success">
-                        <span><i class="bi bi-award me-1"></i>Damayan Benefit Credit</span>
-                        <span>- ₱<?= number_format($benefitCredit, 2) ?></span>
+                        <span><i class="ti ti-award me-1"></i>Damayan Benefit Credit</span>
+                        <span>- <?= cs_money($benefitCredit) ?></span>
                     </div>
                     <div class="benefit-line fw-bold">
                         <span>Amount Due</span>
-                        <span>₱<?= number_format(max(0, $basePrice - $benefitCredit), 2) ?></span>
+                        <span><?= cs_money(max(0, $basePrice - $benefitCredit)) ?></span>
                     </div>
                     <p class="text-muted small mt-2 mb-3">As a Damayan Plan Holder, your remaining unpaid contribution is waived against this package - it is not added on top of the amount due above.</p>
                 <?php else: ?>
@@ -132,12 +128,12 @@ $eligibleToClaim = $isEntitlement && (bool) ($entitlement['eligible'] ?? false);
                     </div>
                 <?php endif; ?>
             </div>
-        </div>
+        </section>
     <?php endif; ?>
 
     <div class="attire-box">
         <span class="badge-pill" style="background-color:#ede9fe;color:#5b21b6;">OPTIONAL ADD-ON</span>
-        <div class="mt-2 fw-semibold">Burial Attire Package - ₱<?= number_format($attirePrice, 2) ?></div>
+        <div class="mt-2 fw-semibold">Burial Attire Package - <?= cs_money($attirePrice) ?></div>
         <p class="text-muted small mb-0">A complete burial attire set for the deceased. Not included by default - you can select it on the application form.</p>
     </div>
 </div>

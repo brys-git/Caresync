@@ -207,6 +207,8 @@ class ClientServiceController extends BaseController
 
         return view('client/package_details', [
             'role_layout' => 'layouts/plan_holder',
+            'page_title' => (string) ($package['package_name'] ?? 'Package'),
+            'show_page_head' => false,
             'access' => $access,
             'package' => $package,
             'inclusions' => $inclusions,
@@ -293,6 +295,10 @@ class ClientServiceController extends BaseController
 
         return view('client/package_apply', [
             'role_layout' => 'layouts/plan_holder',
+            'page_title' => $isEntitlement ? 'Claim Regular Casket' : 'Avail Package',
+            'page_sub' => $isEntitlement
+                ? 'Claim your Damayan entitlement. Staff or an Encoder will review and process your claim.'
+                : 'Confirm your package selection. Staff or an Encoder will review and process your application.',
             'access' => $access,
             'package' => $package,
             'is_entitlement' => $isEntitlement,

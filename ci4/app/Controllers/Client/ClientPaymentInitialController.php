@@ -68,6 +68,8 @@ class ClientPaymentInitialController extends BaseController
 
         return view('client/initial_payment', [
             'role_layout' => 'layouts/plan_holder',
+            'page_title' => 'Initial Payment',
+            'page_sub' => 'Submit your initial contribution (minimum 2 months) for verification.',
             'access' => $access,
             'plan_holder' => $planHolder,
             'plan' => $plan,

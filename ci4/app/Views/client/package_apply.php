@@ -15,22 +15,10 @@
     .summary-line { display: flex; justify-content: space-between; padding: .35rem 0; }
     .summary-total { border-top: 1px solid #cbd5e1; margin-top: .5rem; padding-top: .5rem; font-weight: 700; }
 </style>
-<div class="container-fluid" style="max-width: 760px;">
-    <div class="d-flex align-items-start justify-content-between mb-3">
-        <div>
-            <h1 class="h3 mb-1"><?= $isEntitlement ? 'Claim Regular Casket' : 'Avail Package' ?></h1>
-            <p class="text-muted mb-0">
-                <?= $isEntitlement
-                    ? 'Claim your Damayan entitlement. Staff or an Encoder will review and process your claim.'
-                    : 'Confirm your package selection. Staff or an Encoder will review and process your application.' ?>
-            </p>
-        </div>
-        <a class="btn btn-outline-secondary" href="<?= site_url('/client/package/' . (int) ($package['package_id'] ?? 0)) ?>">Back</a>
+<div style="max-width: 760px;">
+    <div class="mb-3 text-end">
+        <a class="btn btn-outline-secondary btn-sm" href="<?= site_url('/client/package/' . (int) ($package['package_id'] ?? 0)) ?>">Back</a>
     </div>
-
-    <?php if (session()->getFlashdata('error')): ?>
-        <div class="alert alert-danger"><?= esc(session()->getFlashdata('error')) ?></div>
-    <?php endif; ?>
 
     <?php if (! $canApply): ?>
         <?php if ($state === 'pending'): ?>
@@ -41,13 +29,13 @@
         <?php endif; ?>
     <?php endif; ?>
 
-    <div class="card mb-3">
-        <div class="card-body">
+    <section class="cs-panel mb-3">
+        <div class="cs-panel__body">
             <h5 class="mb-2"><?= esc((string) ($package['package_name'] ?? '-')) ?></h5>
             <p class="text-muted mb-3"><?= esc((string) ($package['description'] ?? 'No description available.')) ?></p>
-            <div class="fw-semibold">Package Price: P<?= esc(number_format($basePrice, 2)) ?></div>
+            <div class="fw-semibold">Package Price: <?= cs_money($basePrice) ?></div>
         </div>
-    </div>
+    </section>
 
     <form class="mt-3" method="post" enctype="multipart/form-data" action="<?= site_url('/client/apply-package/' . (int) ($package['package_id'] ?? 0)) ?>">
         <?= csrf_field() ?>
@@ -55,22 +43,22 @@
         <div class="mb-3 form-check">
             <input type="checkbox" class="form-check-input" id="burial_attire" name="burial_attire" value="1" <?= old('burial_attire') ? 'checked' : '' ?>>
             <label class="form-check-label" for="burial_attire">
-                Add Burial Attire Package (Optional Add-on) - ₱<?= number_format($attirePrice, 2) ?>
+                Add Burial Attire Package (Optional Add-on) - <?= cs_money($attirePrice) ?>
             </label>
         </div>
 
         <div class="summary-box mb-4">
             <?php if ($isEntitlement): ?>
-                <div class="summary-line"><span>Regular Wood Casket (Damayan Entitlement)</span><span>₱<?= number_format($basePrice, 2) ?></span></div>
-                <div class="summary-line text-success"><span>Damayan Benefit Applied</span><span>- ₱<?= number_format($basePrice, 2) ?></span></div>
+                <div class="summary-line"><span>Regular Wood Casket (Damayan Entitlement)</span><span><?= cs_money($basePrice) ?></span></div>
+                <div class="summary-line text-success"><span>Damayan Benefit Applied</span><span>- <?= cs_money($basePrice) ?></span></div>
             <?php else: ?>
-                <div class="summary-line"><span>Package Price</span><span>₱<?= number_format($basePrice, 2) ?></span></div>
+                <div class="summary-line"><span>Package Price</span><span><?= cs_money($basePrice) ?></span></div>
                 <?php if ($benefitCredit > 0): ?>
-                    <div class="summary-line text-success"><span>Damayan Benefit Credit</span><span>- ₱<?= number_format($benefitCredit, 2) ?></span></div>
+                    <div class="summary-line text-success"><span>Damayan Benefit Credit</span><span>- <?= cs_money($benefitCredit) ?></span></div>
                 <?php endif; ?>
             <?php endif; ?>
-            <div class="summary-line" id="attire-line" style="display:none;"><span>Burial Attire Add-on</span><span>₱<?= number_format($attirePrice, 2) ?></span></div>
-            <div class="summary-line summary-total"><span>Amount Due</span><span id="amount-due">₱<?= number_format($baseDue, 2) ?></span></div>
+            <div class="summary-line" id="attire-line" style="display:none;"><span>Burial Attire Add-on</span><span><?= cs_money($attirePrice) ?></span></div>
+            <div class="summary-line summary-total"><span>Amount Due</span><span id="amount-due" class="cs-money"><?= esc(number_format($baseDue, 2)) ?></span></div>
         </div>
 
         <div class="mb-3">
@@ -119,7 +107,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var attirePrice = <?= json_encode($attirePrice) ?>;
 
     function format(n) {
-        return '₱' + n.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        return n.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     }
 
     function recalc() {

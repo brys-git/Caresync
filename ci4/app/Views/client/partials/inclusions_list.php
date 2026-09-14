@@ -18,7 +18,7 @@ $number = 0;
         ?>
         <?php if ($isSubItem): ?>
             <div class="inclusion-subitem d-flex align-items-start gap-2 mb-1 ms-4">
-                <i class="bi bi-dot text-muted"></i>
+                <i class="ti ti-point text-muted"></i>
                 <div>
                     <span class="fw-medium"><?= esc(substr($name, strlen('Viewing Setup: '))) ?></span>
                     <?php if (! $compact && ! empty($row['description'])): ?>
@@ -29,7 +29,7 @@ $number = 0;
         <?php else: ?>
             <?php $number++; ?>
             <div class="inclusion-item d-flex align-items-start gap-2 mb-2">
-                <span class="inclusion-check"><i class="bi bi-check-circle-fill"></i></span>
+                <span class="inclusion-check"><i class="ti ti-circle-check-filled"></i></span>
                 <div>
                     <span class="fw-semibold"><?= $number ?>. <?= esc($name) ?></span>
                     <?php if (! $compact && ! empty($row['description'])): ?>
