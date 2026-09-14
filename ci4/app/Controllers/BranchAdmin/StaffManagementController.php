@@ -25,6 +25,7 @@ class StaffManagementController extends BaseController
         return view('branch_admin/staff_management/index', [
             'staff' => $this->staffManagementService->getBranchStaff($branchId),
             'role_layout' => 'layouts/branch_admin',
+            'page_title' => 'Staff Management',
         ]);
     }
 
@@ -43,6 +44,7 @@ class StaffManagementController extends BaseController
         return view('branch_admin/staff_management/edit', [
             'staff' => $staff,
             'role_layout' => 'layouts/branch_admin',
+            'page_title' => 'Edit Staff',
         ]);
     }
 

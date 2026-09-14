@@ -14,6 +14,7 @@ class ProfileController extends BaseController
 
         return view('branch_admin/profile/index', [
             'role_layout' => 'layouts/branch_admin',
+            'page_title' => 'My Profile',
             'user' => $user,
         ]);
     }

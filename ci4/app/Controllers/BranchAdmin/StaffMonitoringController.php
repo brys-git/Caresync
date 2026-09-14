@@ -36,6 +36,7 @@ class StaffMonitoringController extends BaseController
         }
 
         return view('branch_admin/staff_monitoring/index', [
+            'page_title' => 'Staff Monitoring',
             'active_tab' => 'staff-list',
             'staff' => $staff,
             'selected_staff' => $selectedStaff,
@@ -51,6 +52,7 @@ class StaffMonitoringController extends BaseController
         }
 
         return view('branch_admin/staff_monitoring/index', [
+            'page_title' => 'Staff Monitoring',
             'active_tab' => 'assign',
             'staff' => $this->staffService->getStaffByBranch($branchId),
             'services' => $this->staffService->getServiceOptionsByBranch($branchId),
@@ -120,6 +122,7 @@ class StaffMonitoringController extends BaseController
         }
 
         return view('branch_admin/staff_monitoring/index', [
+            'page_title' => 'Staff Monitoring',
             'active_tab' => 'activities',
             'activities' => $activities,
             'staff' => $staff,
