@@ -306,6 +306,8 @@ class PlanHolders extends BaseController
             'already_registered' => $alreadyRegistered,
             'already_profiled_without_plan' => $alreadyProfiledWithoutPlan,
             'role_layout' => 'layouts/plan_holder',
+            'page_title' => 'Register for Damayan Burial Program Plan',
+            'page_sub' => 'Complete this form to enroll in the Damayan Burial Program plan. This page is for plan registration only.',
         ]);
     }
 

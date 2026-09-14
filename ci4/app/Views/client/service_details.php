@@ -6,6 +6,7 @@ $state = (string) ($access['state'] ?? 'new');
 $canApply = (bool) ($can_apply ?? false);
 $routes = $routes ?? [];
 ?>
+<?php /* Product-hero layout - no cs-panel equivalent, same as client/package_details.php. Icons converted bi-* -> ti-*. */ ?>
 <style>
     .svc-hero { border-radius: 16px; overflow: hidden; border: 1px solid #e5e7eb; background: #fff; }
     .svc-hero-image { height: 260px; background: linear-gradient(135deg, #f1f5f9, #e2e8f0); display: flex; align-items: center; justify-content: center; }
@@ -16,24 +17,19 @@ $routes = $routes ?? [];
     .badge-covered { background-color: #dcfce7; color: #166534; }
 </style>
 
-<div class="container-fluid py-4" style="max-width: 960px;">
+<div style="max-width: 960px;">
     <a class="text-decoration-none text-muted mb-3 d-inline-block" href="<?= site_url('/client/service?tab=services') ?>">
-        <i class="bi bi-arrow-left me-1"></i> Back to Services
+        <i class="ti ti-arrow-left me-1"></i> Back to Services
     </a>
 
-    <?php if (session()->getFlashdata('error')): ?>
-        <div class="alert alert-danger"><?= esc(session()->getFlashdata('error')) ?></div>
-    <?php endif; ?>
-    <?php if (session()->getFlashdata('success')): ?>
-        <div class="alert alert-success"><?= esc(session()->getFlashdata('success')) ?></div>
-    <?php endif; ?>
+    <?php // Flash messages are already surfaced as toasts by layouts/_shell.php - no need to render them again here. ?>
 
     <div class="svc-hero mb-4">
         <div class="svc-hero-image">
             <?php if (! empty($service['image_path'])): ?>
-                <img src="<?= esc((string) $service['image_path']) ?>" alt="<?= esc((string) ($service['service_name'] ?? 'Service')) ?>" onerror="this.style.display='none'; this.parentElement.innerHTML='<i class=\'bi bi-truck placeholder-icon\'></i>';">
+                <img src="<?= esc((string) $service['image_path']) ?>" alt="<?= esc((string) ($service['service_name'] ?? 'Service')) ?>" onerror="this.style.display='none'; this.parentElement.innerHTML='<i class=\'ti ti-truck placeholder-icon\'></i>';">
             <?php else: ?>
-                <i class="bi bi-truck placeholder-icon"></i>
+                <i class="ti ti-truck placeholder-icon"></i>
             <?php endif; ?>
         </div>
         <div class="p-4">
@@ -49,10 +45,10 @@ $routes = $routes ?? [];
                 <div class="col-md-6">
                     <div class="route-card">
                         <div class="fw-semibold mb-1"><?= esc((string) $route['route_name']) ?></div>
-                        <div class="route-price mb-2">₱<?= number_format((float) $route['price'], 2) ?></div>
+                        <div class="route-price mb-2"><?= cs_money($route['price']) ?></div>
                         <?php if (! empty($route['casket_benefit_covered'])): ?>
                             <div class="small mb-1"><span class="badge badge-covered">Casket benefit: Covered</span></div>
-                            <div class="small text-muted">Separate casket payment: ₱0.00</div>
+                            <div class="small text-muted">Separate casket payment: <?= cs_money(0) ?></div>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -60,7 +56,7 @@ $routes = $routes ?? [];
         </div>
         <p class="text-muted small">The route price above is the full transport service fee. Your Damayan casket entitlement is a separate benefit and does not reduce this fee.</p>
     <?php else: ?>
-        <div class="fw-semibold mb-4">Price: ₱<?= number_format((float) ($service['base_price'] ?? 0), 2) ?></div>
+        <div class="fw-semibold mb-4">Price: <?= cs_money($service['base_price'] ?? 0) ?></div>
     <?php endif; ?>
 
     <div class="mt-3">

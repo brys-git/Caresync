@@ -132,6 +132,8 @@ class ClientProfileController extends BaseController
 
         return view('client/profile_change_password', [
             'role_layout' => 'layouts/plan_holder',
+            'page_title' => 'Change Password',
+            'page_sub' => 'Update your login password',
             'user' => $user,
             'access' => $access,
         ]);

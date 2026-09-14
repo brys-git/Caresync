@@ -152,6 +152,8 @@ class ClientServiceController extends BaseController
 
         return view('client/service_details', [
             'role_layout' => 'layouts/plan_holder',
+            'page_title' => (string) ($service['service_name'] ?? 'Service'),
+            'show_page_head' => false,
             'access' => $access,
             'service' => $service,
             'routes' => $routes,
@@ -252,6 +254,8 @@ class ClientServiceController extends BaseController
 
         return view('client/service_apply', [
             'role_layout' => 'layouts/plan_holder',
+            'page_title' => 'Apply for Service',
+            'page_sub' => 'Confirm your service request.',
             'access' => $access,
             'service' => $service,
             'routes' => $routes,

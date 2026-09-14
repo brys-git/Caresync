@@ -6,18 +6,10 @@
     $canApply = (bool) ($can_apply ?? false);
     $routes = $routes ?? [];
 ?>
-<div class="container-fluid" style="max-width: 760px;">
-    <div class="d-flex align-items-start justify-content-between mb-3">
-        <div>
-            <h1 class="h3 mb-1">Apply for Service</h1>
-            <p class="text-muted mb-0">Confirm your service request.</p>
-        </div>
-        <a class="btn btn-outline-secondary" href="<?= site_url('/client/service/' . (int) ($service['service_list_id'] ?? 0)) ?>">Back</a>
+<div style="max-width: 760px;">
+    <div class="mb-3 text-end">
+        <a class="btn btn-outline-secondary btn-sm" href="<?= site_url('/client/service/' . (int) ($service['service_list_id'] ?? 0)) ?>">Back</a>
     </div>
-
-    <?php if (session()->getFlashdata('error')): ?>
-        <div class="alert alert-danger"><?= esc(session()->getFlashdata('error')) ?></div>
-    <?php endif; ?>
 
     <?php if (! $canApply): ?>
         <?php if ($state === 'pending'): ?>
@@ -28,15 +20,15 @@
         <?php endif; ?>
     <?php endif; ?>
 
-    <div class="card mb-3">
-        <div class="card-body">
+    <section class="cs-panel mb-3">
+        <div class="cs-panel__body">
             <h5 class="mb-2"><?= esc((string) ($service['service_name'] ?? '-')) ?></h5>
             <p class="text-muted mb-3"><?= esc((string) ($service['description'] ?? 'No description available.')) ?></p>
             <?php if (empty($routes)): ?>
-                <div class="fw-semibold">Price: P<?= esc(number_format((float) ($service['base_price'] ?? 0), 2)) ?></div>
+                <div class="fw-semibold">Price: <?= cs_money($service['base_price'] ?? 0) ?></div>
             <?php endif; ?>
         </div>
-    </div>
+    </section>
 
     <form class="mt-3" method="post" enctype="multipart/form-data" action="<?= site_url('/client/apply-service/' . (int) ($service['service_list_id'] ?? 0)) ?>">
         <?= csrf_field() ?>
@@ -49,14 +41,14 @@
                         <input class="form-check-input route-option" type="radio" name="route_id" id="route-<?= (int) $route['route_id'] ?>" value="<?= (int) $route['route_id'] ?>" data-price="<?= (float) $route['price'] ?>" <?= $i === 0 ? 'checked' : '' ?> required>
                         <label class="form-check-label d-flex justify-content-between" for="route-<?= (int) $route['route_id'] ?>">
                             <span><?= esc((string) $route['route_name']) ?></span>
-                            <span class="fw-semibold">₱<?= number_format((float) $route['price'], 2) ?></span>
+                            <?= cs_money($route['price']) ?>
                         </label>
                     </div>
                 <?php endforeach; ?>
             </div>
             <div class="alert alert-secondary d-flex justify-content-between">
                 <span>Total Amount</span>
-                <span class="fw-bold" id="route-total">₱<?= number_format((float) ($routes[0]['price'] ?? 0), 2) ?></span>
+                <span class="fw-bold cs-money" id="route-total"><?= esc(number_format((float) ($routes[0]['price'] ?? 0), 2)) ?></span>
             </div>
         <?php endif; ?>
 
@@ -102,7 +94,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.route-option').forEach(function (input) {
         input.addEventListener('change', function () {
             var price = parseFloat(this.dataset.price || '0');
-            total.textContent = '₱' + price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            total.textContent = price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         });
     });
 });
