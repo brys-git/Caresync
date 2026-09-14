@@ -45,6 +45,8 @@ class ServiceOfferController extends BaseController
 
         return view('branch_admin/services/create', [
             'role_layout' => 'layouts/branch_admin',
+            'page_title' => 'Create Service',
+            'page_sub' => 'Define a service offering for this branch',
         ]);
     }
 
@@ -105,6 +107,7 @@ class ServiceOfferController extends BaseController
         return view('branch_admin/service_offers/view', [
             'service' => $service,
             'role_layout' => 'layouts/branch_admin',
+            'page_title' => 'Service Details',
         ]);
     }
 
@@ -121,6 +124,7 @@ class ServiceOfferController extends BaseController
         return view('branch_admin/service_offers/edit', [
             'service' => $service,
             'role_layout' => 'layouts/branch_admin',
+            'page_title' => 'Edit Service',
         ]);
     }
 

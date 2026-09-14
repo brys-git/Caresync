@@ -44,6 +44,8 @@ class PackageController extends BaseController
         return view('branch_admin/packages/create', [
             'service_list' => $this->serviceListModel->where('is_available', 1)->orderBy('service_name', 'ASC')->findAll(),
             'role_layout' => 'layouts/branch_admin',
+            'page_title' => 'Create Package',
+            'page_sub' => 'Define a package offering with versioned pricing',
         ]);
     }
 
