@@ -35,6 +35,8 @@ class ServiceApplicationController extends BaseController
             : null;
 
         return view('staff/services/requests', [
+            'page_title' => 'Claims',
+            'page_sub' => "Plan holders claiming their package's or a service's benefit. Review the details and supporting documents, then approve or reject.",
             'requests' => $branchId > 0 ? $this->claimService->getBranchClaims($branchId) : [],
             'branch_issue' => $branchIssue,
             'role_layout' => 'layouts/staff',

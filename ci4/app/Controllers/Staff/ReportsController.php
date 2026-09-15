@@ -58,6 +58,7 @@ class ReportsController extends BaseController
 
         return [
             'role_layout' => 'layouts/staff',
+            'page_title' => 'Remittance Report',
             'filters' => $filters,
             'report_rows' => $rows,
             'summary' => $summary,

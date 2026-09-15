@@ -101,6 +101,7 @@ class ServicesController extends BaseController
         }
 
         return view('staff/services/index', [
+            'page_title' => 'Services',
             'active_tab' => $activeTab,
             'services' => $services,
             'packages' => $packages,
@@ -140,6 +141,7 @@ class ServicesController extends BaseController
         }
 
         return view('staff/services/ongoing', [
+            'page_title' => 'Ongoing Services',
             'services' => $services,
             'branch_issue' => $branchIssue,
             'role_layout' => 'layouts/staff',
