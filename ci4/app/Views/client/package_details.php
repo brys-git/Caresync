@@ -42,7 +42,7 @@ $eligibleToClaim = $isEntitlement && (bool) ($entitlement['eligible'] ?? false);
     <div class="pkg-hero mb-4">
         <div class="pkg-hero-image">
             <?php if (! empty($package['image_path'])): ?>
-                <img src="<?= esc((string) $package['image_path']) ?>" alt="<?= esc((string) ($package['package_name'] ?? 'Package')) ?>" onerror="this.style.display='none'; this.parentElement.innerHTML='<i class=\'ti ti-package placeholder-icon\'></i>';">
+                <img src="<?= esc(base_url((string) $package['image_path'])) ?>" alt="<?= esc((string) ($package['package_name'] ?? 'Package')) ?>" onerror="this.style.display='none'; this.parentElement.innerHTML='<i class=\'ti ti-package placeholder-icon\'></i>';">
             <?php else: ?>
                 <i class="ti ti-package placeholder-icon"></i>
             <?php endif; ?>
@@ -76,11 +76,11 @@ $eligibleToClaim = $isEntitlement && (bool) ($entitlement['eligible'] ?? false);
             <h5 class="mb-3"><i class="ti ti-award me-2"></i>Your Damayan Entitlement</h5>
             <?php if ($eligibleToClaim): ?>
                 <p class="mb-3"><strong>Status: <span class="text-success">ELIGIBLE TO CLAIM</span></strong><br>
-                    <span class="text-muted small">Your ₱14,500 contribution cycle is fully paid - this Regular Wood Casket is covered at no cost.</span>
+                    <span class="text-muted small">You're eligible to claim this Regular Wood Casket at no cost.</span>
                 </p>
             <?php else: ?>
                 <p class="mb-3"><strong>Status: <span class="text-secondary">NOT YET ELIGIBLE</span></strong><br>
-                    <span class="text-muted small">You must fully pay the ₱14,500 contribution target (and remain in good standing) before this entitlement can be claimed again.</span>
+                    <span class="text-muted small"><?= esc((string) ($entitlement['locked_reason'] ?? 'This entitlement is not available to claim yet.')) ?></span>
                 </p>
             <?php endif; ?>
 
@@ -91,7 +91,7 @@ $eligibleToClaim = $isEntitlement && (bool) ($entitlement['eligible'] ?? false);
             <?php elseif ($canApply): ?>
                 <button type="button" class="btn btn-claim-big" disabled>[ CLAIM REGULAR CASKET ]</button>
             <?php else: ?>
-                <div class="alert alert-info mb-0">You must register as an active Plan Holder to claim this entitlement.</div>
+                <div class="alert alert-info mb-0"><?= esc((string) ($entitlement['locked_reason'] ?? 'You must register as an active Plan Holder to claim this entitlement.')) ?></div>
             <?php endif; ?>
         </div>
     <?php else: ?>

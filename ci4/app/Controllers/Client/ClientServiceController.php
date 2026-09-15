@@ -4,6 +4,7 @@ namespace App\Controllers\Client;
 
 use App\Controllers\BaseController;
 use CodeIgniter\HTTP\ResponseInterface;
+use App\Services\CycleService;
 use App\Services\MembershipService;
 use App\Services\NotificationService;
 
@@ -69,22 +70,18 @@ class ClientServiceController extends BaseController
             ->get()
             ->getResultArray();
 
-        [$canApply, $membership] = $this->resolveEligibility($access);
-        $hasFullyPaid = $this->hasFullyPaidContribution($membership);
+        [$canApply, $membership, $planId] = $this->resolveEligibility($access);
+        $claimStatus = $this->entitlementClaimStatus($canApply, $membership, $planId);
 
         foreach ($packages as &$pkg) {
             $isEntitlement = (int) ($pkg['is_damayan_entitlement'] ?? 0) === 1;
             if ($isEntitlement) {
-                $eligible = $canApply && $hasFullyPaid;
+                $eligible = $claimStatus['eligible'];
                 $pkg['badge_label'] = $eligible ? 'CLAIM' : 'YOUR ENTITLEMENT';
                 $pkg['badge_class'] = $eligible ? 'success' : 'secondary';
                 $pkg['action_label'] = 'CLAIM';
                 $pkg['can_claim'] = $eligible;
-                $pkg['claim_locked_reason'] = $eligible
-                    ? null
-                    : ($canApply
-                        ? 'Available once your ₱14,500 contribution cycle is fully paid.'
-                        : 'Become an active, eligible Plan Holder to claim this entitlement.');
+                $pkg['claim_locked_reason'] = $claimStatus['reason'];
             } else {
                 $pkg['badge_label'] = 'AVAILABLE';
                 $pkg['badge_class'] = 'info';
@@ -190,16 +187,16 @@ class ClientServiceController extends BaseController
             ->get()
             ->getResultArray();
 
-        [$canApply, $membership] = $this->resolveEligibility($access);
+        [$canApply, $membership, $planId] = $this->resolveEligibility($access);
         $isEntitlement = (int) ($package['is_damayan_entitlement'] ?? 0) === 1;
-        $hasFullyPaid = $this->hasFullyPaidContribution($membership);
 
         $entitlement = null;
         $benefitCredit = 0.0;
         if ($isEntitlement) {
+            $claimStatus = $this->entitlementClaimStatus($canApply, $membership, $planId);
             $entitlement = [
-                'eligible' => $canApply && $hasFullyPaid,
-                'has_fully_paid' => $hasFullyPaid,
+                'eligible' => $claimStatus['eligible'],
+                'locked_reason' => $claimStatus['reason'],
             ];
         } elseif ($canApply) {
             // Panel damayan credit: exactly TOTAL_CONTRIBUTION, capped so it
@@ -284,13 +281,15 @@ class ClientServiceController extends BaseController
             return redirect()->to('/client/service?tab=packages')->with('error', 'Package not found.');
         }
 
-        [$canApply, $membership] = $this->resolveEligibility($access);
+        [$canApply, $membership, $planId] = $this->resolveEligibility($access);
         $isEntitlement = (int) ($package['is_damayan_entitlement'] ?? 0) === 1;
-        $hasFullyPaid = $this->hasFullyPaidContribution($membership);
 
-        if ($isEntitlement && ! ($canApply && $hasFullyPaid)) {
-            return redirect()->to('/client/service?tab=packages')
-                ->with('error', 'This entitlement is not available to claim yet - your ₱14,500 contribution cycle must be fully paid first.');
+        if ($isEntitlement) {
+            $claimStatus = $this->entitlementClaimStatus($canApply, $membership, $planId);
+            if (! $claimStatus['eligible']) {
+                return redirect()->to('/client/service?tab=packages')
+                    ->with('error', (string) $claimStatus['reason']);
+            }
         }
 
         $benefitCredit = (! $isEntitlement && $canApply)
@@ -511,14 +510,17 @@ class ClientServiceController extends BaseController
         }
 
         $isEntitlement = (int) ($package['is_damayan_entitlement'] ?? 0) === 1;
-        $membership = $membershipService->getMembershipSummary($planHolderId);
-        $hasFullyPaid = $this->hasFullyPaidContribution($membership);
 
         // Re-verify server-side, never trust the CLAIM button's visibility
-        // client-side alone - a plan holder who hasn't finished this
-        // contribution cycle can't claim again yet.
-        if ($isEntitlement && ! $hasFullyPaid) {
-            return redirect()->back()->with('error', 'This entitlement is not available to claim yet - your ₱14,500 contribution cycle must be fully paid first.');
+        // client-side alone - reads from the exact same shared method the
+        // frontend disabled state uses (entitlementClaimStatus()), so the
+        // two can never disagree.
+        [$canApply, $membership, $eligPlanId] = $this->resolveEligibility($access);
+        if ($isEntitlement) {
+            $claimStatus = $this->entitlementClaimStatus($canApply, $membership, $eligPlanId);
+            if (! $claimStatus['eligible']) {
+                return redirect()->back()->with('error', (string) $claimStatus['reason']);
+            }
         }
 
         $burialAttireSelected = $this->request->getPost('burial_attire') ? true : false;
@@ -615,15 +617,18 @@ class ClientServiceController extends BaseController
     /**
      * Shared can_apply + membership summary resolution (same rule used
      * throughout this controller: active/good-standing plan with at least
-     * 2 months paid).
+     * 2 months paid). Also returns the plan_id, since entitlementClaimStatus()
+     * below needs it and every caller already has $access in scope rather
+     * than re-deriving it themselves.
      *
-     * @return array{0: bool, 1: array|null}
+     * @return array{0: bool, 1: array|null, 2: int}
      */
     private function resolveEligibility(array $access): array
     {
         $planHolderId = (int) ($access['plan_holder']['plan_holder_id'] ?? 0);
         $activePlan = $planHolderId > 0 ? $this->activePlan($planHolderId) : null;
         $monthsPaid = (int) ($activePlan['months_paid'] ?? 0);
+        $planId = (int) ($activePlan['plan_id'] ?? 0);
 
         $membership = $planHolderId > 0 ? (new MembershipService())->getMembershipSummary($planHolderId) : null;
 
@@ -634,20 +639,61 @@ class ClientServiceController extends BaseController
             $canApply = (($access['state'] ?? 'unregistered') === 'active') && $monthsPaid >= 2;
         }
 
-        return [$canApply, $membership];
+        return [$canApply, $membership, $planId];
     }
 
-    private function hasFullyPaidContribution(?array $membership): bool
+    /**
+     * The ONE shared CLAIM-eligibility check. services(), packageDetails()
+     * and applyPackageForm() (frontend display / form gate) and
+     * submitPackageApplication() (authoritative backend rejection) all call
+     * this, so they can never disagree.
+     *
+     * Replaces the old ($canApply && hasFullyPaidContribution()) gate,
+     * which wrongly required the ENTIRE ₱14,500 cycle paid off just to
+     * claim the entitled package. Correct rule: 2+ verified months in the
+     * current cycle - same threshold as availing anything else - and not
+     * already claimed in this cycle. "Claimed but still paying it off" is
+     * CycleService's 'claimed_owing' state; this method doesn't need to
+     * name it, it just asks currentCycle() whether this cycle's
+     * entitlement has been claimed yet.
+     *
+     * @return array{eligible: bool, reason: ?string}
+     */
+    private function entitlementClaimStatus(bool $canApply, ?array $membership, int $planId): array
     {
-        if (! is_array($membership) || $membership === []) {
-            return false;
+        if (! $canApply) {
+            // canApply's own formula is (can_access_services && monthsPaid
+            // >= 2), so if it's false but access is fine, months < 2 must
+            // be why - gives the specific message the spec asks for
+            // instead of the generic membership-guard fallback.
+            $monthsPaid = (int) ($membership['months_paid'] ?? 0);
+            $canAccessServices = is_array($membership) && ! empty($membership['can_access_services']);
+
+            if ($canAccessServices && $monthsPaid < 2) {
+                return [
+                    'eligible' => false,
+                    'reason' => "You need at least 2 paid months to claim your entitled package or avail services. You have paid {$monthsPaid} month(s).",
+                ];
+            }
+
+            return ['eligible' => false, 'reason' => 'Become an active, eligible Plan Holder to claim this entitlement.'];
         }
 
-        if (array_key_exists('has_fully_paid_contribution', $membership)) {
-            return (bool) $membership['has_fully_paid_contribution'];
+        if ($planId <= 0) {
+            return ['eligible' => false, 'reason' => 'Become an active, eligible Plan Holder to claim this entitlement.'];
         }
 
-        return (new MembershipService())->hasFullyPaidContribution($membership);
+        $cycle = (new CycleService())->currentCycle($planId);
+        if ($cycle['entitlement_claimed']) {
+            $remaining = number_format((float) $cycle['remaining'], 2);
+
+            return [
+                'eligible' => false,
+                'reason' => "You've already claimed your entitled package for this cycle. You have ₱{$remaining} remaining on your current ₱14,500 contribution. Once it's fully paid, a new cycle begins and you can claim again after 2 months.",
+            ];
+        }
+
+        return ['eligible' => true, 'reason' => null];
     }
 
     /**
