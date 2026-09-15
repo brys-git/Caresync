@@ -304,6 +304,12 @@ class ClaimService
 
         $planModel->update((int) $activePlan['plan_id'], [
             'months_paid' => 0,
+            // Client dashboard rebuild, Phase 0: same reasoning as
+            // OverduePolicyService::applyForfeitures() - without this,
+            // MembershipService::recalculateMonthsPaid() would sum this
+            // plan's entire payment history on the next verified payment
+            // and silently restore the months this claim just reset.
+            'contribution_cycle_started_at' => date('Y-m-d'),
             'last_damayan_claim_at' => date('Y-m-d H:i:s'),
         ]);
     }

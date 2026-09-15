@@ -468,9 +468,14 @@ class PaymentTracking extends BaseController
                     'monthly_fee' => MembershipService::MONTHLY_FEE,
                     'start_date' => $today,
                     'status' => 'active',
-                    'months_paid' => max(1, $monthsCovered),
+                    // Phase 0 fix: months_paid is no longer written here -
+                    // see the recalculateMonthsPaid() call below. This is
+                    // the holder's first-ever activation, so it's also the
+                    // start of their contribution cycle for the forfeiture
+                    // policy's purposes.
+                    'contribution_cycle_started_at' => $today,
                 ];
-                
+
                 // Only include columns if they exist in the plans table
                 $planFields = $db->getFieldNames('plans');
                 if (in_array('version_id', $planFields, true)) {
@@ -493,6 +498,7 @@ class PaymentTracking extends BaseController
                 }
 
                 $planModel->update((int) $existingPlan['plan_id'], $updateData);
+                (new MembershipService())->recalculateMonthsPaid((int) $existingPlan['plan_id']);
                 error_log("AUTO_APPROVE DEBUG: Updated existing plan");
             } else {
                 $today = date('Y-m-d');
@@ -506,9 +512,11 @@ class PaymentTracking extends BaseController
                     'monthly_fee' => MembershipService::MONTHLY_FEE,
                     'start_date' => $today,
                     'status' => 'active',
-                    'months_paid' => max(1, $monthsCovered),
+                    // Phase 0 fix: months_paid is no longer written here -
+                    // see the recalculateMonthsPaid() call below.
+                    'contribution_cycle_started_at' => $today,
                 ];
-                
+
                 // Add optional fields only if they exist
                 $planFields = $db->getFieldNames('plans');
                 if (in_array('passbook_fee', $planFields, true)) {
@@ -540,6 +548,8 @@ class PaymentTracking extends BaseController
                 if ($planId <= 0) {
                     throw new \RuntimeException('Unable to create default plan.');
                 }
+
+                (new MembershipService())->recalculateMonthsPaid($planId);
             }
 
             // Enforce one active plan

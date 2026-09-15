@@ -19,6 +19,7 @@ class PlanModel extends Model
         'start_date',
         'status',
         'months_paid',
+        'contribution_cycle_started_at',
         'remaining_balance',
         'next_due_date',
         'payment_coverage_until',

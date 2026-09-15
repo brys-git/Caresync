@@ -362,7 +362,6 @@ class MembershipService
             $updateData = [
                 'overdue_months' => 0,
                 'membership_state' => 'active',
-                'months_paid' => max(0, (int) ($plan['months_paid'] ?? 0)) + max(1, $monthsCovered),
             ];
 
             if ($db->fieldExists('payment_coverage_until', 'plans')) {
@@ -375,10 +374,79 @@ class MembershipService
 
             $this->planModel->update($planId, $updateData);
 
+            // Phase 0 fix: months_paid is derived from verified payment
+            // history, not incremented here - the caller must already have
+            // written this payment's row with a final ('paid') status
+            // before calling applyMembershipCoverage(), which every
+            // existing caller does.
+            $this->recalculateMonthsPaid($planId);
+
             return true;
         } catch (\Throwable $e) {
             return false;
         }
+    }
+
+    /**
+     * Client dashboard rebuild, Phase 0 (months_paid bug fix): the single
+     * source of truth for plans.months_paid. Every call site that used to
+     * write this column directly - an unconditional overwrite in one path
+     * (PaymentTracking::autoApprovePlanHolderFromInitialPayment()), an
+     * unbounded increment in another (applyMembershipCoverage() below) -
+     * now calls this instead, so the number is always exactly what the
+     * verified payment history says and can never drift out of sync (a
+     * client who pays 3 months then 2 months previously ended up with
+     * months_paid = 2, not 5, because the second payment overwrote rather
+     * than added).
+     *
+     * Scoped to payments on/after contribution_cycle_started_at rather
+     * than the plan's entire history, or this would silently undo
+     * OverduePolicyService::applyForfeitures() (the 60-day-grace
+     * forfeiture policy): summing every payment ever would restore months
+     * a forfeiture deliberately reset to 0 the moment any later payment on
+     * that plan gets verified. Falls back to the plan's start_date for a
+     * plan that predates the column (every plan created before this
+     * migration).
+     *
+     * 'verified' is included alongside 'paid' only for forward
+     * compatibility with the payments.status enum this app's own dead
+     * UpdatePaymentStatusEnums migration intended to introduce - today the
+     * column only ever actually holds 'paid'/'pending'/'cancelled'.
+     */
+    public function recalculateMonthsPaid(int $planId): int
+    {
+        if ($planId <= 0) {
+            return 0;
+        }
+
+        $db = db_connect();
+
+        $plan = $db->table('plans')
+            ->select('start_date, contribution_cycle_started_at')
+            ->where('plan_id', $planId)
+            ->get()
+            ->getRowArray();
+
+        if (! $plan) {
+            return 0;
+        }
+
+        $cycleStart = (string) ($plan['contribution_cycle_started_at'] ?? '');
+        if ($cycleStart === '') {
+            $cycleStart = (string) ($plan['start_date'] ?? '1970-01-01');
+        }
+
+        $monthsPaid = (int) ($db->table('payments')
+            ->selectSum('months_covered')
+            ->where('plan_id', $planId)
+            ->whereIn('status', ['paid', 'verified'])
+            ->where('payment_date >=', $cycleStart)
+            ->get()
+            ->getRowArray()['months_covered'] ?? 0);
+
+        $db->table('plans')->where('plan_id', $planId)->update(['months_paid' => $monthsPaid]);
+
+        return $monthsPaid;
     }
 
     /**

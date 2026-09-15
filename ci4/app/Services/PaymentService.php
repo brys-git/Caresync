@@ -281,7 +281,13 @@ class PaymentService
         $totalPlanAmount = $this->getTotalPlanAmount($plan);
 
         $remainingBalance = max(0, round($totalPlanAmount - $totalPaid, 2));
-        $monthsPaid = $monthlyFee > 0 ? (int) floor($totalPaid / $monthlyFee) : 0;
+        // Client dashboard rebuild, Phase 0: months_paid now comes from
+        // the single shared recalculation method (SUM of months_covered,
+        // forfeiture-cycle-aware) rather than this method's own
+        // floor(totalPaid / monthlyFee) - which could disagree with it if
+        // a payment's amount and months_covered were ever entered
+        // inconsistently.
+        $monthsPaid = (new MembershipService())->recalculateMonthsPaid($planId);
 
         $status = $monthsPaid > 0 ? 'active' : 'inactive';
 
@@ -289,7 +295,6 @@ class PaymentService
             ->where('plan_id', $planId)
             ->update([
                 'remaining_balance' => number_format($remainingBalance, 2, '.', ''),
-                'months_paid' => $monthsPaid,
                 'status' => $status,
                 // Panel brief, section 9: a payment just came in, so clear
                 // the overdue-notice flag - if they fall behind again, the

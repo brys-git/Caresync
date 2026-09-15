@@ -72,6 +72,13 @@ class OverduePolicyService
 
             $db->table('plans')->where('plan_id', $planId)->update([
                 'months_paid' => 0,
+                // Client dashboard rebuild, Phase 0: marks "a new
+                // contribution cycle starts today" so
+                // MembershipService::recalculateMonthsPaid() only counts
+                // payments from this reset forward - without this, the
+                // next payment verified on this plan would sum its entire
+                // history and silently restore the months just forfeited.
+                'contribution_cycle_started_at' => $today,
                 'overdue_months' => 0,
                 'membership_state' => 'active',
                 'payment_coverage_until' => $today,
