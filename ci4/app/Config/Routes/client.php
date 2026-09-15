@@ -22,6 +22,8 @@ $routes->group('client', ['filter' => 'auth'], static function (RouteCollection 
 
     // Payment Management
     $routes->get('payment', 'Client\ClientPaymentController::payment', ['filter' => 'role:4']);
+    // Phase 2: Payment History split out to its own page.
+    $routes->get('payment/history', 'Client\ClientPaymentController::paymentHistory', ['filter' => 'role:4']);
     // Phase 1: per-transaction receipt (was a single "latest payment"
     // dashboard quick action - now a link on each verified row in Payment
     // History instead).

@@ -171,7 +171,7 @@ $eligibilityClass = $state === 'active' ? 'success' : 'warning';
                     <div class="row g-3">
                         <div class="col-md-6"><a class="quick-action" href="<?= base_url('client/membership') ?>"><span>View Membership</span><span>›</span></a></div>
                         <div class="col-md-6"><a class="quick-action" href="<?= base_url('initial-payment') ?>"><span>Make Payment</span><span>›</span></a></div>
-                        <div class="col-md-6"><a class="quick-action" href="<?= base_url('client/payment') ?>"><span>View Payment History</span><span>›</span></a></div>
+                        <div class="col-md-6"><a class="quick-action" href="<?= base_url('client/payment/history') ?>"><span>View Payment History</span><span>›</span></a></div>
                         <div class="col-md-6"><a class="quick-action" href="<?= base_url('client/service') ?>"><span>Apply for Service</span><span>›</span></a></div>
                         <div class="col-md-6"><a class="quick-action" href="<?= base_url('client/profile') ?>"><span>Update Profile</span><span>›</span></a></div>
                     </div>

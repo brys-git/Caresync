@@ -21,7 +21,14 @@ class ClientPaymentController extends BaseController
     use ClientPortalTrait;
 
     /**
-     * Display payment page with history
+     * Client dashboard rebuild, Phase 2: PAYMENT overview only - plan
+     * name, monthly contribution, remaining balance, months paid (+ an
+     * awaiting-verification note so a client understands why the number
+     * hasn't moved yet and isn't tempted to pay twice), next due date,
+     * and a Make Payment button. The submission forms and the full
+     * transaction table both used to live on this same page - the forms
+     * move to the new Make Payment page (Phase 3), the table moves to
+     * paymentHistory() below.
      */
     public function payment(): ResponseInterface|string
     {
@@ -31,18 +38,6 @@ class ClientPaymentController extends BaseController
             return redirect()->to('/signin')->with('error', 'Session expired. Please log in again.');
         }
         $planHolder = $access['plan_holder'];
-        $program = \App\Services\MembershipService::getProgramInfo();
-
-        $membershipPlans = [];
-        $db = db_connect();
-        if ($db->tableExists('membership_programs')) {
-            $membershipPlans = $db->table('membership_programs')
-                ->select('program_id, program_name')
-                ->where('is_active', 1)
-                ->orderBy('program_name', 'ASC')
-                ->get()
-                ->getResultArray();
-        }
 
         if (($access['state'] ?? 'unregistered') === 'unregistered' || ! $planHolder) {
             return view('client/payment', [
@@ -51,9 +46,57 @@ class ClientPaymentController extends BaseController
                 'page_sub' => 'Track contribution records.',
                 'access' => $access,
                 'plan' => null,
+            ]);
+        }
+
+        if (($access['state'] ?? 'unregistered') === 'awaiting_activation') {
+            return redirect()->to('/initial-payment')->with('info', 'Complete your initial payment before viewing payment history.');
+        }
+
+        $plan = $this->latestPlan((int) $planHolder['plan_holder_id']);
+        $monthsAwaitingVerification = 0;
+        if ($plan) {
+            $monthsAwaitingVerification = (int) (db_connect()->table('payments')
+                ->selectSum('months_covered')
+                ->where('plan_id', (int) $plan['plan_id'])
+                ->where('status', 'pending')
+                ->get()
+                ->getRowArray()['months_covered'] ?? 0);
+        }
+
+        return view('client/payment', [
+            'role_layout' => 'layouts/plan_holder',
+            'page_title' => 'Payment',
+            'page_sub' => 'Track contribution records.',
+            'access' => $access,
+            'plan' => $plan,
+            'plan_name' => $plan ? (new \App\Services\MembershipService())->resolvePackageName((int) ($plan['package_id'] ?? 0)) : '',
+            'months_awaiting_verification' => $monthsAwaitingVerification,
+        ]);
+    }
+
+    /**
+     * Client dashboard rebuild, Phase 2: PAYMENT HISTORY, split out to its
+     * own page. Sorted newest first per spec - previously ascending
+     * (oldest first) on the combined page; this is a deliberate reversal
+     * for the new dedicated history page, not an oversight.
+     */
+    public function paymentHistory(): ResponseInterface|string
+    {
+        try {
+            $access = $this->resolveAccessState();
+        } catch (\RuntimeException $e) {
+            return redirect()->to('/signin')->with('error', 'Session expired. Please log in again.');
+        }
+        $planHolder = $access['plan_holder'];
+
+        if (($access['state'] ?? 'unregistered') === 'unregistered' || ! $planHolder) {
+            return view('client/payment_history', [
+                'role_layout' => 'layouts/plan_holder',
+                'page_title' => 'Payment History',
+                'page_sub' => 'Every payment on your plan.',
+                'access' => $access,
                 'payments' => [],
-                'membership_plans' => $membershipPlans,
-                'program' => $program,
             ]);
         }
 
@@ -66,23 +109,17 @@ class ClientPaymentController extends BaseController
         if ($plan) {
             $payments = (new PaymentModel())
                 ->where('plan_id', (int) $plan['plan_id'])
-                // Panel brief, section 4: sort payment history ascending.
-                ->orderBy('payment_date', 'ASC')
-                ->orderBy('payment_id', 'ASC')
+                ->orderBy('payment_date', 'DESC')
+                ->orderBy('payment_id', 'DESC')
                 ->findAll();
         }
 
-        return view('client/payment', [
+        return view('client/payment_history', [
             'role_layout' => 'layouts/plan_holder',
-            'page_title' => 'Payment',
-            'page_sub' => 'Track contribution records.',
+            'page_title' => 'Payment History',
+            'page_sub' => 'Every payment on your plan.',
             'access' => $access,
-            'plan' => $plan,
             'payments' => $payments,
-            'supports_proof_upload' => $this->supportsProofUpload(),
-            'membership_plans' => $membershipPlans,
-            'program' => $program,
-            'remaining_months_prepaid' => (new PaymentService())->remainingMonths($plan['payment_coverage_until'] ?? null),
         ]);
     }
 
