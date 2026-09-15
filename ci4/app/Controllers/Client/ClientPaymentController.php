@@ -6,6 +6,7 @@ use App\Controllers\BaseController;
 use CodeIgniter\HTTP\ResponseInterface;
 use App\Models\PaymentModel;
 use App\Config\ValidationRules;
+use App\Services\CycleService;
 use App\Services\MembershipService;
 use App\Services\PaymentService;
 
@@ -125,41 +126,47 @@ class ClientPaymentController extends BaseController
     }
 
     /**
-     * Client dashboard rebuild, Phase 3: how many more months this plan can
-     * accept a payment for. There is no `plan_term_months` (or any other
-     * term-length) column anywhere in the schema - `total_plan_amount` isn't
-     * a real `plans` column either (see MembershipService::
-     * hasFullyPaidContribution()'s doc comment; every read of it in this
-     * codebase falls back to MembershipService::TOTAL_CONTRIBUTION). The
-     * plan's effective term is only ever derived at render time as
-     * ceil(total contribution / this plan's own monthly_fee) - exactly what
-     * the dashboard's "X of Y payments completed" progress line already
-     * does. Hardcoding 61 (ceil(14500/240) using the *global* constants)
-     * would be wrong for any plan whose monthly_fee differs from the
-     * default, so it's computed per-plan here instead.
+     * Entitlement cycle model: how many more months this plan's CURRENT
+     * cycle can accept a payment for - not the plan's lifetime term. A
+     * payment must never be allowed to span a cycle boundary (see
+     * CycleService's class doc comment on why: overpaying past the exact
+     * moment a cycle closes would let a plan holder immediately bank
+     * months toward - and claim - the next cycle too), so the cap comes
+     * from CycleService::currentCycle()'s own remaining-balance figure,
+     * converted to whole months at this plan's own monthly_fee, rather
+     * than the flat plan-lifetime ceil(total/fee) this used before the
+     * cycle model existed.
      *
-     * Returns [planTermMonths, verifiedMonths, pendingMonths, remainingMonths].
+     * Returns [cycleTargetMonths, verifiedMonths, pendingMonths, remainingMonths].
      */
     private function paymentCapacity(array $plan): array
     {
-        $totalPlanAmount = (float) ($plan['total_plan_amount'] ?? MembershipService::TOTAL_CONTRIBUTION);
-        $monthlyFee = (float) ($plan['monthly_fee'] ?? MembershipService::MONTHLY_FEE);
-        $planTermMonths = (int) ceil($totalPlanAmount / max($monthlyFee, 0.01));
+        $planId = (int) $plan['plan_id'];
+        $cycle = (new CycleService())->currentCycle($planId);
 
-        // Phase 0: months_paid is now recalculated from verified payments
-        // only, so it's safe to use directly as "verified months" here.
-        $verifiedMonths = (int) ($plan['months_paid'] ?? 0);
+        $monthlyFee = (float) ($plan['monthly_fee'] ?? MembershipService::MONTHLY_FEE);
+        if ($monthlyFee <= 0) {
+            $monthlyFee = MembershipService::MONTHLY_FEE;
+        }
+
+        $cycleTargetMonths = (int) ceil($cycle['target'] / $monthlyFee);
+
+        // Phase 0: months_paid is recalculated from verified payments only
+        // (now scoped to this cycle - see MembershipService::
+        // recalculateMonthsPaid()), so it's safe to use directly here.
+        $verifiedMonths = $cycle['months_paid'];
 
         $pendingMonths = (int) (db_connect()->table('payments')
             ->selectSum('months_covered')
-            ->where('plan_id', (int) $plan['plan_id'])
+            ->where('plan_id', $planId)
             ->where('status', 'pending')
             ->get()
             ->getRowArray()['months_covered'] ?? 0);
 
-        $remainingMonths = max(0, $planTermMonths - $verifiedMonths - $pendingMonths);
+        $cycleRemainingMonths = (int) ceil(max(0.0, $cycle['remaining']) / $monthlyFee);
+        $remainingMonths = max(0, $cycleRemainingMonths - $pendingMonths);
 
-        return [$planTermMonths, $verifiedMonths, $pendingMonths, $remainingMonths];
+        return [$cycleTargetMonths, $verifiedMonths, $pendingMonths, $remainingMonths];
     }
 
     /**

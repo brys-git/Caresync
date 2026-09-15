@@ -14,6 +14,7 @@ class ServiceApplicationModel extends Model
         'plan_holder_id',
         'service_list_id',
         'package_id',
+        'cycle_number',
         'status',
         'deceased_name',
         'deceased_date_of_death',

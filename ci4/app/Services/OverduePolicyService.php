@@ -57,6 +57,19 @@ class OverduePolicyService
         foreach ($candidates as $plan) {
             $result['checked']++;
 
+            $planId = (int) $plan['plan_id'];
+
+            // Entitlement cycle model: a plan that's fully paid its
+            // current ₱14,500 cycle and is only waiting on the plan
+            // holder to claim owes nothing further - it must never be
+            // forfeited just because time has passed since
+            // payment_coverage_until, or this would destroy a cycle
+            // they've already earned. See CycleService's class doc
+            // comment.
+            if ((new CycleService())->currentCycle($planId)['state'] === 'paid_unclaimed') {
+                continue;
+            }
+
             $coverageUntil = (string) ($plan['payment_coverage_until'] ?? '');
             if ($coverageUntil === '') {
                 continue;
@@ -67,7 +80,6 @@ class OverduePolicyService
                 continue;
             }
 
-            $planId = (int) $plan['plan_id'];
             $monthsForfeited = (int) $plan['months_paid'];
 
             $db->table('plans')->where('plan_id', $planId)->update([

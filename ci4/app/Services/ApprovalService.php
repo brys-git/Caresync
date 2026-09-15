@@ -90,6 +90,7 @@ class ApprovalService
                 ]);
 
             (new MembershipService())->applyMembershipCoverage($planId, $monthsCovered);
+            (new CycleService())->afterPaymentVerified($paymentId, $planId);
 
             // Mark plan holder as active
             db_connect()->table('plan_holders')

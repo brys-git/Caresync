@@ -7,6 +7,7 @@ use App\Models\PlanModel;
 use App\Models\PlanHolderModel;
 use App\Models\UserModel;
 use App\Services\ActivityLogService;
+use App\Services\CycleService;
 use App\Services\MembershipService;
 use App\Services\NotificationService;
 use App\Services\PaymentService;
@@ -232,9 +233,10 @@ class PaymentTracking extends BaseController
         $autoApproved = false;
         if ($status === 'paid') {
             if ($this->isInitialPayment($paymentId, (int) $plan['plan_id'], (int) $plan['plan_holder_id'])) {
-                $autoApproved = $this->autoApprovePlanHolderFromInitialPayment($plan, $monthsCovered);
+                $autoApproved = $this->autoApprovePlanHolderFromInitialPayment($plan, $monthsCovered, $paymentId);
             } else {
                 (new MembershipService())->applyMembershipCoverage((int) $plan['plan_id'], $monthsCovered);
+                (new CycleService())->afterPaymentVerified($paymentId, (int) $plan['plan_id']);
             }
         }
 
@@ -351,9 +353,10 @@ class PaymentTracking extends BaseController
         if ($plan && in_array($targetStatus, ['paid', 'verified'], true)) {
             $monthsCovered = max(1, (int) ($payment['months_covered'] ?? 1));
             if ($this->isInitialPayment((int) $payment['payment_id'], (int) $plan['plan_id'], (int) ($plan['plan_holder_id'] ?? 0))) {
-                $autoApproved = $this->autoApprovePlanHolderFromInitialPayment($plan, $monthsCovered);
+                $autoApproved = $this->autoApprovePlanHolderFromInitialPayment($plan, $monthsCovered, (int) $payment['payment_id']);
             } else {
                 (new MembershipService())->applyMembershipCoverage((int) $plan['plan_id'], $monthsCovered);
+                (new CycleService())->afterPaymentVerified((int) $payment['payment_id'], (int) $plan['plan_id']);
             }
         }
 
@@ -413,7 +416,7 @@ class PaymentTracking extends BaseController
         return 'Your advance payment covering ' . $monthsCovered . ' ' . $suffix . ' has been approved.';
     }
 
-    private function autoApprovePlanHolderFromInitialPayment(array $plan, int $monthsCovered = 1): bool
+    private function autoApprovePlanHolderFromInitialPayment(array $plan, int $monthsCovered = 1, int $paymentId = 0): bool
     {
         $planHolderId = (int) ($plan['plan_holder_id'] ?? 0);
         error_log("AUTO_APPROVE DEBUG: Starting with planHolderId=$planHolderId, monthsCovered=$monthsCovered");
@@ -498,7 +501,11 @@ class PaymentTracking extends BaseController
                 }
 
                 $planModel->update((int) $existingPlan['plan_id'], $updateData);
-                (new MembershipService())->recalculateMonthsPaid((int) $existingPlan['plan_id']);
+                if ($paymentId > 0) {
+                    (new CycleService())->afterPaymentVerified($paymentId, (int) $existingPlan['plan_id']);
+                } else {
+                    (new MembershipService())->recalculateMonthsPaid((int) $existingPlan['plan_id']);
+                }
                 error_log("AUTO_APPROVE DEBUG: Updated existing plan");
             } else {
                 $today = date('Y-m-d');
@@ -549,7 +556,11 @@ class PaymentTracking extends BaseController
                     throw new \RuntimeException('Unable to create default plan.');
                 }
 
-                (new MembershipService())->recalculateMonthsPaid($planId);
+                if ($paymentId > 0) {
+                    (new CycleService())->afterPaymentVerified($paymentId, $planId);
+                } else {
+                    (new MembershipService())->recalculateMonthsPaid($planId);
+                }
             }
 
             // Enforce one active plan

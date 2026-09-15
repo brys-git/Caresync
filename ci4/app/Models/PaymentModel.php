@@ -18,6 +18,7 @@ class PaymentModel extends Model
         'reference_number',
         'proof_image',
         'months_covered',
+        'cycle_number',
         'official_receipt_number',
         'verified_at',
         'verified_by',

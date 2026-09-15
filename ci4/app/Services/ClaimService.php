@@ -87,7 +87,7 @@ class ClaimService
         try {
             $this->serviceApplicationModel->update($applicationId, ['status' => 'approved']);
 
-            $this->resetContributionCycleIfEntitlementClaim((int) $request['package_id'], (int) $request['plan_holder_id']);
+            $this->stampClaimCycle($applicationId, (int) $request['package_id'], (int) $request['plan_holder_id']);
 
             $serviceRecordId = (int) $this->serviceModel->insert([
                 'plan_holder_id' => (int) $request['plan_holder_id'],
@@ -267,27 +267,23 @@ class ClaimService
     }
 
     /**
-     * Services & Packages redesign: approving a claim for the Regular
-     * Wood Casket (Damayan) entitlement starts a fresh contribution
-     * cycle for that plan holder, the same way the existing overdue/
-     * forfeiture policy already resets months_paid to 0 - so the next
-     * CLAIM is only enabled once they've fully re-paid the ₱14,500
-     * target again (MembershipService::hasFullyPaidContribution()).
-     * A no-op for any other package or service claim.
+     * Entitlement cycle model (replaces the old
+     * resetContributionCycleIfEntitlementClaim(), which zeroed
+     * months_paid the instant ANY entitlement claim was approved - even
+     * one approved before the plan holder had finished paying off the
+     * current ₱14,500 cycle, silently destroying that progress). Every
+     * approved claim - entitlement or not - is stamped with the cycle it
+     * was approved in, for a consistent audit trail alongside
+     * payments.cycle_number. Only an entitlement-package (Regular Wood
+     * Casket) claim can actually progress a cycle, so
+     * CycleService::closeCycleIfSettled() is only checked for that case -
+     * it's a no-op unless this claim is also the thing that completes an
+     * already-fully-paid cycle, and never touches months_paid directly
+     * itself.
      */
-    private function resetContributionCycleIfEntitlementClaim(int $packageId, int $planHolderId): void
+    private function stampClaimCycle(int $applicationId, int $packageId, int $planHolderId): void
     {
-        if ($packageId <= 0 || $planHolderId <= 0) {
-            return;
-        }
-
-        $package = db_connect()->table('packages')
-            ->select('is_damayan_entitlement')
-            ->where('package_id', $packageId)
-            ->get()
-            ->getRowArray();
-
-        if (! $package || (int) ($package['is_damayan_entitlement'] ?? 0) !== 1) {
+        if ($planHolderId <= 0) {
             return;
         }
 
@@ -302,16 +298,34 @@ class ClaimService
             return;
         }
 
-        $planModel->update((int) $activePlan['plan_id'], [
-            'months_paid' => 0,
-            // Client dashboard rebuild, Phase 0: same reasoning as
-            // OverduePolicyService::applyForfeitures() - without this,
-            // MembershipService::recalculateMonthsPaid() would sum this
-            // plan's entire payment history on the next verified payment
-            // and silently restore the months this claim just reset.
-            'contribution_cycle_started_at' => date('Y-m-d'),
+        $planId = (int) $activePlan['plan_id'];
+        $cycleNumber = (int) ($activePlan['current_cycle_number'] ?? 1);
+
+        if ($applicationId > 0) {
+            db_connect()->table('service_applications')
+                ->where('application_id', $applicationId)
+                ->update(['cycle_number' => $cycleNumber]);
+        }
+
+        if ($packageId <= 0) {
+            return;
+        }
+
+        $package = db_connect()->table('packages')
+            ->select('is_damayan_entitlement')
+            ->where('package_id', $packageId)
+            ->get()
+            ->getRowArray();
+
+        if (! $package || (int) ($package['is_damayan_entitlement'] ?? 0) !== 1) {
+            return;
+        }
+
+        $planModel->update($planId, [
             'last_damayan_claim_at' => date('Y-m-d H:i:s'),
         ]);
+
+        (new CycleService())->closeCycleIfSettled($planId);
     }
 
     private function findClaimForBranch(int $applicationId, int $branchId): ?array

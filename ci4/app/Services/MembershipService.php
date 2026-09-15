@@ -408,6 +408,15 @@ class MembershipService
      * plan that predates the column (every plan created before this
      * migration).
      *
+     * Also scoped to payments.cycle_number = plans.current_cycle_number
+     * (entitlement cycle model): contribution_cycle_started_at alone marks
+     * "count progress from here forward," but doesn't distinguish which
+     * ₱14,500 cycle that progress belongs to. Both filters do different
+     * jobs and are both needed - see CycleService's class doc comment.
+     * Every payment counted here must already have a non-null
+     * cycle_number, which CycleService::afterPaymentVerified() stamps
+     * before ever calling this method for a real (non-backfill) payment.
+     *
      * 'verified' is included alongside 'paid' only for forward
      * compatibility with the payments.status enum this app's own dead
      * UpdatePaymentStatusEnums migration intended to introduce - today the
@@ -422,7 +431,7 @@ class MembershipService
         $db = db_connect();
 
         $plan = $db->table('plans')
-            ->select('start_date, contribution_cycle_started_at')
+            ->select('start_date, contribution_cycle_started_at, current_cycle_number')
             ->where('plan_id', $planId)
             ->get()
             ->getRowArray();
@@ -435,12 +444,14 @@ class MembershipService
         if ($cycleStart === '') {
             $cycleStart = (string) ($plan['start_date'] ?? '1970-01-01');
         }
+        $cycleNumber = (int) ($plan['current_cycle_number'] ?? 1);
 
         $monthsPaid = (int) ($db->table('payments')
             ->selectSum('months_covered')
             ->where('plan_id', $planId)
             ->whereIn('status', ['paid', 'verified'])
             ->where('payment_date >=', $cycleStart)
+            ->where('cycle_number', $cycleNumber)
             ->get()
             ->getRowArray()['months_covered'] ?? 0);
 
@@ -542,6 +553,19 @@ class MembershipService
             foreach ($activePlans as $plan) {
                 $planId = (int) ($plan['plan_id'] ?? 0);
                 if ($planId <= 0) {
+                    continue;
+                }
+
+                // Entitlement cycle model: a plan that's fully paid its
+                // current ₱14,500 cycle and is only waiting on the plan
+                // holder to claim owes nothing further - it must not be
+                // pushed into delinquent/suspended purely because time has
+                // passed since payment_coverage_until. (They already come
+                // in as membership_state = 'active' from the payment that
+                // completed the cycle - see CycleService::
+                // afterPaymentVerified() - so skipping them here just
+                // leaves that alone rather than needing to restore it.)
+                if ((new CycleService())->currentCycle($planId)['state'] === 'paid_unclaimed') {
                     continue;
                 }
 
