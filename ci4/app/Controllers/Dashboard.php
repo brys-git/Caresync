@@ -103,15 +103,6 @@ class Dashboard extends BaseController
         ]);
     }
 
-    public function planHolder(): string
-    {
-        return view('dashboards/plan_holder', [
-            'role_layout' => $this->resolveLayoutView(),
-            'page_title' => 'Plan Holder Dashboard',
-            'breadcrumb' => ['Dashboard'],
-        ]);
-    }
-
     public function collector(): string
     {
         // Was a static "Coming Soon" placeholder with no data at all.
