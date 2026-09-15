@@ -14,6 +14,7 @@ class ProfileController extends BaseController
 
         return view('staff/profile/index', [
             'role_layout' => 'layouts/staff',
+            'page_title' => 'My Profile',
             'user' => $user,
         ]);
     }
