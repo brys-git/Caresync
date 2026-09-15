@@ -6,6 +6,7 @@ use App\Controllers\BaseController;
 use CodeIgniter\HTTP\ResponseInterface;
 use App\Models\PaymentModel;
 use App\Config\ValidationRules;
+use App\Services\MembershipService;
 use App\Services\PaymentService;
 
 /**
@@ -121,6 +122,179 @@ class ClientPaymentController extends BaseController
             'access' => $access,
             'payments' => $payments,
         ]);
+    }
+
+    /**
+     * Client dashboard rebuild, Phase 3: how many more months this plan can
+     * accept a payment for. There is no `plan_term_months` (or any other
+     * term-length) column anywhere in the schema - `total_plan_amount` isn't
+     * a real `plans` column either (see MembershipService::
+     * hasFullyPaidContribution()'s doc comment; every read of it in this
+     * codebase falls back to MembershipService::TOTAL_CONTRIBUTION). The
+     * plan's effective term is only ever derived at render time as
+     * ceil(total contribution / this plan's own monthly_fee) - exactly what
+     * the dashboard's "X of Y payments completed" progress line already
+     * does. Hardcoding 61 (ceil(14500/240) using the *global* constants)
+     * would be wrong for any plan whose monthly_fee differs from the
+     * default, so it's computed per-plan here instead.
+     *
+     * Returns [planTermMonths, verifiedMonths, pendingMonths, remainingMonths].
+     */
+    private function paymentCapacity(array $plan): array
+    {
+        $totalPlanAmount = (float) ($plan['total_plan_amount'] ?? MembershipService::TOTAL_CONTRIBUTION);
+        $monthlyFee = (float) ($plan['monthly_fee'] ?? MembershipService::MONTHLY_FEE);
+        $planTermMonths = (int) ceil($totalPlanAmount / max($monthlyFee, 0.01));
+
+        // Phase 0: months_paid is now recalculated from verified payments
+        // only, so it's safe to use directly as "verified months" here.
+        $verifiedMonths = (int) ($plan['months_paid'] ?? 0);
+
+        $pendingMonths = (int) (db_connect()->table('payments')
+            ->selectSum('months_covered')
+            ->where('plan_id', (int) $plan['plan_id'])
+            ->where('status', 'pending')
+            ->get()
+            ->getRowArray()['months_covered'] ?? 0);
+
+        $remainingMonths = max(0, $planTermMonths - $verifiedMonths - $pendingMonths);
+
+        return [$planTermMonths, $verifiedMonths, $pendingMonths, $remainingMonths];
+    }
+
+    /**
+     * Client dashboard rebuild, Phase 3: Make Payment page. Read-only plan
+     * name/monthly contribution, a months selector capped by how much of
+     * the plan's term is left to pay for, a fixed GCash payment method, and
+     * a reference number field - the actual amount is never entered by the
+     * client, only computed (client-side for display, server-side for
+     * real) from months selected x monthly fee.
+     */
+    public function makePayment(): ResponseInterface|string
+    {
+        try {
+            $access = $this->resolveAccessState();
+        } catch (\RuntimeException $e) {
+            return redirect()->to('/signin')->with('error', 'Session expired. Please log in again.');
+        }
+
+        if (($access['state'] ?? 'unregistered') !== 'active' || ! $access['plan_holder']) {
+            return redirect()->to('/client/payment')->with('error', 'Access denied. Payment submission requires active membership.');
+        }
+
+        $planHolder = $access['plan_holder'];
+        $plan = $this->latestPlan((int) $planHolder['plan_holder_id']);
+        if (! $plan) {
+            return redirect()->to('/client/payment')->with('error', 'No active plan found for payment submission.');
+        }
+
+        [$planTermMonths, $verifiedMonths, $pendingMonths, $remainingMonths] = $this->paymentCapacity($plan);
+
+        return view('client/payment_make', [
+            'role_layout' => 'layouts/plan_holder',
+            'page_title' => 'Make Payment',
+            'page_sub' => 'Submit a GCash payment toward your plan.',
+            'plan' => $plan,
+            'plan_name' => (new MembershipService())->resolvePackageName((int) ($plan['package_id'] ?? 0)),
+            'plan_term_months' => $planTermMonths,
+            'verified_months' => $verifiedMonths,
+            'pending_months' => $pendingMonths,
+            'remaining_months' => $remainingMonths,
+        ]);
+    }
+
+    /**
+     * Client dashboard rebuild, Phase 3: server-side re-validation for the
+     * Make Payment form. Never trusts the client for months covered or
+     * amount - the months cap and the total are both recomputed here from
+     * the plan's own current state, exactly like makePayment() computed
+     * them for display. payment_method and status are never read from
+     * POST: GCash is the only method this page offers, and every
+     * client-submitted payment starts 'pending' pending branch admin
+     * verification, same as the old submitGcashPayment() flow.
+     */
+    public function submitPayment()
+    {
+        try {
+            $access = $this->resolveAccessState();
+        } catch (\RuntimeException $e) {
+            return redirect()->to('/signin')->with('error', 'Session expired. Please log in again.');
+        }
+
+        if (($access['state'] ?? 'unregistered') !== 'active' || ! $access['plan_holder']) {
+            return redirect()->to('/client/payment')->with('error', 'Access denied. Payment submission requires active membership.');
+        }
+
+        $planHolder = $access['plan_holder'];
+        $plan = $this->latestPlan((int) $planHolder['plan_holder_id']);
+        if (! $plan) {
+            return redirect()->to('/client/payment')->with('error', 'No active plan found for payment submission.');
+        }
+
+        [, , , $remainingMonths] = $this->paymentCapacity($plan);
+
+        $rules = [
+            'months_covered' => 'required|is_natural_no_zero',
+            // GCash reference numbers are 13 numeric digits.
+            'reference_number' => 'required|regex_match[/^\d{13}$/]',
+        ];
+        $messages = [
+            'months_covered' => ['is_natural_no_zero' => 'Select how many months you want to pay.'],
+            'reference_number' => ['regex_match' => 'Enter a valid 13-digit GCash reference number.'],
+        ];
+
+        if (! $this->validate($rules, $messages)) {
+            return redirect()->to('/client/payment/make')->withInput()->with('error', implode(' ', $this->validator->getErrors()));
+        }
+
+        $monthsCovered = (int) $this->request->getPost('months_covered');
+
+        if ($remainingMonths <= 0) {
+            return redirect()->to('/client/payment')->with('error', 'Your plan has no remaining months left to pay.');
+        }
+
+        if ($monthsCovered > $remainingMonths) {
+            return redirect()->to('/client/payment/make')->withInput()->with('error', "You can pay for at most {$remainingMonths} more month(s) on this plan.");
+        }
+
+        $reference = trim((string) $this->request->getPost('reference_number'));
+        $duplicate = (new PaymentModel())
+            ->where('reference_number', $reference)
+            ->first();
+
+        if ($duplicate) {
+            return redirect()->to('/client/payment/make')->withInput()->with('error', 'Duplicate reference number detected. Please verify your reference number.');
+        }
+
+        $monthlyFee = (float) ($plan['monthly_fee'] ?? MembershipService::MONTHLY_FEE);
+        $amount = round($monthlyFee * $monthsCovered, 2);
+        $coverage = (new PaymentService())->projectCoverage($plan, $monthsCovered);
+
+        $payload = [
+            'plan_id' => (int) $plan['plan_id'],
+            'amount' => $amount,
+            'months_covered' => $monthsCovered,
+            'payment_date' => date('Y-m-d'),
+            'payment_method' => 'gcash',
+            'reference_number' => $reference,
+            'received_by' => null,
+            'branch_id' => (int) ($planHolder['branch_id'] ?? 0),
+            'status' => 'pending',
+            'coverage_start' => $coverage['start'],
+            'coverage_end' => $coverage['end'],
+            'remarks' => 'Submitted by client, awaiting branch verification',
+        ];
+
+        $paymentModel = new PaymentModel();
+        $paymentId = (int) $paymentModel->insert($payload, true);
+
+        if ($paymentId > 0) {
+            $paymentModel->update($paymentId, [
+                'official_receipt_number' => (new PaymentService())->generateReceiptNumber($paymentId, $payload['payment_date']),
+            ]);
+        }
+
+        return redirect()->to('/client/payment/history')->with('success', 'GCash payment submitted. Waiting for branch admin verification.');
     }
 
     /**
