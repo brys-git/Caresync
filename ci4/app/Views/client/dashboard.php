@@ -187,7 +187,7 @@ $eligibilityClass = $state === 'active' ? 'success' : 'warning';
                     </div>
                     <div class="mt-3 small text-muted">
                         <?php if ($state === 'active'): ?>
-                            You can proceed to service requests from the Services page.
+                            You can proceed to service requests from the Services & Packages page.
                         <?php else: ?>
                             Service requests stay locked until your membership becomes active.
                         <?php endif; ?>

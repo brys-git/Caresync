@@ -150,7 +150,7 @@ class Nav extends BaseConfig
                     ],
                 ],
                 [
-                    'title' => 'Services',
+                    'title' => 'Services & Packages',
                     'items' => [
                         ['key' => 'services',      'label' => 'Request a service', 'icon' => 'ti-clipboard-list', 'url' => 'client/service'],
                         ['key' => 'notifications', 'label' => 'Notifications',     'icon' => 'ti-bell',           'url' => 'client/notification', 'count' => 'unread'],
