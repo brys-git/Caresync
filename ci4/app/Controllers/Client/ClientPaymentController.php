@@ -183,9 +183,19 @@ class ClientPaymentController extends BaseController
     }
 
     /**
-     * Download latest paid receipt for the active plan
+     * Download the receipt for one specific payment (Phase 1: was a
+     * dashboard quick action that only ever grabbed the plan's latest
+     * paid payment - now a per-row link in Payment History, so it needs
+     * to fetch the exact payment the client clicked, not just the most
+     * recent one).
+     *
+     * Never trusts the payment ID alone: re-verifies server-side that the
+     * payment belongs to a plan owned by the requesting client's own
+     * plan_holder_id (not just "some plan"), and that its status is
+     * 'paid' - the UI only ever links to paid rows, but a client could
+     * still hand-edit the URL to a pending/cancelled payment_id otherwise.
      */
-    public function downloadReceipt()
+    public function downloadReceipt(int $paymentId)
     {
         try {
             $access = $this->resolveAccessState();
@@ -198,20 +208,17 @@ class ClientPaymentController extends BaseController
             return redirect()->back()->with('error', 'No plan holder profile found.');
         }
 
-        $plan = $this->latestPlan((int) $planHolder['plan_holder_id']);
-        if (! $plan) {
-            return redirect()->back()->with('error', 'No active plan found.');
-        }
-
-        $payment = (new PaymentModel())
-            ->where('plan_id', (int) $plan['plan_id'])
-            ->where('status', 'paid')
-            ->orderBy('payment_id', 'DESC')
-            ->limit(1)
-            ->first();
+        $payment = db_connect()->table('payments pay')
+            ->select('pay.*')
+            ->join('plans p', 'p.plan_id = pay.plan_id', 'inner')
+            ->where('pay.payment_id', $paymentId)
+            ->where('p.plan_holder_id', (int) $planHolder['plan_holder_id'])
+            ->where('pay.status', 'paid')
+            ->get()
+            ->getRowArray();
 
         if (! $payment) {
-            return redirect()->back()->with('error', 'No paid payments found to download receipt.');
+            return redirect()->back()->with('error', 'Receipt not found, or this payment has not been verified yet.');
         }
 
         $content = "Receipt #" . $payment['payment_id'] . "\n";

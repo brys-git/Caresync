@@ -174,7 +174,6 @@ $eligibilityClass = $state === 'active' ? 'success' : 'warning';
                         <div class="col-md-6"><a class="quick-action" href="<?= base_url('client/payment') ?>"><span>View Payment History</span><span>›</span></a></div>
                         <div class="col-md-6"><a class="quick-action" href="<?= base_url('client/service') ?>"><span>Apply for Service</span><span>›</span></a></div>
                         <div class="col-md-6"><a class="quick-action" href="<?= base_url('client/profile') ?>"><span>Update Profile</span><span>›</span></a></div>
-                        <div class="col-md-6"><a class="quick-action" href="<?= base_url('client/payment/download-receipt') ?>"><span>Download Receipt</span><span>›</span></a></div>
                     </div>
                 </div>
             </div>

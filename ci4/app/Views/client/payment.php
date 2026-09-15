@@ -217,7 +217,7 @@
                 <div class="cs-tablewrap">
                     <table class="cs-table">
                         <thead>
-                            <tr><th>Date</th><th>Coverage Period</th><th class="cs-num">Amount</th><th>Method</th><th>Reference</th><th>Status</th></tr>
+                            <tr><th>Date</th><th>Coverage Period</th><th class="cs-num">Amount</th><th>Method</th><th>Reference</th><th>Status</th><th>Receipt</th></tr>
                         </thead>
                         <tbody>
                             <?php $paymentService = new \App\Services\PaymentService(); ?>
@@ -236,6 +236,16 @@
                                     <td><?= esc(strtoupper((string) $payment['payment_method'])) ?></td>
                                     <td><?= esc((string) ($payment['reference_number'] ?? '-')) ?></td>
                                     <td><?= cs_status($status) ?></td>
+                                    <td>
+                                        <?php if ($status === 'paid'): ?>
+                                            <a class="btn btn-ghost btn-sm" href="<?= base_url('client/payment/download-receipt/' . (int) $payment['payment_id']) ?>">
+                                                <i class="ti ti-download" aria-hidden="true"></i>
+                                                <span class="cs-visually-hidden">Download receipt</span>
+                                            </a>
+                                        <?php else: ?>
+                                            <span class="text-muted small">&mdash;</span>
+                                        <?php endif; ?>
+                                    </td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
