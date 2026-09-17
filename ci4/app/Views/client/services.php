@@ -135,7 +135,7 @@ $activeTab = (string) ($active_tab ?? 'services');
                 <div class="svc-card h-100 d-flex flex-column">
                     <div class="svc-thumb">
                         <?php if (! empty($service['image_path'])): ?>
-                            <img src="<?= esc((string) $service['image_path']) ?>" alt="<?= esc((string) ($service['service_name'] ?? 'Service')) ?>" onerror="this.style.display='none'; this.parentElement.innerHTML='<i class=\'ti ti-truck placeholder-icon\'></i>';">
+                            <img src="<?= esc(base_url((string) $service['image_path'])) ?>" alt="<?= esc((string) ($service['service_name'] ?? 'Service')) ?>" onerror="this.style.display='none'; this.parentElement.innerHTML='<i class=\'ti ti-truck placeholder-icon\'></i>';">
                         <?php else: ?>
                             <i class="ti ti-truck placeholder-icon"></i>
                         <?php endif; ?>
@@ -217,7 +217,7 @@ $activeTab = (string) ($active_tab ?? 'services');
                 <div class="svc-card h-100 d-flex flex-column <?= $isEntitlement ? 'border-warning' : '' ?>">
                     <div class="svc-thumb">
                         <?php if (! empty($package['image_path'])): ?>
-                            <img src="<?= esc((string) $package['image_path']) ?>" alt="<?= esc((string) ($package['package_name'] ?? 'Package')) ?>" onerror="this.style.display='none'; this.parentElement.innerHTML='<i class=\'ti ti-package placeholder-icon\'></i>';">
+                            <img src="<?= esc(base_url((string) $package['image_path'])) ?>" alt="<?= esc((string) ($package['package_name'] ?? 'Package')) ?>" onerror="this.style.display='none'; this.parentElement.innerHTML='<i class=\'ti ti-package placeholder-icon\'></i>';">
                         <?php else: ?>
                             <i class="ti ti-package placeholder-icon"></i>
                         <?php endif; ?>
