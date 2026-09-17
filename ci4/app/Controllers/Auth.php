@@ -123,28 +123,26 @@ class Auth extends BaseController
 
             $newUserId = (int) $userModel->getInsertID();
 
-            $existingPlanHolderQuery = $db->table('plan_holders ph')
-                ->select('ph.plan_holder_id, ph.user_id, ph.unique_identifier')
-                ->join('users u', 'u.user_id = ph.user_id', 'left')
-                ->where('ph.user_id !=', $newUserId);
-
+            // Only ever auto-link on an exact unique_identifier match - never
+            // by first_name/last_name alone. Two different people can and do
+            // share a name (found live: a brand-new registrant with no
+            // unique_identifier got silently merged into an unrelated
+            // existing plan_holder record that happened to share a name,
+            // landing them in "awaiting activation" for someone else's
+            // profile instead of their own fresh "Register Now" state - with
+            // no confirmation step, no way to tell it had even happened).
+            // Leaving unique_identifier blank now means "no auto-link,
+            // register fresh" - the only safe default.
+            $existingPlanHolder = null;
             if ($uniqueIdentifier !== '') {
-                $existingPlanHolderQuery->groupStart()
+                $existingPlanHolder = $db->table('plan_holders ph')
+                    ->select('ph.plan_holder_id, ph.user_id, ph.unique_identifier')
+                    ->where('ph.user_id !=', $newUserId)
                     ->where('ph.unique_identifier', $uniqueIdentifier)
-                    ->orGroupStart()
-                    ->where('u.first_name', $firstName)
-                    ->where('u.last_name', $lastName)
-                    ->groupEnd()
-                    ->groupEnd();
-            } else {
-                $existingPlanHolderQuery->where('u.first_name', $firstName)
-                    ->where('u.last_name', $lastName);
+                    ->orderBy('ph.plan_holder_id', 'DESC')
+                    ->get()
+                    ->getRowArray();
             }
-
-            $existingPlanHolder = $existingPlanHolderQuery
-                ->orderBy('ph.plan_holder_id', 'DESC')
-                ->get()
-                ->getRowArray();
 
             $linkedExisting = false;
             if ($existingPlanHolder) {
