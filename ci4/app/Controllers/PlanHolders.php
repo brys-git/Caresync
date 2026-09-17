@@ -129,6 +129,17 @@ class PlanHolders extends BaseController
 
         $registrationService = new ClientRegistrationService();
 
+        // Age is never trusted from the client - always derived server-side
+        // from date_of_birth (Task 3, cs_age_from_dob()). Previously this
+        // fell back to whatever was typed into the Age field when no
+        // birthdate was given; now an absent/invalid birthdate just means
+        // a null age, same as everywhere else.
+        $dateOfBirth = $this->nullablePost('date_of_birth');
+        if ($dateOfBirth !== null && $dateOfBirth > date('Y-m-d')) {
+            error_log("STORE() ERROR: Date of birth is in the future");
+            return redirect()->back()->withInput()->with('error', 'Date of birth cannot be in the future.');
+        }
+
         // Collect common plan holder data
         $planHolderData = [
             'unique_identifier' => trim((string) $this->request->getPost('unique_identifier')),
@@ -136,8 +147,9 @@ class PlanHolders extends BaseController
             'address_street' => trim((string) $this->request->getPost('address_street')),
             'address_barangay' => trim((string) $this->request->getPost('address_barangay')),
             'address_city' => trim((string) $this->request->getPost('address_city')),
-            'date_of_birth' => $this->nullablePost('date_of_birth'),
+            'date_of_birth' => $dateOfBirth,
             'place_of_birth' => trim((string) $this->request->getPost('place_of_birth')),
+            'age' => cs_age_from_dob($dateOfBirth),
             'gender' => trim((string) $this->request->getPost('gender')),
             'civil_status' => trim((string) $this->request->getPost('civil_status')),
             'citizenship' => trim((string) $this->request->getPost('citizenship')),
@@ -149,24 +161,7 @@ class PlanHolders extends BaseController
             'senior_citizen_id' => trim((string) $this->request->getPost('senior_citizen_id')),
             'organization_affiliation' => trim((string) $this->request->getPost('organization_affiliation')),
         ];
-        $ageRaw = trim((string) $this->request->getPost('age'));
-        if ($ageRaw !== '') {
-            $planHolderData['age'] = max(0, (int) $ageRaw);
-        }
         error_log("STORE() DEBUG: Collected planHolderData = " . json_encode($planHolderData));
-
-        // Auto-calculate age if birthdate provided
-        if (!empty($planHolderData['date_of_birth'])) {
-            $ageValidation = $registrationService->validateAndCalculateAge($planHolderData['date_of_birth']);
-            error_log("STORE() DEBUG: Age validation result = " . json_encode($ageValidation));
-            if ($ageValidation['valid']) {
-                $planHolderData['age'] = $ageValidation['age'];
-                error_log("STORE() DEBUG: Auto-calculated age = {$ageValidation['age']}");
-            } else {
-                error_log("STORE() ERROR: Age validation failed - " . $ageValidation['error']);
-                return redirect()->back()->withInput()->with('error', 'Date of birth is invalid: ' . $ageValidation['error']);
-            }
-        }
 
         if ($mode === 'existing') {
             error_log("STORE() DEBUG: Processing existing user registration");

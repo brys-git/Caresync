@@ -283,6 +283,11 @@ class ClientRegistrationController extends BaseController
                 ->with('errors', ['barangay_code' => 'Please select a valid Barangay for the chosen Town/City.']);
         }
 
+        $dateOfBirthInput = $this->nullablePost('date_of_birth');
+        if ($dateOfBirthInput !== null && $dateOfBirthInput > date('Y-m-d')) {
+            return redirect()->back()->withInput()->with('error', 'Date of birth cannot be in the future.');
+        }
+
         try {
             $db = db_connect();
             $db->transStart();
@@ -298,9 +303,9 @@ class ClientRegistrationController extends BaseController
                 'barangay_code' => $barangayMatch['code'],
                 'address_city' => $cityMatch['name'],
                 'city_municipality_code' => $cityMatch['code'],
-                'date_of_birth' => $this->nullablePost('date_of_birth'),
+                'date_of_birth' => $dateOfBirthInput,
                 'place_of_birth' => trim((string) $this->request->getPost('place_of_birth')),
-                'age' => $this->nullableIntPost('age'),
+                'age' => cs_age_from_dob($dateOfBirthInput),
                 'gender' => trim((string) $this->request->getPost('gender')),
                 'civil_status' => trim((string) $this->request->getPost('civil_status')),
                 'citizenship' => trim((string) $this->request->getPost('citizenship')),

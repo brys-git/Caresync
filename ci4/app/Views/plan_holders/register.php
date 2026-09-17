@@ -153,7 +153,8 @@
 
                     <div class="col-md-3">
                         <label class="form-label" for="age">Age</label>
-                        <input id="age" name="age" type="number" min="0" class="form-control" value="<?= old('age') ?>">
+                        <input id="age" name="age" type="number" min="0" class="form-control" readonly tabindex="-1" data-age-source="#date_of_birth" value="<?= esc((string) (cs_age_from_dob(old('date_of_birth')) ?? '')) ?>">
+                        <div class="form-text">Calculated from date of birth.</div>
                     </div>
                     <div class="col-md-3">
                         <label class="form-label" for="gender">Gender</label>
@@ -182,7 +183,7 @@
                     </div>
                     <div class="col-md-3">
                         <label class="form-label" for="date_of_birth">Date of Birth</label>
-                        <input id="date_of_birth" name="date_of_birth" type="date" class="form-control" value="<?= old('date_of_birth') ?>">
+                        <input id="date_of_birth" name="date_of_birth" type="date" class="form-control" max="<?= date('Y-m-d') ?>" value="<?= old('date_of_birth') ?>">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label" for="senior_citizen_id">Senior Citizen ID</label>

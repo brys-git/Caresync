@@ -45,6 +45,7 @@ class ValidationRules
     public static function getPlanRegistrationRules(): array
     {
         return [
+            'date_of_birth' => 'permit_empty|valid_date',
             'contact_number' => 'required|regex_match[/^[0-9+\-()\s]+$/]|min_length[10]|max_length[20]',
             'address_barangay' => 'required|max_length[100]',
             'address_city' => 'required|max_length[100]',

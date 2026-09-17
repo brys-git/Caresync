@@ -127,7 +127,7 @@ $beneficiaries = $beneficiaries ?? [];
 
                 <div class="col-md-3"><div class="border rounded p-3"><small class="text-muted d-block">Date of Birth</small><strong><?= cs_date($plan_holder['date_of_birth'] ?? null) ?></strong></div></div>
                 <div class="col-md-3"><div class="border rounded p-3"><small class="text-muted d-block">Place of Birth</small><strong><?= esc((string) ($plan_holder['place_of_birth'] ?? '-')) ?></strong></div></div>
-                <div class="col-md-2"><div class="border rounded p-3"><small class="text-muted d-block">Age</small><strong><?= esc((string) ($plan_holder['age'] ?? '-')) ?></strong></div></div>
+                <div class="col-md-2"><div class="border rounded p-3"><small class="text-muted d-block">Age</small><strong><?= esc((string) (cs_age_from_dob($plan_holder['date_of_birth'] ?? null) ?? ($plan_holder['age'] ?? '-'))) ?></strong></div></div>
                 <div class="col-md-2"><div class="border rounded p-3"><small class="text-muted d-block">Gender</small><strong><?= esc((string) ($plan_holder['gender'] ?? '-')) ?></strong></div></div>
                 <div class="col-md-2"><div class="border rounded p-3"><small class="text-muted d-block">Civil Status</small><strong><?= esc((string) ($plan_holder['civil_status'] ?? '-')) ?></strong></div></div>
 

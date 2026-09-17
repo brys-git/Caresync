@@ -88,6 +88,51 @@ if (! function_exists('cs_date')) {
     }
 }
 
+if (! function_exists('cs_coverage_period')) {
+    /**
+     * "Months Covered" read as an actual period - "September 2026" for one
+     * month, "September-October 2026" for two, "December 2026 - January
+     * 2027" across a year boundary - instead of a bare count. Derived from
+     * the payment's own coverage_start plus months_covered (not
+     * coverage_end): coverage_end is an exact day-offset (e.g. coverage
+     * starting Sep 14 for 2 months ends Oct 14), so reading its calendar
+     * month back out would already be one day into a third month for some
+     * start dates. Walking months_covered whole months forward from
+     * coverage_start's own month avoids that.
+     *
+     * Falls back to "N month(s)" for rows predating coverage tracking
+     * (coverage_start NULL).
+     */
+    function cs_coverage_period($coverageStart, int $monthsCovered): string
+    {
+        $monthsCovered = max(1, $monthsCovered);
+
+        if (empty($coverageStart)) {
+            return $monthsCovered . ' month' . ($monthsCovered === 1 ? '' : 's');
+        }
+
+        $startTs = is_numeric($coverageStart) ? (int) $coverageStart : strtotime((string) $coverageStart);
+        if ($startTs === false) {
+            return $monthsCovered . ' month' . ($monthsCovered === 1 ? '' : 's');
+        }
+
+        $endTs = strtotime('+' . ($monthsCovered - 1) . ' months', $startTs);
+
+        $startLabel = date('F Y', $startTs);
+        $endLabel = date('F Y', $endTs);
+
+        if ($startLabel === $endLabel) {
+            return esc($startLabel);
+        }
+
+        if (date('Y', $startTs) === date('Y', $endTs)) {
+            return esc(date('F', $startTs) . '-' . $endLabel);
+        }
+
+        return esc($startLabel . ' - ' . $endLabel);
+    }
+}
+
 if (! function_exists('can_collect')) {
     /**
      * The single authorization check for every collection-entry route,
@@ -128,6 +173,41 @@ if (! function_exists('can_collect')) {
         }
 
         return $cache[$userId];
+    }
+}
+
+if (! function_exists('cs_age_from_dob')) {
+    /**
+     * Age is always derived from date of birth, never typed/stored as its
+     * own trusted value (see ClientRegistrationService::
+     * validateAndCalculateAge(), the original single-flow version of this
+     * same rule - this is the system-wide helper every registration/edit
+     * controller and display view uses instead).
+     *
+     * Whole years between $dob and today, going by DateTime::diff() (already
+     * accounts for whether this year's birthday has occurred yet). Returns
+     * null for an empty, unparsable, or future date - never a negative or
+     * guessed age.
+     */
+    function cs_age_from_dob(?string $dob): ?int
+    {
+        $dob = trim((string) $dob);
+        if ($dob === '') {
+            return null;
+        }
+
+        try {
+            $birthDate = new \DateTime($dob);
+        } catch (\Throwable $e) {
+            return null;
+        }
+
+        $today = new \DateTime('today');
+        if ($birthDate > $today) {
+            return null;
+        }
+
+        return (int) $birthDate->diff($today)->y;
     }
 }
 

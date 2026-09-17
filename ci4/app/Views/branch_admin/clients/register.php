@@ -151,33 +151,38 @@
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label for="date_of_birth" class="form-label">Birthdate</label>
-                            <input 
-                                type="date" 
-                                class="form-control" 
-                                id="date_of_birth" 
-                                name="date_of_birth" 
+                            <input
+                                type="date"
+                                class="form-control"
+                                id="date_of_birth"
+                                name="date_of_birth"
+                                max="<?= date('Y-m-d') ?>"
                                 value="<?= old('date_of_birth') ?>"
                             >
                         </div>
                         <div class="col-md-6">
                             <label for="place_of_birth" class="form-label">Place of Birth</label>
-                            <input 
-                                type="text" 
-                                class="form-control" 
-                                id="place_of_birth" 
-                                name="place_of_birth" 
+                            <input
+                                type="text"
+                                class="form-control"
+                                id="place_of_birth"
+                                name="place_of_birth"
                                 value="<?= old('place_of_birth') ?>"
                             >
                         </div>
                         <div class="col-md-6">
                             <label for="age" class="form-label">Age</label>
-                            <input 
-                                type="number" 
-                                class="form-control" 
-                                id="age" 
-                                name="age" 
-                                value="<?= old('age') ?>"
+                            <input
+                                type="number"
+                                class="form-control"
+                                id="age"
+                                name="age"
+                                readonly
+                                tabindex="-1"
+                                data-age-source="#date_of_birth"
+                                value="<?= esc((string) (cs_age_from_dob(old('date_of_birth')) ?? '')) ?>"
                             >
+                            <div class="form-text">Calculated from date of birth.</div>
                         </div>
                         <div class="col-md-6">
                             <label for="gender" class="form-label">Gender</label>

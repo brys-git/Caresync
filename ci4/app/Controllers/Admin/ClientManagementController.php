@@ -132,7 +132,6 @@ class ClientManagementController extends BaseController
             'contact_number' => 'permit_empty|max_length[30]',
             'date_of_birth' => 'permit_empty|valid_date',
             'spouse_birthdate' => 'permit_empty|valid_date',
-            'age' => 'permit_empty|is_natural',
             'height' => 'permit_empty|decimal',
             'weight' => 'permit_empty|decimal',
             'status' => 'required|in_list[active,inactive]',
@@ -140,6 +139,11 @@ class ClientManagementController extends BaseController
 
         if (! $this->validate($rules)) {
             return redirect()->back()->withInput()->with('error', implode(' ', $this->validator->getErrors()));
+        }
+
+        $dateOfBirth = trim((string) $this->request->getPost('date_of_birth'));
+        if ($dateOfBirth !== '' && $dateOfBirth > date('Y-m-d')) {
+            return redirect()->back()->withInput()->with('error', 'Date of birth cannot be in the future.');
         }
 
         try {
@@ -152,9 +156,11 @@ class ClientManagementController extends BaseController
                 'address_street' => trim((string) $this->request->getPost('address_street')),
                 'address_barangay' => trim((string) $this->request->getPost('address_barangay')),
                 'address_city' => trim((string) $this->request->getPost('address_city')),
-                'date_of_birth' => trim((string) $this->request->getPost('date_of_birth')),
+                'date_of_birth' => $dateOfBirth,
                 'place_of_birth' => trim((string) $this->request->getPost('place_of_birth')),
-                'age' => trim((string) $this->request->getPost('age')),
+                // Age is never trusted from the client - always derived
+                // server-side from date_of_birth (Task 3, cs_age_from_dob()).
+                'age' => cs_age_from_dob($dateOfBirth),
                 'gender' => trim((string) $this->request->getPost('gender')),
                 'civil_status' => trim((string) $this->request->getPost('civil_status')),
                 'citizenship' => trim((string) $this->request->getPost('citizenship')),

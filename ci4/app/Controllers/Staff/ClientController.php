@@ -74,7 +74,6 @@ class ClientController extends BaseController
             'contact_number' => 'permit_empty|max_length[30]',
             'date_of_birth' => 'permit_empty|valid_date',
             'spouse_birthdate' => 'permit_empty|valid_date',
-            'age' => 'permit_empty|is_natural',
             'height' => 'permit_empty|decimal',
             'weight' => 'permit_empty|decimal',
             'status' => 'required|in_list[active,inactive]',
@@ -82,6 +81,11 @@ class ClientController extends BaseController
 
         if (! $this->validate($rules)) {
             return redirect()->back()->withInput()->with('error', implode(' ', $this->validator->getErrors()));
+        }
+
+        $dateOfBirth = trim((string) $this->request->getPost('date_of_birth'));
+        if ($dateOfBirth !== '' && $dateOfBirth > date('Y-m-d')) {
+            return redirect()->back()->withInput()->with('error', 'Date of birth cannot be in the future.');
         }
 
         try {
@@ -94,9 +98,9 @@ class ClientController extends BaseController
                 'address_street' => trim((string) $this->request->getPost('address_street')),
                 'address_barangay' => trim((string) $this->request->getPost('address_barangay')),
                 'address_city' => trim((string) $this->request->getPost('address_city')),
-                'date_of_birth' => trim((string) $this->request->getPost('date_of_birth')),
+                'date_of_birth' => $dateOfBirth,
                 'place_of_birth' => trim((string) $this->request->getPost('place_of_birth')),
-                'age' => trim((string) $this->request->getPost('age')),
+                'age' => cs_age_from_dob($dateOfBirth),
                 'gender' => trim((string) $this->request->getPost('gender')),
                 'civil_status' => trim((string) $this->request->getPost('civil_status')),
                 'citizenship' => trim((string) $this->request->getPost('citizenship')),
@@ -210,6 +214,11 @@ class ClientController extends BaseController
             return redirect()->back()->withInput()->with('error', $message);
         }
 
+        $dateOfBirth = trim((string) $this->request->getPost('date_of_birth'));
+        if ($dateOfBirth !== '' && $dateOfBirth > date('Y-m-d')) {
+            return redirect()->back()->withInput()->with('error', 'Date of birth cannot be in the future.');
+        }
+
         try {
             $planHolderId = $this->clientService->registerPlanHolder([
                 'first_name' => trim((string) $this->request->getPost('first_name')),
@@ -217,9 +226,9 @@ class ClientController extends BaseController
                 'last_name' => trim((string) $this->request->getPost('last_name')),
                 'email' => trim((string) $this->request->getPost('email')),
                 'contact_number' => trim((string) $this->request->getPost('contact_number')),
-                'date_of_birth' => trim((string) $this->request->getPost('date_of_birth')),
+                'date_of_birth' => $dateOfBirth,
                 'place_of_birth' => trim((string) $this->request->getPost('place_of_birth')),
-                'age' => trim((string) $this->request->getPost('age')),
+                'age' => cs_age_from_dob($dateOfBirth),
                 'gender' => trim((string) $this->request->getPost('gender')),
                 'civil_status' => trim((string) $this->request->getPost('civil_status')),
                 'citizenship' => trim((string) $this->request->getPost('citizenship')),

@@ -163,4 +163,37 @@
       }, 0);
     });
   });
+
+  /* ------------------------------------------------------- age from DOB */
+  // Age is always derived from date of birth, never typed - mirrors
+  // cs_age_from_dob() server-side (caresync_helper.php), the real source
+  // of truth. This just keeps an on-screen Age field in sync live as the
+  // date is picked, purely for display; the server recomputes it again on
+  // submit regardless of whatever this field's value ends up being.
+  function csComputeAge(dobValue) {
+    if (!dobValue) return '';
+    var dob = new Date(dobValue + 'T00:00:00');
+    if (isNaN(dob.getTime())) return '';
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (dob > today) return '';
+
+    var age = today.getFullYear() - dob.getFullYear();
+    var hadBirthdayThisYear = (today.getMonth() > dob.getMonth())
+      || (today.getMonth() === dob.getMonth() && today.getDate() >= dob.getDate());
+    if (!hadBirthdayThisYear) age -= 1;
+
+    return age >= 0 ? String(age) : '';
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('[data-age-source]'), function (ageField) {
+    var sourceField = document.querySelector(ageField.getAttribute('data-age-source'));
+    if (!sourceField) return;
+
+    var sync = function () { ageField.value = csComputeAge(sourceField.value); };
+
+    sourceField.addEventListener('input', sync);
+    sourceField.addEventListener('change', sync);
+    sync();
+  });
 })();

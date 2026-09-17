@@ -62,7 +62,7 @@
 
                 <div class="col-md-3">
                     <label class="form-label" for="date_of_birth">Birthdate</label>
-                    <input id="date_of_birth" name="date_of_birth" type="date" class="form-control" value="<?= esc(old('date_of_birth', (string) ($client['date_of_birth'] ?? ''))) ?>">
+                    <input id="date_of_birth" name="date_of_birth" type="date" class="form-control" max="<?= date('Y-m-d') ?>" value="<?= esc(old('date_of_birth', (string) ($client['date_of_birth'] ?? ''))) ?>">
                 </div>
                 <div class="col-md-3">
                     <label class="form-label" for="gender">Gender</label>
@@ -83,7 +83,8 @@
                 </div>
                 <div class="col-md-2">
                     <label class="form-label" for="age">Age</label>
-                    <input id="age" name="age" type="number" class="form-control" value="<?= esc(old('age', (string) ($client['age'] ?? ''))) ?>">
+                    <input id="age" name="age" type="number" class="form-control" readonly tabindex="-1" data-age-source="#date_of_birth" value="<?= esc((string) (cs_age_from_dob($client['date_of_birth'] ?? null) ?? ($client['age'] ?? ''))) ?>">
+                    <div class="form-text">Calculated from date of birth.</div>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label" for="height">Height</label>
