@@ -5,6 +5,7 @@ namespace Config;
 use App\Filters\AuthFilter;
 use App\Filters\RoleFilter;
 use App\Filters\AccessStateFilter;
+use App\Filters\CollectorFilter;
 use CodeIgniter\Config\Filters as BaseFilters;
 use CodeIgniter\Filters\Cors;
 use CodeIgniter\Filters\CSRF;
@@ -31,6 +32,7 @@ class Filters extends BaseFilters
         'auth'          => AuthFilter::class,
         'role'          => RoleFilter::class,
         'accessState'   => AccessStateFilter::class,
+        'collector'     => CollectorFilter::class,
         'csrf'          => CSRF::class,
         'toolbar'       => DebugToolbar::class,
         'honeypot'      => Honeypot::class,

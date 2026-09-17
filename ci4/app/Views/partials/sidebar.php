@@ -27,6 +27,14 @@ $activeNav = (string) ($activeNav ?? '');
 
                 <?php foreach (($group['items'] ?? []) as $item): ?>
                     <?php
+                    // 'capability', when set, hides the item unless that
+                    // check passes - e.g. 'collect' => can_collect()
+                    // (caresync_helper.php). The route itself stays gated
+                    // regardless; this only avoids showing a Staff account
+                    // a link that would just 403 for them.
+                    if (($item['capability'] ?? '') === 'collect' && ! can_collect()) {
+                        continue;
+                    }
                     $key    = (string) ($item['key'] ?? '');
                     $count  = isset($item['count']) ? (int) ($navCounts[$item['count']] ?? 0) : 0;
                     $active = $key !== '' && $key === $activeNav;

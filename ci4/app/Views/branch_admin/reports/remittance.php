@@ -60,7 +60,7 @@
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">Staff</label>
+                    <label class="form-label">Recorded By</label>
                     <select class="form-select" name="received_by">
                         <option value="0">All</option>
                         <?php foreach (($staff_options ?? []) as $staff): ?>
@@ -91,6 +91,9 @@
     <div class="col-md-3">
         <section class="cs-panel"><div class="cs-panel__body"><div class="text-muted small">GCash Total</div><div class="h5 mb-0"><?= cs_money($summary['gcash_total'] ?? 0) ?></div></div></section>
     </div>
+    <div class="col-md-3">
+        <section class="cs-panel"><div class="cs-panel__body"><div class="text-muted small">Unverified</div><div class="h5 mb-0 text-warning"><?= (int) ($summary['pending_count'] ?? 0) ?> (<?= cs_money($summary['pending_amount'] ?? 0) ?>)</div></div></section>
+    </div>
 </div>
 
 <section class="cs-panel mb-3">
@@ -112,7 +115,8 @@
                             <th class="cs-num">Amount</th>
                             <th>Method</th>
                             <th>Reference / OR</th>
-                            <th>Received By</th>
+                            <th>Recorded By</th>
+                            <th>Status</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -125,6 +129,7 @@
                                 <td><?= esc(strtoupper((string) ($row['payment_method'] ?? ''))) ?></td>
                                 <td><?= esc($row['reference_number'] ?? ($row['official_receipt_number'] ?? '-')) ?></td>
                                 <td><?= esc(trim(((string) ($row['staff_first'] ?? '')) . ' ' . ((string) ($row['staff_last'] ?? '')))) ?></td>
+                                <td><?= cs_status((string) ($row['status'] ?? 'pending')) ?></td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>

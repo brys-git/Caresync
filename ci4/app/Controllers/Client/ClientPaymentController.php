@@ -6,16 +6,15 @@ use App\Controllers\BaseController;
 use CodeIgniter\HTTP\ResponseInterface;
 use App\Models\PaymentModel;
 use App\Config\ValidationRules;
-use App\Services\CycleService;
 use App\Services\MembershipService;
 use App\Services\PaymentService;
 
 /**
  * ClientPaymentController
- * 
+ *
  * Handles client payment submissions and tracking
  * Part of the refactored ClientPortal controller
- * 
+ *
  * Uses centralized validation rules to reduce code duplication
  */
 class ClientPaymentController extends BaseController
@@ -138,35 +137,17 @@ class ClientPaymentController extends BaseController
      * cycle model existed.
      *
      * Returns [cycleTargetMonths, verifiedMonths, pendingMonths, remainingMonths].
+     *
+     * The calculation itself now lives in PaymentService::
+     * remainingPayableMonths() (extracted verbatim, unchanged) so the
+     * collector Record Payment form (CollectionListController) enforces
+     * the exact same cycle-boundary cap instead of a second copy of it.
+     * Kept as a private wrapper here since this method's name and
+     * array-shape are already this class's contract with its own view.
      */
     private function paymentCapacity(array $plan): array
     {
-        $planId = (int) $plan['plan_id'];
-        $cycle = (new CycleService())->currentCycle($planId);
-
-        $monthlyFee = (float) ($plan['monthly_fee'] ?? MembershipService::MONTHLY_FEE);
-        if ($monthlyFee <= 0) {
-            $monthlyFee = MembershipService::MONTHLY_FEE;
-        }
-
-        $cycleTargetMonths = (int) ceil($cycle['target'] / $monthlyFee);
-
-        // Phase 0: months_paid is recalculated from verified payments only
-        // (now scoped to this cycle - see MembershipService::
-        // recalculateMonthsPaid()), so it's safe to use directly here.
-        $verifiedMonths = $cycle['months_paid'];
-
-        $pendingMonths = (int) (db_connect()->table('payments')
-            ->selectSum('months_covered')
-            ->where('plan_id', $planId)
-            ->where('status', 'pending')
-            ->get()
-            ->getRowArray()['months_covered'] ?? 0);
-
-        $cycleRemainingMonths = (int) ceil(max(0.0, $cycle['remaining']) / $monthlyFee);
-        $remainingMonths = max(0, $cycleRemainingMonths - $pendingMonths);
-
-        return [$cycleTargetMonths, $verifiedMonths, $pendingMonths, $remainingMonths];
+        return (new PaymentService())->remainingPayableMonths($plan);
     }
 
     /**

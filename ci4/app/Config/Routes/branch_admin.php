@@ -42,10 +42,20 @@ $routes->group('branch-admin', ['filter' => 'auth'], static function (RouteColle
     $routes->get('service-balances/(:num)', 'ServiceBalances::show/$1', ['filter' => 'role:2']);
     $routes->post('service-balances/pay/(:num)', 'ServiceBalances::pay/$1', ['filter' => 'role:2']);
 
-    // Cash Payment Recording (for client initial payments)
-    $routes->get('cash-payment-record', 'BranchAdmin\CashPaymentController::recordPaymentForm', ['filter' => 'role:2']);
-    $routes->post('cash-payment-record/save', 'BranchAdmin\CashPaymentController::savePaymentRecord', ['filter' => 'role:2']);
-    $routes->get('cash-payments', 'BranchAdmin\CashPaymentController::viewPayments', ['filter' => 'role:2']);
+    // Cash payment recording used to live here (BranchAdmin\CashPaymentController,
+    // removed): it wrote to the now-retired cash_payment_records table via
+    // free-text client_name with no plan_id, so recorded cash could never
+    // advance plans.months_paid. It also had no sidebar link - unreachable
+    // UI. The real, working cash/GCash counter-entry flow is
+    // PaymentTracking::recordCash() below, linked from the sidebar as
+    // "Payment Tracking" - that's the one place that writes cash payments.
+    // Old bookmarks to these two URLs now land on that page instead of 404.
+    $routes->get('cash-payment-record', static fn () => redirect()->to('/branch-admin/payment-tracking'), ['filter' => 'role:2']);
+    $routes->get('cash-payments', static fn () => redirect()->to('/branch-admin/payment-tracking'), ['filter' => 'role:2']);
+
+    // Collection List (who has paid, who hasn't) - every collector in this branch.
+    $routes->get('collection-list', 'CollectionListController::branchAdmin', ['filter' => 'role:2']);
+    $routes->get('collection-list/print', 'CollectionListController::printBranchAdmin', ['filter' => 'role:2']);
 
     // Service Package Management
     $routes->get('service-package', 'BranchAdmin\ServiceOfferController::index', ['filter' => 'role:2']);

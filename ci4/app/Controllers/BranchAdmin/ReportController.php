@@ -167,7 +167,26 @@ class ReportController extends BaseController
         $rows = $this->reportService->getRemittanceReport($filters);
         $breakdown = $this->reportService->getPaymentBreakdown($filters);
         $totalRemittance = $this->reportService->getTotalRemittance($filters);
+        // getBranchPaymentStaff() is really "everyone who has received_by'd a
+        // payment in this branch" - despite the name, that already includes
+        // Collectors (see CollectionListController's Record Payment), not
+        // just role_id 3 Staff. Reused rather than duplicated: this is the
+        // "each collector's recorded collections, with totals, and which
+        // are still unverified" view the Collector capability work needed -
+        // it already had the data, it just never showed status or a
+        // pending breakdown.
         $staffOptions = $this->reportService->getBranchPaymentStaff((int) $filters['branch_id']);
+
+        $pendingCount = 0;
+        $pendingAmount = 0.0;
+        foreach ($rows as $row) {
+            if (strtolower((string) ($row['status'] ?? '')) === 'pending') {
+                $pendingCount++;
+                $pendingAmount += (float) ($row['amount'] ?? 0);
+            }
+        }
+        $breakdown['pending_count'] = $pendingCount;
+        $breakdown['pending_amount'] = $pendingAmount;
 
         return [
             'role_layout' => 'layouts/branch_admin',

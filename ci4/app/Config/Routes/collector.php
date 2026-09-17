@@ -5,16 +5,24 @@ use CodeIgniter\Router\RouteCollection;
 /**
  * @var RouteCollection $routes
  *
- * Collector Routes (Role: 5)
- * All routes require 'auth' and 'role:5' filters.
+ * Collector Routes.
  *
- * Phase 1 scope: just enough for a Collector account to log in and land on a
- * real dashboard. Collection-entry, remittance-report, and commission screens
- * are built in the phase that reworks payments (see the panel brief's own
- * suggested order — roles first, Collector-specific features once the
- * payment flow they depend on is reworked).
+ * 'dashboard' is role-specific (role_id 5 only) — a dedicated Collector
+ * account's own landing page. Everything else under here is a *capability*
+ * route, gated by the 'collector' filter (App\Filters\CollectorFilter, via
+ * can_collect()) instead of 'role:5' — a Staff account marked
+ * users.is_collector reaches these same URLs too, from a link in their own
+ * Staff sidebar, without needing a second account or a parallel /staff/...
+ * copy of each route.
  */
 
 $routes->group('collector', ['filter' => 'auth'], static function (RouteCollection $routes) {
     $routes->get('dashboard', 'Dashboard::collector', ['filter' => 'role:5']);
+
+    // Collection List (who has paid, who hasn't) - reachable by role_id 5
+    // and by is_collector-flagged Staff alike.
+    $routes->get('collection-list', 'CollectionListController::collector', ['filter' => 'collector']);
+    $routes->get('collection-list/print', 'CollectionListController::printCollector', ['filter' => 'collector']);
+    $routes->get('collection-list/record-payment/(:num)', 'CollectionListController::recordPaymentForm/$1', ['filter' => 'collector']);
+    $routes->post('collection-list/record-payment/(:num)', 'CollectionListController::submitRecordPayment/$1', ['filter' => 'collector']);
 });

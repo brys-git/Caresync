@@ -44,10 +44,12 @@ if (! function_exists('cs_status')) {
             // settled / good
             'active' => 'ok', 'approved' => 'ok', 'completed' => 'ok', 'paid' => 'ok',
             'verified' => 'ok', 'available' => 'ok', 'fully_paid' => 'ok', 'remitted' => 'ok',
+            'not_due' => 'ok', 'no_balance_due' => 'ok',
 
             // waiting on someone
             'pending' => 'pending', 'review' => 'pending', 'processing' => 'pending',
             'submitted' => 'pending', 'partial' => 'pending', 'for_approval' => 'pending',
+            'awaiting_verification' => 'pending',
 
             // needs intervention
             'overdue' => 'stop', 'delinquent' => 'stop', 'rejected' => 'stop',
@@ -56,6 +58,7 @@ if (! function_exists('cs_status')) {
 
             // informational
             'new' => 'info', 'draft' => 'info', 'ongoing' => 'info', 'in_progress' => 'info',
+            'due' => 'info',
 
             // dormant
             'inactive' => 'idle', 'closed' => 'idle', 'archived' => 'idle',
@@ -82,6 +85,49 @@ if (! function_exists('cs_date')) {
         }
 
         return esc(date($withTime ? 'j M Y, g:ia' : 'j M Y', $ts));
+    }
+}
+
+if (! function_exists('can_collect')) {
+    /**
+     * The single authorization check for every collection-entry route,
+     * controller method, and view. Collector is a capability, not a
+     * separate account type for Staff: role_id 5 (a dedicated Collector
+     * account) always qualifies; role_id 3 (Staff) qualifies only when
+     * users.is_collector is set. Never compare role_id/is_collector
+     * directly anywhere else - that's how permissions drift.
+     *
+     * Memoized per user_id for the life of the request: this gets called
+     * from route filters and views on the same request, and a Staff
+     * lookup shouldn't hit the DB twice for one page load.
+     */
+    function can_collect(?int $userId = null): bool
+    {
+        static $cache = [];
+
+        $userId ??= (int) session('user_id');
+        $roleId = (int) session('role_id');
+
+        // A caller checking someone other than session's own user can't
+        // rely on session('role_id') for that other user - look it up too.
+        if ($userId !== (int) session('user_id')) {
+            $roleId = (int) (db_connect()->table('users')->select('role_id')->where('user_id', $userId)->get()->getRowArray()['role_id'] ?? 0);
+        }
+
+        if ($roleId === 5) {
+            return true;
+        }
+
+        if ($roleId !== 3 || $userId <= 0) {
+            return false;
+        }
+
+        if (! array_key_exists($userId, $cache)) {
+            $row = db_connect()->table('users')->select('is_collector')->where('user_id', $userId)->get()->getRowArray();
+            $cache[$userId] = (bool) ($row['is_collector'] ?? false);
+        }
+
+        return $cache[$userId];
     }
 }
 

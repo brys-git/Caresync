@@ -19,6 +19,12 @@ use CodeIgniter\Config\BaseConfig;
  *
  * 'key'   is matched against $active_nav passed from the controller.
  * 'count' is a key looked up in $nav_counts (e.g. pending approvals).
+ * 'capability', when set, hides the item unless that capability check
+ * passes for the signed-in user - see partials/sidebar.php. Currently only
+ * 'collect' is a real value (can_collect(), caresync_helper.php): a plain
+ * Staff account without the collector flag shouldn't see a link that would
+ * just 403 for them, since the actual gate stays the route's own
+ * CollectorFilter regardless of whether this link is shown.
  */
 class Nav extends BaseConfig
 {
@@ -79,9 +85,27 @@ class Nav extends BaseConfig
                 [
                     'title' => 'Money',
                     'items' => [
-                        ['key' => 'payments', 'label' => 'Payment tracking', 'icon' => 'ti-cash',        'url' => 'branch-admin/payment-tracking'],
-                        ['key' => 'cash',     'label' => 'Cash payments',    'icon' => 'ti-coins',       'url' => 'branch-admin/cash-payments'],
-                        ['key' => 'reports',  'label' => 'Reports',          'icon' => 'ti-file-text',   'url' => 'branch-admin/reports'],
+                        ['key' => 'payments',    'label' => 'Payment tracking', 'icon' => 'ti-cash',      'url' => 'branch-admin/payment-tracking'],
+                        // 'cash' (branch-admin/cash-payments) used to point
+                        // at its own dedicated page (BranchAdmin\
+                        // CashPaymentController) before that feature was
+                        // retired - it wrote to free-text client_name with
+                        // no plan_id, so recorded cash could never advance
+                        // plans.months_paid (see 2026-09-15-040000_
+                        // RetireCashPaymentRecords.php). This link WAS live
+                        // and reachable via this Nav config, unlike what an
+                        // earlier check against the dead, pre-CareSync-UI
+                        // sidebar_branch_admin.php partial concluded - that
+                        // partial was already unused by the time this repo
+                        // reached the CareSync UI redesign, and checking it
+                        // was the wrong signal for "is this reachable".
+                        // branch-admin/cash-payments now redirects to
+                        // Payment Tracking (the working cash/GCash entry
+                        // point, PaymentTracking::recordCash()), so this
+                        // item is removed rather than kept as a second link
+                        // to the exact same destination.
+                        ['key' => 'collections', 'label' => 'Collection list', 'icon' => 'ti-map-pin',   'url' => 'branch-admin/collection-list'],
+                        ['key' => 'reports',     'label' => 'Reports',         'icon' => 'ti-file-text', 'url' => 'branch-admin/reports'],
                     ],
                 ],
                 [
@@ -102,10 +126,15 @@ class Nav extends BaseConfig
                 [
                     'title' => 'Daily work',
                     'items' => [
-                        ['key' => 'dashboard', 'label' => 'Dashboard',    'icon' => 'ti-layout-dashboard', 'url' => 'dashboard/staff'],
-                        ['key' => 'clients',   'label' => 'Plan holders', 'icon' => 'ti-users',            'url' => 'staff/client-management'],
-                        ['key' => 'payments',  'label' => 'Payments',     'icon' => 'ti-cash',             'url' => 'staff/payment-management'],
-                        ['key' => 'services',  'label' => 'Services',     'icon' => 'ti-clipboard-list',   'url' => 'staff/services', 'count' => 'pending_requests'],
+                        ['key' => 'dashboard',    'label' => 'Dashboard',        'icon' => 'ti-layout-dashboard', 'url' => 'dashboard/staff'],
+                        ['key' => 'clients',      'label' => 'Plan holders',     'icon' => 'ti-users',            'url' => 'staff/client-management'],
+                        ['key' => 'payments',     'label' => 'Payments',         'icon' => 'ti-cash',             'url' => 'staff/payment-management'],
+                        ['key' => 'services',     'label' => 'Services',         'icon' => 'ti-clipboard-list',   'url' => 'staff/services', 'count' => 'pending_requests'],
+                        // Hidden unless this Staff account is also flagged
+                        // users.is_collector - most Staff aren't, and a
+                        // visible link that 403s for them is worse than no
+                        // link. See the 'capability' doc comment above.
+                        ['key' => 'collections',  'label' => 'Collection list',  'icon' => 'ti-map-pin',          'url' => 'collector/collection-list', 'capability' => 'collect'],
                     ],
                 ],
                 [
@@ -124,15 +153,14 @@ class Nav extends BaseConfig
                 [
                     'title' => 'Collections',
                     'items' => [
-                        // 'payments' (collector/payments) and 'remittance'
-                        // (collector/remittance) are deliberately not here -
-                        // no controller, view, or route exists for either yet.
-                        // Routes/collector.php's own comment says this is
-                        // intentional: Collector only got a login+dashboard
-                        // in this phase, entry/remittance screens are built
-                        // once the payment flow they depend on is reworked.
-                        // Add them back here when that phase lands.
-                        ['key' => 'dashboard', 'label' => "Today's route", 'icon' => 'ti-route', 'url' => 'dashboard/collector'],
+                        // A dedicated collector/remittance view still
+                        // doesn't exist - a collector's own recorded cash
+                        // shows up in Branch Admin's existing remittance
+                        // report instead (see branch_admin/reports/
+                        // remittance.php, extended with a Status column and
+                        // an Unverified total for this same feature).
+                        ['key' => 'dashboard',    'label' => "Today's route",   'icon' => 'ti-route',   'url' => 'dashboard/collector'],
+                        ['key' => 'collections',  'label' => 'Collection list', 'icon' => 'ti-map-pin', 'url' => 'collector/collection-list'],
                     ],
                 ],
             ],

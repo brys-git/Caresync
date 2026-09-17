@@ -465,6 +465,51 @@ class PaymentService
         return max(0, ($diff->y * 12) + $diff->m + ($diff->d > 0 ? 1 : 0));
     }
 
+    /**
+     * How many more months this plan's CURRENT entitlement cycle can accept
+     * a payment for - not the plan's lifetime term. Extracted verbatim from
+     * Client\ClientPaymentController::paymentCapacity() (Client dashboard
+     * rebuild, Phase 3, later updated to be cycle-based - see that method's
+     * own doc comment on why a payment must never be allowed to span a
+     * cycle boundary) so the collector Record Payment form
+     * (CollectionListController) enforces the exact same cap instead of a
+     * second, potentially-drifting copy of it. That controller method stays
+     * as a private wrapper delegating here, since its name/array-shape are
+     * already load-bearing for its own view.
+     *
+     * Not to be confused with remainingMonths() above, which answers a
+     * different question ("how many months is this plan currently paid
+     * ahead of today").
+     *
+     * @param array{plan_id: int|string, monthly_fee?: float|string|null} $plan
+     * @return array{0: int, 1: int, 2: int, 3: int} [cycleTargetMonths, verifiedMonths, pendingMonths, remainingMonths]
+     */
+    public function remainingPayableMonths(array $plan): array
+    {
+        $planId = (int) $plan['plan_id'];
+        $cycle = (new CycleService())->currentCycle($planId);
+
+        $monthlyFee = (float) ($plan['monthly_fee'] ?? MembershipService::MONTHLY_FEE);
+        if ($monthlyFee <= 0) {
+            $monthlyFee = MembershipService::MONTHLY_FEE;
+        }
+
+        $cycleTargetMonths = (int) ceil($cycle['target'] / $monthlyFee);
+        $verifiedMonths = $cycle['months_paid'];
+
+        $pendingMonths = (int) (db_connect()->table('payments')
+            ->selectSum('months_covered')
+            ->where('plan_id', $planId)
+            ->where('status', 'pending')
+            ->get()
+            ->getRowArray()['months_covered'] ?? 0);
+
+        $cycleRemainingMonths = (int) ceil(max(0.0, $cycle['remaining']) / $monthlyFee);
+        $remainingMonths = max(0, $cycleRemainingMonths - $pendingMonths);
+
+        return [$cycleTargetMonths, $verifiedMonths, $pendingMonths, $remainingMonths];
+    }
+
     private function updateNextDueDate(int $planId, int $monthsCovered): void
     {
         $plan = db_connect()->table('plans')

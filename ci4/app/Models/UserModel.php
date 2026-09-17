@@ -25,6 +25,7 @@ class UserModel extends Model
         'last_login',
         'account_status',
         'is_plan_holder',
+        'is_collector',
         'must_change_password',
         'email_verification_token',
         'token_expiry',
