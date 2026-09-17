@@ -22,14 +22,14 @@ class ClientPaymentController extends BaseController
     use ClientPortalTrait;
 
     /**
-     * Client dashboard rebuild, Phase 2: PAYMENT overview only - plan
-     * name, monthly contribution, remaining balance, months paid (+ an
-     * awaiting-verification note so a client understands why the number
-     * hasn't moved yet and isn't tempted to pay twice), next due date,
-     * and a Make Payment button. The submission forms and the full
-     * transaction table both used to live on this same page - the forms
-     * move to the new Make Payment page (Phase 3), the table moves to
-     * paymentHistory() below.
+     * Task 1 (Payments page merge): PAYMENT overview + full history in one
+     * place - plan name, monthly contribution, remaining balance, months
+     * paid (+ an awaiting-verification note so a client understands why
+     * the number hasn't moved yet and isn't tempted to pay twice), next
+     * due date, a Make Payment button, and the complete payment history
+     * table (newest first). Previously split across this page and
+     * paymentHistory()/payment_history.php, reachable only from a
+     * dashboard quick action and not from the sidebar at all.
      */
     public function payment(): ResponseInterface|string
     {
@@ -56,6 +56,8 @@ class ClientPaymentController extends BaseController
 
         $plan = $this->latestPlan((int) $planHolder['plan_holder_id']);
         $monthsAwaitingVerification = 0;
+        $payments = [];
+        $remainingMonths = 0;
         if ($plan) {
             $monthsAwaitingVerification = (int) (db_connect()->table('payments')
                 ->selectSum('months_covered')
@@ -63,6 +65,8 @@ class ClientPaymentController extends BaseController
                 ->where('status', 'pending')
                 ->get()
                 ->getRowArray()['months_covered'] ?? 0);
+            $payments = $this->paymentRows((int) $plan['plan_id']);
+            [, , , $remainingMonths] = $this->paymentCapacity($plan);
         }
 
         return view('client/payment', [
@@ -73,55 +77,24 @@ class ClientPaymentController extends BaseController
             'plan' => $plan,
             'plan_name' => $plan ? (new \App\Services\MembershipService())->resolvePackageName((int) ($plan['package_id'] ?? 0)) : '',
             'months_awaiting_verification' => $monthsAwaitingVerification,
+            'payments' => $payments,
+            'remaining_months' => $remainingMonths,
         ]);
     }
 
     /**
-     * Client dashboard rebuild, Phase 2: PAYMENT HISTORY, split out to its
-     * own page. Sorted newest first per spec - previously ascending
-     * (oldest first) on the combined page; this is a deliberate reversal
-     * for the new dedicated history page, not an oversight.
+     * Task 1: payment history is no longer a separate page - the history
+     * table now lives on client/payment itself. Route kept (not removed)
+     * so the old sidebar/bookmark/dashboard-quick-action URL still lands
+     * somewhere sensible instead of 404ing.
      */
-    public function paymentHistory(): ResponseInterface|string
+    private function paymentRows(int $planId): array
     {
-        try {
-            $access = $this->resolveAccessState();
-        } catch (\RuntimeException $e) {
-            return redirect()->to('/signin')->with('error', 'Session expired. Please log in again.');
-        }
-        $planHolder = $access['plan_holder'];
-
-        if (($access['state'] ?? 'unregistered') === 'unregistered' || ! $planHolder) {
-            return view('client/payment_history', [
-                'role_layout' => 'layouts/plan_holder',
-                'page_title' => 'Payment History',
-                'page_sub' => 'Every payment on your plan.',
-                'access' => $access,
-                'payments' => [],
-            ]);
-        }
-
-        if (($access['state'] ?? 'unregistered') === 'awaiting_activation') {
-            return redirect()->to('/initial-payment')->with('info', 'Complete your initial payment before viewing payment history.');
-        }
-
-        $plan = $this->latestPlan((int) $planHolder['plan_holder_id']);
-        $payments = [];
-        if ($plan) {
-            $payments = (new PaymentModel())
-                ->where('plan_id', (int) $plan['plan_id'])
-                ->orderBy('payment_date', 'DESC')
-                ->orderBy('payment_id', 'DESC')
-                ->findAll();
-        }
-
-        return view('client/payment_history', [
-            'role_layout' => 'layouts/plan_holder',
-            'page_title' => 'Payment History',
-            'page_sub' => 'Every payment on your plan.',
-            'access' => $access,
-            'payments' => $payments,
-        ]);
+        return (new PaymentModel())
+            ->where('plan_id', $planId)
+            ->orderBy('payment_date', 'DESC')
+            ->orderBy('payment_id', 'DESC')
+            ->findAll();
     }
 
     /**
@@ -282,7 +255,7 @@ class ClientPaymentController extends BaseController
             ]);
         }
 
-        return redirect()->to('/client/payment/history')->with('success', 'GCash payment submitted. Waiting for branch admin verification.');
+        return redirect()->to('/client/payment')->with('success', 'GCash payment submitted. Waiting for branch admin verification.');
     }
 
     /**

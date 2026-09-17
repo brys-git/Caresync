@@ -7,6 +7,7 @@
 <section class="cs-panel">
     <div class="cs-panel__head">
         <h2 class="cs-panel__title">Make Payment</h2>
+        <a href="<?= base_url('client/payment') ?>" class="btn btn-outline-secondary btn-sm">Back to Payments</a>
     </div>
     <div class="cs-panel__body">
         <div class="row g-3 mb-4">

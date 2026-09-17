@@ -64,44 +64,77 @@
     <?php endif; ?>
 
     <?php if ($plan): ?>
-        <section class="cs-panel">
+        <?php $canPay = (int) ($remaining_months ?? 0) > 0; ?>
+        <section class="cs-panel mb-3">
             <div class="cs-panel__head">
-                <h2 class="cs-panel__title"><?= esc($plan_name !== '' ? $plan_name : 'Your Plan') ?></h2>
+                <h2 class="cs-panel__title">Payment History</h2>
+                <?php if ($canPay): ?>
+                    <a class="btn btn-primary btn-sm" href="<?= base_url('client/payment/make') ?>">Make Payment</a>
+                <?php else: ?>
+                    <span class="d-flex align-items-center gap-2">
+                        <a class="btn btn-primary btn-sm disabled" aria-disabled="true" tabindex="-1" href="#">Make Payment</a>
+                        <small class="cs-muted">No months left to pay in this cycle.</small>
+                    </span>
+                <?php endif; ?>
             </div>
             <div class="cs-panel__body">
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <small class="cs-muted d-block">Plan Name</small>
-                        <strong><?= esc($plan_name !== '' ? $plan_name : '-') ?></strong>
-                    </div>
-                    <div class="col-md-4">
-                        <small class="cs-muted d-block">Monthly Contribution</small>
-                        <strong><?= cs_money($plan['monthly_fee'] ?? 0) ?></strong>
-                    </div>
-                    <div class="col-md-4">
-                        <small class="cs-muted d-block">Remaining Balance</small>
-                        <strong><?= cs_money($plan['remaining_balance'] ?? 0) ?></strong>
-                    </div>
-                    <div class="col-md-4">
-                        <small class="cs-muted d-block">Months Paid</small>
-                        <strong><?= esc((string) ((int) ($plan['months_paid'] ?? 0))) ?></strong>
-                        <?php if ($months_awaiting_verification > 0): ?>
-                            <div class="small text-muted mt-1">
-                                <?= esc((string) $months_awaiting_verification) ?> month<?= $months_awaiting_verification === 1 ? '' : 's' ?> awaiting verification
-                            </div>
-                        <?php endif; ?>
-                    </div>
-                    <div class="col-md-4">
-                        <small class="cs-muted d-block">Next Due Date</small>
-                        <strong><?= cs_date($plan['next_due_date'] ?? null) ?></strong>
-                    </div>
-                </div>
-            </div>
-            <div class="cs-panel__foot">
                 <?php if ((string) ($plan['status'] ?? '') !== 'active'): ?>
                     <div class="alert alert-info mb-3">Your initial payment is pending verification.</div>
                 <?php endif; ?>
-                <a class="btn btn-primary" href="<?= base_url('client/payment/make') ?>">Make Payment</a>
+                <?= view('components/stat_rail', ['stats' => [
+                    ['label' => 'Monthly Contribution', 'value' => $plan['monthly_fee'] ?? 0, 'money' => true],
+                    ['label' => 'Months Paid', 'value' => (int) ($plan['months_paid'] ?? 0), 'meta' => $months_awaiting_verification > 0 ? ($months_awaiting_verification . ' month' . ($months_awaiting_verification === 1 ? '' : 's') . ' awaiting verification') : null],
+                    ['label' => 'Remaining Balance', 'value' => $plan['remaining_balance'] ?? 0, 'money' => true],
+                    ['label' => 'Next Due Date', 'value' => cs_date($plan['next_due_date'] ?? null)],
+                ]]) ?>
+            </div>
+            <div class="cs-panel__body cs-panel__body--flush">
+                <?php if (empty($payments)): ?>
+                    <?= view('components/empty_state', [
+                        'icon'  => 'ti-receipt',
+                        'title' => 'No payments recorded yet',
+                        'text'  => 'Once your first payment is posted, it appears here with a receipt.',
+                    ]) ?>
+                <?php else: ?>
+                    <div class="cs-tablewrap">
+                        <table class="cs-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Months Covered</th>
+                                    <th class="cs-num">Amount</th>
+                                    <th>Payment Method</th>
+                                    <th>Reference Number</th>
+                                    <th>Status</th>
+                                    <th>Receipt</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($payments as $payment): ?>
+                                    <?php $status = strtolower((string) ($payment['status'] ?? 'pending')); ?>
+                                    <tr>
+                                        <td class="text-nowrap"><?= cs_date($payment['payment_date'] ?? null) ?></td>
+                                        <td><?= esc((string) ((int) ($payment['months_covered'] ?? 1))) ?></td>
+                                        <td class="cs-num"><?= cs_money($payment['amount'] ?? 0) ?></td>
+                                        <td><?= esc(strtoupper((string) ($payment['payment_method'] ?? '-'))) ?></td>
+                                        <td><?= esc((string) ($payment['reference_number'] ?? '-')) ?></td>
+                                        <td><?= cs_status($status) ?></td>
+                                        <td>
+                                            <?php if ($status === 'paid'): ?>
+                                                <a class="btn btn-ghost btn-sm" href="<?= base_url('client/payment/download-receipt/' . (int) $payment['payment_id']) ?>">
+                                                    <i class="ti ti-download" aria-hidden="true"></i>
+                                                    <span class="cs-visually-hidden">Download receipt</span>
+                                                </a>
+                                            <?php else: ?>
+                                                <span class="text-muted small">&mdash;</span>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
             </div>
         </section>
     <?php else: ?>

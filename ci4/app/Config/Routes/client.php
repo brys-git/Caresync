@@ -22,8 +22,12 @@ $routes->group('client', ['filter' => 'auth'], static function (RouteCollection 
 
     // Payment Management
     $routes->get('payment', 'Client\ClientPaymentController::payment', ['filter' => 'role:4']);
-    // Phase 2: Payment History split out to its own page.
-    $routes->get('payment/history', 'Client\ClientPaymentController::paymentHistory', ['filter' => 'role:4']);
+    // Task 1: Payment History merged back into client/payment - keep the
+    // old URL working (bookmarks, the dashboard quick action) as a redirect.
+    // addRedirect()'s $to is NOT prefixed by the enclosing group (unlike
+    // get()/post()/etc.) - it's used verbatim, so this must be fully
+    // qualified or it redirects to site-root /payment instead.
+    $routes->addRedirect('payment/history', 'client/payment', 301);
     // Phase 3: Make Payment, its own page.
     $routes->get('payment/make', 'Client\ClientPaymentController::makePayment', ['filter' => 'role:4']);
     $routes->post('payment/make', 'Client\ClientPaymentController::submitPayment', ['filter' => 'role:4']);
