@@ -190,6 +190,26 @@ class ClientController extends BaseController
             return redirect()->back()->withInput()->with('error', implode(' ', $this->validator->getErrors()));
         }
 
+        $idVerificationService = new GovernmentIdVerificationService();
+        $pendingVerification = $idVerificationService->peekPending($pendingVerificationToken);
+        if ($pendingVerification === null) {
+            return redirect()->back()->withInput()->with('error', 'Your Government ID verification could not be found. Please verify the ID again.');
+        }
+
+        if (! $idVerificationService->isValidForSubmission($pendingVerification, [
+            'first_name'    => trim((string) $this->request->getPost('first_name')),
+            'middle_name'   => trim((string) $this->request->getPost('middle_name')),
+            'last_name'     => trim((string) $this->request->getPost('last_name')),
+            'date_of_birth' => trim((string) $this->request->getPost('date_of_birth')),
+            'gender'        => trim((string) $this->request->getPost('gender')),
+        ])) {
+            $message = (string) ($pendingVerification['verification_status'] ?? '') === 'failed'
+                ? 'The Government ID does not match the details entered. Please correct the details or upload the correct ID.'
+                : 'The details were changed after verifying the Government ID. Please verify the ID again.';
+
+            return redirect()->back()->withInput()->with('error', $message);
+        }
+
         try {
             $planHolderId = $this->clientService->registerPlanHolder([
                 'first_name' => trim((string) $this->request->getPost('first_name')),
@@ -218,7 +238,7 @@ class ClientController extends BaseController
 
             $registeredUser = $this->clientService->findUserByEmail(trim((string) $this->request->getPost('email')));
             if ($registeredUser) {
-                (new GovernmentIdVerificationService())->commitPending($pendingVerificationToken, (int) $registeredUser['user_id']);
+                $idVerificationService->commitPending($pendingVerificationToken, (int) $registeredUser['user_id']);
             }
 
             return redirect()->to('/staff/client/view/' . $planHolderId)->with('success', 'Plan holder registered successfully!');

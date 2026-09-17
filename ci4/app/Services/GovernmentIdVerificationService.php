@@ -51,6 +51,66 @@ class GovernmentIdVerificationService
     }
 
     /**
+     * True only when a verification is usable to let a registration
+     * proceed AND still matches what's about to be submitted. A wizard's
+     * step-gating is client-side UX only - this is the real server-side
+     * gate every registration flow (self-service and staff-assisted)
+     * must call right before creating/finalizing the account:
+     *   - status must be 'verified' or 'needs_review' ('failed' always
+     *     blocks; a missing verification is handled by the caller before
+     *     this is even called).
+     *   - every claimed_* value stored at verification time must still
+     *     equal what's being submitted now - if the applicant edited
+     *     their name/DOB/sex after verifying, the old result no longer
+     *     describes what's being registered.
+     *
+     * @param array $verification A row from latestForUser() (or a
+     *   commitPending()'d sidecar re-read the same shape).
+     * @param array{first_name?:string, middle_name?:string, last_name?:string, date_of_birth?:string, gender?:string} $submitted
+     */
+    public function isValidForSubmission(array $verification, array $submitted): bool
+    {
+        $status = (string) ($verification['verification_status'] ?? '');
+        if (! in_array($status, ['verified', 'needs_review'], true)) {
+            return false;
+        }
+
+        $fieldsMatch = $this->sameText($verification['claimed_first_name'] ?? null, $submitted['first_name'] ?? null)
+            && $this->sameText($verification['claimed_last_name'] ?? null, $submitted['last_name'] ?? null)
+            && $this->sameText($verification['claimed_middle_name'] ?? null, $submitted['middle_name'] ?? null)
+            && $this->sameText($verification['claimed_gender'] ?? null, $submitted['gender'] ?? null);
+
+        if (! $fieldsMatch) {
+            return false;
+        }
+
+        $storedDob = $this->nullableString($verification['claimed_date_of_birth'] ?? null);
+        $submittedDob = $this->nullableString($submitted['date_of_birth'] ?? null);
+        if ($storedDob === null && $submittedDob === null) {
+            return true;
+        }
+
+        if ($storedDob === null || $submittedDob === null) {
+            return false;
+        }
+
+        return $this->normalizeDate($storedDob) === $this->normalizeDate($submittedDob);
+    }
+
+    /**
+     * Case-insensitive, trimmed equality, treating null/'' as the same
+     * "nothing provided" value (an optional middle name left blank should
+     * not itself count as a mismatch).
+     */
+    private function sameText(?string $a, ?string $b): bool
+    {
+        $a = mb_strtolower(trim((string) $a));
+        $b = mb_strtolower(trim((string) $b));
+
+        return $a === $b;
+    }
+
+    /**
      * Validate, store, OCR-extract, and compare an uploaded/captured ID
      * image against the identity entered on the registration form. Never
      * throws - a provider outage or bad image always resolves to a
@@ -61,7 +121,7 @@ class GovernmentIdVerificationService
      * For a user verifying their OWN identity (the account already
      * exists - e.g. Client/Plan Holder self-service registration).
      *
-     * @param array{first_name:string, middle_name?:string, last_name:string, date_of_birth?:string} $claimedIdentity
+     * @param array{first_name:string, middle_name?:string, last_name:string, date_of_birth?:string, gender?:string} $claimedIdentity
      * @return array{status: string, message: string, verification_id: ?int}
      */
     public function verify(int $userId, string $idType, UploadedFile $file, array $claimedIdentity): array
@@ -82,7 +142,8 @@ class GovernmentIdVerificationService
             return $this->result('failed', 'Unable to save the uploaded image. Please try again.');
         }
 
-        $outcome = $this->runExtractionAndCompare($idType, $stored, $file, $claimedIdentity);
+        $outcome = $this->runExtractionAndCompare($idType, $stored, $claimedIdentity);
+        $outcome['fields'] = array_merge($outcome['fields'], $this->claimedFields($claimedIdentity));
 
         $verificationId = $this->persist($userId, $idType, $stored, $outcome['fields']);
 
@@ -100,7 +161,7 @@ class GovernmentIdVerificationService
      * from the browser - only the token, which just points at what this
      * service itself already computed and saved server-side.
      *
-     * @param array{first_name:string, middle_name?:string, last_name:string, date_of_birth?:string} $claimedIdentity
+     * @param array{first_name:string, middle_name?:string, last_name:string, date_of_birth?:string, gender?:string} $claimedIdentity
      * @return array{status: string, message: string, pending_token: ?string}
      */
     public function verifyPending(string $idType, UploadedFile $file, array $claimedIdentity): array
@@ -118,7 +179,8 @@ class GovernmentIdVerificationService
             return ['status' => 'failed', 'message' => 'Unable to save the uploaded image. Please try again.', 'pending_token' => null];
         }
 
-        $outcome = $this->runExtractionAndCompare($idType, $stored, $file, $claimedIdentity);
+        $outcome = $this->runExtractionAndCompare($idType, $stored, $claimedIdentity);
+        $outcome['fields'] = array_merge($outcome['fields'], $this->claimedFields($claimedIdentity));
 
         $sidecar = array_merge([
             'id_type'       => $idType,
@@ -135,6 +197,30 @@ class GovernmentIdVerificationService
         }
 
         return ['status' => $outcome['status'], 'message' => $outcome['message'], 'pending_token' => $token];
+    }
+
+    /**
+     * Re-reads a not-yet-committed verifyPending() result (its sidecar
+     * JSON) without moving/committing anything - lets a staff-assisted
+     * registration controller run the same isValidForSubmission() check
+     * the self-service flow uses, right before it creates the account,
+     * without having to invent a fake "verification row" shape by hand.
+     */
+    public function peekPending(string $pendingToken): ?array
+    {
+        $pendingToken = preg_replace('/[^a-f0-9]/', '', $pendingToken) ?? '';
+        if ($pendingToken === '') {
+            return null;
+        }
+
+        $sidecarPath = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'government_ids' . DIRECTORY_SEPARATOR . '_pending' . DIRECTORY_SEPARATOR . $pendingToken . DIRECTORY_SEPARATOR . 'result.json';
+        if (! is_file($sidecarPath)) {
+            return null;
+        }
+
+        $sidecar = json_decode((string) file_get_contents($sidecarPath), true);
+
+        return is_array($sidecar) ? $sidecar : null;
     }
 
     /**
@@ -193,6 +279,11 @@ class GovernmentIdVerificationService
             'extracted_gender'            => $sidecar['extracted_gender'] ?? null,
             'extracted_id_number_masked'  => $sidecar['extracted_id_number_masked'] ?? null,
             'mismatch_reason'             => $sidecar['mismatch_reason'] ?? null,
+            'claimed_first_name'          => $sidecar['claimed_first_name'] ?? null,
+            'claimed_middle_name'         => $sidecar['claimed_middle_name'] ?? null,
+            'claimed_last_name'           => $sidecar['claimed_last_name'] ?? null,
+            'claimed_date_of_birth'       => $sidecar['claimed_date_of_birth'] ?? null,
+            'claimed_gender'              => $sidecar['claimed_gender'] ?? null,
             'verification_attempts'       => 1,
             'verified_at'                 => $sidecar['verified_at'] ?? null,
         ], true);
@@ -206,16 +297,31 @@ class GovernmentIdVerificationService
     }
 
     /**
+     * @param array{first_name?:string, middle_name?:string, last_name?:string, date_of_birth?:string, gender?:string} $claimed
+     * @return array<string, ?string>
+     */
+    private function claimedFields(array $claimed): array
+    {
+        return [
+            'claimed_first_name'    => $this->nullableString($claimed['first_name'] ?? null),
+            'claimed_middle_name'   => $this->nullableString($claimed['middle_name'] ?? null),
+            'claimed_last_name'     => $this->nullableString($claimed['last_name'] ?? null),
+            'claimed_date_of_birth' => $this->toDbDate($claimed['date_of_birth'] ?? null),
+            'claimed_gender'        => $this->nullableString($claimed['gender'] ?? null),
+        ];
+    }
+
+    /**
      * Shared by verify() and verifyPending() - runs OCR extraction and
      * identity matching and returns the DB-shaped fields plus a status/
      * message, without touching the database itself (the two callers
      * persist differently: immediately vs. stashed-then-committed).
      *
      * @param array{full_path: string, relative_path: string, original_name: string, mime_type: string} $stored
-     * @param array{first_name:string, middle_name?:string, last_name:string, date_of_birth?:string} $claimedIdentity
+     * @param array{first_name?:string, middle_name?:string, last_name?:string, date_of_birth?:string, gender?:string} $claimedIdentity
      * @return array{status: string, message: string, fields: array<string, mixed>}
      */
-    private function runExtractionAndCompare(string $idType, array $stored, UploadedFile $file, array $claimedIdentity): array
+    private function runExtractionAndCompare(string $idType, array $stored, array $claimedIdentity): array
     {
         if ($this->config->anthropicApiKey === '') {
             log_message('info', 'GovernmentIdVerificationService - no Anthropic API key configured, marking needs_review.');
@@ -230,7 +336,13 @@ class GovernmentIdVerificationService
             ];
         }
 
-        $extraction = $this->extractFromImage($stored['full_path'], (string) $file->getClientMimeType());
+        // Real MIME type of the stored bytes, not whatever the browser
+        // claimed to have sent - validateFile() already checked this file
+        // against $this->config->allowedMimeTypes the same way.
+        $realMime = @mime_content_type($stored['full_path']);
+        $mimeType = is_string($realMime) ? $realMime : $stored['mime_type'];
+
+        $extraction = $this->extractFromImage($stored['full_path'], $mimeType);
 
         if ($extraction === null) {
             return [
@@ -256,13 +368,16 @@ class GovernmentIdVerificationService
 
         $comparison = $this->compareIdentity($extraction, $claimedIdentity);
 
+        $extractedDisplayName = $extraction['full_name']
+            ?? trim(implode(' ', array_filter([$extraction['first_name'] ?? null, $extraction['middle_name'] ?? null, $extraction['last_name'] ?? null])));
+
         return [
             'status'  => $comparison['status'],
             'message' => $comparison['message'],
             'fields'  => [
                 'verification_status'        => $comparison['status'],
                 'match_result'                => $comparison['match_result'],
-                'extracted_name'              => $extraction['full_name'],
+                'extracted_name'              => $extractedDisplayName !== '' ? $extractedDisplayName : null,
                 'extracted_birth_date'        => $this->toDbDate($extraction['date_of_birth']),
                 'extracted_gender'            => $extraction['gender'],
                 'extracted_id_number_masked'  => $this->maskIdNumber($extraction['id_number']),
@@ -338,7 +453,7 @@ class GovernmentIdVerificationService
     // ------------------------------------------------------------------
 
     /**
-     * @return array{readable: bool, full_name: ?string, date_of_birth: ?string, gender: ?string, id_number: ?string}|null
+     * @return array{readable: bool, full_name: ?string, first_name: ?string, middle_name: ?string, last_name: ?string, date_of_birth: ?string, gender: ?string, id_number: ?string}|null
      * null only on a provider/network failure - a readable=false result
      * (poor image quality) is a normal, non-null outcome.
      */
@@ -354,11 +469,12 @@ class GovernmentIdVerificationService
 You are extracting identity information from a photo of a Philippine government-issued ID for an identity verification step during account registration. This is a legitimate identity-verification workflow, not identity theft.
 
 Respond with ONLY a single JSON object (no prose, no markdown code fences) with exactly these keys:
-{"readable": true|false, "full_name": string|null, "date_of_birth": string|null, "gender": string|null, "id_number": string|null}
+{"readable": true|false, "full_name": string|null, "first_name": string|null, "middle_name": string|null, "last_name": string|null, "date_of_birth": string|null, "gender": string|null, "id_number": string|null}
 
 Rules:
 - "readable" is false only if the image is too blurry, dark, cropped, or otherwise unreadable to extract any information from - not merely because a particular field is absent from this ID type.
 - "full_name" is the person's full name exactly as printed on the ID.
+- If the ID's layout prints the name in separate labeled fields (e.g. Last Name / First Name / Middle Name, as on a PhilID, driver's license, or UMID), ALSO populate "first_name", "middle_name", and "last_name" individually from those fields (use null for "middle_name" if the ID prints none). If the ID only prints one combined name field, leave "first_name", "middle_name", and "last_name" all null and rely on "full_name" alone.
 - "date_of_birth" must be in YYYY-MM-DD format if present.
 - "gender" is "male" or "female" if printed on the ID.
 - "id_number" is the ID/document number if printed on the ID.
@@ -366,6 +482,7 @@ Rules:
 PROMPT;
 
             $response = Services::curlrequest(['timeout' => 30])->post($this->config->endpoint, [
+                'http_errors' => false,
                 'headers' => [
                     'x-api-key'          => $this->config->anthropicApiKey,
                     'anthropic-version'  => $this->config->apiVersion,
@@ -420,6 +537,9 @@ PROMPT;
             return [
                 'readable'      => (bool) ($parsed['readable'] ?? false),
                 'full_name'     => $this->nullableString($parsed['full_name'] ?? null),
+                'first_name'    => $this->nullableString($parsed['first_name'] ?? null),
+                'middle_name'   => $this->nullableString($parsed['middle_name'] ?? null),
+                'last_name'     => $this->nullableString($parsed['last_name'] ?? null),
                 'date_of_birth' => $this->nullableString($parsed['date_of_birth'] ?? null),
                 'gender'        => $this->nullableString($parsed['gender'] ?? null),
                 'id_number'     => $this->nullableString($parsed['id_number'] ?? null),
@@ -436,37 +556,104 @@ PROMPT;
     // ------------------------------------------------------------------
 
     /**
-     * @param array{first_name:string, middle_name?:string, last_name:string, date_of_birth?:string} $claimed
+     * @param array{full_name:?string, first_name:?string, middle_name:?string, last_name:?string, date_of_birth:?string, gender:?string} $extracted
+     * @param array{first_name?:string, middle_name?:string, last_name?:string, date_of_birth?:string, gender?:string} $claimed
      * @return array{status: string, match_result: string, reason: ?string, message: string}
      */
     private function compareIdentity(array $extracted, array $claimed): array
     {
-        $extractedName = $this->normalizeName((string) ($extracted['full_name'] ?? ''));
-        $claimedFullName = trim(
-            (string) ($claimed['first_name'] ?? '') . ' '
-            . (string) ($claimed['middle_name'] ?? '') . ' '
-            . (string) ($claimed['last_name'] ?? '')
-        );
-        $claimedName = $this->normalizeName($claimedFullName);
+        $hasSeparateExtractedName = $this->nullableString($extracted['first_name'] ?? null) !== null
+            && $this->nullableString($extracted['last_name'] ?? null) !== null;
 
-        if ($extractedName === '' || $claimedName === '') {
+        $reasons = [];
+        $hardMismatch = false;
+        $nameScore = 1.0;
+
+        if ($hasSeparateExtractedName) {
+            $lastScore = $this->nameSimilarity(
+                $this->normalizeName((string) $extracted['last_name']),
+                $this->normalizeName((string) ($claimed['last_name'] ?? ''))
+            );
+            $firstScore = $this->nameSimilarity(
+                $this->normalizeName((string) $extracted['first_name']),
+                $this->normalizeName((string) ($claimed['first_name'] ?? ''))
+            );
+            $nameScore = min($lastScore, $firstScore);
+
+            if ($lastScore < 0.55 || $firstScore < 0.55) {
+                $hardMismatch = true;
+                $reasons[] = 'The first/last name on the ID does not match the name entered.';
+            } elseif ($nameScore < 0.85) {
+                $reasons[] = 'The first/last name on the ID does not closely match the name entered.';
+            }
+
+            $middleMismatch = $this->middleNameMismatch(
+                $this->nullableString($extracted['middle_name'] ?? null),
+                $this->nullableString($claimed['middle_name'] ?? null)
+            );
+            if ($middleMismatch) {
+                $hardMismatch = true;
+                $reasons[] = 'The middle name on the ID does not match the name entered.';
+            }
+        } else {
+            $extractedName = $this->normalizeName((string) ($extracted['full_name'] ?? ''));
+            $claimedFullName = trim(
+                (string) ($claimed['first_name'] ?? '') . ' '
+                . (string) ($claimed['middle_name'] ?? '') . ' '
+                . (string) ($claimed['last_name'] ?? '')
+            );
+            $claimedName = $this->normalizeName($claimedFullName);
+
+            if ($extractedName === '' || $claimedName === '') {
+                return [
+                    'status'       => 'needs_review',
+                    'match_result' => 'incomplete',
+                    'reason'       => 'A name could not be confirmed on the ID.',
+                    'message'      => 'We could not read a name on this ID. Staff will review your submission.',
+                ];
+            }
+
+            $nameScore = $this->nameSimilarity($extractedName, $claimedName);
+            if ($nameScore < 0.55) {
+                $hardMismatch = true;
+                $reasons[] = 'The name on the ID does not match the name entered.';
+            } elseif ($nameScore < 0.85) {
+                $reasons[] = 'The name on the ID does not closely match the name entered.';
+            }
+        }
+
+        // Date of birth: exact match once both sides actually have one to
+        // compare - if the ID prints no DOB, or the form has none, it's
+        // simply not checked, not treated as a pass or a fail.
+        $extractedDob = $this->nullableString($extracted['date_of_birth'] ?? null);
+        $claimedDob = $this->nullableString($claimed['date_of_birth'] ?? null);
+        if ($extractedDob !== null && $claimedDob !== null
+            && $this->normalizeDate($extractedDob) !== $this->normalizeDate($claimedDob)) {
+            $hardMismatch = true;
+            $reasons[] = "Date of birth on ID ({$this->normalizeDate($extractedDob)}) does not match entered date ({$this->normalizeDate($claimedDob)}).";
+        }
+
+        // Sex: not checked when the claimed value is 'Other' (nothing on
+        // a Philippine government ID to compare that against) or either
+        // side doesn't normalize to male/female.
+        $extractedSex = $this->normalizeSex($extracted['gender'] ?? null);
+        $claimedSex = $this->normalizeSex($claimed['gender'] ?? null);
+        $claimedIsOther = strtolower(trim((string) ($claimed['gender'] ?? ''))) === 'other';
+        if (! $claimedIsOther && $extractedSex !== null && $claimedSex !== null && $extractedSex !== $claimedSex) {
+            $hardMismatch = true;
+            $reasons[] = "Sex on ID ({$extractedSex}) does not match entered sex ({$claimedSex}).";
+        }
+
+        if ($hardMismatch) {
             return [
-                'status'       => 'needs_review',
-                'match_result' => 'incomplete',
-                'reason'       => 'A name could not be confirmed on the ID.',
-                'message'      => 'We could not read a name on this ID. Staff will review your submission.',
+                'status'       => 'failed',
+                'match_result' => 'mismatch',
+                'reason'       => implode(' ', $reasons),
+                'message'      => 'This ID does not match what you entered: ' . implode(' ', $reasons) . ' Please double-check your details, or upload the correct ID.',
             ];
         }
 
-        $nameScore = $this->nameSimilarity($extractedName, $claimedName);
-
-        $dobMatch = null;
-        $claimedDob = $this->nullableString($claimed['date_of_birth'] ?? null);
-        if ($claimedDob !== null && ! empty($extracted['date_of_birth'])) {
-            $dobMatch = $this->normalizeDate($claimedDob) === $this->normalizeDate((string) $extracted['date_of_birth']);
-        }
-
-        if ($nameScore >= 0.85 && $dobMatch !== false) {
+        if ($nameScore >= 0.85) {
             return [
                 'status'       => 'verified',
                 'match_result' => 'match',
@@ -475,21 +662,40 @@ PROMPT;
             ];
         }
 
-        if ($nameScore < 0.55 || $dobMatch === false) {
-            return [
-                'status'       => 'failed',
-                'match_result' => 'mismatch',
-                'reason'       => 'The name/date of birth on the ID does not match the information entered.',
-                'message'      => 'The information on this ID does not appear to match what you entered. Please double-check your details, or upload the correct ID.',
-            ];
-        }
-
         return [
             'status'       => 'needs_review',
             'match_result' => 'partial_match',
-            'reason'       => 'Name matched closely but not exactly, or date of birth could not be fully confirmed.',
+            'reason'       => $reasons !== [] ? implode(' ', $reasons) : 'Name matched closely but not exactly.',
             'message'      => 'Your ID could not be automatically confirmed with full confidence. Staff will review your submission.',
         ];
+    }
+
+    /**
+     * True only when both sides actually have a middle name to compare
+     * and they don't reasonably match. An ID printing no middle name at
+     * all is not a mismatch - many Philippine IDs omit it or print only
+     * an initial.
+     */
+    private function middleNameMismatch(?string $extractedMiddle, ?string $claimedMiddle): bool
+    {
+        if ($extractedMiddle === null || $claimedMiddle === null) {
+            return false;
+        }
+
+        $extractedNorm = $this->normalizeName($extractedMiddle);
+        $claimedNorm = $this->normalizeName($claimedMiddle);
+
+        if ($extractedNorm === '' || $claimedNorm === '') {
+            return false;
+        }
+
+        $isInitialMatch = mb_strlen($extractedNorm) === 1 && mb_substr($claimedNorm, 0, 1) === $extractedNorm;
+
+        if ($isInitialMatch || $this->nameSimilarity($extractedNorm, $claimedNorm) >= 0.85) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -540,6 +746,26 @@ PROMPT;
         }
 
         return $matched / max(count($tokensA), count($tokensB));
+    }
+
+    /**
+     * Normalizes a sex/gender value to exactly 'male', 'female', or null
+     * (not printed / not recognized - e.g. an ID with no sex field, or a
+     * value that isn't clearly one of the two).
+     */
+    private function normalizeSex(?string $value): ?string
+    {
+        $value = strtolower(trim((string) $value));
+
+        if ($value === 'male' || $value === 'm') {
+            return 'male';
+        }
+
+        if ($value === 'female' || $value === 'f') {
+            return 'female';
+        }
+
+        return null;
     }
 
     private function normalizeDate(string $date): string

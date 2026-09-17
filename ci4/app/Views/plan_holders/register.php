@@ -402,15 +402,25 @@
             csrfName: document.querySelector('input[name="<?= csrf_token() ?>"]').name,
             csrfValue: document.querySelector('input[name="<?= csrf_token() ?>"]').value,
             getIdentity: function () {
+                // date_of_birth/gender belong to the plan holder profile
+                // itself, not the users account - collected the same way
+                // regardless of 'existing' vs 'new' mode.
+                const dateOfBirth = document.getElementById('date_of_birth') ? document.getElementById('date_of_birth').value.trim() : '';
+                const gender = document.getElementById('gender') ? document.getElementById('gender').value.trim() : '';
+
                 if (getMode() === 'existing') {
                     return {
                         first_name: existingFirstName.value.trim(),
                         last_name: existingLastName.value.trim(),
+                        date_of_birth: dateOfBirth,
+                        gender: gender,
                     };
                 }
                 return {
                     first_name: document.getElementById('first_name') ? document.getElementById('first_name').value.trim() : '',
                     last_name: document.getElementById('last_name') ? document.getElementById('last_name').value.trim() : '',
+                    date_of_birth: dateOfBirth,
+                    gender: gender,
                 };
             },
             resultFieldId: 'government_id_pending_token',

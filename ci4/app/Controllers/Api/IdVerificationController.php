@@ -31,6 +31,7 @@ class IdVerificationController extends BaseController
         $middleName = trim((string) $this->request->getPost('middle_name'));
         $lastName = trim((string) $this->request->getPost('last_name'));
         $dateOfBirth = trim((string) $this->request->getPost('date_of_birth'));
+        $gender = trim((string) $this->request->getPost('gender'));
 
         $file = $this->request->getFile('id_image');
         if (! $file) {
@@ -44,6 +45,7 @@ class IdVerificationController extends BaseController
                 'middle_name'   => $middleName,
                 'last_name'     => $lastName,
                 'date_of_birth' => $dateOfBirth,
+                'gender'        => $gender,
             ]);
 
             return $this->response->setJSON([
@@ -78,6 +80,8 @@ class IdVerificationController extends BaseController
         $firstName = trim((string) $this->request->getPost('first_name'));
         $middleName = trim((string) $this->request->getPost('middle_name'));
         $lastName = trim((string) $this->request->getPost('last_name'));
+        $dateOfBirth = trim((string) $this->request->getPost('date_of_birth'));
+        $gender = trim((string) $this->request->getPost('gender'));
 
         $file = $this->request->getFile('id_image');
         if (! $file) {
@@ -87,9 +91,11 @@ class IdVerificationController extends BaseController
         try {
             $service = new GovernmentIdVerificationService();
             $result = $service->verifyPending($idType, $file, [
-                'first_name'  => $firstName,
-                'middle_name' => $middleName,
-                'last_name'   => $lastName,
+                'first_name'    => $firstName,
+                'middle_name'   => $middleName,
+                'last_name'     => $lastName,
+                'date_of_birth' => $dateOfBirth,
+                'gender'        => $gender,
             ]);
 
             return $this->response->setJSON([

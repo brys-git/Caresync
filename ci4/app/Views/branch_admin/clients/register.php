@@ -417,10 +417,14 @@
         csrfName: document.querySelector('input[name="<?= csrf_token() ?>"]').name,
         csrfValue: document.querySelector('input[name="<?= csrf_token() ?>"]').value,
         getIdentity: function () {
+            const dobField = document.getElementById('date_of_birth');
+            const genderField = document.getElementById('gender');
             return {
                 first_name: firstNameField.value.trim(),
                 middle_name: middleNameField.value.trim(),
                 last_name: lastNameField.value.trim(),
+                date_of_birth: dobField ? dobField.value.trim() : '',
+                gender: genderField ? genderField.value.trim() : '',
             };
         },
         resultFieldId: 'government_id_pending_token',

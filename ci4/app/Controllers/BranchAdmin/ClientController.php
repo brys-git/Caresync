@@ -242,6 +242,12 @@ class ClientController extends BaseController
             return redirect()->back()->withInput()->with('error', implode(' ', $this->validator->getErrors()));
         }
 
+        $idVerificationService = new GovernmentIdVerificationService();
+        $pendingVerification = $idVerificationService->peekPending($pendingVerificationToken);
+        if ($pendingVerification === null) {
+            return redirect()->back()->withInput()->with('error', 'Your Government ID verification could not be found. Please verify the ID again.');
+        }
+
         try {
             $existingUser = null;
             if ($mode === 'existing') {
@@ -251,10 +257,28 @@ class ClientController extends BaseController
                 }
             }
 
+            $firstNameForId = $mode === 'existing' ? trim((string) ($existingUser['first_name'] ?? '')) : trim((string) $this->request->getPost('first_name'));
+            $middleNameForId = $mode === 'existing' ? trim((string) ($existingUser['middle_name'] ?? '')) : trim((string) $this->request->getPost('middle_name'));
+            $lastNameForId = $mode === 'existing' ? trim((string) ($existingUser['last_name'] ?? '')) : trim((string) $this->request->getPost('last_name'));
+
+            if (! $idVerificationService->isValidForSubmission($pendingVerification, [
+                'first_name'    => $firstNameForId,
+                'middle_name'   => $middleNameForId,
+                'last_name'     => $lastNameForId,
+                'date_of_birth' => trim((string) $this->request->getPost('date_of_birth')),
+                'gender'        => trim((string) $this->request->getPost('gender')),
+            ])) {
+                $message = (string) ($pendingVerification['verification_status'] ?? '') === 'failed'
+                    ? 'The Government ID does not match the details entered. Please correct the details or upload the correct ID.'
+                    : 'The details were changed after verifying the Government ID. Please verify the ID again.';
+
+                return redirect()->back()->withInput()->with('error', $message);
+            }
+
             $planHolderId = $this->clientService->registerPlanHolder([
-                'first_name' => $mode === 'existing' ? trim((string) ($existingUser['first_name'] ?? '')) : trim((string) $this->request->getPost('first_name')),
-                'middle_name' => $mode === 'existing' ? trim((string) ($existingUser['middle_name'] ?? '')) : trim((string) $this->request->getPost('middle_name')),
-                'last_name' => $mode === 'existing' ? trim((string) ($existingUser['last_name'] ?? '')) : trim((string) $this->request->getPost('last_name')),
+                'first_name' => $firstNameForId,
+                'middle_name' => $middleNameForId,
+                'last_name' => $lastNameForId,
                 'email' => trim((string) $this->request->getPost('email')),
                 'contact_number' => $mode === 'existing' ? trim((string) ($existingUser['contact_number'] ?? '')) : trim((string) $this->request->getPost('contact_number')),
                 'date_of_birth' => trim((string) $this->request->getPost('date_of_birth')),
@@ -285,7 +309,7 @@ class ClientController extends BaseController
             }
 
             if ($targetUserId > 0) {
-                (new GovernmentIdVerificationService())->commitPending($pendingVerificationToken, $targetUserId);
+                $idVerificationService->commitPending($pendingVerificationToken, $targetUserId);
 
                 (new NotificationService())->notify(
                     $targetUserId,

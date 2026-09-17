@@ -120,8 +120,9 @@
 
                     <canvas id="captureCanvas" class="d-none"></canvas>
 
+                    <p class="text-muted small mb-2">Verification runs automatically once an ID image and type are selected. Use this only to retry.</p>
                     <div class="d-flex align-items-center gap-2 mb-3">
-                        <button type="button" class="btn btn-success" id="btnVerifyId" disabled>Verify ID</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnVerifyId" disabled>Re-check ID</button>
                         <span class="text-muted small" id="verifyHint">Choose or capture an image first.</span>
                     </div>
 
@@ -432,6 +433,13 @@
                 first_name: fieldValue('first_name'),
                 middle_name: fieldValue('middle_name'),
                 last_name: fieldValue('last_name'),
+                // This form has no date_of_birth/gender fields at all (it
+                // creates a bare users row, not a plan holder profile) -
+                // gender is sent as empty (the server treats an empty
+                // claimed gender as "not checked"); date_of_birth is left
+                // out of this object entirely so the widget never waits
+                // on a field that can't exist here.
+                gender: '',
             };
         },
         resultFieldId: 'government_id_pending_token',

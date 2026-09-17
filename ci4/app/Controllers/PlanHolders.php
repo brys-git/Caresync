@@ -100,6 +100,12 @@ class PlanHolders extends BaseController
             return redirect()->back()->withInput()->with('error', 'Please complete the Government ID Verification step before submitting.');
         }
 
+        $idVerificationService = new GovernmentIdVerificationService();
+        $pendingVerification = $idVerificationService->peekPending($pendingVerificationToken);
+        if ($pendingVerification === null) {
+            return redirect()->back()->withInput()->with('error', 'Your Government ID verification could not be found. Please verify the ID again.');
+        }
+
         $branchId = (int) $this->request->getPost('branch_id');
         $createdBy = (int) session('user_id');
         error_log("STORE() DEBUG: branchId={$branchId}, createdBy={$createdBy}");
@@ -195,6 +201,19 @@ class PlanHolders extends BaseController
                 return redirect()->back()->withInput()->with('error', 'Please select an existing user account by entering their email address and matching the account that appears.');
             }
 
+            $existingUserRecord = (new UserModel())->find($userId);
+            $submittedIdentityForId = [
+                'first_name' => trim((string) ($existingUserRecord['first_name'] ?? '')),
+                'last_name'  => trim((string) ($existingUserRecord['last_name'] ?? '')),
+            ];
+            if (! $idVerificationService->isValidForSubmission($pendingVerification, $submittedIdentityForId)) {
+                $message = (string) ($pendingVerification['verification_status'] ?? '') === 'failed'
+                    ? 'The Government ID does not match the details entered. Please correct the details or upload the correct ID.'
+                    : 'The name was changed after verifying the Government ID. Please verify the ID again.';
+
+                return redirect()->back()->withInput()->with('error', $message);
+            }
+
             error_log("STORE() DEBUG: Calling registerExistingUser with userId={$userId}");
             $result = $registrationService->registerExistingUser($userId, $branchId, $planHolderData, $createdBy);
             error_log("STORE() DEBUG: registerExistingUser result = " . json_encode($result));
@@ -208,7 +227,7 @@ class PlanHolders extends BaseController
             // Clear rate limiting on successful registration
             $securityService->clearRegistrationAttempts("user_{$createdBy}");
             $securityService->logSecurityEvent('REGISTRATION_SUCCESS', $createdBy, "Registered existing user {$userId}");
-            (new GovernmentIdVerificationService())->commitPending($pendingVerificationToken, $userId);
+            $idVerificationService->commitPending($pendingVerificationToken, $userId);
 
             $successRedirect = $roleId === 2 ? '/payment-tracking?tab=initial' : '/admin/payment-monitoring';
             error_log("STORE() SUCCESS: Redirecting to {$successRedirect}");
@@ -235,6 +254,18 @@ class PlanHolders extends BaseController
                 return redirect()->back()->withInput()->with('error', 'Password confirmation does not match.');
             }
 
+            $submittedIdentityForId = [
+                'first_name' => $userData['first_name'],
+                'last_name'  => $userData['last_name'],
+            ];
+            if (! $idVerificationService->isValidForSubmission($pendingVerification, $submittedIdentityForId)) {
+                $message = (string) ($pendingVerification['verification_status'] ?? '') === 'failed'
+                    ? 'The Government ID does not match the details entered. Please correct the details or upload the correct ID.'
+                    : 'The name was changed after verifying the Government ID. Please verify the ID again.';
+
+                return redirect()->back()->withInput()->with('error', $message);
+            }
+
             error_log("STORE() DEBUG: Calling registerNewUser");
             $result = $registrationService->registerNewUser($userData, $branchId, $planHolderData, $createdBy);
             error_log("STORE() DEBUG: registerNewUser result = " . json_encode($result));
@@ -248,7 +279,7 @@ class PlanHolders extends BaseController
             // Clear rate limiting on successful registration
             $securityService->clearRegistrationAttempts("user_{$createdBy}");
             $securityService->logSecurityEvent('REGISTRATION_SUCCESS', $result['user_id'], "New account created by {$createdBy}");
-            (new GovernmentIdVerificationService())->commitPending($pendingVerificationToken, (int) $result['user_id']);
+            $idVerificationService->commitPending($pendingVerificationToken, (int) $result['user_id']);
 
             $successRedirect = $roleId === 2 ? '/payment-tracking?tab=initial' : '/admin/payment-monitoring';
             error_log("STORE() SUCCESS: Redirecting to {$successRedirect}");

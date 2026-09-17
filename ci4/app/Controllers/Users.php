@@ -66,6 +66,26 @@ class Users extends BaseController
             return redirect()->back()->withInput()->with('error', 'Please complete the Government ID Verification step before submitting.');
         }
 
+        $idVerificationService = new GovernmentIdVerificationService();
+        $pendingVerification = $idVerificationService->peekPending($pendingVerificationToken);
+        if ($pendingVerification === null) {
+            return redirect()->back()->withInput()->with('error', 'Your Government ID verification could not be found. Please verify the ID again.');
+        }
+
+        $submittedIdentityForId = [
+            'first_name'  => trim((string) $this->request->getPost('first_name')),
+            'middle_name' => trim((string) $this->request->getPost('middle_name')),
+            'last_name'   => trim((string) $this->request->getPost('last_name')),
+        ];
+
+        if (! $idVerificationService->isValidForSubmission($pendingVerification, $submittedIdentityForId)) {
+            $message = (string) ($pendingVerification['verification_status'] ?? '') === 'failed'
+                ? 'The Government ID does not match the details entered. Please correct the details or upload the correct ID.'
+                : 'The name was changed after verifying the Government ID. Please verify the ID again.';
+
+            return redirect()->back()->withInput()->with('error', $message);
+        }
+
         $requestedRoleId = (int) $this->request->getPost('role_id');
 
         // Security fix (2026-09-10 scan): role_id was previously trusted
@@ -139,7 +159,7 @@ class Users extends BaseController
             return redirect()->back()->withInput()->with('error', 'Failed to create user account.');
         }
 
-        (new GovernmentIdVerificationService())->commitPending($pendingVerificationToken, (int) $newUserId);
+        $idVerificationService->commitPending($pendingVerificationToken, (int) $newUserId);
 
         $notificationService = new NotificationService();
         $activityLogService = new ActivityLogService();

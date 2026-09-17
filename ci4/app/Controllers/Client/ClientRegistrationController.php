@@ -205,10 +205,33 @@ class ClientRegistrationController extends BaseController
 
         // The wizard's Government ID step only gates "Next" client-side -
         // never trust that alone. Require a real verification attempt to
-        // exist for this user before the registration can be finalized.
-        if ((new GovernmentIdVerificationService())->latestForUser((int) $user['user_id']) === null) {
+        // exist for this user, that it actually passed (or needs only a
+        // staff look, not a hard mismatch), and that nothing about the
+        // applicant's identity changed after it ran (e.g. editing the
+        // name/DOB/sex fields post-verification and submitting under a
+        // different identity than what was checked).
+        $idVerificationService = new GovernmentIdVerificationService();
+        $idVerification = $idVerificationService->latestForUser((int) $user['user_id']);
+
+        if ($idVerification === null) {
             return redirect()->back()->withInput()
                 ->with('error', 'Please complete the Government ID Verification step before submitting.');
+        }
+
+        $submittedIdentity = [
+            'first_name'    => trim((string) $this->request->getPost('first_name')),
+            'middle_name'   => trim((string) $this->request->getPost('middle_name')),
+            'last_name'     => trim((string) $this->request->getPost('last_name')),
+            'date_of_birth' => trim((string) $this->request->getPost('date_of_birth')),
+            'gender'        => trim((string) $this->request->getPost('gender')),
+        ];
+
+        if (! $idVerificationService->isValidForSubmission($idVerification, $submittedIdentity)) {
+            $message = (string) ($idVerification['verification_status'] ?? '') === 'failed'
+                ? 'Your Government ID does not match the details you entered. Please correct your details or upload the correct ID.'
+                : 'You changed your name, birth date, or sex after verifying your ID. Please verify your ID again.';
+
+            return redirect()->back()->withInput()->with('error', $message);
         }
 
         // PSGC Cloud address validation: the browser only ever sends codes

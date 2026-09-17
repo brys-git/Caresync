@@ -67,3 +67,12 @@
 #--------------------------------------------------------------------
 
 # logger.threshold = 4
+
+#--------------------------------------------------------------------
+# GOVERNMENT ID VERIFICATION (Claude vision, via the Anthropic API)
+#--------------------------------------------------------------------
+# https://console.anthropic.com/ - the key must be prefixed with the
+# Config class's short name, lowercased (see App\Services\
+# GovernmentIdVerificationService / Config\GovernmentIdVerification).
+
+# governmentidverification.anthropicApiKey = ''

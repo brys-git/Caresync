@@ -289,8 +289,9 @@ $latestVerification = $latest_verification ?? null;
 
                     <canvas id="captureCanvas" class="d-none"></canvas>
 
+                    <p class="text-muted small mb-2">Verification runs automatically once an ID image and type are selected. Use this only to retry.</p>
                     <div class="d-flex align-items-center gap-2 mb-3">
-                        <button type="button" class="btn btn-success" id="btnVerifyId" disabled>Verify ID</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnVerifyId" disabled>Re-check ID</button>
                         <span class="text-muted small" id="verifyHint">Choose or capture an image first.</span>
                     </div>
 
@@ -618,14 +619,44 @@ $latestVerification = $latest_verification ?? null;
         }
 
         if (step === 2) {
-            // ID verification is encouraged, not force-blocked - a
-            // provider outage or a low-confidence result shouldn't trap
-            // the applicant. We do require that an attempt was made.
-            if (!idVerificationWidget || !idVerificationWidget.wasAttempted()) {
-                document.getElementById('verifyHint').textContent = 'Please verify your ID before continuing (or contact staff if you are unable to).';
-                document.getElementById('verifyHint').classList.add('text-danger');
+            // Verification now runs automatically, so "Next" only needs to
+            // block on states that mean the applicant hasn't actually
+            // cleared this step yet: nothing attempted, a check still in
+            // flight, a stale result being re-checked after an edit, or a
+            // hard mismatch. 'verified' and 'needs_review' both proceed -
+            // a provider outage or a low-confidence result shouldn't trap
+            // the applicant; staff review the rest afterward.
+            const hint = document.getElementById('verifyHint');
+
+            if (!idVerificationWidget) {
+                return true;
+            }
+
+            if (idVerificationWidget.isRunning()) {
+                hint.textContent = 'Please wait - checking your ID…';
+                hint.classList.remove('text-danger');
                 return false;
             }
+
+            if (idVerificationWidget.isStale()) {
+                hint.textContent = 'Your details changed - please wait for the re-check to finish.';
+                hint.classList.add('text-danger');
+                return false;
+            }
+
+            const status = idVerificationWidget.getStatus();
+            if (status === 'failed') {
+                hint.textContent = 'This ID does not match your details. Please correct your details above, or upload a different ID.';
+                hint.classList.add('text-danger');
+                return false;
+            }
+
+            if (status !== 'verified' && status !== 'needs_review') {
+                hint.textContent = 'Please upload or capture your ID before continuing.';
+                hint.classList.add('text-danger');
+                return false;
+            }
+
             return true;
         }
 
@@ -763,6 +794,7 @@ $latestVerification = $latest_verification ?? null;
                 middle_name: fieldValue('middle_name'),
                 last_name: fieldValue('last_name'),
                 date_of_birth: fieldValue('date_of_birth'),
+                gender: fieldValue('gender'),
             };
         },
         resultFieldId: 'government_id_verification_id',

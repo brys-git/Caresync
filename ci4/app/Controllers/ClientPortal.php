@@ -9,6 +9,7 @@ use App\Models\PlanHolderModel;
 use App\Models\PlanModel;
 use App\Models\UserModel;
 use App\Services\ActivityLogService;
+use App\Services\GovernmentIdVerificationService;
 use App\Services\NotificationService;
 use App\Services\MembershipService;
 use App\Services\PaymentService;
@@ -42,6 +43,16 @@ class ClientPortal extends BaseController
         }
 
         $rows = $builder->get()->getResultArray();
+
+        // Task 2: surface Government ID verifications that need a human
+        // look (blurry image, provider outage, or a borderline name
+        // match) right in this same queue - one lookup per row is fine
+        // at this queue's size (pending initial-payment approvals only).
+        $idVerificationService = new GovernmentIdVerificationService();
+        foreach ($rows as &$row) {
+            $row['id_verification'] = $idVerificationService->latestForUser((int) $row['user_id']);
+        }
+        unset($row);
 
         return view('approvals/registration_queue', [
             'role_layout' => $roleId === 1 ? 'layouts/admin' : 'layouts/branch_admin',

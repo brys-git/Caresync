@@ -59,8 +59,9 @@ $pendingFieldId = $pending_field_id ?? 'government_id_pending_token';
 
         <canvas id="captureCanvas" class="d-none"></canvas>
 
+        <p class="text-muted small mb-2">Verification runs automatically once an ID image and type are selected. Use this only to retry.</p>
         <div class="d-flex align-items-center gap-2 mb-3">
-            <button type="button" class="btn btn-success" id="btnVerifyId" disabled>Verify ID</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnVerifyId" disabled>Re-check ID</button>
             <span class="text-muted small" id="verifyHint">Choose or capture an image first.</span>
         </div>
 
