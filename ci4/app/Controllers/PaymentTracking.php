@@ -7,6 +7,7 @@ use App\Models\PlanModel;
 use App\Models\PlanHolderModel;
 use App\Models\UserModel;
 use App\Services\ActivityLogService;
+use App\Services\CollectorAssignmentService;
 use App\Services\CycleService;
 use App\Services\MembershipService;
 use App\Services\NotificationService;
@@ -190,12 +191,15 @@ class PaymentTracking extends BaseController
             return redirect()->back()->withInput()->with('error', 'Selected plan does not belong to your branch.');
         }
 
-        // Cash keeps its existing role-based status (Branch Admin's own counter
-        // entries are immediately paid; Staff's need Branch Admin verification).
-        // GCash recorded here always goes through the same pending-verification
-        // pipeline as client-submitted GCash (duplicate-reference check
-        // included), rather than a second, less-verified GCash path.
-        $status = $paymentMethod === 'gcash' ? 'pending' : ($roleId === 2 ? 'paid' : 'pending');
+        // Cash recorded here is money already in hand at the counter (or in
+        // the field, for a collector - see CollectionListController::
+        // submitRecordPayment(), which deliberately mirrors this), so it
+        // posts as paid immediately regardless of who recorded it - there is
+        // nothing left to verify. GCash always goes through the
+        // pending-verification pipeline (duplicate-reference check
+        // included), because the money hasn't actually been confirmed
+        // received yet - see reviewGcash() for who verifies it.
+        $status = $paymentMethod === 'gcash' ? 'pending' : 'paid';
 
         $coverage = (new PaymentService())->projectCoverage($plan, $monthsCovered);
 
@@ -284,14 +288,62 @@ class PaymentTracking extends BaseController
         return $this->reviewGcash($paymentId, 'cancelled');
     }
 
-    private function reviewGcash(int $paymentId, string $targetStatus)
+    /**
+     * Payment Monitoring / Payment Management remarks: an editable free-text
+     * note on a single payment row (payments.remarks), reachable by Branch
+     * Admin and Staff alike - same branch-scope check as recordCash()/
+     * reviewGcash() above, no approval-state restriction since a remark is
+     * just a note, not a status change. The client's own Payment History
+     * shows this same field read-only.
+     */
+    public function saveRemarks(int $paymentId)
     {
         $roleId = (int) session('role_id');
-        if ($roleId !== 2) {
+        if (! in_array($roleId, [2, 3], true)) {
             return redirect()->to('/unauthorized');
         }
 
         $branchId = (int) session('branch_id');
+        $paymentModel = new PaymentModel();
+        $payment = $paymentModel->find($paymentId);
+
+        if (! $payment || (int) ($payment['branch_id'] ?? 0) !== $branchId) {
+            return redirect()->back()->with('error', 'That payment is not in your branch.');
+        }
+
+        $remarks = trim((string) $this->request->getPost('remarks'));
+        $paymentModel->update($paymentId, ['remarks' => $remarks !== '' ? $remarks : null]);
+
+        return redirect()->back()->with('success', 'Remarks saved.');
+    }
+
+    /**
+     * GCash approval authority (Prompt: "GCash needs approval but not from
+     * branch admin, from the collector collecting the contribution"): a
+     * Branch Admin can still review any GCash payment in their branch (kept
+     * as an oversight/override - nobody else can act if a barangay has no
+     * collector assigned yet), but the primary approver is now whichever
+     * collector is assigned to the plan holder's barangay - the same
+     * area-scoping CollectorAssignmentService already does for the
+     * Collection List. The collector's own job here is a manual one: check
+     * the reference number shown on this row against their own GCash
+     * account's transaction history before approving - there's no GCash API
+     * integration in this app to do that automatically.
+     */
+    private function reviewGcash(int $paymentId, string $targetStatus)
+    {
+        $roleId = (int) session('role_id');
+        $userId = (int) session('user_id');
+        $isBranchAdmin = $roleId === 2;
+        $isCollector = ! $isBranchAdmin && can_collect($userId);
+        if (! $isBranchAdmin && ! $isCollector) {
+            return redirect()->to('/unauthorized');
+        }
+
+        $branchId = (int) session('branch_id');
+        if ($branchId <= 0) {
+            $branchId = (int) (db_connect()->table('users')->select('branch_id')->where('user_id', $userId)->get()->getRowArray()['branch_id'] ?? 0);
+        }
         $paymentModel = new PaymentModel();
         $payment = $paymentModel->find($paymentId);
 
@@ -306,6 +358,19 @@ class PaymentTracking extends BaseController
 
         if ((int) ($payment['branch_id'] ?? 0) !== $branchId) {
             return redirect()->back()->with('error', 'This payment is outside your branch scope.');
+        }
+
+        if ($isCollector) {
+            $barangayCode = (string) (db_connect()->table('plans p')
+                ->select('ph.barangay_code')
+                ->join('plan_holders ph', 'ph.plan_holder_id = p.plan_holder_id', 'inner')
+                ->where('p.plan_id', (int) $payment['plan_id'])
+                ->get()
+                ->getRowArray()['barangay_code'] ?? '');
+
+            if (! (new CollectorAssignmentService())->canActOnBarangay($userId, $branchId, $barangayCode)) {
+                return redirect()->back()->with('error', 'This payment is outside your assigned collection area.');
+            }
         }
 
         $method = strtolower((string) ($payment['payment_method'] ?? ''));
@@ -336,9 +401,14 @@ class PaymentTracking extends BaseController
         }
 
         $rejectionReason = trim((string) $this->request->getPost('rejection_reason'));
-        $remarks = $targetStatus === 'verified'
-            ? 'GCash verified by branch admin'
-            : ('GCash rejected by branch admin' . ($rejectionReason !== '' ? (': ' . $rejectionReason) : ''));
+        $reviewerLabel = $isCollector ? 'collector' : 'branch admin';
+        // $targetStatus is 'paid' or 'cancelled' (see approveGcash()/
+        // rejectGcash() above) - this used to compare against 'verified',
+        // a value that's never actually passed in, so every approval fell
+        // through to the "rejected" branch and mislabeled its own remarks.
+        $remarks = $targetStatus === 'paid'
+            ? 'GCash verified by ' . $reviewerLabel
+            : ('GCash rejected by ' . $reviewerLabel . ($rejectionReason !== '' ? (': ' . $rejectionReason) : ''));
 
         $paymentModel->update($paymentId, [
             'status' => $targetStatus,
@@ -723,7 +793,7 @@ class PaymentTracking extends BaseController
         $status = strtolower(trim((string) $this->request->getGet('status')));
         
         $sql = "SELECT payments.*, users.first_name, users.last_name, plan_holders.unique_identifier, plan_holders.plan_holder_id,
-                staff_u.first_name AS staff_first_name, staff_u.last_name AS staff_last_name, plans.payment_coverage_until
+                staff_u.first_name AS staff_first_name, staff_u.last_name AS staff_last_name, plans.payment_coverage_until, plans.months_paid
             FROM payments
             INNER JOIN plans ON plans.plan_id = payments.plan_id
             INNER JOIN plan_holders ON plan_holders.plan_holder_id = plans.plan_holder_id

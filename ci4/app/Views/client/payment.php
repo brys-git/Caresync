@@ -87,6 +87,12 @@
                     ['label' => 'Remaining Balance', 'value' => $plan['remaining_balance'] ?? 0, 'money' => true],
                     ['label' => 'Next Due Date', 'value' => cs_date($plan['next_due_date'] ?? null)],
                 ]]) ?>
+                <?php $planHolderRemarks = trim((string) ($access['plan_holder']['remarks'] ?? '')); ?>
+                <?php if ($planHolderRemarks !== ''): ?>
+                    <div class="alert alert-info mt-3 mb-0">
+                        <strong>Note from your branch:</strong> <?= esc($planHolderRemarks) ?>
+                    </div>
+                <?php endif; ?>
             </div>
             <div class="cs-panel__body cs-panel__body--flush">
                 <?php if (empty($payments)): ?>
@@ -104,31 +110,19 @@
                                     <th>Months Covered</th>
                                     <th class="cs-num">Amount</th>
                                     <th>Payment Method</th>
-                                    <th>Reference Number</th>
-                                    <th>Status</th>
-                                    <th>Receipt</th>
+                                    <th>Reference / OR</th>
+                                    <th>Remarks</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php foreach ($payments as $payment): ?>
-                                    <?php $status = strtolower((string) ($payment['status'] ?? 'pending')); ?>
                                     <tr>
                                         <td class="text-nowrap"><?= cs_date($payment['payment_date'] ?? null) ?></td>
-                                        <td><?= esc((string) ((int) ($payment['months_covered'] ?? 1))) ?></td>
+                                        <td class="text-nowrap"><?= cs_coverage_period($payment['coverage_start'] ?? null, (int) ($payment['months_covered'] ?? 1)) ?></td>
                                         <td class="cs-num"><?= cs_money($payment['amount'] ?? 0) ?></td>
                                         <td><?= esc(strtoupper((string) ($payment['payment_method'] ?? '-'))) ?></td>
-                                        <td><?= esc((string) ($payment['reference_number'] ?? '-')) ?></td>
-                                        <td><?= cs_status($status) ?></td>
-                                        <td>
-                                            <?php if ($status === 'paid'): ?>
-                                                <a class="btn btn-ghost btn-sm" href="<?= base_url('client/payment/download-receipt/' . (int) $payment['payment_id']) ?>">
-                                                    <i class="ti ti-download" aria-hidden="true"></i>
-                                                    <span class="cs-visually-hidden">Download receipt</span>
-                                                </a>
-                                            <?php else: ?>
-                                                <span class="text-muted small">&mdash;</span>
-                                            <?php endif; ?>
-                                        </td>
+                                        <td><code><?= esc((string) ($payment['official_receipt_number'] ?? $payment['reference_number'] ?? '-')) ?></code></td>
+                                        <td><?= esc((string) ($payment['remarks'] ?: '-')) ?></td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>

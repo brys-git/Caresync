@@ -23,6 +23,9 @@ $statusLabels = [
         .cl-table td.cl-actions-cell { justify-content: center; }
         .cl-table td.cl-actions-cell::before { display: none; }
     }
+    .cl-remarks-form { display: flex; gap: .4rem; align-items: center; min-width: 180px; }
+    .cl-remarks-form input { flex: 1 1 auto; }
+    @media (max-width: 575.98px) { .cl-remarks-form { min-width: 0; } }
     .cl-statbar { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: .75rem; margin-bottom: 1rem; }
     .cl-stat { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: .75rem 1rem; }
     .cl-stat__value { font-size: 1.25rem; font-weight: 700; }
@@ -84,6 +87,25 @@ $statusLabels = [
         </div>
     </form>
 
+    <?php if (isset($gcash_rows)): ?>
+        <section class="cs-panel mb-4">
+            <div class="cs-panel__head">
+                <h2 class="cs-panel__title">GCash Payments Awaiting Your Verification (<?= count($gcash_rows) ?>)</h2>
+            </div>
+            <div class="cs-panel__body cs-panel__body--flush">
+                <p class="cs-muted px-3 pt-3 mb-0">Check the reference number below against your own GCash account's transaction history before approving.</p>
+                <?php $this->setData([
+                    'ap_rows' => $gcash_rows,
+                    'ap_can_approve' => true,
+                    'ap_action_base' => $gcash_action_base ?? '',
+                    'ap_show_proof' => (bool) ($supports_proof_upload ?? false),
+                    'ap_empty_message' => 'No GCash payments waiting on you right now.',
+                ]) ?>
+                <?= $this->include('partials/advance_payment_table') ?>
+            </div>
+        </section>
+    <?php endif; ?>
+
     <section class="cs-panel mb-4">
         <div class="cs-panel__head"><h2 class="cs-panel__title">Visit Today (<?= count($visit_rows) ?>)</h2></div>
         <div class="cs-panel__body cs-panel__body--flush">
@@ -106,6 +128,7 @@ $statusLabels = [
                                 <th class="cs-num">Amount Due</th>
                                 <th>Status</th>
                                 <th>Contact</th>
+                                <th>Remarks</th>
                                 <?php if (! empty($can_record_payment)): ?><th class="cs-table__actions">Action</th><?php endif; ?>
                             </tr>
                         </thead>
@@ -123,6 +146,13 @@ $statusLabels = [
                                     <td class="cs-num" data-label="Amount Due"><?= cs_money($row['amount_due']) ?></td>
                                     <td data-label="Status"><?= cs_status($row['collection_status'], $statusLabels[$row['collection_status']] ?? null) ?></td>
                                     <td data-label="Contact"><?= esc($row['contact_number']) ?></td>
+                                    <td data-label="Remarks">
+                                        <form class="cl-remarks-form" method="post" action="<?= base_url($remarks_route_base . '/' . (int) $row['plan_holder_id']) ?>">
+                                            <?= csrf_field() ?>
+                                            <input type="text" name="remarks" class="form-control form-control-sm" value="<?= esc($row['remarks']) ?>" placeholder="Leave a note about this client&hellip;" maxlength="1000">
+                                            <button type="submit" class="btn btn-outline-secondary btn-sm">Save</button>
+                                        </form>
+                                    </td>
                                     <?php if (! empty($can_record_payment)): ?>
                                         <td class="cl-actions-cell">
                                             <a class="btn btn-primary btn-sm" href="<?= base_url('collector/collection-list/record-payment/' . (int) $row['plan_id']) ?>">

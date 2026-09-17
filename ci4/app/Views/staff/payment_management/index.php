@@ -30,6 +30,9 @@
             'ap_can_approve' => false,
             'ap_action_base' => '',
             'ap_show_proof' => false,
+            'ap_show_remarks' => true,
+            'ap_remarks_editable' => true,
+            'ap_remarks_action_base' => base_url('staff/payment-management/save-remarks'),
             'ap_empty_message' => 'No payment records found.',
         ]) ?>
         <?= $this->include('partials/advance_payment_table') ?>

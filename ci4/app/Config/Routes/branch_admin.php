@@ -36,6 +36,7 @@ $routes->group('branch-admin', ['filter' => 'auth'], static function (RouteColle
     $routes->post('payment-tracking/record-cash', 'PaymentTracking::recordCash', ['filter' => 'role:2']);
     $routes->post('payment-tracking/approve/(:num)', 'PaymentTracking::approveGcash/$1', ['filter' => 'role:2']);
     $routes->post('payment-tracking/reject/(:num)', 'PaymentTracking::rejectGcash/$1', ['filter' => 'role:2']);
+    $routes->post('payment-tracking/save-remarks/(:num)', 'PaymentTracking::saveRemarks/$1', ['filter' => 'role:2']);
 
     // Service balance continuation
     $routes->get('service-balances', 'ServiceBalances::index', ['filter' => 'role:2']);
@@ -56,6 +57,13 @@ $routes->group('branch-admin', ['filter' => 'auth'], static function (RouteColle
     // Collection List (who has paid, who hasn't) - every collector in this branch.
     $routes->get('collection-list', 'CollectionListController::branchAdmin', ['filter' => 'role:2']);
     $routes->get('collection-list/print', 'CollectionListController::printBranchAdmin', ['filter' => 'role:2']);
+    $routes->post('collection-list/save-remarks/(:num)', 'CollectionListController::saveRemarks/$1', ['filter' => 'role:2']);
+
+    // Collector Assignments - assigns a barangay (or the whole branch) to a
+    // collector. Collection List and GCash approval both depend on this.
+    $routes->get('collector-assignments', 'BranchAdmin\CollectorAssignmentController::index', ['filter' => 'role:2']);
+    $routes->post('collector-assignments/store', 'BranchAdmin\CollectorAssignmentController::store', ['filter' => 'role:2']);
+    $routes->post('collector-assignments/delete/(:num)', 'BranchAdmin\CollectorAssignmentController::destroy/$1', ['filter' => 'role:2']);
 
     // Service Package Management
     $routes->get('service-package', 'BranchAdmin\ServiceOfferController::index', ['filter' => 'role:2']);

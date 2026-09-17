@@ -72,6 +72,11 @@ if ($activeTab === '') {
                     'ap_can_approve' => (bool) ($can_approve ?? false),
                     'ap_action_base' => base_url('branch-admin/payment-tracking'),
                     'ap_show_proof' => (bool) ($supports_proof_upload ?? false),
+                    'ap_show_status' => false,
+                    'ap_show_remarks' => true,
+                    'ap_remarks_editable' => true,
+                    'ap_remarks_action_base' => base_url('branch-admin/payment-tracking/save-remarks'),
+                    'ap_remaining_from_months_paid' => true,
                     'ap_empty_message' => 'No payment records found.',
                 ]) ?>
                 <?= $this->include('partials/advance_payment_table') ?>

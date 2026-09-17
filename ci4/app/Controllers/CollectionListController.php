@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Services\CollectorAssignmentService;
 use App\Services\MembershipService;
 use App\Services\PaymentService;
 use CodeIgniter\HTTP\ResponseInterface;
@@ -69,6 +70,7 @@ class CollectionListController extends BaseController
             // from this list - recording is a collector-in-the-field action.
             'can_record_payment' => false,
             'print_url' => base_url('branch-admin/collection-list/print') . '?' . http_build_query($filters),
+            'remarks_route_base' => 'branch-admin/collection-list/save-remarks',
         ]);
     }
 
@@ -105,6 +107,9 @@ class CollectionListController extends BaseController
             'show_collector_filter' => false,
             'can_record_payment' => true,
             'print_url' => base_url('collector/collection-list/print') . '?' . http_build_query($filters),
+            'remarks_route_base' => 'collector/collection-list/save-remarks',
+            'gcash_rows' => $this->queryPendingGcash($branchId, $branchWide ? null : $assignedBarangays),
+            'gcash_action_base' => base_url('collector/collection-list'),
         ]);
     }
 
@@ -258,6 +263,53 @@ class CollectionListController extends BaseController
         return $row;
     }
 
+    /**
+     * Saves a plan holder's persistent Remarks note from the Collection
+     * List table (Prompt D) - one free-text field, overwritten on each
+     * save, reachable by both entry points (collector/save-remarks and
+     * branch-admin/save-remarks routes share this method). Area-scoped the
+     * same way loadScopedPlan() scopes Record Payment: branch always,
+     * barangay only for a collector without a branch-wide assignment - a
+     * Branch Admin (role_id 2) is branch-scoped only, same as the rest of
+     * this controller's branchAdmin() path.
+     */
+    public function saveRemarks(int $planHolderId): ResponseInterface
+    {
+        $userId = (int) session('user_id');
+        $branchId = (int) session('branch_id');
+        if ($branchId <= 0) {
+            $branchId = (int) (db_connect()->table('users')->select('branch_id')->where('user_id', $userId)->get()->getRowArray()['branch_id'] ?? 0);
+        }
+
+        $planHolder = db_connect()->table('plan_holders')
+            ->select('plan_holder_id, branch_id, barangay_code')
+            ->where('plan_holder_id', $planHolderId)
+            ->where('status', 'active')
+            ->get()
+            ->getRowArray();
+
+        if (! $planHolder || (int) $planHolder['branch_id'] !== $branchId) {
+            return redirect()->to('/unauthorized')->with('error', 'That client is not in your area.');
+        }
+
+        if ((int) session('role_id') !== 2) {
+            $branchWide = $this->hasBranchWideAssignment($userId, $branchId);
+            if (! $branchWide) {
+                $assigned = $this->assignedBarangays($userId, $branchId);
+                if ($assigned !== [] && ! in_array((string) $planHolder['barangay_code'], $assigned, true)) {
+                    return redirect()->to('/unauthorized')->with('error', 'That client is not in your collection area.');
+                }
+            }
+        }
+
+        $remarks = trim((string) $this->request->getPost('remarks'));
+        db_connect()->table('plan_holders')
+            ->where('plan_holder_id', $planHolderId)
+            ->update(['remarks' => $remarks !== '' ? $remarks : null]);
+
+        return redirect()->back()->with('success', 'Remarks saved.');
+    }
+
     public function printBranchAdmin(): string
     {
         $branchId = (int) session('branch_id');
@@ -349,7 +401,7 @@ class CollectionListController extends BaseController
     {
         $sql = "SELECT
                 pl.plan_id, pl.monthly_fee, pl.next_due_date, pl.overdue_months, pl.payment_coverage_until,
-                ph.plan_holder_id, ph.unique_identifier, ph.address_barangay, ph.barangay_code, ph.address_city,
+                ph.plan_holder_id, ph.unique_identifier, ph.address_barangay, ph.barangay_code, ph.address_city, ph.remarks,
                 u.first_name, u.last_name, u.contact_number,
                 CASE
                     WHEN pl.next_due_date IS NULL THEN 'no_balance_due'
@@ -428,45 +480,70 @@ class CollectionListController extends BaseController
                 'amount_due' => $amountDue,
                 'collection_status' => $status,
                 'can_visit' => in_array($status, ['overdue', 'due'], true),
+                'remarks' => (string) ($row['remarks'] ?? ''),
             ];
         }
 
         return $result;
     }
 
+    /**
+     * GCash payments awaiting this collector's verification: pending GCash
+     * rows for plan holders inside their assigned area, shaped exactly like
+     * partials/advance_payment_table.php expects (same columns
+     * PaymentTracking's paymentRows() selects) so that partial can render
+     * this table too, Approve/Reject buttons and all - see collector()
+     * above and PaymentTracking::reviewGcash()'s area-scope check, which
+     * this query's WHERE clause mirrors.
+     *
+     * @param string[]|null $limitToBarangays null = no area restriction (branch-wide assignment)
+     */
+    private function queryPendingGcash(int $branchId, ?array $limitToBarangays): array
+    {
+        if ($limitToBarangays === []) {
+            return [];
+        }
+
+        $sql = "SELECT payments.*, users.first_name, users.last_name, plan_holders.unique_identifier, plan_holders.plan_holder_id,
+                staff_u.first_name AS staff_first_name, staff_u.last_name AS staff_last_name, plans.payment_coverage_until
+            FROM payments
+            INNER JOIN plans ON plans.plan_id = payments.plan_id
+            INNER JOIN plan_holders ON plan_holders.plan_holder_id = plans.plan_holder_id
+            INNER JOIN users ON users.user_id = plan_holders.user_id
+            LEFT JOIN users staff_u ON staff_u.user_id = payments.received_by
+            WHERE payments.branch_id = ? AND payments.status = 'pending' AND payments.payment_method = 'gcash'";
+        $params = [$branchId];
+
+        if ($limitToBarangays !== null) {
+            $sql .= ' AND plan_holders.barangay_code IN (' . implode(',', array_fill(0, count($limitToBarangays), '?')) . ')';
+            $params = array_merge($params, $limitToBarangays);
+        }
+
+        $sql .= ' ORDER BY payments.payment_date DESC, payments.payment_id DESC';
+
+        return db_connect()->query($sql, $params)->getResultArray();
+    }
+
+    /**
+     * These three delegate to CollectorAssignmentService, which
+     * PaymentTracking's collector-approval scope check also uses - kept as
+     * private wrappers here since every call site in this file already
+     * calls them by this name.
+     */
     private function branchCollectors(int $branchId): array
     {
-        return db_connect()->table('users u')
-            ->select('u.user_id, u.first_name, u.last_name')
-            ->join('collector_assignments ca', 'ca.user_id = u.user_id', 'inner')
-            ->where('ca.branch_id', $branchId)
-            ->where('(u.role_id = 5 OR u.is_collector = 1)', null, false)
-            ->groupBy('u.user_id')
-            ->get()
-            ->getResultArray();
+        return (new CollectorAssignmentService())->branchCollectorsWithAssignments($branchId);
     }
 
     /** @return string[] barangay_codes this user is assigned to in this branch. */
     private function assignedBarangays(int $userId, int $branchId): array
     {
-        $rows = db_connect()->table('collector_assignments')
-            ->select('barangay_code')
-            ->where('user_id', $userId)
-            ->where('branch_id', $branchId)
-            ->where('barangay_code IS NOT NULL', null, false)
-            ->get()
-            ->getResultArray();
-
-        return array_column($rows, 'barangay_code');
+        return (new CollectorAssignmentService())->assignedBarangays($userId, $branchId);
     }
 
     private function hasBranchWideAssignment(int $userId, int $branchId): bool
     {
-        return db_connect()->table('collector_assignments')
-            ->where('user_id', $userId)
-            ->where('branch_id', $branchId)
-            ->where('barangay_code IS NULL', null, false)
-            ->countAllResults() > 0;
+        return (new CollectorAssignmentService())->hasBranchWideAssignment($userId, $branchId);
     }
 
     /**

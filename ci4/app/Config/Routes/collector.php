@@ -25,4 +25,13 @@ $routes->group('collector', ['filter' => 'auth'], static function (RouteCollecti
     $routes->get('collection-list/print', 'CollectionListController::printCollector', ['filter' => 'collector']);
     $routes->get('collection-list/record-payment/(:num)', 'CollectionListController::recordPaymentForm/$1', ['filter' => 'collector']);
     $routes->post('collection-list/record-payment/(:num)', 'CollectionListController::submitRecordPayment/$1', ['filter' => 'collector']);
+    $routes->post('collection-list/save-remarks/(:num)', 'CollectionListController::saveRemarks/$1', ['filter' => 'collector']);
+
+    // GCash approval: the collector assigned to a client's barangay
+    // verifies the reference number against their own GCash account and
+    // approves/rejects - see PaymentTracking::reviewGcash()'s area-scope
+    // check. Path shape (.../approve/$1, .../reject/$1) matches what
+    // partials/advance_payment_table.php builds from ap_action_base.
+    $routes->post('collection-list/approve/(:num)', 'PaymentTracking::approveGcash/$1', ['filter' => 'collector']);
+    $routes->post('collection-list/reject/(:num)', 'PaymentTracking::rejectGcash/$1', ['filter' => 'collector']);
 });
