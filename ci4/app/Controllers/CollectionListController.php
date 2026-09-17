@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Services\CollectorAssignmentService;
+use App\Services\CommissionService;
 use App\Services\MembershipService;
 use App\Services\PaymentService;
 use CodeIgniter\HTTP\ResponseInterface;
@@ -209,8 +210,16 @@ class CollectionListController extends BaseController
             return redirect()->back()->withInput()->with('error', 'Failed to record payment. Please try again.');
         }
 
+        $projectedCommission = (new CommissionService())->forPayment($amount);
+
+        // Flash messages are flattened to plain text (caresync.js reads
+        // .textContent when promoting them to a toast), so this can't use
+        // cs_money() - its peso sign is a CSS ::before on the <span> it
+        // returns, which would vanish along with the stripped markup.
+        $commissionText = '₱' . number_format($projectedCommission, 2);
+
         return redirect()->to(base_url('collector/collection-list'))
-            ->with('success', 'Payment recorded for ' . $plan['client_name'] . '. It now shows as Awaiting Verification until your branch admin verifies it.');
+            ->with('success', 'Payment recorded for ' . $plan['client_name'] . '. It now shows as Awaiting Verification. Your ' . $commissionText . ' commission will count once your branch admin verifies it.');
     }
 
     /**
@@ -308,6 +317,63 @@ class CollectionListController extends BaseController
             ->update(['remarks' => $remarks !== '' ? $remarks : null]);
 
         return redirect()->back()->with('success', 'Remarks saved.');
+    }
+
+    /**
+     * Fix Prompts Task 4: a collector's own 10% commission, per client, for
+     * a date range (default: first day of this month through today). Uses
+     * CommissionService - the exact same cash+verified eligibility rule
+     * the admin/branch Commission Report uses, so the two always agree for
+     * the same range. Security: always session('user_id') - there is no
+     * request parameter that could name a different collector.
+     */
+    public function commission(): ResponseInterface|string
+    {
+        $userId = (int) session('user_id');
+        $range = $this->readCommissionRange();
+
+        $commissionService = new CommissionService();
+
+        return view('collection_list/commission', [
+            'role_layout' => $this->collectorLayout(),
+            'page_title' => 'My Commission',
+            'page_sub' => 'Your 10% commission on verified field collections.',
+            'per_client' => $commissionService->perClient($userId, $range['from'], $range['to']),
+            'pending' => $commissionService->pendingPayments($userId, $range['from'], $range['to']),
+            'totals' => $commissionService->totals($userId, $range['from'], $range['to']),
+            'range' => $range,
+        ]);
+    }
+
+    /**
+     * date_from/date_to query params, or a named 'quick' range (this_month/
+     * last_month/all_time) - defaults to first day of the current month
+     * through today when nothing is given.
+     */
+    private function readCommissionRange(): array
+    {
+        $request = service('request');
+        $quick = (string) ($request->getGet('quick') ?? '');
+        $dateFrom = trim((string) ($request->getGet('date_from') ?? ''));
+        $dateTo = trim((string) ($request->getGet('date_to') ?? ''));
+
+        if ($quick === 'last_month') {
+            $dateFrom = date('Y-m-01', strtotime('first day of last month'));
+            $dateTo = date('Y-m-t', strtotime('last day of last month'));
+        } elseif ($quick === 'all_time') {
+            $dateFrom = '';
+            $dateTo = '';
+        } elseif ($quick === 'this_month' || ($dateFrom === '' && $dateTo === '')) {
+            $quick = 'this_month';
+            $dateFrom = date('Y-m-01');
+            $dateTo = date('Y-m-d');
+        }
+
+        return [
+            'quick' => $quick,
+            'from' => $dateFrom !== '' ? $dateFrom : null,
+            'to' => $dateTo !== '' ? $dateTo : null,
+        ];
     }
 
     public function printBranchAdmin(): string

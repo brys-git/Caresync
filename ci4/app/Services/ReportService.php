@@ -354,19 +354,24 @@ class ReportService
     /**
      * Panel brief, section 7/8: "Commission Report - commission earned per
      * agent/collector," at the section 8 rate (10% of amount collected).
+     *
+     * Fix Prompts Task 4: this used to run off getCollectionsByCollector(),
+     * which counts every verified payment regardless of method - including
+     * desk cash/GCash a Branch Admin recorded through Payment Tracking, not
+     * just cash a collector actually collected in the field. Delegates to
+     * CommissionService::reportRows() instead (same cash-only eligibility
+     * rule the collector's own commission page uses), so this report and
+     * that page always agree for the same date range. Return shape is
+     * unchanged: user_id/first_name/last_name/role_name/transaction_count/
+     * total_collected/commission/net_remitted.
      */
     public function getCommissionReport(array $filters): array
     {
-        $rows = $this->getCollectionsByCollector($filters);
-
-        foreach ($rows as &$row) {
-            $commission = round($row['total_collected'] * self::COMMISSION_RATE, 2);
-            $row['commission'] = $commission;
-            $row['net_remitted'] = round($row['total_collected'] - $commission, 2);
-        }
-        unset($row);
-
-        return $rows;
+        return (new CommissionService())->reportRows(
+            (int) ($filters['branch_id'] ?? 0) ?: null,
+            (string) ($filters['date_from'] ?? '') ?: null,
+            (string) ($filters['date_to'] ?? '') ?: null
+        );
     }
 
     private function collectorBaseQuery(array $filters)

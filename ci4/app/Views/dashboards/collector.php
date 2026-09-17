@@ -21,7 +21,9 @@
             <div class="card"><div class="card-body"><div class="text-muted small">Collected This Month</div><div class="h4 mb-0">P<?= esc(number_format((float) ($s['month_collected'] ?? 0), 2)) ?></div></div></div>
         </div>
         <div class="col-lg-3 col-md-6">
-            <div class="card"><div class="card-body"><div class="text-muted small">Estimated Commission (This Month)</div><div class="h4 mb-0 text-success">P<?= esc(number_format((float) ($s['estimated_commission'] ?? 0), 2)) ?></div></div></div>
+            <a href="<?= base_url('collector/commission') ?>" class="text-decoration-none">
+                <div class="card"><div class="card-body"><div class="text-muted small">Commission This Month</div><div class="h4 mb-0 text-success">P<?= esc(number_format((float) ($s['estimated_commission'] ?? 0), 2)) ?></div></div></div>
+            </a>
         </div>
         <div class="col-lg-3 col-md-6">
             <div class="card"><div class="card-body"><div class="text-muted small">Total Transactions</div><div class="h4 mb-0"><?= esc((string) ($s['transaction_count'] ?? 0)) ?></div></div></div>

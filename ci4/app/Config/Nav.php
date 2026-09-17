@@ -136,6 +136,7 @@ class Nav extends BaseConfig
                         // visible link that 403s for them is worse than no
                         // link. See the 'capability' doc comment above.
                         ['key' => 'collections',  'label' => 'Collection list',  'icon' => 'ti-map-pin',          'url' => 'collector/collection-list', 'capability' => 'collect'],
+                        ['key' => 'commission',   'label' => 'My commission',    'icon' => 'ti-coin',             'url' => 'collector/commission',      'capability' => 'collect'],
                     ],
                 ],
                 [
@@ -162,6 +163,7 @@ class Nav extends BaseConfig
                         // an Unverified total for this same feature).
                         ['key' => 'dashboard',    'label' => "Today's route",   'icon' => 'ti-route',   'url' => 'dashboard/collector'],
                         ['key' => 'collections',  'label' => 'Collection list', 'icon' => 'ti-map-pin', 'url' => 'collector/collection-list'],
+                        ['key' => 'commission',   'label' => 'My commission',   'icon' => 'ti-coin',    'url' => 'collector/commission'],
                     ],
                 ],
             ],

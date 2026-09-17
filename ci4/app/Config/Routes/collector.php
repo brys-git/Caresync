@@ -22,6 +22,7 @@ $routes->group('collector', ['filter' => 'auth'], static function (RouteCollecti
     // Collection List (who has paid, who hasn't) - reachable by role_id 5
     // and by is_collector-flagged Staff alike.
     $routes->get('collection-list', 'CollectionListController::collector', ['filter' => 'collector']);
+    $routes->get('commission', 'CollectionListController::commission', ['filter' => 'collector']);
     $routes->get('collection-list/print', 'CollectionListController::printCollector', ['filter' => 'collector']);
     $routes->get('collection-list/record-payment/(:num)', 'CollectionListController::recordPaymentForm/$1', ['filter' => 'collector']);
     $routes->post('collection-list/record-payment/(:num)', 'CollectionListController::submitRecordPayment/$1', ['filter' => 'collector']);

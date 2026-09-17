@@ -289,12 +289,20 @@ class AnalyticsService
 
         $monthTotal = (float) ($monthCollected['total'] ?? 0);
 
+        // Fix Prompts Task 4: commission is 10% of verified CASH collected
+        // by this collector, not every payment method - a client's own
+        // GCash payment (received_by often null anyway) or desk GCash/cash
+        // someone else recorded never earns this account commission. Delegates
+        // to CommissionService so this dashboard card and the admin Commission
+        // Report can never quietly disagree on what counts.
+        $commissionTotals = (new CommissionService())->totals($userId, date('Y-m-01'), date('Y-m-d'));
+
         return [
             'total_collected' => (float) ($totalCollected['total'] ?? 0),
             'month_collected' => $monthTotal,
             'today_collected' => (float) ($todayCollected['total'] ?? 0),
             'transaction_count' => $transactionCount,
-            'estimated_commission' => round($monthTotal * ReportService::COMMISSION_RATE, 2),
+            'estimated_commission' => $commissionTotals['commission'],
             'recent_payments' => $recentPayments,
         ];
     }

@@ -121,6 +121,9 @@ a:hover { text-decoration: underline; }
 .cs-money::before { content: "₱"; opacity: .55; margin-right: .12em; font-weight: 500; }
 .cs-money--bare::before { content: none; }
 .cs-money--neg { color: var(--cs-stop); }
+/* Collector commission figures - the same brass token the stat-rail's own
+   money tone already uses (cs-stat__value--money), extended to table cells. */
+.cs-money--brass { color: var(--cs-brass); font-weight: 600; }
 
 /* Keyboard users get a ring everywhere, once, defined here. */
 :focus-visible {
