@@ -18,6 +18,28 @@ class MembershipService
     public const DEFAULT_PACKAGE_ID = 1;
 
     /**
+     * Fix Prompts Task 5A: the active Damayan program row, for display in
+     * the new Plan Builder catalogue - plan_price/term_months/package_id
+     * included. Deliberately does not touch getProgramInfo() or any of
+     * its existing callers, which keep running on the constants above
+     * (registration/payments read from those unchanged in 5A - see
+     * PlanBuilderService's own docblock).
+     */
+    public static function activeProgram(): ?array
+    {
+        $db = db_connect();
+        if (! $db->tableExists('membership_programs')) {
+            return null;
+        }
+
+        return $db->table('membership_programs')
+            ->where('is_active', 1)
+            ->orderBy('program_id', 'ASC')
+            ->get()
+            ->getRowArray() ?: null;
+    }
+
+    /**
      * Panel brief, section 10: "ensure package/plan type is clearly
      * distinguished throughout the interface." getProgramInfo() below
      * always names the one generic legacy program regardless of which

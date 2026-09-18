@@ -65,15 +65,32 @@ $routes->post('payments/verify-initial/(:num)', 'ClientPortal::verifyInitialPaym
 $routes->get('users/create', 'Users::create', ['filter' => 'role:1,2,3']);
 $routes->post('users/create', 'Users::store', ['filter' => 'role:1,2,3']);
 
-// Create Plan (panel brief section 1: create a plan supporting different
-// packages/benefit tiers, and offer upgrade/cross-sell paths based on a
-// plan holder's current plan). Admin: 1, BranchAdmin: 2, Staff: 3 - the
-// controller's own ensureAccess() is the same set, this is defense in
-// depth. Previously unrouted entirely - this whole feature (including the
-// one place that can assign a package to a plan holder's plan at all)
-// existed in code but had no route pointing at it.
-$routes->get('packages', 'Packages::index', ['filter' => 'role:1,2,3']);
+// Fix Prompts Task 5A: the old four-step Packages module (Create Package/
+// Add Item/Set Price Version/Assign to Plan Holder) is replaced by the
+// real Plan Builder below as the "Plan builder" nav destination. /packages
+// itself now redirects there. Packages::storePackage()/storeItem()/
+// storeVersion()/assignToPlan() and their POST routes are left in place
+// (not deleted - see PlanBuilder's own docblock) since assignToPlan() is
+// "the one place that can assign a package to a plan holder's plan at
+// all" and this prompt's brief explicitly excludes a plan-holder-
+// assignment UI from the new pages - but as of this redirect, nothing in
+// the app links to any of these four POST routes anymore (all lived only
+// in packages/index.php's own form, confirmed by grepping every view).
+// Flagged to the user rather than silently dropped.
+$routes->addRedirect('packages', 'plan-builder', 301);
 $routes->post('packages/create', 'Packages::storePackage', ['filter' => 'role:1,2,3']);
 $routes->post('packages/add-item', 'Packages::storeItem', ['filter' => 'role:1,2,3']);
 $routes->post('packages/add-version', 'Packages::storeVersion', ['filter' => 'role:1,2,3']);
 $routes->post('packages/assign-plan', 'Packages::assignToPlan', ['filter' => 'role:1,2,3']);
+
+// Plan Builder (Fix Prompts Task 5A): a plan = one membership_programs
+// row + its one entitled package + that package's inclusions. Create/
+// edit/toggle are System Admin only; Branch Admin/Staff get read-only
+// index/show - see PlanBuilderService.
+$routes->get('plan-builder', 'PlanBuilder::index', ['filter' => 'role:1,2,3']);
+$routes->get('plan-builder/create', 'PlanBuilder::create', ['filter' => 'role:1']);
+$routes->post('plan-builder/store', 'PlanBuilder::store', ['filter' => 'role:1']);
+$routes->get('plan-builder/(:num)', 'PlanBuilder::show/$1', ['filter' => 'role:1,2,3']);
+$routes->get('plan-builder/(:num)/edit', 'PlanBuilder::edit/$1', ['filter' => 'role:1']);
+$routes->post('plan-builder/(:num)/update', 'PlanBuilder::update/$1', ['filter' => 'role:1']);
+$routes->post('plan-builder/(:num)/toggle', 'PlanBuilder::toggle/$1', ['filter' => 'role:1']);

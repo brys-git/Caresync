@@ -58,7 +58,7 @@ class Nav extends BaseConfig
                     'items' => [
                         ['key' => 'branches', 'label' => 'Branches',           'icon' => 'ti-building-community', 'url' => 'admin/branch-management'],
                         ['key' => 'offers',   'label' => 'Services & packages', 'icon' => 'ti-package',            'url' => 'admin/service-offer'],
-                        ['key' => 'plans',    'label' => 'Plan builder',        'icon' => 'ti-clipboard-plus',     'url' => 'packages'],
+                        ['key' => 'plans',    'label' => 'Plan builder',        'icon' => 'ti-clipboard-plus',     'url' => 'plan-builder'],
                         ['key' => 'users',    'label' => 'User accounts',       'icon' => 'ti-user-plus',          'url' => 'users/create'],
                     ],
                 ],
@@ -113,7 +113,7 @@ class Nav extends BaseConfig
                     'title' => 'Branch',
                     'items' => [
                         ['key' => 'offers', 'label' => 'Services & packages', 'icon' => 'ti-package',       'url' => 'branch-admin/service-package'],
-                        ['key' => 'plans',  'label' => 'Plan builder',        'icon' => 'ti-clipboard-plus', 'url' => 'packages'],
+                        ['key' => 'plans',  'label' => 'Plan builder',        'icon' => 'ti-clipboard-plus', 'url' => 'plan-builder'],
                         ['key' => 'staff',  'label' => 'Staff monitoring',    'icon' => 'ti-id-badge',      'url' => 'branch-admin/staff-monitoring'],
                         ['key' => 'users',  'label' => 'User accounts',       'icon' => 'ti-user-plus',     'url' => 'users/create'],
                     ],
@@ -142,7 +142,7 @@ class Nav extends BaseConfig
                 [
                     'title' => 'Records',
                     'items' => [
-                        ['key' => 'plans',   'label' => 'Plan builder', 'icon' => 'ti-clipboard-plus', 'url' => 'packages'],
+                        ['key' => 'plans',   'label' => 'Plan builder', 'icon' => 'ti-clipboard-plus', 'url' => 'plan-builder'],
                         ['key' => 'reports', 'label' => 'Reports',      'icon' => 'ti-file-text',      'url' => 'staff/reports'],
                     ],
                 ],
