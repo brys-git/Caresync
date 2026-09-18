@@ -241,50 +241,6 @@ trait ClientPortalTrait
     }
 
     /**
-     * Parse beneficiary name into components
-     */
-    protected function parseBeneficiaryName(string $name): array
-    {
-        $cleaned = trim(preg_replace('/\s+/', ' ', $name));
-        if ($cleaned === '') {
-            return [
-                'first_name' => '-',
-                'middle_name' => '',
-                'last_name' => '',
-                'name_extension' => null,
-            ];
-        }
-
-        $parts = explode(' ', $cleaned);
-        $extension = null;
-        $extensions = ['JR', 'SR', 'II', 'III', 'IV'];
-
-        $last = strtoupper($parts[count($parts) - 1]);
-        if (in_array($last, $extensions, true)) {
-            $extension = array_pop($parts);
-        }
-
-        if (count($parts) === 1) {
-            return [
-                'first_name' => $parts[0],
-                'middle_name' => '',
-                'last_name' => '',
-                'name_extension' => $extension,
-            ];
-        }
-
-        $lastName = array_pop($parts);
-        $firstName = implode(' ', $parts);
-
-        return [
-            'first_name' => $firstName,
-            'middle_name' => '',
-            'last_name' => $lastName,
-            'name_extension' => $extension,
-        ];
-    }
-
-    /**
      * Get nullable value from POST data
      */
     protected function nullablePost(string $key): ?string

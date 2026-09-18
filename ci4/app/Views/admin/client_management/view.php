@@ -91,17 +91,26 @@
                                     <table class="cs-table cs-table--compact mb-0">
                                         <thead>
                                             <tr>
-                                                <?php foreach (array_keys($beneficiaries[0]) as $column): ?>
-                                                    <th><?= esc(ucwords(str_replace('_', ' ', (string) $column))) ?></th>
-                                                <?php endforeach; ?>
+                                                <th>Name</th>
+                                                <th>Relationship</th>
+                                                <th>Birthday</th>
+                                                <th>Primary</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             <?php foreach ($beneficiaries as $beneficiary): ?>
+                                                <?php
+                                                $fullName = trim(implode(' ', array_filter([
+                                                    (string) ($beneficiary['first_name'] ?? ''),
+                                                    (string) ($beneficiary['middle_name'] ?? ''),
+                                                    (string) ($beneficiary['last_name'] ?? ''),
+                                                ])));
+                                                ?>
                                                 <tr>
-                                                    <?php foreach ($beneficiary as $value): ?>
-                                                        <td><?= esc((string) ($value ?? '-')) ?></td>
-                                                    <?php endforeach; ?>
+                                                    <td><?= esc($fullName !== '' ? $fullName : '-') ?></td>
+                                                    <td><?= esc((string) ($beneficiary['relationship'] ?? '-')) ?></td>
+                                                    <td><?= cs_date($beneficiary['date_of_birth'] ?? null) ?></td>
+                                                    <td><?= (int) ($beneficiary['is_primary'] ?? 0) === 1 ? 'Yes' : '-' ?></td>
                                                 </tr>
                                             <?php endforeach; ?>
                                         </tbody>

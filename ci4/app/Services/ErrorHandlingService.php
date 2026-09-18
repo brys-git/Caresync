@@ -204,8 +204,11 @@ class ErrorHandlingService
             return ['valid' => false, 'error_code' => 'validation_beneficiary'];
         }
 
-        $validRelationships = ['spouse', 'child', 'parent', 'sibling', 'other'];
-        if (!in_array(strtolower($relationship), $validRelationships, true)) {
+        // Fix Prompts Task 6: relationship is now a dropdown of real labels
+        // (config('Beneficiary')), not a fixed spouse/child/parent/sibling/
+        // other set - 'Other' still allows free text.
+        $allowedRelationships = config(\Config\Beneficiary::class)->relationships;
+        if (!array_key_exists($relationship, $allowedRelationships) && strtolower($relationship) !== 'other') {
             return ['valid' => false, 'error_code' => 'validation_beneficiary_relationship'];
         }
 

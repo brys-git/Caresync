@@ -316,29 +316,46 @@ $latestVerification = $latest_verification ?? null;
                         <table class="table table-bordered align-middle">
                             <thead class="table-light">
                                 <tr>
-                                    <th style="width: 40%;">Complete Name</th>
-                                    <th style="width: 25%;">Birthday</th>
-                                    <th style="width: 35%;">Relationship</th>
+                                    <th style="width: 20%;">First Name</th>
+                                    <th style="width: 18%;">Middle Name</th>
+                                    <th style="width: 20%;">Last Name</th>
+                                    <th style="width: 16%;">Birthday</th>
+                                    <th style="width: 26%;">Relationship</th>
                                 </tr>
                             </thead>
                             <tbody>
+                                <?php $relationships = config(\Config\Beneficiary::class)->relationships; ?>
                                 <?php for ($i = 0; $i < 10; $i++): ?>
                                     <?php
                                     $beneficiary = $beneficiaries[$i] ?? [];
-                                    $nameParts = array_filter([
-                                        (string) ($beneficiary['first_name'] ?? ''),
-                                        (string) ($beneficiary['middle_name'] ?? ''),
-                                        (string) ($beneficiary['last_name'] ?? ''),
-                                        (string) ($beneficiary['name_extension'] ?? ''),
-                                    ]);
-                                    $fullName = trim(implode(' ', $nameParts));
+                                    $storedRelationship = (string) ($beneficiary['relationship'] ?? '');
+                                    $isKnownRelationship = $storedRelationship !== '' && array_key_exists($storedRelationship, $relationships);
+                                    $selectedRelationship = old('beneficiaries.' . $i . '.relationship', $isKnownRelationship ? $storedRelationship : ($storedRelationship !== '' ? 'Other' : ''));
+                                    $relationshipOtherValue = old('beneficiaries.' . $i . '.relationship_other', $isKnownRelationship ? '' : $storedRelationship);
                                     ?>
-                                    <tr>
+                                    <tr class="beneficiary-row">
                                         <td>
                                             <input
-                                                class="form-control beneficiary-name"
-                                                name="beneficiaries[<?= $i ?>][name]"
-                                                value="<?= esc(old('beneficiaries.' . $i . '.name', $fullName)) ?>"
+                                                class="form-control beneficiary-first-name"
+                                                name="beneficiaries[<?= $i ?>][first_name]"
+                                                placeholder="First name"
+                                                value="<?= esc(old('beneficiaries.' . $i . '.first_name', (string) ($beneficiary['first_name'] ?? ''))) ?>"
+                                            >
+                                        </td>
+                                        <td>
+                                            <input
+                                                class="form-control beneficiary-middle-name"
+                                                name="beneficiaries[<?= $i ?>][middle_name]"
+                                                placeholder="Optional"
+                                                value="<?= esc(old('beneficiaries.' . $i . '.middle_name', (string) ($beneficiary['middle_name'] ?? ''))) ?>"
+                                            >
+                                        </td>
+                                        <td>
+                                            <input
+                                                class="form-control beneficiary-last-name"
+                                                name="beneficiaries[<?= $i ?>][last_name]"
+                                                placeholder="Last name"
+                                                value="<?= esc(old('beneficiaries.' . $i . '.last_name', (string) ($beneficiary['last_name'] ?? ''))) ?>"
                                             >
                                         </td>
                                         <td>
@@ -346,14 +363,24 @@ $latestVerification = $latest_verification ?? null;
                                                 type="date"
                                                 class="form-control"
                                                 name="beneficiaries[<?= $i ?>][birthday]"
+                                                max="<?= date('Y-m-d') ?>"
                                                 value="<?= esc(old('beneficiaries.' . $i . '.birthday', (string) ($beneficiary['date_of_birth'] ?? ''))) ?>"
                                             >
                                         </td>
                                         <td>
+                                            <select class="form-select beneficiary-relationship" name="beneficiaries[<?= $i ?>][relationship]">
+                                                <option value="">Select relationship</option>
+                                                <?php foreach ($relationships as $value => $label): ?>
+                                                    <option value="<?= esc($value) ?>" <?= $selectedRelationship === $value ? 'selected' : '' ?>><?= esc($label) ?></option>
+                                                <?php endforeach; ?>
+                                            </select>
                                             <input
-                                                class="form-control beneficiary-relationship"
-                                                name="beneficiaries[<?= $i ?>][relationship]"
-                                                value="<?= esc(old('beneficiaries.' . $i . '.relationship', (string) ($beneficiary['relationship'] ?? ''))) ?>"
+                                                type="text"
+                                                class="form-control beneficiary-relationship-other mt-1 <?= $selectedRelationship === 'Other' ? '' : 'd-none' ?>"
+                                                name="beneficiaries[<?= $i ?>][relationship_other]"
+                                                placeholder="Specify relationship"
+                                                maxlength="50"
+                                                value="<?= esc($relationshipOtherValue) ?>"
                                             >
                                         </td>
                                     </tr>
@@ -361,7 +388,7 @@ $latestVerification = $latest_verification ?? null;
                             </tbody>
                         </table>
                     </div>
-                    <p class="text-danger small mb-0 d-none" id="beneficiaryError">Please provide at least one beneficiary with both a name and a relationship.</p>
+                    <p class="text-danger small mb-0 d-none" id="beneficiaryError">Please provide at least one beneficiary with a first name, last name, and relationship.</p>
                 </div>
             </div>
 
@@ -662,27 +689,41 @@ $latestVerification = $latest_verification ?? null;
         }
 
         if (step === 3) {
-            const names = document.querySelectorAll('.beneficiary-name');
-            const relationships = document.querySelectorAll('.beneficiary-relationship');
+            const rows = document.querySelectorAll('.beneficiary-row');
+            const errorEl = document.getElementById('beneficiaryError');
             let hasOne = false;
-            for (let i = 0; i < names.length; i++) {
-                const name = names[i].value.trim();
-                const rel = relationships[i].value.trim();
-                if (name !== '' && rel !== '') {
-                    hasOne = true;
+
+            for (let i = 0; i < rows.length; i++) {
+                const row = rows[i];
+                const firstName = row.querySelector('.beneficiary-first-name').value.trim();
+                const middleName = row.querySelector('.beneficiary-middle-name').value.trim();
+                const lastName = row.querySelector('.beneficiary-last-name').value.trim();
+                const birthday = row.querySelector('input[type="date"]').value.trim();
+                const relationship = row.querySelector('.beneficiary-relationship').value.trim();
+                const relationshipOther = row.querySelector('.beneficiary-relationship-other').value.trim();
+
+                const isEmpty = firstName === '' && middleName === '' && lastName === '' && birthday === '' && relationship === '' && relationshipOther === '';
+                if (isEmpty) {
+                    continue;
                 }
-                if ((name !== '' && rel === '') || (name === '' && rel !== '')) {
-                    document.getElementById('beneficiaryError').textContent = 'Each beneficiary row needs both a name and a relationship.';
-                    document.getElementById('beneficiaryError').classList.remove('d-none');
+
+                const relationshipComplete = relationship !== '' && (relationship !== 'Other' || relationshipOther !== '');
+                if (firstName === '' || lastName === '' || !relationshipComplete) {
+                    errorEl.textContent = 'Each beneficiary row needs a first name, last name, and relationship' + (relationship === 'Other' ? ' (please specify the relationship).' : '.');
+                    errorEl.classList.remove('d-none');
                     return false;
                 }
+
+                hasOne = true;
             }
+
             if (!hasOne) {
-                document.getElementById('beneficiaryError').textContent = 'Please provide at least one beneficiary with both a name and a relationship.';
-                document.getElementById('beneficiaryError').classList.remove('d-none');
+                errorEl.textContent = 'Please provide at least one beneficiary with a first name, last name, and relationship.';
+                errorEl.classList.remove('d-none');
                 return false;
             }
-            document.getElementById('beneficiaryError').classList.add('d-none');
+
+            errorEl.classList.add('d-none');
             return true;
         }
 
@@ -760,12 +801,20 @@ $latestVerification = $latest_verification ?? null;
         document.getElementById('reviewIdVerification').innerHTML = row('ID Type', esc(idTypeLabel)) + row('Status', esc(statusText));
 
         const beneficiaryRows = [];
-        document.querySelectorAll('.beneficiary-name').forEach(function (input, i) {
-            const name = input.value.trim();
-            const rel = document.querySelectorAll('.beneficiary-relationship')[i].value.trim();
-            if (name !== '') {
-                beneficiaryRows.push(row(esc(name), esc(rel)));
+        document.querySelectorAll('.beneficiary-row').forEach(function (rowEl) {
+            const firstName = rowEl.querySelector('.beneficiary-first-name').value.trim();
+            const middleName = rowEl.querySelector('.beneficiary-middle-name').value.trim();
+            const lastName = rowEl.querySelector('.beneficiary-last-name').value.trim();
+            const relationship = rowEl.querySelector('.beneficiary-relationship').value.trim();
+            const relationshipOther = rowEl.querySelector('.beneficiary-relationship-other').value.trim();
+
+            if (firstName === '' && lastName === '') {
+                return;
             }
+
+            const fullName = [firstName, middleName, lastName].filter(Boolean).join(' ');
+            const relationshipLabel = relationship === 'Other' ? relationshipOther : relationship;
+            beneficiaryRows.push(row(esc(fullName), esc(relationshipLabel)));
         });
         document.getElementById('reviewBeneficiaries').innerHTML = beneficiaryRows.length ? beneficiaryRows.join('') : '<span class="text-muted">None added.</span>';
 
@@ -778,6 +827,20 @@ $latestVerification = $latest_verification ?? null;
 
     document.getElementById('civil_status').addEventListener('change', function () {
         document.getElementById('spouseHint').style.display = this.value === 'Married' ? 'block' : 'none';
+    });
+
+    // Beneficiary "Other" relationship - reveal the free-text box only for
+    // rows where it's actually needed. Delegated on the tbody once rather
+    // than per-select, since rows are static (10 pre-rendered, not added
+    // dynamically).
+    document.querySelectorAll('.beneficiary-relationship').forEach(function (select) {
+        select.addEventListener('change', function () {
+            const otherInput = select.closest('.beneficiary-row').querySelector('.beneficiary-relationship-other');
+            otherInput.classList.toggle('d-none', select.value !== 'Other');
+            if (select.value !== 'Other') {
+                otherInput.value = '';
+            }
+        });
     });
 
     // ==================================================================

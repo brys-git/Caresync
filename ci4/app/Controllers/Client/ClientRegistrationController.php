@@ -375,32 +375,63 @@ class ClientRegistrationController extends BaseController
             $beneficiariesInput = is_array($beneficiariesInput) ? $beneficiariesInput : [];
             $beneficiaries = [];
             $isPrimary = true;
+            $allowedRelationships = config(\Config\Beneficiary::class)->relationships;
+            // Letters, spaces, and the punctuation real Filipino names use
+            // (Dela Cruz, D'Souza, Añonuevo, Jr.-style names minus the comma).
+            $namePattern = '/^[\p{L}\s.\'-]+$/u';
 
             foreach ($beneficiariesInput as $row) {
-                $name = trim((string) ($row['name'] ?? ''));
+                $firstName = trim((string) ($row['first_name'] ?? ''));
+                $middleName = trim((string) ($row['middle_name'] ?? ''));
+                $lastName = trim((string) ($row['last_name'] ?? ''));
                 $birthday = trim((string) ($row['birthday'] ?? ''));
                 $relationship = trim((string) ($row['relationship'] ?? ''));
+                $relationshipOther = trim((string) ($row['relationship_other'] ?? ''));
 
-                // Skip completely empty rows
-                if ($name === '' && $birthday === '' && $relationship === '') {
+                // Skip completely empty rows.
+                if ($firstName === '' && $middleName === '' && $lastName === '' && $birthday === '' && $relationship === '' && $relationshipOther === '') {
                     continue;
                 }
 
-                // If any field is filled, require at least name and relationship
-                if ($name === '' || $relationship === '') {
-                    throw new \RuntimeException('All beneficiary fields must be filled if you provide any information. Please fill Name and Relationship for each beneficiary.');
+                if ($firstName === '' || $lastName === '' || $relationship === '') {
+                    throw new \RuntimeException('Each beneficiary needs a first name, last name, and relationship.');
                 }
 
-                $nameParts = $this->parseBeneficiaryName($name);
+                if (mb_strlen($firstName) > 100 || ! preg_match($namePattern, $firstName)) {
+                    throw new \RuntimeException('Beneficiary first name must be 100 characters or fewer and contain only letters.');
+                }
+
+                if ($middleName !== '' && (mb_strlen($middleName) > 100 || ! preg_match($namePattern, $middleName))) {
+                    throw new \RuntimeException('Beneficiary middle name must be 100 characters or fewer and contain only letters.');
+                }
+
+                if (mb_strlen($lastName) > 100 || ! preg_match($namePattern, $lastName)) {
+                    throw new \RuntimeException('Beneficiary last name must be 100 characters or fewer and contain only letters.');
+                }
+
+                if (! array_key_exists($relationship, $allowedRelationships)) {
+                    throw new \RuntimeException('Please select a valid beneficiary relationship.');
+                }
+
+                if ($relationship === 'Other') {
+                    if ($relationshipOther === '' || mb_strlen($relationshipOther) > 50) {
+                        throw new \RuntimeException('Please specify the beneficiary relationship (50 characters or fewer).');
+                    }
+                    $relationship = $relationshipOther;
+                }
+
+                if ($birthday !== '' && $birthday > date('Y-m-d')) {
+                    throw new \RuntimeException('Beneficiary birthday cannot be in the future.');
+                }
 
                 $beneficiaries[] = $this->filterTableData('beneficiaries', [
                     'plan_holder_id' => $planHolderId,
-                    'first_name' => $nameParts['first_name'],
-                    'middle_name' => $nameParts['middle_name'],
-                    'last_name' => $nameParts['last_name'],
-                    'name_extension' => $nameParts['name_extension'],
+                    'first_name' => $firstName,
+                    'middle_name' => $middleName !== '' ? $middleName : null,
+                    'last_name' => $lastName,
+                    'name_extension' => null,
                     'date_of_birth' => $birthday !== '' ? $birthday : null,
-                    'relationship' => $relationship !== '' ? $relationship : 'N/A',
+                    'relationship' => $relationship,
                     'is_primary' => $isPrimary ? 1 : 0,
                     'created_at' => date('Y-m-d H:i:s'),
                 ]);
