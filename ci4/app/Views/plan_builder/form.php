@@ -102,11 +102,12 @@ if (empty($inclusions)) {
             <div id="inclusionRows">
                 <?php foreach ($inclusions as $i => $item): ?>
                     <div class="row g-2 mb-2 inclusion-row">
+                        <input type="hidden" name="inclusions[<?= $i ?>][item_id]" value="<?= esc((string) ($item['item_id'] ?? '')) ?>">
                         <div class="col-md-5">
-                            <input name="item_name[]" class="form-control" placeholder="Item name (e.g. Embalming)" value="<?= esc((string) ($item['item_name'] ?? '')) ?>">
+                            <input name="inclusions[<?= $i ?>][item_name]" class="form-control" placeholder="Item name (e.g. Embalming)" value="<?= esc((string) ($item['item_name'] ?? '')) ?>">
                         </div>
                         <div class="col-md-6">
-                            <input name="item_description[]" class="form-control" placeholder="Details (optional)" value="<?= esc((string) ($item['description'] ?? '')) ?>">
+                            <input name="inclusions[<?= $i ?>][description]" class="form-control" placeholder="Details (optional)" value="<?= esc((string) ($item['description'] ?? '')) ?>">
                         </div>
                         <div class="col-md-1">
                             <button type="button" class="btn btn-outline-danger btn-sm remove-row-btn" title="Remove row"><i class="ti ti-x"></i></button>
@@ -114,7 +115,7 @@ if (empty($inclusions)) {
                     </div>
                 <?php endforeach; ?>
             </div>
-            <button type="button" class="btn btn-outline-secondary btn-sm" id="addRowBtn"><i class="ti ti-plus me-1"></i>Add row</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="addRowBtn"><i class="ti ti-plus me-1"></i>Add inclusion</button>
         </div>
     </section>
 
@@ -126,11 +127,12 @@ if (empty($inclusions)) {
 
 <template id="inclusionRowTemplate">
     <div class="row g-2 mb-2 inclusion-row">
+        <input type="hidden" name="inclusions[__INDEX__][item_id]" value="">
         <div class="col-md-5">
-            <input name="item_name[]" class="form-control" placeholder="Item name (e.g. Embalming)">
+            <input name="inclusions[__INDEX__][item_name]" class="form-control" placeholder="Item name (e.g. Embalming)">
         </div>
         <div class="col-md-6">
-            <input name="item_description[]" class="form-control" placeholder="Details (optional)">
+            <input name="inclusions[__INDEX__][description]" class="form-control" placeholder="Details (optional)">
         </div>
         <div class="col-md-1">
             <button type="button" class="btn btn-outline-danger btn-sm remove-row-btn" title="Remove row"><i class="ti ti-x"></i></button>
@@ -160,9 +162,15 @@ if (empty($inclusions)) {
 
     const rowsContainer = document.getElementById('inclusionRows');
     const template = document.getElementById('inclusionRowTemplate');
+    let nextIndex = <?= (int) count($inclusions) ?>;
 
     document.getElementById('addRowBtn').addEventListener('click', function () {
-        rowsContainer.appendChild(template.content.cloneNode(true));
+        const html = template.innerHTML.replace(/__INDEX__/g, String(nextIndex));
+        nextIndex += 1;
+
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = html.trim();
+        rowsContainer.appendChild(wrapper.firstElementChild);
     });
 
     rowsContainer.addEventListener('click', function (e) {

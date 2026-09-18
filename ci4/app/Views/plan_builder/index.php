@@ -6,7 +6,7 @@
     <div class="cs-panel__head">
         <h2 class="cs-panel__title">Plan Builder</h2>
         <?php if (! empty($can_manage)): ?>
-            <a href="<?= base_url('plan-builder/create') ?>" class="btn btn-primary btn-sm">New Plan</a>
+            <a href="<?= base_url('plan-builder/create') ?>" class="btn btn-primary btn-sm"><i class="ti ti-plus me-1" aria-hidden="true"></i>New Plan</a>
         <?php endif; ?>
     </div>
     <div class="cs-panel__body cs-panel__body--flush">
@@ -15,6 +15,7 @@
                 'icon'  => 'ti-clipboard-plus',
                 'title' => 'No plans yet',
                 'text'  => 'Create the first plan to start building the catalogue.',
+                'action' => ! empty($can_manage) ? ['label' => 'New Plan', 'url' => 'plan-builder/create'] : null,
             ]) ?>
         <?php else: ?>
             <div class="cs-tablewrap">

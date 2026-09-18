@@ -69,7 +69,9 @@ class PlanBuilderService
     }
 
     /**
-     * One plan + its package + inclusions, for the show/edit pages.
+     * One plan + its package + inclusions + how many plan holders are on
+     * it, for the show/edit pages (edit ignores plan_holder_count; show
+     * displays it, per the brief's "N plan holders on this plan" line).
      */
     public function find(int $programId): ?array
     {
@@ -83,12 +85,30 @@ class PlanBuilderService
         $inclusions = $packageId > 0
             ? $this->itemModel->where('package_id', $packageId)->orderBy('item_id', 'ASC')->findAll()
             : [];
+        $planHolderCount = $packageId > 0
+            ? (int) db_connect()->table('plans')->where('package_id', $packageId)->countAllResults()
+            : 0;
 
         return [
-            'program'    => $program,
-            'package'    => $package,
-            'inclusions' => $inclusions,
+            'program'            => $program,
+            'package'            => $package,
+            'inclusions'         => $inclusions,
+            'plan_holder_count'  => $planHolderCount,
         ];
+    }
+
+    /**
+     * The one place ceil(plan_price / monthly_fee) lives - save() computes
+     * the real, persisted term_months from this; the create/edit form
+     * only mirrors it client-side for a live preview.
+     */
+    public function termMonths(float $planPrice, float $monthlyFee): int
+    {
+        if ($monthlyFee <= 0) {
+            return 0;
+        }
+
+        return (int) ceil($planPrice / $monthlyFee);
     }
 
     /**
@@ -131,20 +151,48 @@ class PlanBuilderService
             $packageId = (int) $this->packageModel->insert($packagePayload, true);
         }
 
-        $this->itemModel->where('package_id', $packageId)->delete();
+        // Match existing inclusions by item_id rather than blowing them all
+        // away and re-inserting: update kept rows in place, insert rows
+        // with no item_id (new), delete whichever existing ids weren't
+        // resubmitted at all.
+        // array_map('intval', ...) matters here: the model returns
+        // item_id as a string (MySQLi driver default, no type coercion),
+        // so the strict in_array() comparison below would never match an
+        // int $itemId against string existingIds otherwise - every "kept"
+        // row would silently insert as new instead of updating in place.
+        $existingIds = array_map('intval', array_column(
+            $this->itemModel->select('item_id')->where('package_id', $packageId)->findAll(),
+            'item_id'
+        ));
+        $keptIds = [];
+
         foreach ($data['inclusions'] as $inclusion) {
             $itemName = trim((string) ($inclusion['item_name'] ?? ''));
             if ($itemName === '') {
                 continue;
             }
-            $this->itemModel->insert([
+
+            $itemId = (int) ($inclusion['item_id'] ?? 0) ?: null;
+            $itemPayload = [
                 'package_id'  => $packageId,
                 'item_name'   => $itemName,
                 'description' => trim((string) ($inclusion['description'] ?? '')),
-            ]);
+            ];
+
+            if ($itemId !== null && in_array($itemId, $existingIds, true)) {
+                $this->itemModel->update($itemId, $itemPayload);
+                $keptIds[] = $itemId;
+            } else {
+                $keptIds[] = (int) $this->itemModel->insert($itemPayload, true);
+            }
         }
 
-        $termMonths = (int) ceil($data['plan_price'] / $data['monthly_fee']);
+        $idsToRemove = array_diff($existingIds, $keptIds);
+        if ($idsToRemove !== []) {
+            $this->itemModel->whereIn('item_id', $idsToRemove)->delete();
+        }
+
+        $termMonths = $this->termMonths((float) $data['plan_price'], (float) $data['monthly_fee']);
 
         $programPayload = [
             'program_name' => $data['plan_name'],
@@ -172,10 +220,9 @@ class PlanBuilderService
     }
 
     /**
-     * Refuses to deactivate the last active plan, and refuses to delete
-     * (this service has no delete()) a plan with plan holders on it -
-     * deactivate instead. There is no hard-delete method at all: a plan a
-     * real plan holder is on must never disappear from under them.
+     * Refuses to deactivate the last active plan - the system always
+     * needs at least one sellable plan. See delete() below for the
+     * matching "refuse to delete a plan with plan holders on it" rule.
      */
     public function setActive(int $programId, bool $active): array
     {
@@ -194,6 +241,43 @@ class PlanBuilderService
         }
 
         $this->programModel->update($programId, ['is_active' => $active ? 1 : 0]);
+
+        return ['success' => true, 'error' => null];
+    }
+
+    /**
+     * Deletes a plan (its membership_programs row, its entitled package,
+     * and that package's inclusions - the whole domain object, since none
+     * of the three exist independently of "being this plan") only when no
+     * plan holder is actually on it. A plan a real plan holder is on must
+     * never disappear from under them - deactivate instead.
+     */
+    public function delete(int $programId): array
+    {
+        $found = $this->find($programId);
+        if ($found === null) {
+            return ['success' => false, 'error' => 'Plan not found.'];
+        }
+
+        if ($found['plan_holder_count'] > 0) {
+            return ['success' => false, 'error' => 'This plan has plan holders on it and cannot be deleted. Deactivate it instead.'];
+        }
+
+        $db = db_connect();
+        $db->transStart();
+
+        $packageId = (int) ($found['program']['package_id'] ?? 0);
+        if ($packageId > 0) {
+            $this->itemModel->where('package_id', $packageId)->delete();
+            $this->packageModel->delete($packageId);
+        }
+        $this->programModel->delete($programId);
+
+        $db->transComplete();
+
+        if ($db->transStatus() === false) {
+            return ['success' => false, 'error' => 'Unable to delete plan. Please try again.'];
+        }
 
         return ['success' => true, 'error' => null];
     }

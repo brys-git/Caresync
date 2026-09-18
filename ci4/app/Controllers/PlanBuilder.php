@@ -67,12 +67,13 @@ class PlanBuilder extends BaseController
         }
 
         return view('plan_builder/show', [
-            'role_layout' => $this->resolveLayoutView(),
-            'page_title'  => (string) $found['program']['program_name'],
-            'program'     => $found['program'],
-            'package'     => $found['package'],
-            'inclusions'  => $found['inclusions'],
-            'can_manage'  => $this->canManage(),
+            'role_layout'       => $this->resolveLayoutView(),
+            'page_title'        => (string) $found['program']['program_name'],
+            'program'           => $found['program'],
+            'package'           => $found['package'],
+            'inclusions'        => $found['inclusions'],
+            'plan_holder_count' => $found['plan_holder_count'],
+            'can_manage'        => $this->canManage(),
         ]);
     }
 
@@ -122,6 +123,17 @@ class PlanBuilder extends BaseController
         return redirect()->back()->with('success', $activateNext ? 'Plan activated.' : 'Plan deactivated.');
     }
 
+    public function destroy(int $programId): ResponseInterface
+    {
+        $result = $this->service->delete($programId);
+
+        if (! $result['success']) {
+            return redirect()->to('/plan-builder/' . $programId)->with('error', (string) $result['error']);
+        }
+
+        return redirect()->to('/plan-builder')->with('success', 'Plan deleted.');
+    }
+
     private function canManage(): bool
     {
         return (int) session('role_id') === 1;
@@ -129,14 +141,15 @@ class PlanBuilder extends BaseController
 
     private function collectInput(): array
     {
-        $itemNames = (array) ($this->request->getPost('item_name') ?? []);
-        $itemDescriptions = (array) ($this->request->getPost('item_description') ?? []);
+        $rawInclusions = (array) ($this->request->getPost('inclusions') ?? []);
 
         $inclusions = [];
-        foreach ($itemNames as $i => $name) {
+        foreach ($rawInclusions as $row) {
+            $row = (array) $row;
             $inclusions[] = [
-                'item_name'   => trim((string) $name),
-                'description' => trim((string) ($itemDescriptions[$i] ?? '')),
+                'item_id'     => (int) ($row['item_id'] ?? 0) ?: null,
+                'item_name'   => trim((string) ($row['item_name'] ?? '')),
+                'description' => trim((string) ($row['description'] ?? '')),
             ];
         }
 

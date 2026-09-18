@@ -94,3 +94,4 @@ $routes->get('plan-builder/(:num)', 'PlanBuilder::show/$1', ['filter' => 'role:1
 $routes->get('plan-builder/(:num)/edit', 'PlanBuilder::edit/$1', ['filter' => 'role:1']);
 $routes->post('plan-builder/(:num)/update', 'PlanBuilder::update/$1', ['filter' => 'role:1']);
 $routes->post('plan-builder/(:num)/toggle', 'PlanBuilder::toggle/$1', ['filter' => 'role:1']);
+$routes->post('plan-builder/(:num)/delete', 'PlanBuilder::destroy/$1', ['filter' => 'role:1']);

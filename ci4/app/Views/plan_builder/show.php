@@ -1,7 +1,10 @@
 <?= $this->extend($role_layout) ?>
 
 <?= $this->section('content') ?>
-<?php $isActive = (int) ($program['is_active'] ?? 0) === 1; ?>
+<?php
+$isActive = (int) ($program['is_active'] ?? 0) === 1;
+$holderCount = (int) ($plan_holder_count ?? 0);
+?>
 
 <a class="text-decoration-none text-muted mb-3 d-inline-block" href="<?= base_url('plan-builder') ?>">
     <i class="ti ti-arrow-left me-1"></i> Back to Plan Builder
@@ -17,6 +20,10 @@
                     <?= csrf_field() ?>
                     <button type="submit" class="btn btn-outline-secondary btn-sm"><?= $isActive ? 'Deactivate' : 'Activate' ?></button>
                 </form>
+                <form method="post" action="<?= base_url('plan-builder/' . (int) $program['program_id'] . '/delete') ?>" data-cs-confirm="Delete this plan? This cannot be undone.">
+                    <?= csrf_field() ?>
+                    <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
+                </form>
             </div>
         <?php endif; ?>
     </div>
@@ -26,9 +33,17 @@
         <?php endif; ?>
         <?= view('components/stat_rail', ['stats' => [
             ['label' => 'Plan Price', 'value' => $program['plan_price'] ?? 0, 'money' => true, 'tone' => 'money'],
-            ['label' => 'Monthly Contribution', 'value' => $program['monthly_fee'] ?? 0, 'money' => true],
-            ['label' => 'Term', 'value' => ((int) ($program['term_months'] ?? 0)) . ' months'],
+            [
+                'label' => 'Monthly Contribution',
+                'value' => $program['monthly_fee'] ?? 0,
+                'money' => true,
+                // Plain text, not cs_money() - stat_rail's 'meta' field is
+                // esc()'d as a whole, which would show cs_money()'s <span>
+                // markup as literal text instead of rendering it.
+                'meta'  => '₱' . number_format((float) ($program['monthly_fee'] ?? 0), 2) . ' / month × ' . ((int) ($program['term_months'] ?? 0)) . ' months',
+            ],
             ['label' => 'Status', 'value' => $isActive ? 'Active' : 'Inactive', 'tone' => $isActive ? 'ok' : ''],
+            ['label' => 'Plan Holders', 'value' => $holderCount],
         ]]) ?>
     </div>
 </section>
