@@ -10,11 +10,26 @@
  * Expects (via $this->setData() before $this->include(), since CI4's
  * include() does not inherit the caller's local view variables):
  *   $id_types            array<string,string> value => label
- *   $pending_field_id     id of the hidden input the pending token gets
- *                          written into (default 'government_id_pending_token')
+ *   $pending_field_id     id AND name of the hidden input the result gets
+ *                          written into (default 'government_id_pending_token').
+ *                          Also used by the client wizard's self-service
+ *                          step (partials/registration/_step_government_id.php),
+ *                          passed as 'government_id_verification_id' there
+ *                          since that endpoint returns a real verification
+ *                          id, not a pending token.
+ *   $pending_field_value  pre-fills the hidden field (default '') - the
+ *                          client wizard uses this to carry a prior
+ *                          verification_id through a page reload without
+ *                          forcing a re-check; the 3 staff-side callers
+ *                          never had this (their pending token is always
+ *                          scoped to one in-progress attempt), so leave unset.
+ *   $selected_id_type     value of $id_types to preselect (default none) -
+ *                          same "prior attempt on file" case as above.
  */
 $idTypes = $id_types ?? [];
 $pendingFieldId = $pending_field_id ?? 'government_id_pending_token';
+$pendingFieldValue = $pending_field_value ?? '';
+$selectedIdType = $selected_id_type ?? '';
 ?>
 <div class="card">
     <div class="card-body">
@@ -27,7 +42,7 @@ $pendingFieldId = $pending_field_id ?? 'government_id_pending_token';
                 <select id="id_type" class="form-select">
                     <option value="">Select ID type</option>
                     <?php foreach ($idTypes as $value => $label): ?>
-                        <option value="<?= esc((string) $value) ?>"><?= esc((string) $label) ?></option>
+                        <option value="<?= esc((string) $value) ?>" <?= $selectedIdType === (string) $value ? 'selected' : '' ?>><?= esc((string) $label) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -67,7 +82,7 @@ $pendingFieldId = $pending_field_id ?? 'government_id_pending_token';
 
         <div id="verificationResult" class="d-none"></div>
 
-        <input type="hidden" name="government_id_pending_token" id="<?= esc($pendingFieldId) ?>" value="">
+        <input type="hidden" name="<?= esc($pendingFieldId, 'attr') ?>" id="<?= esc($pendingFieldId) ?>" value="<?= esc($pendingFieldValue) ?>">
     </div>
 </div>
 

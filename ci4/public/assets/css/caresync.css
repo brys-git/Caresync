@@ -975,3 +975,82 @@ body.cs-nav-collapsed .cs-brand { justify-content: center; }
   white-space: nowrap;
   border: 0;
 }
+
+/* --------------------------------------------------------------------------
+   19. Registration wizard (client/plan_registration.php and every
+   staff-assisted registration page built on partials/registration/*) -
+   moved here from that page's own inline <style> so the same 5-step
+   wizard looks identical everywhere it's used, instead of only where
+   someone remembered to paste the block.
+   -------------------------------------------------------------------------- */
+.wizard-progress {
+  display: flex;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  gap: .5rem;
+  overflow-x: auto;
+}
+.wizard-progress__item {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex: 1 1 0;
+  min-width: 140px;
+  color: #94a3b8;
+  font-size: .8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.wizard-progress__badge {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #e2e8f0;
+  color: #64748b;
+  flex-shrink: 0;
+}
+.wizard-progress__item.is-active .wizard-progress__badge,
+.wizard-progress__item.is-done .wizard-progress__badge {
+  background: #2563eb;
+  color: #fff;
+}
+.wizard-progress__item.is-active .wizard-progress__label,
+.wizard-progress__item.is-done .wizard-progress__label {
+  color: #1e293b;
+}
+.wizard-nav {
+  display: flex;
+  justify-content: space-between;
+  margin: 1.25rem 0;
+}
+.psgc-dropdown {
+  position: absolute;
+  z-index: 1050;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  margin-top: .25rem;
+}
+.psgc-dropdown .list-group-item {
+  cursor: pointer;
+  border-left: 0;
+  border-right: 0;
+}
+.psgc-dropdown .list-group-item:first-child { border-top: 0; }
+.psgc-dropdown .list-group-item:last-child { border-bottom: 0; }
+.psgc-dropdown .psgc-empty,
+.psgc-dropdown .psgc-loading,
+.psgc-dropdown .psgc-retry {
+  padding: .5rem .75rem;
+  color: #6c757d;
+  font-size: .875rem;
+}
+.psgc-dropdown .psgc-retry button {
+  padding: 0;
+}
