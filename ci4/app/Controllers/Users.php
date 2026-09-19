@@ -28,6 +28,8 @@ class Users extends BaseController
             'current_role_id' => (int) session('role_id'),
             'role_layout' => $this->resolveLayoutView(),
             'id_types' => (new GovernmentIdVerificationService())->idTypes(),
+            'page_title' => 'Create user account',
+            'page_sub' => 'Complete each step, then review before creating the account.',
         ]);
     }
 

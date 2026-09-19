@@ -43,6 +43,8 @@ class ServiceBalances extends BaseController
 
         return view('service_balances/index', [
             'role_layout' => $roleId === 2 ? 'layouts/branch_admin' : 'layouts/plan_holder',
+            'page_title' => 'Service balances',
+            'page_sub' => 'Funeral package balances, tracked separately from membership contributions.',
             'balances' => $balances,
             'route_prefix' => $routePrefix,
         ]);
@@ -80,13 +82,18 @@ class ServiceBalances extends BaseController
                 ->getResultArray();
         }
 
+        $routePrefix = (int) session('role_id') === 2 ? 'branch-admin/service-balances' : 'client/service-balances';
+
         return view('service_balances/show', [
             'role_layout' => (int) session('role_id') === 2 ? 'layouts/branch_admin' : 'layouts/plan_holder',
+            'page_title' => 'Service balance',
+            'page_sub' => 'Separate balance continuation for the approved funeral service.',
+            'page_actions' => '<a class="btn btn-ghost" href="' . esc(site_url($routePrefix), 'attr') . '">Back</a>',
             'balance' => $balance,
             'payments' => $payments,
             'application' => $application,
             'documents' => $documents,
-            'route_prefix' => (int) session('role_id') === 2 ? 'branch-admin/service-balances' : 'client/service-balances',
+            'route_prefix' => $routePrefix,
         ]);
     }
 

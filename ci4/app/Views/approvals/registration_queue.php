@@ -1,36 +1,35 @@
 <?= $this->extend($role_layout) ?>
 
 <?= $this->section('content') ?>
-<div class="container-fluid">
-    <div class="mb-3">
-        <h1 class="h3 mb-1">Registration Approvals</h1>
-        <p class="text-muted mb-0">Pending initial payments requiring verification before full access activation.</p>
-    </div>
+<?php if (session()->getFlashdata('error')): ?>
+    <?= view('components/alert', ['type' => 'danger', 'message' => session()->getFlashdata('error')]) ?>
+<?php endif; ?>
+<?php if (session()->getFlashdata('success')): ?>
+    <?= view('components/alert', ['type' => 'success', 'message' => session()->getFlashdata('success')]) ?>
+<?php endif; ?>
 
-    <?php if (session()->getFlashdata('error')): ?>
-        <div class="alert alert-danger"><?= esc(session()->getFlashdata('error')) ?></div>
-    <?php endif; ?>
-
-    <?php if (session()->getFlashdata('success')): ?>
-        <div class="alert alert-success"><?= esc(session()->getFlashdata('success')) ?></div>
-    <?php endif; ?>
-
-    <div class="card">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table align-middle">
+<section class="cs-panel">
+    <div class="cs-panel__body cs-panel__body--flush">
+        <?php if (empty($rows)): ?>
+            <?= view('components/empty_state', [
+                'icon'  => 'ti-user-check',
+                'title' => 'No pending registrations for approval',
+            ]) ?>
+        <?php else: ?>
+            <div class="cs-tablewrap">
+                <table class="cs-table">
                     <thead>
                         <tr>
                             <th>Payment ID</th>
                             <th>Client</th>
                             <th>Branch</th>
                             <th>Date</th>
-                            <th>Amount</th>
+                            <th class="cs-num">Amount</th>
                             <th>Method</th>
                             <th>Reference</th>
                             <th>Status</th>
                             <th>Government ID</th>
-                            <th class="text-end">Action</th>
+                            <th class="cs-table__actions">Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -39,68 +38,62 @@
                                 <td>#<?= esc((string) $row['payment_id']) ?></td>
                                 <td>
                                     <?= esc((string) $row['first_name'] . ' ' . $row['last_name']) ?><br>
-                                    <small class="text-muted"><?= esc((string) $row['email']) ?></small>
+                                    <small class="cs-muted"><?= esc((string) $row['email']) ?></small>
                                 </td>
-                                <td><?= esc((string) ($row['branch_name'] ?? '-')) ?></td>
-                                <td><?= esc((string) $row['payment_date']) ?></td>
-                                <td>P<?= esc(number_format((float) $row['amount'], 2)) ?></td>
+                                <td><?= esc((string) ($row['branch_name'] ?? '—')) ?></td>
+                                <td class="text-nowrap"><?= cs_date($row['payment_date'] ?? null) ?></td>
+                                <td class="cs-num"><?= cs_money($row['amount'] ?? 0) ?></td>
                                 <td><?= esc(strtoupper((string) $row['payment_method'])) ?></td>
-                                <td><?= esc((string) ($row['reference_number'] ?: '-')) ?></td>
-                                <td><span class="badge text-bg-warning">Pending</span></td>
+                                <td><?= esc((string) ($row['reference_number'] ?: '—')) ?></td>
+                                <td><?= cs_status('pending') ?></td>
                                 <td>
                                     <?php $idv = $row['id_verification'] ?? null; ?>
                                     <?php if ($idv === null): ?>
-                                        <span class="badge text-bg-secondary">No attempt</span>
+                                        <?= cs_status('idle', 'No attempt') ?>
                                     <?php elseif ((string) $idv['verification_status'] === 'verified'): ?>
-                                        <span class="badge text-bg-success">Verified</span>
+                                        <?= cs_status('verified') ?>
                                     <?php elseif ((string) $idv['verification_status'] === 'needs_review'): ?>
-                                        <span class="badge text-bg-warning">ID needs manual review</span>
+                                        <?= cs_status('for_review', 'ID needs manual review') ?>
                                         <details class="small mt-1">
-                                            <summary class="text-muted" style="cursor: pointer;">Extracted vs entered</summary>
+                                            <summary class="cs-muted">Extracted vs entered</summary>
                                             <div class="mt-1">
                                                 <div><strong>On the ID:</strong>
                                                     <?= esc((string) ($idv['extracted_name'] ?? 'Not read')) ?>
-                                                    <?php if (! empty($idv['extracted_birth_date'])): ?>, DOB <?= esc((string) $idv['extracted_birth_date']) ?><?php endif; ?>
+                                                    <?php if (! empty($idv['extracted_birth_date'])): ?>, DOB <?= cs_date($idv['extracted_birth_date']) ?><?php endif; ?>
                                                     <?php if (! empty($idv['extracted_gender'])): ?>, <?= esc((string) $idv['extracted_gender']) ?><?php endif; ?>
                                                 </div>
                                                 <div><strong>Entered:</strong>
-                                                    <?= esc(trim((string) ($idv['claimed_first_name'] ?? '') . ' ' . (string) ($idv['claimed_middle_name'] ?? '') . ' ' . (string) ($idv['claimed_last_name'] ?? '')) ?: '-') ?>
-                                                    <?php if (! empty($idv['claimed_date_of_birth'])): ?>, DOB <?= esc((string) $idv['claimed_date_of_birth']) ?><?php endif; ?>
+                                                    <?= esc(trim((string) ($idv['claimed_first_name'] ?? '') . ' ' . (string) ($idv['claimed_middle_name'] ?? '') . ' ' . (string) ($idv['claimed_last_name'] ?? '')) ?: '—') ?>
+                                                    <?php if (! empty($idv['claimed_date_of_birth'])): ?>, DOB <?= cs_date($idv['claimed_date_of_birth']) ?><?php endif; ?>
                                                     <?php if (! empty($idv['claimed_gender'])): ?>, <?= esc((string) $idv['claimed_gender']) ?><?php endif; ?>
                                                 </div>
                                                 <?php if (! empty($idv['mismatch_reason'])): ?>
-                                                    <div class="text-muted"><?= esc((string) $idv['mismatch_reason']) ?></div>
+                                                    <div class="cs-muted"><?= esc((string) $idv['mismatch_reason']) ?></div>
                                                 <?php endif; ?>
                                             </div>
                                         </details>
                                     <?php elseif ((string) $idv['verification_status'] === 'failed'): ?>
-                                        <span class="badge text-bg-danger">Failed</span>
+                                        <?= cs_status('failed') ?>
                                     <?php else: ?>
-                                        <span class="badge text-bg-secondary"><?= esc(ucfirst((string) $idv['verification_status'])) ?></span>
+                                        <?= cs_status((string) $idv['verification_status']) ?>
                                     <?php endif; ?>
                                 </td>
-                                <td class="text-end">
+                                <td class="cs-table__actions">
                                     <?php if (! empty($can_verify)): ?>
-                                        <form method="post" action="<?= base_url('payments/verify-initial/' . (int) $row['payment_id']) ?>">
+                                        <form method="post" action="<?= base_url('payments/verify-initial/' . (int) $row['payment_id']) ?>" class="m-0">
                                             <?= csrf_field() ?>
-                                            <button type="submit" class="btn btn-sm btn-primary">Verify</button>
+                                            <button type="submit" class="btn btn-primary btn-sm">Verify</button>
                                         </form>
                                     <?php else: ?>
-                                        <span class="text-muted small">View only</span>
+                                        <span class="cs-muted small">View only</span>
                                     <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
-
-                        <?php if (empty($rows)): ?>
-                            <tr>
-                                <td colspan="10" class="text-center text-muted py-4">No pending registrations for approval.</td>
-                            </tr>
-                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
-        </div>
+        <?php endif; ?>
     </div>
-</div>
+</section>
 <?= $this->endSection() ?>

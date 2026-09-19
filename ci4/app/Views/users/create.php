@@ -9,18 +9,12 @@
     }
     $ownBranchLocked = in_array($current_role_id, [2, 3], true);
 ?>
-<div class="container-fluid" style="max-width: 900px;">
-    <div class="mb-3">
-        <h1 class="h4 mb-1">Create User Account</h1>
-        <p class="text-muted mb-0">Complete each step, then review before creating the account.</p>
-    </div>
-
+<div class="cs-wizard">
     <?php if (session()->getFlashdata('error')): ?>
-        <div class="alert alert-danger"><?= esc(session()->getFlashdata('error')) ?></div>
+        <?= view('components/alert', ['type' => 'danger', 'message' => session()->getFlashdata('error')]) ?>
     <?php endif; ?>
-
     <?php if (session()->getFlashdata('success')): ?>
-        <div class="alert alert-success"><?= esc(session()->getFlashdata('success')) ?></div>
+        <?= view('components/alert', ['type' => 'success', 'message' => session()->getFlashdata('success')]) ?>
     <?php endif; ?>
 
     <!-- Progress indicator -->
@@ -37,9 +31,11 @@
 
         <!-- ============ STEP 1: Personal Information ============ -->
         <div class="wizard-panel" data-step-panel="1">
-            <div class="card">
-                <div class="card-body">
-                    <h3 class="h6 text-primary mb-3">Personal Information</h3>
+            <div class="cs-panel">
+                <div class="cs-panel__head">
+                    <h2 class="cs-panel__title">Personal Information</h2>
+                </div>
+                <div class="cs-panel__body">
                     <div class="row g-3">
                         <div class="col-md-4">
                             <label class="form-label" for="first_name">First Name</label>
@@ -77,11 +73,12 @@
 
         <!-- ============ STEP 2: Government ID Verification ============ -->
         <div class="wizard-panel d-none" data-step-panel="2">
-            <div class="card">
-                <div class="card-body">
-                    <h3 class="h6 text-primary mb-1">Government ID Verification</h3>
-                    <p class="text-muted small mb-3">Upload or take a photo of the new account holder's valid government-issued ID so it can be confirmed against the name entered.</p>
-
+            <div class="cs-panel">
+                <div class="cs-panel__head">
+                    <h2 class="cs-panel__title">Government ID Verification</h2>
+                    <p class="cs-panel__note">Upload or take a photo of the new account holder's valid government-issued ID so it can be confirmed against the name entered.</p>
+                </div>
+                <div class="cs-panel__body">
                     <div class="row g-3 mb-3">
                         <div class="col-md-5">
                             <label class="form-label" for="id_type">Government ID Type</label>
@@ -95,26 +92,26 @@
                     </div>
 
                     <div class="d-flex gap-2 mb-3">
-                        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnChooseUpload"><i class="ti ti-upload me-1"></i>Upload Government ID</button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnChooseCamera"><i class="ti ti-camera me-1"></i>Take Photo</button>
+                        <button type="button" class="btn btn-ghost btn-sm" id="btnChooseUpload"><i class="ti ti-upload me-1"></i>Upload Government ID</button>
+                        <button type="button" class="btn btn-ghost btn-sm" id="btnChooseCamera"><i class="ti ti-camera me-1"></i>Take Photo</button>
                         <input type="file" id="idFileInput" accept="image/jpeg,image/png,image/webp" class="d-none">
                     </div>
 
                     <div id="cameraPanel" class="d-none mb-3">
-                        <div class="camera-frame mb-2">
+                        <div class="id-verify-camera-frame mb-2">
                             <video id="cameraVideo" autoplay playsinline muted></video>
                         </div>
                         <div class="d-flex gap-2">
                             <button type="button" class="btn btn-primary btn-sm" id="btnCapture"><i class="ti ti-camera me-1"></i>Capture</button>
-                            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnCancelCamera">Cancel</button>
+                            <button type="button" class="btn btn-ghost btn-sm" id="btnCancelCamera">Cancel</button>
                         </div>
                         <p class="text-danger small mt-2 d-none" id="cameraError"></p>
                     </div>
 
                     <div id="idPreviewWrap" class="d-none mb-3">
-                        <img id="idPreviewImg" alt="ID preview" class="id-preview">
+                        <img id="idPreviewImg" alt="ID preview" class="id-verify-preview">
                         <div class="d-flex gap-2 mt-2">
-                            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnRetake"><i class="ti ti-refresh me-1"></i>Retake / Choose Another</button>
+                            <button type="button" class="btn btn-ghost btn-sm" id="btnRetake"><i class="ti ti-refresh me-1"></i>Retake / Choose Another</button>
                         </div>
                     </div>
 
@@ -122,7 +119,7 @@
 
                     <p class="text-muted small mb-2">Verification runs automatically once an ID image and type are selected. Use this only to retry.</p>
                     <div class="d-flex align-items-center gap-2 mb-3">
-                        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnVerifyId" disabled>Re-check ID</button>
+                        <button type="button" class="btn btn-ghost btn-sm" id="btnVerifyId" disabled>Re-check ID</button>
                         <span class="text-muted small" id="verifyHint">Choose or capture an image first.</span>
                     </div>
 
@@ -131,16 +128,18 @@
             </div>
 
             <div class="wizard-nav">
-                <button type="button" class="btn btn-outline-secondary wizard-back"><i class="ti ti-arrow-left me-1"></i>Back</button>
+                <button type="button" class="btn btn-ghost wizard-back"><i class="ti ti-arrow-left me-1"></i>Back</button>
                 <button type="button" class="btn btn-primary wizard-next">Next: Account &amp; Role <i class="ti ti-arrow-right ms-1"></i></button>
             </div>
         </div>
 
         <!-- ============ STEP 3: Account & Role Information ============ -->
         <div class="wizard-panel d-none" data-step-panel="3">
-            <div class="card">
-                <div class="card-body">
-                    <h3 class="h6 text-primary mb-3">Account &amp; Role Information</h3>
+            <div class="cs-panel">
+                <div class="cs-panel__head">
+                    <h2 class="cs-panel__title">Account &amp; Role Information</h2>
+                </div>
+                <div class="cs-panel__body">
                     <div class="row g-3">
                         <div class="col-md-3">
                             <label class="form-label" for="role_id">Role</label>
@@ -185,9 +184,11 @@
                             </div>
                         <?php else: ?>
                             <div class="col-12">
-                                <div class="alert alert-info mb-0">
-                                    A temporary password will be auto-generated, sent via email, and the user will be forced to change password on first login.
-                                </div>
+                                <?= view('components/alert', [
+                                    'type' => 'info',
+                                    'dismissible' => false,
+                                    'message' => 'A temporary password will be auto-generated, sent via email, and the user will be forced to change password on first login.',
+                                ]) ?>
                             </div>
                         <?php endif; ?>
 
@@ -231,56 +232,44 @@
             </div>
 
             <div class="wizard-nav">
-                <button type="button" class="btn btn-outline-secondary wizard-back"><i class="ti ti-arrow-left me-1"></i>Back</button>
+                <button type="button" class="btn btn-ghost wizard-back"><i class="ti ti-arrow-left me-1"></i>Back</button>
                 <button type="button" class="btn btn-primary wizard-next">Next: Review <i class="ti ti-arrow-right ms-1"></i></button>
             </div>
         </div>
 
         <!-- ============ STEP 4: Review ============ -->
         <div class="wizard-panel d-none" data-step-panel="4">
-            <div class="card mb-3">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="fw-semibold">Personal Information</span>
-                    <button type="button" class="btn btn-link btn-sm p-0 wizard-edit" data-goto-step="1">Edit</button>
+            <div class="cs-panel mb-3">
+                <div class="cs-panel__head">
+                    <h2 class="cs-panel__title">Personal Information</h2>
+                    <button type="button" class="btn btn-ghost btn-sm wizard-edit" data-goto-step="1">Edit</button>
                 </div>
-                <div class="card-body small" id="reviewPersonal"></div>
+                <div class="cs-panel__body small" id="reviewPersonal"></div>
             </div>
 
-            <div class="card mb-3">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="fw-semibold">Government ID Verification</span>
-                    <button type="button" class="btn btn-link btn-sm p-0 wizard-edit" data-goto-step="2">Edit</button>
+            <div class="cs-panel mb-3">
+                <div class="cs-panel__head">
+                    <h2 class="cs-panel__title">Government ID Verification</h2>
+                    <button type="button" class="btn btn-ghost btn-sm wizard-edit" data-goto-step="2">Edit</button>
                 </div>
-                <div class="card-body small" id="reviewIdVerification"></div>
+                <div class="cs-panel__body small" id="reviewIdVerification"></div>
             </div>
 
-            <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="fw-semibold">Account &amp; Role</span>
-                    <button type="button" class="btn btn-link btn-sm p-0 wizard-edit" data-goto-step="3">Edit</button>
+            <div class="cs-panel mb-4">
+                <div class="cs-panel__head">
+                    <h2 class="cs-panel__title">Account &amp; Role</h2>
+                    <button type="button" class="btn btn-ghost btn-sm wizard-edit" data-goto-step="3">Edit</button>
                 </div>
-                <div class="card-body small" id="reviewAccount"></div>
+                <div class="cs-panel__body small" id="reviewAccount"></div>
             </div>
 
             <div class="wizard-nav">
-                <button type="button" class="btn btn-outline-secondary wizard-back"><i class="ti ti-arrow-left me-1"></i>Back</button>
+                <button type="button" class="btn btn-ghost wizard-back"><i class="ti ti-arrow-left me-1"></i>Back</button>
                 <button type="submit" class="btn btn-primary">Create User</button>
             </div>
         </div>
     </form>
 </div>
-
-<style>
-    .wizard-progress { display: flex; list-style: none; padding: 0; margin: 0; gap: .5rem; overflow-x: auto; }
-    .wizard-progress__item { display: flex; align-items: center; gap: .5rem; flex: 1 1 0; min-width: 140px; color: #94a3b8; font-size: .8rem; font-weight: 600; white-space: nowrap; }
-    .wizard-progress__badge { width: 1.75rem; height: 1.75rem; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: #e2e8f0; color: #64748b; flex-shrink: 0; }
-    .wizard-progress__item.is-active .wizard-progress__badge, .wizard-progress__item.is-done .wizard-progress__badge { background: #2563eb; color: #fff; }
-    .wizard-progress__item.is-active .wizard-progress__label, .wizard-progress__item.is-done .wizard-progress__label { color: #1e293b; }
-    .wizard-nav { display: flex; justify-content: space-between; margin: 1.25rem 0; }
-    .camera-frame { max-width: 480px; background: #000; border-radius: 8px; overflow: hidden; }
-    .camera-frame video { width: 100%; display: block; }
-    .id-preview { max-width: 480px; max-height: 320px; border-radius: 8px; border: 1px solid #e5e7eb; object-fit: contain; }
-</style>
 
 <script src="<?= base_url('assets/js/id-verification-widget.js') ?>"></script>
 <script>

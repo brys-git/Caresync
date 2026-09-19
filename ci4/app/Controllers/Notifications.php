@@ -17,6 +17,7 @@ class Notifications extends BaseController
             'selected_type' => $type,
             'selected_status' => $status,
             'role_layout' => $this->resolveLayoutView(),
+            'page_title' => 'Notifications',
         ]);
     }
 

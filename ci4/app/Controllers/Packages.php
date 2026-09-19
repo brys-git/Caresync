@@ -70,6 +70,8 @@ class Packages extends BaseController
             'package_versions' => $packageVersions,
             'plan_holders' => $planHolders,
             'role_layout' => $this->resolveLayoutView(),
+            'page_title' => 'Services & packages',
+            'page_sub' => 'Create packages, price versions, and assign a plan to a plan holder.',
         ]);
     }
 

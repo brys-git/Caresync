@@ -1,54 +1,53 @@
 <?= $this->extend($role_layout ?? 'layouts/plan_holder') ?>
 
 <?= $this->section('content') ?>
-<div class="container-fluid">
-    <div class="d-flex align-items-start justify-content-between mb-3">
-        <div>
-            <h1 class="h3 mb-1">Service Balances</h1>
-            <p class="text-muted mb-0">Track funeral package balances separate from membership contributions.</p>
-        </div>
-    </div>
+<?php if (session()->getFlashdata('success')): ?>
+    <?= view('components/alert', ['type' => 'success', 'message' => session()->getFlashdata('success')]) ?>
+<?php endif; ?>
+<?php if (session()->getFlashdata('error')): ?>
+    <?= view('components/alert', ['type' => 'danger', 'message' => session()->getFlashdata('error')]) ?>
+<?php endif; ?>
 
-    <?php if (session()->getFlashdata('success')): ?>
-        <div class="alert alert-success"><?= esc(session()->getFlashdata('success')) ?></div>
-    <?php endif; ?>
-    <?php if (session()->getFlashdata('error')): ?>
-        <div class="alert alert-danger"><?= esc(session()->getFlashdata('error')) ?></div>
-    <?php endif; ?>
-
-    <div class="card">
-        <div class="table-responsive">
-            <table class="table table-striped mb-0">
-                <thead>
-                    <tr>
-                        <th>Member</th>
-                        <th>Service</th>
-                        <th>Package Cost</th>
-                        <th>Assistance</th>
-                        <th>Remaining</th>
-                        <th>Status</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if (empty($balances)): ?>
-                        <tr><td colspan="7" class="text-center">No service balances found.</td></tr>
-                    <?php else: ?>
+<section class="cs-panel">
+    <div class="cs-panel__body cs-panel__body--flush">
+        <?php if (empty($balances)): ?>
+            <?= view('components/empty_state', [
+                'icon'  => 'ti-receipt-2',
+                'title' => 'No service balances found',
+                'text'  => 'Funeral package balances tracked separately from membership contributions will appear here.',
+            ]) ?>
+        <?php else: ?>
+            <div class="cs-tablewrap">
+                <table class="cs-table">
+                    <thead>
+                        <tr>
+                            <th>Member</th>
+                            <th>Service</th>
+                            <th class="cs-num">Package cost</th>
+                            <th class="cs-num">Assistance</th>
+                            <th class="cs-num">Remaining</th>
+                            <th>Status</th>
+                            <th class="cs-table__actions">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
                         <?php foreach ($balances as $balance): ?>
                             <tr>
                                 <td><?= esc(trim((string) ($balance['first_name'] ?? '') . ' ' . (string) ($balance['last_name'] ?? ''))) ?></td>
-                                <td><?= esc((string) ($balance['service_name'] ?? $balance['package_name'] ?? '-')) ?></td>
-                                <td>P<?= esc(number_format((float) ($balance['package_cost'] ?? 0), 2)) ?></td>
-                                <td>P<?= esc(number_format((float) ($balance['assistance_amount'] ?? 0), 2)) ?></td>
-                                <td>P<?= esc(number_format((float) ($balance['remaining_balance'] ?? 0), 2)) ?></td>
-                                <td><?= esc((string) ($balance['status'] ?? '-')) ?></td>
-                                <td><a class="btn btn-sm btn-outline-primary" href="<?= site_url($route_prefix . '/' . (int) ($balance['service_balance_id'] ?? 0)) ?>">View</a></td>
+                                <td><?= esc((string) ($balance['service_name'] ?? $balance['package_name'] ?? '—')) ?></td>
+                                <td class="cs-num"><?= cs_money($balance['package_cost'] ?? 0) ?></td>
+                                <td class="cs-num"><?= cs_money($balance['assistance_amount'] ?? 0) ?></td>
+                                <td class="cs-num"><?= cs_money($balance['remaining_balance'] ?? 0) ?></td>
+                                <td><?= cs_status((string) ($balance['status'] ?? '')) ?></td>
+                                <td class="cs-table__actions">
+                                    <a class="btn btn-ghost btn-sm" href="<?= site_url($route_prefix . '/' . (int) ($balance['service_balance_id'] ?? 0)) ?>">View</a>
+                                </td>
                             </tr>
                         <?php endforeach; ?>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
+                    </tbody>
+                </table>
+            </div>
+        <?php endif; ?>
     </div>
-</div>
+</section>
 <?= $this->endSection() ?>

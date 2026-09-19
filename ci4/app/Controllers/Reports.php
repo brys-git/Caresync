@@ -45,6 +45,8 @@ class Reports extends BaseController
 
         return view('reports/index', [
             'role_layout' => $this->resolveLayoutView(),
+            'page_title' => 'Reports',
+            'page_sub' => 'Scope: ' . ($roleId === 1 ? 'System-wide' : ($roleId === 2 ? 'Branch' : 'Staff')),
             'payments' => $payments,
             'branches' => $branches,
             'services' => $services,

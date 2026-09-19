@@ -56,6 +56,8 @@ class ClientPortal extends BaseController
 
         return view('approvals/registration_queue', [
             'role_layout' => $roleId === 1 ? 'layouts/admin' : 'layouts/branch_admin',
+            'page_title' => 'Registration approvals',
+            'page_sub' => 'Pending initial payments requiring verification before full access activation.',
             'rows' => $rows,
             'can_verify' => $roleId === 2,
         ]);
