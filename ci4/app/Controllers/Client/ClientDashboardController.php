@@ -38,7 +38,7 @@ class ClientDashboardController extends BaseController
             $latestPlan['paid_amount'] = $paidAmount;
             $latestPlan['total_paid'] = $paidAmount;
             $latestPlan['total_plan_amount'] = $totalContribution;
-            $latestPlan['remaining_balance'] = max(0, round($totalContribution - $paidAmount, 2));
+            $latestPlan['remaining_balance'] = $paymentService->getRemainingBalance((int) $latestPlan['plan_id'], $totalContribution);
         }
 
         $branchName = '';

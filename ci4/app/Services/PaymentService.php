@@ -331,6 +331,27 @@ class PaymentService
             ->getRowArray()['total_paid'] ?? 0;
     }
 
+    /**
+     * Live "Remaining Balance": total contribution target minus every
+     * paid/verified payment recorded against this plan, floored at 0 -
+     * never the plans.remaining_balance column itself, which is only ever
+     * set once at plan creation (monthly_fee * 12) and nothing in the real
+     * payment-approval paths (PaymentTracking::reviewGcash()/recordCash(),
+     * ApprovalService::approveInitialPayment()) ever updates it afterward,
+     * so it silently drifts stale the moment a single payment is verified.
+     * client/dashboard.php computed this inline before
+     * (ClientDashboardController::dashboard()); extracted here so
+     * client/payment.php's "Remaining Balance" stat can show the exact
+     * same live number instead of that stale column - the mismatch this
+     * was built to fix.
+     */
+    public function getRemainingBalance(int $planId, ?float $totalPlanAmount = null): float
+    {
+        $target = $totalPlanAmount ?? MembershipService::TOTAL_CONTRIBUTION;
+
+        return max(0.0, round($target - $this->getTotalPaidForPlan($planId), 2));
+    }
+
     public function getPaymentById(int $paymentId): ?array
     {
         $row = db_connect()->table('payments')

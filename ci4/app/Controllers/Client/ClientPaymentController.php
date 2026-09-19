@@ -67,6 +67,18 @@ class ClientPaymentController extends BaseController
                 ->getRowArray()['months_covered'] ?? 0);
             $payments = $this->paymentRows((int) $plan['plan_id']);
             [, , , $remainingMonths] = $this->paymentCapacity($plan);
+
+            // plans.remaining_balance is only ever set once at plan
+            // creation and never updated by the real payment-approval
+            // paths afterward - it goes stale the moment a single payment
+            // is verified. Recompute live, the same way the client
+            // dashboard's own "Remaining Balance" stat does
+            // (ClientDashboardController::dashboard()), so the two pages
+            // never disagree again.
+            $plan['remaining_balance'] = (new PaymentService())->getRemainingBalance(
+                (int) $plan['plan_id'],
+                (float) ($plan['total_plan_amount'] ?? MembershipService::TOTAL_CONTRIBUTION)
+            );
         }
 
         return view('client/payment', [
