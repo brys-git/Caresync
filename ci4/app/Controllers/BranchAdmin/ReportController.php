@@ -62,8 +62,9 @@ class ReportController extends BaseController
         }
 
         $rows = $this->reportService->getOverdueReport(['branch_id' => $branchId]);
+        $mode = (string) $this->request->getGet('mode');
 
-        if ((string) $this->request->getGet('mode') === 'csv') {
+        if ($mode === 'csv') {
             return $this->simpleCsv('overdue_report', ['Plan Holder', 'Unique ID', 'Contact', 'Remaining Balance', 'Months Paid', 'Overdue Months', 'Days Overdue', 'Next Due Date', 'Days Until Forfeiture'], $rows, static fn (array $row): array => [
                 trim((string) ($row['first_name'] ?? '') . ' ' . (string) ($row['last_name'] ?? '')),
                 (string) ($row['unique_identifier'] ?? ''),
@@ -75,6 +76,14 @@ class ReportController extends BaseController
                 (string) ($row['next_due_date'] ?? ''),
                 $row['days_until_forfeiture'] === null ? 'N/A' : (string) $row['days_until_forfeiture'],
             ]);
+        }
+
+        if ($mode === 'pdf') {
+            return $this->exportOverduePdf($rows);
+        }
+
+        if ($mode === 'print') {
+            return view('admin/reports/overdue_export', ['rows' => $rows, 'auto_print' => true]);
         }
 
         return view('admin/reports/overdue', [
@@ -106,8 +115,9 @@ class ReportController extends BaseController
         ], $branchId);
 
         $rows = $this->reportService->getCommissionReport($filters);
+        $mode = (string) $this->request->getGet('mode');
 
-        if ((string) $this->request->getGet('mode') === 'csv') {
+        if ($mode === 'csv') {
             return $this->simpleCsv('commission_report', ['Collector', 'Role', 'Transactions', 'Total Collected', 'Commission (10%)', 'Net Remitted'], $rows, static fn (array $row): array => [
                 trim((string) ($row['first_name'] ?? '') . ' ' . (string) ($row['last_name'] ?? '')),
                 (string) ($row['role_name'] ?? ''),
@@ -115,6 +125,21 @@ class ReportController extends BaseController
                 number_format((float) ($row['total_collected'] ?? 0), 2, '.', ''),
                 number_format((float) ($row['commission'] ?? 0), 2, '.', ''),
                 number_format((float) ($row['net_remitted'] ?? 0), 2, '.', ''),
+            ]);
+        }
+
+        if ($mode === 'pdf') {
+            return $this->exportCommissionPdf($rows, $filters, $branchId);
+        }
+
+        if ($mode === 'print') {
+            $branch = $this->reportService->getBranchInfo($branchId);
+
+            return view('admin/reports/commission_export', [
+                'rows' => $rows,
+                'filters' => $filters,
+                'branch_name' => (string) ($branch['branch_name'] ?? ''),
+                'auto_print' => true,
             ]);
         }
 
@@ -289,6 +314,54 @@ class ReportController extends BaseController
         $dompdf->render();
 
         $filename = 'remittance_report_' . date('Ymd_His') . '.pdf';
+
+        return $this->response
+            ->setHeader('Content-Type', 'application/pdf')
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
+            ->setBody($dompdf->output());
+    }
+
+    private function exportOverduePdf(array $rows)
+    {
+        $html = view('admin/reports/overdue_export', ['rows' => $rows, 'auto_print' => false]);
+
+        $options = new Options();
+        $options->set('isRemoteEnabled', true);
+        $options->set('isHtml5ParserEnabled', true);
+
+        $dompdf = new Dompdf($options);
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'landscape');
+        $dompdf->render();
+
+        $filename = 'overdue_report_' . date('Ymd_His') . '.pdf';
+
+        return $this->response
+            ->setHeader('Content-Type', 'application/pdf')
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
+            ->setBody($dompdf->output());
+    }
+
+    private function exportCommissionPdf(array $rows, array $filters, int $branchId)
+    {
+        $branch = $this->reportService->getBranchInfo($branchId);
+        $html = view('admin/reports/commission_export', [
+            'rows' => $rows,
+            'filters' => $filters,
+            'branch_name' => (string) ($branch['branch_name'] ?? ''),
+            'auto_print' => false,
+        ]);
+
+        $options = new Options();
+        $options->set('isRemoteEnabled', true);
+        $options->set('isHtml5ParserEnabled', true);
+
+        $dompdf = new Dompdf($options);
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
+
+        $filename = 'commission_report_' . date('Ymd_His') . '.pdf';
 
         return $this->response
             ->setHeader('Content-Type', 'application/pdf')

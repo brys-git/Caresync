@@ -1,5 +1,6 @@
 # Dependencies
 ci4/vendor/
+ci4/composer.phar
 inapp-1.0.0/node_modules/
 
 # CodeIgniter writable/build artifacts

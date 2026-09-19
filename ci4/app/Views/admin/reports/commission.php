@@ -1,9 +1,16 @@
 <?= $this->extend($role_layout ?? 'layouts/admin') ?>
 
 <?= $this->section('content') ?>
+<?php $commissionQuery = 'date_from=' . urlencode((string) ($filters['date_from'] ?? '')) . '&date_to=' . urlencode((string) ($filters['date_to'] ?? '')); ?>
 <div class="mb-3 text-end">
-    <a class="btn btn-outline-secondary btn-sm" href="<?= site_url(($reports_base_path ?? '/admin/reports') . '/commission?mode=csv&date_from=' . urlencode((string) ($filters['date_from'] ?? '')) . '&date_to=' . urlencode((string) ($filters['date_to'] ?? ''))) ?>">
-        <i class="ti ti-download me-1"></i> Export CSV
+    <a class="btn btn-outline-secondary btn-sm" href="<?= site_url(($reports_base_path ?? '/admin/reports') . '/commission?mode=print&' . $commissionQuery) ?>" target="_blank" rel="noopener">
+        <i class="ti ti-printer me-1"></i> Print
+    </a>
+    <a class="btn btn-outline-secondary btn-sm" href="<?= site_url(($reports_base_path ?? '/admin/reports') . '/commission?mode=csv&' . $commissionQuery) ?>">
+        <i class="ti ti-file-spreadsheet me-1"></i> Export Excel
+    </a>
+    <a class="btn btn-primary btn-sm" href="<?= site_url(($reports_base_path ?? '/admin/reports') . '/commission?mode=pdf&' . $commissionQuery) ?>">
+        <i class="ti ti-file-type-pdf me-1"></i> Export PDF
     </a>
 </div>
 

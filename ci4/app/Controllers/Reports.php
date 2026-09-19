@@ -3,6 +3,8 @@
 namespace App\Controllers;
 
 use App\Services\ReportService;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 
 class Reports extends BaseController
 {
@@ -63,8 +65,9 @@ class Reports extends BaseController
         $filters = ['branch_id' => $this->reportBranchFilter()];
         $reportService = new ReportService();
         $rows = $reportService->getOverdueReport($filters);
+        $mode = (string) $this->request->getGet('mode');
 
-        if ((string) $this->request->getGet('mode') === 'csv') {
+        if ($mode === 'csv') {
             return $this->csvResponse(
                 'overdue_report',
                 ['Plan Holder', 'Unique ID', 'Branch', 'Contact', 'Remaining Balance', 'Months Paid', 'Overdue Months', 'Days Overdue', 'Next Due Date', 'Days Until Forfeiture'],
@@ -82,6 +85,14 @@ class Reports extends BaseController
                     $row['days_until_forfeiture'] === null ? 'N/A' : (string) $row['days_until_forfeiture'],
                 ]
             );
+        }
+
+        if ($mode === 'pdf') {
+            return $this->exportOverduePdf($rows);
+        }
+
+        if ($mode === 'print') {
+            return view('admin/reports/overdue_export', ['rows' => $rows, 'auto_print' => true]);
         }
 
         return view('admin/reports/overdue', [
@@ -157,8 +168,9 @@ class Reports extends BaseController
         $filters = $this->reportDateFilters() + ['branch_id' => $this->reportBranchFilter()];
         $reportService = new ReportService();
         $rows = $reportService->getCommissionReport($filters);
+        $mode = (string) $this->request->getGet('mode');
 
-        if ((string) $this->request->getGet('mode') === 'csv') {
+        if ($mode === 'csv') {
             return $this->csvResponse(
                 'commission_report',
                 ['Collector', 'Role', 'Transactions', 'Total Collected', 'Commission (10%)', 'Net Remitted'],
@@ -172,6 +184,21 @@ class Reports extends BaseController
                     number_format((float) ($row['net_remitted'] ?? 0), 2, '.', ''),
                 ]
             );
+        }
+
+        if ($mode === 'pdf') {
+            return $this->exportCommissionPdf($rows, $filters);
+        }
+
+        if ($mode === 'print') {
+            $branch = $filters['branch_id'] > 0 ? $reportService->getBranchInfo((int) $filters['branch_id']) : null;
+
+            return view('admin/reports/commission_export', [
+                'rows' => $rows,
+                'filters' => $filters,
+                'branch_name' => (string) ($branch['branch_name'] ?? ''),
+                'auto_print' => true,
+            ]);
         }
 
         return view('admin/reports/commission', [
@@ -253,6 +280,56 @@ class Reports extends BaseController
             'date_from' => $dateFrom !== '' ? $dateFrom : date('Y-01-01'),
             'date_to' => $dateTo !== '' ? $dateTo : date('Y-m-d'),
         ];
+    }
+
+    private function exportCommissionPdf(array $rows, array $filters)
+    {
+        $reportService = new ReportService();
+        $branch = $filters['branch_id'] > 0 ? $reportService->getBranchInfo((int) $filters['branch_id']) : null;
+
+        $html = view('admin/reports/commission_export', [
+            'rows' => $rows,
+            'filters' => $filters,
+            'branch_name' => (string) ($branch['branch_name'] ?? ''),
+            'auto_print' => false,
+        ]);
+
+        $options = new Options();
+        $options->set('isRemoteEnabled', true);
+        $options->set('isHtml5ParserEnabled', true);
+
+        $dompdf = new Dompdf($options);
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
+
+        $filename = 'commission_report_' . date('Ymd_His') . '.pdf';
+
+        return $this->response
+            ->setHeader('Content-Type', 'application/pdf')
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
+            ->setBody($dompdf->output());
+    }
+
+    private function exportOverduePdf(array $rows)
+    {
+        $html = view('admin/reports/overdue_export', ['rows' => $rows, 'auto_print' => false]);
+
+        $options = new Options();
+        $options->set('isRemoteEnabled', true);
+        $options->set('isHtml5ParserEnabled', true);
+
+        $dompdf = new Dompdf($options);
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'landscape');
+        $dompdf->render();
+
+        $filename = 'overdue_report_' . date('Ymd_His') . '.pdf';
+
+        return $this->response
+            ->setHeader('Content-Type', 'application/pdf')
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
+            ->setBody($dompdf->output());
     }
 
     private function csvResponse(string $baseFilename, array $headers, array $rows, callable $rowMapper)
