@@ -159,7 +159,64 @@ class PlanHolderRegistrationService
             }
         }
 
+        // A client who registers themselves does it with nobody from the
+        // branch present - unlike 'staff' mode, where the Staff/Branch
+        // Admin doing the registering was right there. If their ID needs a
+        // manual look (the normal outcome with no Anthropic API key
+        // configured - see GovernmentIdVerificationService), the branch
+        // would otherwise never know a review is waiting on them.
+        if ($mode === 'self') {
+            $verification = (new GovernmentIdVerificationService())->latestForUser((int) $currentUser['user_id']);
+            if ($verification !== null && (string) ($verification['verification_status'] ?? '') === 'needs_review') {
+                $this->notifyBranchOfPendingReview($branchId, (string) ($input['first_name'] ?? ''), (string) ($input['last_name'] ?? ''));
+            }
+        }
+
         return $planHolderId;
+    }
+
+    /**
+     * Notifies every active Branch Admin and Staff account in this branch
+     * that a client's Government ID needs a manual look (see
+     * IdVerificationQueueController) - NotificationService::notify() only
+     * ever targets one user_id at a time, so this resolves the recipient
+     * list itself rather than adding a branch-wide method there for one caller.
+     */
+    private function notifyBranchOfPendingReview(int $branchId, string $firstName, string $lastName): void
+    {
+        if ($branchId <= 0) {
+            return;
+        }
+
+        $recipients = db_connect()->table('users')
+            ->select('user_id')
+            ->where('branch_id', $branchId)
+            ->where('status', 'active')
+            ->groupStart()
+                ->where('role_id', 2)
+                ->orWhere('role_id', 3)
+            ->groupEnd()
+            ->get()
+            ->getResultArray();
+
+        if (empty($recipients)) {
+            return;
+        }
+
+        $applicantName = trim($firstName . ' ' . $lastName);
+        $message = $applicantName !== ''
+            ? $applicantName . ' just registered and their Government ID needs a manual review.'
+            : 'A new plan holder registration needs a manual Government ID review.';
+
+        $notificationService = new NotificationService();
+        foreach ($recipients as $recipient) {
+            // NotificationService::notify() silently downgrades any type
+            // outside its own hardcoded whitelist to 'general' (the
+            // notifications.type column is a fixed MySQL ENUM) - passing
+            // 'general' explicitly here instead of a made-up value that
+            // would just get rewritten anyway.
+            $notificationService->notify((int) $recipient['user_id'], $message, 'general');
+        }
     }
 
     private function enforceIdVerification(string $mode, array $input, array $identity, ?array $currentUser): void

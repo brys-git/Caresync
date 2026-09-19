@@ -51,6 +51,97 @@ class GovernmentIdVerificationService
     }
 
     /**
+     * Manual ID review queue for Staff/Branch Admin: every plan holder in
+     * this branch whose LATEST Government ID verification is still
+     * 'needs_review' - the fallback status every submission gets while no
+     * Anthropic API key is configured (see runExtractionAndCompare()), but
+     * also the real status a configured key can still return for a
+     * genuinely low-confidence match. Only the latest attempt per user_id
+     * counts (a re-verify supersedes an older needs_review row for the
+     * same person), and only plan holders (the review is meaningless for
+     * an account with no plan_holder row at all - nothing to compare
+     * against yet).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function listNeedingReview(int $branchId): array
+    {
+        $sql = 'SELECT giv.verification_id, giv.user_id, giv.id_type, giv.created_at,
+                    giv.claimed_first_name, giv.claimed_middle_name, giv.claimed_last_name,
+                    giv.claimed_date_of_birth, giv.claimed_gender,
+                    ph.plan_holder_id, u.first_name, u.last_name, u.email
+                FROM government_id_verifications giv
+                INNER JOIN (
+                    SELECT user_id, MAX(verification_id) AS latest_id
+                    FROM government_id_verifications
+                    GROUP BY user_id
+                ) latest ON latest.user_id = giv.user_id AND latest.latest_id = giv.verification_id
+                INNER JOIN plan_holders ph ON ph.user_id = giv.user_id
+                INNER JOIN users u ON u.user_id = giv.user_id
+                WHERE giv.verification_status = \'needs_review\'
+                    AND ph.branch_id = ?
+                ORDER BY giv.created_at ASC';
+
+        return db_connect()->query($sql, [$branchId])->getResultArray();
+    }
+
+    /**
+     * How many plan holders in this branch are awaiting a manual ID
+     * review - for a nav badge, same idea as the existing pending_approvals/
+     * pending_requests counts elsewhere in this app.
+     */
+    public function countNeedingReview(int $branchId): int
+    {
+        return count($this->listNeedingReview($branchId));
+    }
+
+    /**
+     * One verification row for the review detail page, plus enough of the
+     * plan holder's own submitted Applicant Information to compare against
+     * by eye - scoped to $branchId so a reviewer can never open a record
+     * outside their own branch by guessing a verification_id in the URL.
+     */
+    public function getForReview(int $verificationId, int $branchId): ?array
+    {
+        $row = db_connect()->table('government_id_verifications giv')
+            ->select('giv.*, ph.plan_holder_id, ph.branch_id, ph.address_no, ph.address_street,
+                ph.address_barangay, ph.address_city, ph.civil_status, ph.citizenship,
+                u.first_name, u.last_name, u.middle_name, u.email, u.contact_number')
+            ->join('plan_holders ph', 'ph.user_id = giv.user_id', 'inner')
+            ->join('users u', 'u.user_id = giv.user_id', 'inner')
+            ->where('giv.verification_id', $verificationId)
+            ->get()
+            ->getRowArray();
+
+        if (! $row || (int) ($row['branch_id'] ?? 0) !== $branchId) {
+            return null;
+        }
+
+        return $row;
+    }
+
+    /**
+     * Records a Staff/Branch Admin's manual decision after comparing the ID
+     * image against the applicant's typed details by eye. This never
+     * un-does the account/plan that submission already created (a 'needs_
+     * review' result was never a hard block - see isValidForSubmission()) -
+     * it's an audit record of a human actually having checked, and (on a
+     * mismatch) a signal to follow up with the client.
+     */
+    public function markReviewed(int $verificationId, string $status, int $reviewerId): bool
+    {
+        if (! in_array($status, ['verified', 'failed'], true)) {
+            return false;
+        }
+
+        return (bool) $this->model->update($verificationId, [
+            'verification_status' => $status,
+            'reviewed_by' => $reviewerId,
+            'verified_at' => date('Y-m-d H:i:s'),
+        ]);
+    }
+
+    /**
      * True only when a verification is usable to let a registration
      * proceed AND still matches what's about to be submitted. A wizard's
      * step-gating is client-side UX only - this is the real server-side

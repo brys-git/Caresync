@@ -31,6 +31,14 @@ $routes->group('branch-admin', ['filter' => 'auth'], static function (RouteColle
     $routes->get('client/register', 'BranchAdmin\ClientController::create', ['filter' => 'role:2']);
     $routes->post('client/store', 'BranchAdmin\ClientController::store', ['filter' => 'role:2']);
 
+    // Government ID manual review queue (no Anthropic API key configured
+    // in this environment - every verification needs a human look).
+    $routes->get('id-verification', 'IdVerificationQueueController::branchAdmin', ['filter' => 'role:2']);
+    $routes->get('id-verification/(:num)', 'IdVerificationQueueController::show/$1', ['filter' => 'role:2']);
+    $routes->get('id-verification/(:num)/image', 'IdVerificationQueueController::image/$1', ['filter' => 'role:2']);
+    $routes->post('id-verification/(:num)/verify', 'IdVerificationQueueController::markVerified/$1', ['filter' => 'role:2']);
+    $routes->post('id-verification/(:num)/fail', 'IdVerificationQueueController::markFailed/$1', ['filter' => 'role:2']);
+
     // Payment Tracking
     $routes->get('payment-tracking', 'PaymentTracking::branchAdmin', ['filter' => 'role:2']);
     $routes->post('payment-tracking/record-cash', 'PaymentTracking::recordCash', ['filter' => 'role:2']);

@@ -22,6 +22,14 @@ $routes->group('staff', ['filter' => 'auth'], static function (RouteCollection $
     $routes->get('client/register', 'Staff\ClientController::create', ['filter' => 'role:3']);
     $routes->post('client/store', 'Staff\ClientController::store', ['filter' => 'role:3']);
 
+    // Government ID manual review queue (no Anthropic API key configured
+    // in this environment - every verification needs a human look).
+    $routes->get('id-verification', 'IdVerificationQueueController::staff', ['filter' => 'role:3']);
+    $routes->get('id-verification/(:num)', 'IdVerificationQueueController::show/$1', ['filter' => 'role:3']);
+    $routes->get('id-verification/(:num)/image', 'IdVerificationQueueController::image/$1', ['filter' => 'role:3']);
+    $routes->post('id-verification/(:num)/verify', 'IdVerificationQueueController::markVerified/$1', ['filter' => 'role:3']);
+    $routes->post('id-verification/(:num)/fail', 'IdVerificationQueueController::markFailed/$1', ['filter' => 'role:3']);
+
     // Payment Management
     $routes->get('payment-management', 'PaymentTracking::staff', ['filter' => 'role:3']);
     $routes->post('payment-management/record-cash', 'PaymentTracking::recordCash', ['filter' => 'role:3']);

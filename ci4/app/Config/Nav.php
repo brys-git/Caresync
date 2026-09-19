@@ -79,6 +79,7 @@ class Nav extends BaseConfig
                     'title' => 'Members',
                     'items' => [
                         ['key' => 'clients',  'label' => 'Plan holders',     'icon' => 'ti-users',            'url' => 'branch-admin/client-management'],
+                        ['key' => 'id-verification', 'label' => 'ID review', 'icon' => 'ti-id-badge-2',       'url' => 'branch-admin/id-verification', 'count' => 'ids_needing_review'],
                         ['key' => 'requests', 'label' => 'Service requests', 'icon' => 'ti-clipboard-list',   'url' => 'branch-admin/service-applications', 'count' => 'pending_requests'],
                     ],
                 ],
@@ -129,6 +130,7 @@ class Nav extends BaseConfig
                     'items' => [
                         ['key' => 'dashboard',    'label' => 'Dashboard',        'icon' => 'ti-layout-dashboard', 'url' => 'dashboard/staff'],
                         ['key' => 'clients',      'label' => 'Plan holders',     'icon' => 'ti-users',            'url' => 'staff/client-management'],
+                        ['key' => 'id-verification', 'label' => 'ID review',     'icon' => 'ti-id-badge-2',       'url' => 'staff/id-verification', 'count' => 'ids_needing_review'],
                         ['key' => 'payments',     'label' => 'Payments',         'icon' => 'ti-cash',             'url' => 'staff/payment-management'],
                         ['key' => 'services',     'label' => 'Services',         'icon' => 'ti-clipboard-list',   'url' => 'staff/services', 'count' => 'pending_requests'],
                         // Hidden unless this Staff account is also flagged

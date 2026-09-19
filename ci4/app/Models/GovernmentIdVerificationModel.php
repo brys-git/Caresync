@@ -24,6 +24,7 @@ class GovernmentIdVerificationModel extends Model
         'extracted_gender',
         'extracted_id_number_masked',
         'mismatch_reason',
+        'reviewed_by',
         'claimed_first_name',
         'claimed_middle_name',
         'claimed_last_name',
