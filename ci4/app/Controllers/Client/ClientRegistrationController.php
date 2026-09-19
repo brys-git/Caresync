@@ -135,8 +135,9 @@ class ClientRegistrationController extends BaseController
 
         return view('client/plan_registration', [
             'role_layout' => 'layouts/plan_holder',
-            'page_title' => (string) ($program['name'] ?? 'Damayan Burial Program'),
-            'page_sub' => 'Plan registration - complete each step, then review before submitting.',
+            'page_title' => 'Plan registration',
+            'page_sub' => 'Complete each step, then review before submitting.',
+            'crumbs' => [['label' => 'Plan registration']],
             'access' => $access,
             'program' => $program,
             'plan_id' => $planId,

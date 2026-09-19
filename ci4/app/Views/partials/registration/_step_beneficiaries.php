@@ -2,16 +2,19 @@
 /** Step 3: Beneficiaries. See _wizard.php for the $wizard contract. */
 $beneficiaries = $wizard['beneficiaries'] ?? [];
 $relationships = config(\Config\Beneficiary::class)->relationships;
+$isEdit = ($wizard['context'] ?? 'register') === 'edit';
 ?>
 <!-- ============ STEP 3: Beneficiaries ============ -->
-<div class="wizard-panel d-none" data-step-panel="3">
-    <div class="card">
-        <div class="card-body">
-            <h3 class="h6 text-primary mb-1">Beneficiaries <span class="text-danger">*</span></h3>
-            <p class="text-muted small mb-3">Add at least one beneficiary. You can leave empty rows blank.</p>
-            <div class="table-responsive">
-                <table class="table table-bordered align-middle">
-                    <thead class="table-light">
+<div<?= $isEdit ? '' : ' class="wizard-panel d-none" data-step-panel="3"' ?>>
+    <div class="cs-panel<?= $isEdit ? ' mb-4' : '' ?>">
+        <div class="cs-panel__head">
+            <h2 class="cs-panel__title">Beneficiaries <span class="text-danger">*</span></h2>
+            <p class="cs-panel__note">Add at least one beneficiary. You can leave empty rows blank.</p>
+        </div>
+        <div class="cs-panel__body">
+            <div class="cs-tablewrap">
+                <table class="cs-table align-middle">
+                    <thead>
                         <tr>
                             <th style="width: 20%;">First Name</th>
                             <th style="width: 18%;">Middle Name</th>
@@ -88,8 +91,10 @@ $relationships = config(\Config\Beneficiary::class)->relationships;
         </div>
     </div>
 
+    <?php if (! $isEdit): ?>
     <div class="wizard-nav">
-        <button type="button" class="btn btn-outline-secondary wizard-back"><i class="ti ti-arrow-left me-1"></i>Back</button>
+        <button type="button" class="btn btn-ghost wizard-back"><i class="ti ti-arrow-left me-1"></i>Back</button>
         <button type="button" class="btn btn-primary wizard-next">Next: Emergency Contact <i class="ti ti-arrow-right ms-1"></i></button>
     </div>
+    <?php endif; ?>
 </div>

@@ -21,10 +21,15 @@
  *                           - carries a prior verification through reload)
  *   'selected_id_type'     pre-selected Government ID Type, if any
  *   'id_types'              array<string,string> value => label
- *   'show_company_header'  true for self, false for staff (compact header instead)
- *   'show_branch_select'   true only for System Admin
+ *   'show_branch_select'   true for client self-service and System Admin
+ *                           (both pick a branch explicitly); false for
+ *                           Branch Admin/Staff, who see their own branch as
+ *                           a read-only field instead (see 'branch_name')
  *   'branches'             branch list when show_branch_select is true
  *   'selected_branch_id'   pre-selected branch_id
+ *   'branch_name'          Branch Admin/Staff's own branch, shown read-only
+ *                           when show_branch_select is false
+ *   'cancel_url'           where the wizard's Cancel link goes
  *   'show_account_section' true for staff mode - email/contact/link-existing
  *   'existing_users'       array of linkable accounts for staff mode's
  *                           "link to an existing plan-holder account" search
@@ -37,7 +42,6 @@
  *   'latest_verification'   self mode's latest Government ID verification row, if any
  *   'certify_label'         certification checkbox text
  *   'submit_label'          submit button text
- *   'cancel_url'            where the Cancel link goes
  *   'errors'                flat array of validation error strings
  */
 $mode = (string) ($wizard['mode'] ?? 'self');

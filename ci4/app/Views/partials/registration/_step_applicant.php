@@ -7,33 +7,26 @@ $branches = $wizard['branches'] ?? [];
 $applicationDate = (string) old('application_date', (string) ($planHolder['application_date'] ?? date('Y-m-d')));
 $civilStatus = (string) old('civil_status', (string) ($planHolder['civil_status'] ?? ''));
 $gender = (string) old('gender', (string) ($planHolder['gender'] ?? ''));
+$isEdit = ($wizard['context'] ?? 'register') === 'edit';
 ?>
 <!-- ============ STEP 1: Applicant Information ============ -->
-<div class="wizard-panel" data-step-panel="1">
-    <?php if (! empty($wizard['show_company_header'])): ?>
-        <div class="card mb-4">
-            <div class="card-body">
-                <h2 class="h5 mb-2">KAAGAPAY MO KARAMAY FUNERAL HOMES CO.</h2>
-                <p class="mb-1"><strong>Main Office Address:</strong> #65 J.F. Diaz Ave. Ampid 1, San Mateo, Rizal</p>
-                <p class="mb-1"><strong>Branch Offices:</strong> Dakila Cor. Constitutional Rd. Batasan Hills Q.C.; Sta Isabel, Calapan City; Babangonan, Victoria; Poblacion, Bansud; C-5 Diversion Rd. Bongabong; Upper Odiong, Roxas; Don Pedro, Mansalay Oriental Mindoro</p>
-                <p class="mb-1"><strong>Contact Numbers:</strong> Smart 0962-571-9780; Globe 0997-512-7828 / 0927-735-0239</p>
-                <p class="mb-1"><strong>Website &amp; Facebook Page:</strong> KaagapayMoKaramayFuneralHomes</p>
-                <p class="mb-1"><strong>Registration Details:</strong> SEC. REG. PG 201520567, TIN # 009-196-436-0000</p>
-                <p class="mb-0"><strong>Founder/CEO:</strong> Ricardo C. Ramilo</p>
-            </div>
+<div<?= $isEdit ? '' : ' class="wizard-panel" data-step-panel="1"' ?>>
+    <?php if (! $isEdit): ?>
+    <div class="cs-panel mb-4">
+        <div class="cs-panel__body">
+            <h2 class="cs-panel__title mb-2">KAAGAPAY MO KARAMAY FUNERAL HOMES CO.</h2>
+            <p class="mb-1"><strong>Main Office Address:</strong> #65 J.F. Diaz Ave. Ampid 1, San Mateo, Rizal</p>
+            <p class="mb-1"><strong>Branch Offices:</strong> Dakila Cor. Constitutional Rd. Batasan Hills Q.C.; Sta Isabel, Calapan City; Babangonan, Victoria; Poblacion, Bansud; C-5 Diversion Rd. Bongabong; Upper Odiong, Roxas; Don Pedro, Mansalay Oriental Mindoro</p>
+            <p class="mb-1"><strong>Contact Numbers:</strong> Smart 0962-571-9780; Globe 0997-512-7828 / 0927-735-0239</p>
+            <p class="mb-1"><strong>Website &amp; Facebook Page:</strong> KaagapayMoKaramayFuneralHomes</p>
+            <p class="mb-1"><strong>Registration Details:</strong> SEC. REG. PG 201520567, TIN # 009-196-436-0000</p>
+            <p class="mb-0"><strong>Founder/CEO:</strong> Ricardo C. Ramilo</p>
         </div>
-    <?php else: ?>
-        <div class="mb-4">
-            <h2 class="h5 mb-1"><?= esc((string) ($wizard['page_heading'] ?? 'Register Plan Holder')) ?></h2>
-            <?php if (! empty($wizard['page_subheading'])): ?>
-                <p class="text-muted mb-0"><?= esc((string) $wizard['page_subheading']) ?></p>
-            <?php endif; ?>
-        </div>
-    <?php endif; ?>
+    </div>
 
-    <div class="card mb-4">
-        <div class="card-body">
-            <h2 class="h5 mb-3">Instructions</h2>
+    <div class="cs-panel mb-4">
+        <div class="cs-panel__body">
+            <h2 class="cs-panel__title mb-3">Instructions</h2>
             <ul class="mb-0">
                 <li>Fill out correctly and neatly.</li>
                 <li>Use capital letters for clarity (e.g., JUAN DELA CRUZ).</li>
@@ -41,15 +34,14 @@ $gender = (string) old('gender', (string) ($planHolder['gender'] ?? ''));
             </ul>
         </div>
     </div>
-
-    <?php if (! empty($wizard['show_account_section'])): ?>
-        <?= $this->include('partials/registration/_step_applicant_account') ?>
     <?php endif; ?>
 
-    <div class="card">
-        <div class="card-body">
-            <h3 class="h6 text-primary mb-3">Applicant Information</h3>
-            <div class="row g-3 mb-4">
+    <div class="cs-panel mb-4">
+        <div class="cs-panel__head">
+            <h2 class="cs-panel__title">Applicant Information</h2>
+        </div>
+        <div class="cs-panel__body">
+            <div class="row g-3">
                 <div class="col-md-4">
                     <label class="form-label" for="id_control_no">ID Control No.</label>
                     <input id="id_control_no" name="id_control_no" class="form-control" value="<?= esc(old('id_control_no', (string) ($planHolder['id_control_no'] ?? ''))) ?>">
@@ -165,9 +157,10 @@ $gender = (string) old('gender', (string) ($planHolder['gender'] ?? ''));
                     <label class="form-label" for="weight">Weight</label>
                     <input id="weight" name="weight" type="number" step="0.01" class="form-control" value="<?= esc(old('weight', (string) ($planHolder['weight'] ?? ''))) ?>">
                 </div>
-                <?php if (! empty($wizard['show_branch_select'])): ?>
-                    <div class="col-md-3">
-                        <label class="form-label" for="branch_id">Branch Office</label>
+                <?php if (! $isEdit): ?>
+                <div class="col-md-3">
+                    <label class="form-label" for="branch_id">Branch Office</label>
+                    <?php if (! empty($wizard['show_branch_select'])): ?>
                         <select id="branch_id" name="branch_id" class="form-select" required>
                             <option value="">Select Branch</option>
                             <?php $selectedBranch = (int) old('branch_id', (string) ($wizard['selected_branch_id'] ?? $planHolder['branch_id'] ?? 0)); ?>
@@ -177,13 +170,27 @@ $gender = (string) old('gender', (string) ($planHolder['gender'] ?? ''));
                                 </option>
                             <?php endforeach; ?>
                         </select>
-                    </div>
+                    <?php else: ?>
+                        <input type="text" id="branch_name_display" class="form-control" value="<?= esc((string) ($wizard['branch_name'] ?? '')) ?>" readonly>
+                        <input type="hidden" id="branch_id" name="branch_id" value="<?= (int) ($wizard['selected_branch_id'] ?? 0) ?>">
+                    <?php endif; ?>
+                </div>
                 <?php endif; ?>
             </div>
+        </div>
+    </div>
 
-            <h3 class="h6 text-primary mb-3">Spouse Information</h3>
-            <p class="text-muted small mb-2" id="spouseHint" style="display:none;">Required when Civil Status is Married.</p>
-            <div class="row g-3 mb-4">
+    <?php if (! empty($wizard['show_account_section'])): ?>
+        <?= $this->include('partials/registration/_step_applicant_account') ?>
+    <?php endif; ?>
+
+    <div class="cs-panel mb-4">
+        <div class="cs-panel__head">
+            <h2 class="cs-panel__title">Spouse Information</h2>
+            <p class="cs-panel__note" id="spouseHint" style="display:none;">Required when Civil Status is Married.</p>
+        </div>
+        <div class="cs-panel__body">
+            <div class="row g-3">
                 <div class="col-md-4">
                     <label class="form-label" for="spouse_name">Name of Spouse</label>
                     <input id="spouse_name" name="spouse_name" class="form-control" value="<?= esc(old('spouse_name', (string) ($planHolder['spouse_name'] ?? ''))) ?>">
@@ -197,8 +204,14 @@ $gender = (string) old('gender', (string) ($planHolder['gender'] ?? ''));
                     <input id="spouse_occupation" name="spouse_occupation" class="form-control" value="<?= esc(old('spouse_occupation', (string) ($planHolder['spouse_occupation'] ?? ''))) ?>">
                 </div>
             </div>
+        </div>
+    </div>
 
-            <h3 class="h6 text-primary mb-3">Contact Info</h3>
+    <div class="cs-panel">
+        <div class="cs-panel__head">
+            <h2 class="cs-panel__title">Contact Info</h2>
+        </div>
+        <div class="cs-panel__body">
             <div class="row g-3">
                 <div class="col-md-4">
                     <label class="form-label" for="contact_number">Cellphone No.</label>
@@ -220,8 +233,10 @@ $gender = (string) old('gender', (string) ($planHolder['gender'] ?? ''));
         </div>
     </div>
 
+    <?php if (! $isEdit): ?>
     <div class="wizard-nav">
-        <span></span>
+        <a href="<?= esc((string) ($wizard['cancel_url'] ?? '#'), 'attr') ?>" class="btn btn-ghost">Cancel</a>
         <button type="button" class="btn btn-primary wizard-next">Next: Government ID <i class="ti ti-arrow-right ms-1"></i></button>
     </div>
+    <?php endif; ?>
 </div>

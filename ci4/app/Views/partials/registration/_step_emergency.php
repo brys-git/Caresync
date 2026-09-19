@@ -1,12 +1,15 @@
 <?php
 /** Step 4: Emergency Contact. See _wizard.php for the $wizard contract. */
 $planHolder = $wizard['plan_holder'] ?? [];
+$isEdit = ($wizard['context'] ?? 'register') === 'edit';
 ?>
 <!-- ============ STEP 4: Emergency Contact ============ -->
-<div class="wizard-panel d-none" data-step-panel="4">
-    <div class="card">
-        <div class="card-body">
-            <h3 class="h6 text-primary mb-3">Emergency Contact</h3>
+<div<?= $isEdit ? '' : ' class="wizard-panel d-none" data-step-panel="4"' ?>>
+    <div class="cs-panel">
+        <div class="cs-panel__head">
+            <h2 class="cs-panel__title">Emergency Contact</h2>
+        </div>
+        <div class="cs-panel__body">
             <div class="row g-3">
                 <div class="col-md-4">
                     <label class="form-label" for="emergency_contact_name">Name</label>
@@ -25,8 +28,10 @@ $planHolder = $wizard['plan_holder'] ?? [];
         </div>
     </div>
 
+    <?php if (! $isEdit): ?>
     <div class="wizard-nav">
-        <button type="button" class="btn btn-outline-secondary wizard-back"><i class="ti ti-arrow-left me-1"></i>Back</button>
+        <button type="button" class="btn btn-ghost wizard-back"><i class="ti ti-arrow-left me-1"></i>Back</button>
         <button type="button" class="btn btn-primary wizard-next">Next: Review <i class="ti ti-arrow-right ms-1"></i></button>
     </div>
+    <?php endif; ?>
 </div>

@@ -31,11 +31,12 @@ $pendingFieldId = $pending_field_id ?? 'government_id_pending_token';
 $pendingFieldValue = $pending_field_value ?? '';
 $selectedIdType = $selected_id_type ?? '';
 ?>
-<div class="card">
-    <div class="card-body">
-        <h3 class="h6 text-primary mb-1">Government ID Verification</h3>
-        <p class="text-muted small mb-3">Upload or take a photo of the applicant's valid government-issued ID so it can be confirmed against the name entered.</p>
-
+<div class="cs-panel">
+    <div class="cs-panel__head">
+        <h2 class="cs-panel__title">Government ID Verification</h2>
+        <p class="cs-panel__note">Upload or take a photo of the applicant's valid government-issued ID so it can be confirmed against the name entered.</p>
+    </div>
+    <div class="cs-panel__body">
         <div class="row g-3 mb-3">
             <div class="col-md-5">
                 <label class="form-label" for="id_type">Government ID Type</label>
@@ -49,8 +50,8 @@ $selectedIdType = $selected_id_type ?? '';
         </div>
 
         <div class="d-flex gap-2 mb-3">
-            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnChooseUpload"><i class="ti ti-upload me-1"></i>Upload Government ID</button>
-            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnChooseCamera"><i class="ti ti-camera me-1"></i>Take Photo</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="btnChooseUpload"><i class="ti ti-upload me-1"></i>Upload Government ID</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="btnChooseCamera"><i class="ti ti-camera me-1"></i>Take Photo</button>
             <input type="file" id="idFileInput" accept="image/jpeg,image/png,image/webp" class="d-none">
         </div>
 
@@ -60,7 +61,7 @@ $selectedIdType = $selected_id_type ?? '';
             </div>
             <div class="d-flex gap-2">
                 <button type="button" class="btn btn-primary btn-sm" id="btnCapture"><i class="ti ti-camera me-1"></i>Capture</button>
-                <button type="button" class="btn btn-outline-secondary btn-sm" id="btnCancelCamera">Cancel</button>
+                <button type="button" class="btn btn-ghost btn-sm" id="btnCancelCamera">Cancel</button>
             </div>
             <p class="text-danger small mt-2 d-none" id="cameraError"></p>
         </div>
@@ -68,7 +69,7 @@ $selectedIdType = $selected_id_type ?? '';
         <div id="idPreviewWrap" class="d-none mb-3">
             <img id="idPreviewImg" alt="ID preview" class="id-verify-preview">
             <div class="d-flex gap-2 mt-2">
-                <button type="button" class="btn btn-outline-secondary btn-sm" id="btnRetake"><i class="ti ti-refresh me-1"></i>Retake / Choose Another</button>
+                <button type="button" class="btn btn-ghost btn-sm" id="btnRetake"><i class="ti ti-refresh me-1"></i>Retake / Choose Another</button>
             </div>
         </div>
 
@@ -76,7 +77,7 @@ $selectedIdType = $selected_id_type ?? '';
 
         <p class="text-muted small mb-2">Verification runs automatically once an ID image and type are selected. Use this only to retry.</p>
         <div class="d-flex align-items-center gap-2 mb-3">
-            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnVerifyId" disabled>Re-check ID</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="btnVerifyId" disabled>Re-check ID</button>
             <span class="text-muted small" id="verifyHint">Choose or capture an image first.</span>
         </div>
 
@@ -85,9 +86,3 @@ $selectedIdType = $selected_id_type ?? '';
         <input type="hidden" name="<?= esc($pendingFieldId, 'attr') ?>" id="<?= esc($pendingFieldId) ?>" value="<?= esc($pendingFieldValue) ?>">
     </div>
 </div>
-
-<style>
-    .id-verify-camera-frame { max-width: 480px; background: #000; border-radius: 8px; overflow: hidden; }
-    .id-verify-camera-frame video { width: 100%; display: block; }
-    .id-verify-preview { max-width: 480px; max-height: 320px; border-radius: 8px; border: 1px solid #e5e7eb; object-fit: contain; }
-</style>

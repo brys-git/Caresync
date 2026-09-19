@@ -18,7 +18,7 @@ $this->setData([
     <?= $this->include('partials/id_verification_section') ?>
 
     <div class="wizard-nav">
-        <button type="button" class="btn btn-outline-secondary wizard-back"><i class="ti ti-arrow-left me-1"></i>Back</button>
+        <button type="button" class="btn btn-ghost wizard-back"><i class="ti ti-arrow-left me-1"></i>Back</button>
         <button type="button" class="btn btn-primary wizard-next">Next: Beneficiaries <i class="ti ti-arrow-right ms-1"></i></button>
     </div>
 </div>

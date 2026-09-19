@@ -8,95 +8,6 @@
     <link rel="icon" href="<?= base_url('assets/favicon_io/favicon.ico') ?>">
     <link rel="stylesheet" href="<?= base_url('assets/css/main.css') ?>">
     <link rel="stylesheet" href="<?= base_url('assets/css/caresync.css') ?>">
-    <style>
-        /* Same signin shell as auth/login.php - the two pre-auth screens share one look. */
-        .signin {
-            min-height: 100vh;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            background: var(--cs-paper);
-        }
-
-        .signin__aside {
-            background: var(--cs-pine);
-            color: #dce5e1;
-            padding: 3rem;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-
-        .signin__wordmark {
-            display: flex;
-            align-items: center;
-            gap: .625rem;
-            color: #fff;
-        }
-        .signin__wordmark span {
-            font-family: var(--cs-serif);
-            font-size: 1.25rem;
-            font-weight: 600;
-        }
-
-        .signin__statement {
-            font-family: var(--cs-serif);
-            font-size: clamp(1.75rem, 2.6vw, 2.5rem);
-            line-height: 1.22;
-            letter-spacing: -.015em;
-            color: #fff;
-            max-width: 20ch;
-            margin: 0 0 1rem;
-        }
-
-        .signin__sub {
-            font-size: .9375rem;
-            color: rgba(255, 255, 255, .62);
-            max-width: 42ch;
-            margin: 0;
-        }
-
-        .signin__facts {
-            display: flex;
-            flex-direction: column;
-            gap: .85rem;
-            padding-top: 1.75rem;
-            border-top: 1px solid rgba(255, 255, 255, .14);
-        }
-        .signin__fact-value {
-            font-size: 1rem;
-            font-weight: 600;
-            color: #fff;
-            line-height: 1.2;
-        }
-        .signin__fact-label {
-            font-size: .78125rem;
-            color: rgba(255, 255, 255, .55);
-        }
-
-        .signin__main {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem;
-            overflow-y: auto;
-        }
-
-        .signin__form { width: 100%; max-width: 460px; }
-
-        .signin__title {
-            font-size: 1.5rem;
-            letter-spacing: -.02em;
-            margin: 0 0 .25rem;
-        }
-
-        @media (max-width: 900px) {
-            .signin { grid-template-columns: 1fr; }
-            .signin__aside { padding: 2rem 1.5rem; gap: 1.75rem; }
-            .signin__facts { display: none; }
-            .signin__statement { font-size: 1.5rem; max-width: none; }
-            .signin__main { padding: 2rem 1.5rem 3rem; }
-        }
-    </style>
 </head>
 <body>
 <main class="signin">
@@ -114,7 +25,7 @@
             </p>
         </div>
 
-        <div class="signin__facts">
+        <div class="signin__facts signin__facts--stacked">
             <div>
                 <div class="signin__fact-value">Unique identifier</div>
                 <div class="signin__fact-label">Every profile is trackable from day one</div>

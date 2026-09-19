@@ -129,8 +129,12 @@ class ClientManagementController extends BaseController
 
         return view('admin/client_management/register', [
             'role_layout' => 'layouts/admin',
-            'page_title' => 'Register Plan Holder',
+            'page_title' => 'Register plan holder',
             'page_sub' => 'Add a new plan holder to any branch.',
+            'crumbs' => [
+                ['label' => 'Plan holders', 'url' => base_url('admin/client-management')],
+                ['label' => 'Register plan holder'],
+            ],
             'branches' => $branches,
             'existing_users' => $existingUsers,
             'program' => MembershipService::getProgramInfo(),
@@ -192,8 +196,14 @@ class ClientManagementController extends BaseController
 
         return view('admin/client_management/edit', [
             'client' => $client,
+            'beneficiaries' => $client['beneficiaries'] ?? [],
             'role_layout' => 'layouts/admin',
-            'page_title' => 'Edit Client',
+            'page_title' => 'Edit plan holder',
+            'page_sub' => 'Plan Holder #' . (string) ($client['plan_holder_id'] ?? $id),
+            'crumbs' => [
+                ['label' => 'Plan holders', 'url' => base_url('admin/client-management')],
+                ['label' => 'Edit plan holder'],
+            ],
         ]);
     }
 

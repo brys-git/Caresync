@@ -15,9 +15,11 @@
 $existingUsers = $wizard['existing_users'] ?? [];
 $mode = (string) old('client_account_mode', 'new');
 ?>
-<div class="card mb-4">
-    <div class="card-body">
-        <h3 class="h6 text-primary mb-3">Account</h3>
+<div class="cs-panel mb-4">
+    <div class="cs-panel__head">
+        <h2 class="cs-panel__title">Account</h2>
+    </div>
+    <div class="cs-panel__body">
         <div class="border rounded p-3 mb-3">
             <div class="form-check mb-2">
                 <input class="form-check-input" type="radio" name="client_account_mode" id="mode_new" value="new" <?= $mode === 'new' ? 'checked' : '' ?>>

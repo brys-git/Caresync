@@ -45,11 +45,16 @@ class PlanHolders extends BaseController
                 ->getResultArray();
         }
 
+        $registerUrl = $roleId === 1 ? base_url('admin/client/register') : base_url('branch-admin/client/register');
+
         return view('plan_holders/register', [
             'has_pending_table' => $hasPendingTable,
             'approval_registrations' => $approvalRegistrations,
             'role_layout' => $this->resolveLayoutView(),
-            'register_url' => $roleId === 1 ? base_url('admin/client/register') : base_url('branch-admin/client/register'),
+            'register_url' => $registerUrl,
+            'page_title' => 'Plan holder verification queue',
+            'page_sub' => 'Review and act on Government ID verification requests.',
+            'page_actions' => '<a href="' . esc($registerUrl, 'attr') . '" class="btn btn-primary"><i class="ti ti-user-plus" aria-hidden="true"></i> Register a plan holder</a>',
         ]);
     }
 

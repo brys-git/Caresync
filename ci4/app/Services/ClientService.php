@@ -45,7 +45,7 @@ class ClientService
         $db = db_connect();
 
         $client = $db->table('plan_holders ph')
-            ->select('ph.plan_holder_id, ph.user_id, ph.branch_id, ph.unique_identifier, ph.address_no, ph.address_street, ph.address_barangay, ph.address_city, ph.date_of_birth, ph.place_of_birth, ph.age, ph.gender, ph.civil_status, ph.citizenship, ph.height, ph.weight, ph.spouse_name, ph.spouse_birthdate, ph.spouse_occupation, ph.senior_citizen_id, ph.organization_affiliation, ph.id_control_no, ph.coordinator, ph.application_date, ph.emergency_contact_name, ph.emergency_contact_number, ph.emergency_contact_address, ph.status AS plan_holder_status, u.first_name, u.last_name, u.email, u.contact_number, b.branch_name')
+            ->select('ph.plan_holder_id, ph.user_id, ph.branch_id, ph.unique_identifier, ph.address_no, ph.address_street, ph.address_barangay, ph.address_city, ph.barangay_code, ph.city_municipality_code, ph.date_of_birth, ph.place_of_birth, ph.age, ph.gender, ph.civil_status, ph.citizenship, ph.height, ph.weight, ph.spouse_name, ph.spouse_birthdate, ph.spouse_occupation, ph.senior_citizen_id, ph.organization_affiliation, ph.id_control_no, ph.coordinator, ph.application_date, ph.emergency_contact_name, ph.emergency_contact_number, ph.emergency_contact_address, ph.status AS plan_holder_status, u.first_name, u.middle_name, u.last_name, u.email, u.contact_number, b.branch_name')
             ->join('users u', 'u.user_id = ph.user_id', 'inner')
             ->join('branches b', 'b.branch_id = ph.branch_id', 'left')
             ->where('ph.plan_holder_id', $planHolderId)

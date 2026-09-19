@@ -211,6 +211,76 @@ if (! function_exists('cs_age_from_dob')) {
     }
 }
 
+if (! function_exists('registration_wizard_config')) {
+    /**
+     * Builds the $wizard array every plan-holder registration page renders
+     * (partials/registration/_wizard.php) - the single place that decides
+     * what differs between the 4 roles that can register a plan holder, so
+     * a future change to instructions/labels/step order only has to happen
+     * here instead of once per register.php view.
+     *
+     * The ONLY per-role values: action, cancel_url, mode, show_branch_select,
+     * show_account_section, the ID-verification endpoint/result field, and
+     * certify_label. Everything else (submit_label, program fallback, etc.)
+     * is identical across roles by construction.
+     *
+     * @param string $role 'admin' | 'branch_admin' | 'staff' | 'plan_holder'
+     *   (same values as $cs_role/layouts/*.php)
+     * @param array<string,mixed> $data page-specific data to fold in:
+     *   errors, branches, selected_branch_id, branch_name, existing_users,
+     *   program, plan_holder, user, beneficiaries, id_types,
+     *   selected_id_type, id_result_field_value, id_initial_status,
+     *   hidden_plan_id
+     */
+    function registration_wizard_config(string $role, array $data): array
+    {
+        $isSelf = $role === 'plan_holder';
+        $mode = $isSelf ? 'self' : 'staff';
+
+        $perRole = [
+            'plan_holder'  => ['action' => base_url('plan-registration'), 'cancel_url' => base_url('plan-info'), 'show_branch_select' => true],
+            'admin'        => ['action' => base_url('admin/client/store'), 'cancel_url' => base_url('admin/client-management'), 'show_branch_select' => true],
+            'branch_admin' => ['action' => base_url('branch-admin/client/store'), 'cancel_url' => base_url('branch-admin/client'), 'show_branch_select' => false],
+            'staff'        => ['action' => base_url('staff/client/store'), 'cancel_url' => base_url('staff/client'), 'show_branch_select' => false],
+        ];
+
+        if (! isset($perRole[$role])) {
+            throw new \InvalidArgumentException('Unknown registration role: ' . $role);
+        }
+
+        $roleConfig = $perRole[$role];
+
+        return [
+            'mode' => $mode,
+            'action' => $roleConfig['action'],
+            'cancel_url' => $roleConfig['cancel_url'],
+            'show_branch_select' => $roleConfig['show_branch_select'],
+            'show_account_section' => ! $isSelf,
+            'id_verify_endpoint' => $isSelf ? base_url('api/id-verification/verify') : base_url('api/id-verification/verify-pending'),
+            'id_result_field_id' => $isSelf ? 'government_id_verification_id' : 'government_id_pending_token',
+            'id_result_field_key' => $isSelf ? 'verification_id' : 'pending_token',
+            'certify_label' => $isSelf
+                ? 'I certify that the information I provided is true and correct to the best of my knowledge.'
+                : "I certify that the applicant's information above is true and correct as provided to me.",
+            'submit_label' => $isSelf ? 'Submit Registration' : 'Register Plan Holder',
+            'errors' => $data['errors'] ?? [],
+            'branches' => $data['branches'] ?? [],
+            'selected_branch_id' => $data['selected_branch_id'] ?? null,
+            'branch_name' => (string) ($data['branch_name'] ?? ''),
+            'existing_users' => $data['existing_users'] ?? [],
+            'program' => $data['program'] ?? ['name' => 'Damayan Burial Program', 'monthly_fee' => 240.0],
+            'plan_holder' => $data['plan_holder'] ?? [],
+            'user' => $data['user'] ?? [],
+            'beneficiaries' => $data['beneficiaries'] ?? [],
+            'id_types' => $data['id_types'] ?? [],
+            'selected_id_type' => (string) ($data['selected_id_type'] ?? ''),
+            'id_result_field_value' => (string) ($data['id_result_field_value'] ?? ''),
+            'id_initial_status' => $data['id_initial_status'] ?? null,
+            'hidden_plan_id' => $data['hidden_plan_id'] ?? null,
+        ];
+    }
+}
+
 if (! function_exists('cs_initials')) {
     function cs_initials(string $name): string
     {

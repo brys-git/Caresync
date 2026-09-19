@@ -238,7 +238,14 @@ window.CareSyncWizard = (function () {
         }
 
         function populateReview() {
+            // Branch Admin/Staff render #branch_id as a plain hidden input
+            // alongside a read-only #branch_name_display text field (not a
+            // picker) - only a real <select> has .selectedOptions.
             const branchEl = document.getElementById('branch_id');
+            const branchNameDisplay = document.getElementById('branch_name_display');
+            const branchLabel = branchEl && branchEl.tagName === 'SELECT'
+                ? (branchEl.selectedOptions[0] ? branchEl.selectedOptions[0].text : '')
+                : (branchNameDisplay ? branchNameDisplay.value : '');
             const applicantHtml = [
                 row('Name', esc([fieldValue('last_name'), fieldValue('first_name'), fieldValue('middle_name')].filter(Boolean).join(', '))),
                 row('Address', esc([fieldValue('address_no'), fieldValue('address_street'), fieldValue('address_barangay'), fieldValue('address_city')].filter(Boolean).join(', '))),
@@ -246,7 +253,7 @@ window.CareSyncWizard = (function () {
                 row('Gender', esc(fieldValue('gender'))),
                 row('Civil Status', esc(fieldValue('civil_status'))),
                 row('Citizenship', esc(fieldValue('citizenship'))),
-                row('Branch Office', esc(branchEl && branchEl.selectedOptions[0] ? branchEl.selectedOptions[0].text : '')),
+                row('Branch Office', esc(branchLabel)),
                 row('Cellphone', esc(fieldValue('contact_number'))),
                 row('Email', esc(fieldValue('email'))),
             ].join('');

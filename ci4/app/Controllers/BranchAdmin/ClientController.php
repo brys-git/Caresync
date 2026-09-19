@@ -48,8 +48,14 @@ class ClientController extends BaseController
 
         return view('branch_admin/clients/edit', [
             'client' => $client,
+            'beneficiaries' => $client['beneficiaries'] ?? [],
             'role_layout' => 'layouts/branch_admin',
-            'page_title' => 'Edit Client',
+            'page_title' => 'Edit plan holder',
+            'page_sub' => 'Plan Holder #' . (string) ($client['plan_holder_id'] ?? $id),
+            'crumbs' => [
+                ['label' => 'Plan holders', 'url' => base_url('branch-admin/client-management')],
+                ['label' => 'Edit plan holder'],
+            ],
         ]);
     }
 
@@ -184,6 +190,8 @@ class ClientController extends BaseController
             throw PageNotFoundException::forPageNotFound();
         }
 
+        $branch = db_connect()->table('branches')->select('branch_name')->where('branch_id', $branchId)->get()->getRowArray();
+
         $existingUsers = db_connect()->table('users u')
             ->select('u.user_id, u.first_name, u.middle_name, u.last_name, u.email, u.contact_number')
             ->join('plan_holders ph', 'ph.user_id = u.user_id', 'left')
@@ -196,10 +204,15 @@ class ClientController extends BaseController
 
         return view('branch_admin/clients/register', [
             'existing_users' => $existingUsers,
+            'branch_name' => (string) ($branch['branch_name'] ?? ''),
             'program' => MembershipService::getProgramInfo(),
             'role_layout' => 'layouts/branch_admin',
-            'page_title' => 'Register Plan Holder',
-            'page_sub' => 'Add a new plan holder to your branch',
+            'page_title' => 'Register plan holder',
+            'page_sub' => 'Add a new plan holder to your branch.',
+            'crumbs' => [
+                ['label' => 'Plan holders', 'url' => base_url('branch-admin/client-management')],
+                ['label' => 'Register plan holder'],
+            ],
             'id_types' => (new GovernmentIdVerificationService())->idTypes(),
         ]);
     }
