@@ -129,6 +129,13 @@ $routes->group('branch-admin', ['filter' => 'auth'], static function (RouteColle
     // ReportController only ever defined remittance()/generate() - so this link
     // in the sidebar 404'd. Landing on remittance (its main report) instead.
     $routes->get('reports', 'BranchAdmin\ReportController::remittance', ['filter' => 'role:2']);
+    // Same handler, also reachable at .../reports/remittance - matching
+    // the pattern reports/overdue and reports/commission below already
+    // use (and the Admin/Staff equivalents, which are ONLY ever at
+    // .../reports/remittance, no bare .../reports). Without this, the bare
+    // 'reports' route above was the sole survivor and the more
+    // discoverable, convention-matching URL 404'd.
+    $routes->get('reports/remittance', 'BranchAdmin\ReportController::remittance', ['filter' => 'role:2']);
     // Every filter/Print/PDF/CSV button on the remittance page posts here -
     // this route did not exist at all before, so none of them worked.
     $routes->post('reports/remittance/generate', 'BranchAdmin\ReportController::generate', ['filter' => 'role:2']);
