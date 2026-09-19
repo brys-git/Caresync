@@ -74,6 +74,8 @@ $routes->group('', ['filter' => 'auth'], static function (RouteCollection $route
     $routes->post('plan-registration', 'Client\ClientRegistrationController::submitPlanRegistration', ['filter' => 'role:4']);
     $routes->post('plan-registration/(:num)', 'Client\ClientRegistrationController::submitPlanRegistration/$1', ['filter' => 'role:4']);
     
+    $routes->get('id-verification-status', 'Client\IdVerificationStatusController::show', ['filter' => 'role:4']);
+
     $routes->get('initial-payment', 'Client\ClientPaymentInitialController::initialPayment', ['filter' => 'role:4']);
     $routes->post('initial-payment', 'Client\ClientPaymentInitialController::submitInitialPayment', ['filter' => 'role:4']);
     $routes->post('initial-payment-verify/(:num)', 'Client\ClientPaymentInitialController::verifyInitialPayment/$1', ['filter' => 'role:4']);

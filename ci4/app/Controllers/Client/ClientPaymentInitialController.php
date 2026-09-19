@@ -45,6 +45,17 @@ class ClientPaymentInitialController extends BaseController
             return redirect()->to('/plan-info')->with('error', 'No plan holder profile found.');
         }
 
+        // Initial Payment is only reachable once a Branch Admin/Staff has
+        // manually verified the Government ID submitted at registration -
+        // see Client\IdVerificationStatusController and
+        // IdVerificationQueueController (the review side). 'verified' is
+        // the only status that clears this gate; 'needs_review' means it's
+        // still waiting on staff, 'failed'/null means the applicant needs
+        // to upload a better/valid ID first.
+        if ($this->latestIdVerificationStatus((int) $access['user']['user_id']) !== 'verified') {
+            return redirect()->to('/id-verification-status');
+        }
+
         $planHolderId = (int) $planHolder['plan_holder_id'];
         $plan = $this->latestPlan($planHolderId);
         if (! $plan) {
@@ -102,6 +113,13 @@ class ClientPaymentInitialController extends BaseController
         $planHolder = $access['plan_holder'];
         if (! $planHolder) {
             return redirect()->to('/plan-info')->with('error', 'No plan holder profile found.');
+        }
+
+        // Same Government ID gate as initialPayment() (GET) above - never
+        // trust the client only having reached this page once; re-check on
+        // the actual submission too.
+        if ($this->latestIdVerificationStatus((int) $user['user_id']) !== 'verified') {
+            return redirect()->to('/id-verification-status')->with('error', 'Your Government ID must be verified before you can submit a payment.');
         }
 
         $paymentMethod = $this->request->getPost('payment_method');

@@ -119,16 +119,13 @@ class IdVerificationQueueController extends BaseController
             ['verification_status' => $status]
         );
 
-        if ($status === 'failed') {
-            // 'general' - notifications.type is a fixed MySQL ENUM;
-            // NotificationService::notify() silently downgrades anything
-            // outside its own whitelist to this value anyway.
-            (new NotificationService())->notify(
-                (int) $row['user_id'],
-                'Your Government ID could not be confirmed against your application details. Please contact your branch to resolve this.',
-                'general'
-            );
-        }
+        // 'general' - notifications.type is a fixed MySQL ENUM;
+        // NotificationService::notify() silently downgrades anything
+        // outside its own whitelist to this value anyway.
+        $clientMessage = $status === 'verified'
+            ? 'Your Government ID has been verified! You can now proceed to your Initial Payment.'
+            : 'Your Government ID could not be confirmed against your application details. Please log in and upload another valid ID to continue.';
+        (new NotificationService())->notify((int) $row['user_id'], $clientMessage, 'general');
 
         $message = $status === 'verified'
             ? 'Marked as verified.'

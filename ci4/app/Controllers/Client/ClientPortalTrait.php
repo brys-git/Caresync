@@ -194,6 +194,22 @@ trait ClientPortalTrait
     }
 
     /**
+     * The plan holder's own latest Government ID verification status
+     * ('needs_review'|'verified'|'failed'|'pending', or null if they've
+     * never submitted one) - gates access to Initial Payment. Added
+     * separately from resolveAccessState()'s own return array rather than
+     * folded into it, so every existing caller of that method keeps
+     * getting the exact same shape back; only the controllers that
+     * actually need this new gate call this too.
+     */
+    protected function latestIdVerificationStatus(int $userId): ?string
+    {
+        $verification = (new \App\Services\GovernmentIdVerificationService())->latestForUser($userId);
+
+        return $verification !== null ? (string) ($verification['verification_status'] ?? null) : null;
+    }
+
+    /**
      * Get latest initial payment for a plan holder
      */
     protected function latestInitialPayment(int $planHolderId): ?array

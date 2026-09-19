@@ -118,7 +118,7 @@ class ClientRegistrationController extends BaseController
         }
 
         if (($access['state'] ?? 'unregistered') === 'awaiting_activation') {
-            return redirect()->to('/initial-payment');
+            return redirect()->to('/id-verification-status');
         }
 
         $program = MembershipService::getProgramInfo();
@@ -176,7 +176,7 @@ class ClientRegistrationController extends BaseController
         }
 
         if (($access['state'] ?? 'unregistered') === 'awaiting_activation') {
-            return redirect()->to('/initial-payment')->with('info', 'Complete your initial payment to continue.');
+            return redirect()->to('/id-verification-status')->with('info', 'You are already registered.');
         }
 
         $branchId = (int) $this->request->getPost('branch_id');
@@ -207,7 +207,7 @@ class ClientRegistrationController extends BaseController
             return redirect()->back()->withInput()->with('error', 'Registration failed. Please try again.');
         }
 
-        return redirect()->to('/initial-payment')
-            ->with('success', 'Plan registration submitted successfully. Please make your initial payment to activate your membership.');
+        return redirect()->to('/id-verification-status')
+            ->with('success', 'Plan registration submitted successfully. A branch staff member will verify your Government ID before you can make your initial payment.');
     }
 }
