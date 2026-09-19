@@ -42,26 +42,24 @@ if (! function_exists('cs_status')) {
 
         $tones = [
             // settled / good
-            'active' => 'ok', 'approved' => 'ok', 'completed' => 'ok', 'paid' => 'ok',
-            'verified' => 'ok', 'available' => 'ok', 'fully_paid' => 'ok', 'remitted' => 'ok',
+            'active' => 'ok', 'paid' => 'ok', 'posted' => 'ok', 'approved' => 'ok', 'verified' => 'ok',
+            'completed' => 'ok', 'available' => 'ok', 'fully_paid' => 'ok', 'remitted' => 'ok',
             'not_due' => 'ok', 'no_balance_due' => 'ok',
 
             // waiting on someone
-            'pending' => 'pending', 'review' => 'pending', 'processing' => 'pending',
-            'submitted' => 'pending', 'partial' => 'pending', 'for_approval' => 'pending',
-            'awaiting_verification' => 'pending',
+            'pending' => 'pending', 'for_review' => 'pending', 'review' => 'pending', 'unverified' => 'pending',
+            'due' => 'pending', 'processing' => 'pending', 'submitted' => 'pending', 'partial' => 'pending',
+            'for_approval' => 'pending', 'awaiting_verification' => 'pending',
 
             // needs intervention
-            'overdue' => 'stop', 'delinquent' => 'stop', 'rejected' => 'stop',
-            'cancelled' => 'stop', 'canceled' => 'stop', 'suspended' => 'stop',
-            'expired' => 'stop', 'failed' => 'stop', 'lapsed' => 'stop',
+            'overdue' => 'stop', 'rejected' => 'stop', 'cancelled' => 'stop', 'canceled' => 'stop',
+            'delinquent' => 'stop', 'suspended' => 'stop', 'expired' => 'stop', 'failed' => 'stop', 'lapsed' => 'stop',
 
             // informational
-            'new' => 'info', 'draft' => 'info', 'ongoing' => 'info', 'in_progress' => 'info',
-            'due' => 'info',
+            'ongoing' => 'info', 'scheduled' => 'info', 'new' => 'info', 'in_progress' => 'info',
 
             // dormant
-            'inactive' => 'idle', 'closed' => 'idle', 'archived' => 'idle',
+            'forfeited' => 'idle', 'inactive' => 'idle', 'draft' => 'idle', 'closed' => 'idle', 'archived' => 'idle',
         ];
 
         $tone = $tones[$key] ?? 'idle';
@@ -85,6 +83,23 @@ if (! function_exists('cs_date')) {
         }
 
         return esc(date($withTime ? 'j M Y, g:ia' : 'j M Y', $ts));
+    }
+}
+
+if (! function_exists('cs_datetime')) {
+    /** Date + time read the same everywhere: 19 Sep 2026, 3:42 PM. */
+    function cs_datetime($value): string
+    {
+        if (empty($value)) {
+            return '—';
+        }
+
+        $ts = is_numeric($value) ? (int) $value : strtotime((string) $value);
+        if ($ts === false) {
+            return esc((string) $value);
+        }
+
+        return esc(date('j M Y, g:i A', $ts));
     }
 }
 
