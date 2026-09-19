@@ -2,57 +2,85 @@
 
 <?= $this->section('content') ?>
 <?php $s = $summary ?? []; ?>
-<div class="container-fluid">
-    <div class="mb-3">
-        <h1 class="h3 mb-1"><?= esc((string) ($page_title ?? 'Collector Dashboard')) ?></h1>
-        <p class="text-muted mb-0">Payments you've personally recorded.</p>
-    </div>
 
-    <div class="alert alert-info" role="alert">
-        Dedicated collection-entry, remittance, and commission-tracking screens for this role are still being built.
-        This overview reflects payments already on record where you're the one who received them.
-    </div>
+<?= view('components/alert', [
+    'type' => 'info',
+    'dismissible' => false,
+    'message' => 'Dedicated collection-entry, remittance, and commission-tracking screens for this role are still being built. This overview reflects payments already on record where you\'re the one who received them.',
+]) ?>
 
-    <div class="row g-3 mb-4">
-        <div class="col-lg-3 col-md-6">
-            <div class="card"><div class="card-body"><div class="text-muted small">Collected Today</div><div class="h4 mb-0">P<?= esc(number_format((float) ($s['today_collected'] ?? 0), 2)) ?></div></div></div>
-        </div>
-        <div class="col-lg-3 col-md-6">
-            <div class="card"><div class="card-body"><div class="text-muted small">Collected This Month</div><div class="h4 mb-0">P<?= esc(number_format((float) ($s['month_collected'] ?? 0), 2)) ?></div></div></div>
-        </div>
-        <div class="col-lg-3 col-md-6">
-            <a href="<?= base_url('collector/commission') ?>" class="text-decoration-none">
-                <div class="card"><div class="card-body"><div class="text-muted small">Commission This Month</div><div class="h4 mb-0 text-success">P<?= esc(number_format((float) ($s['estimated_commission'] ?? 0), 2)) ?></div></div></div>
-            </a>
-        </div>
-        <div class="col-lg-3 col-md-6">
-            <div class="card"><div class="card-body"><div class="text-muted small">Total Transactions</div><div class="h4 mb-0"><?= esc((string) ($s['transaction_count'] ?? 0)) ?></div></div></div>
-        </div>
-    </div>
+<?= view('components/stat_rail', ['stats' => [
+    [
+        'label' => 'Collected today',
+        'icon'  => 'ti-cash',
+        'value' => $s['today_collected'] ?? 0,
+        'money' => true,
+        'tone'  => 'money',
+    ],
+    [
+        'label' => 'Collected this month',
+        'icon'  => 'ti-calendar',
+        'value' => $s['month_collected'] ?? 0,
+        'money' => true,
+        'tone'  => 'money',
+    ],
+    [
+        'label' => 'Commission this month',
+        'icon'  => 'ti-percentage',
+        'value' => $s['estimated_commission'] ?? 0,
+        'money' => true,
+        'tone'  => 'ok',
+    ],
+    [
+        'label' => 'Total transactions',
+        'icon'  => 'ti-receipt',
+        'value' => $s['transaction_count'] ?? 0,
+    ],
+]]) ?>
 
-    <div class="card">
-        <div class="card-header">Recent Payments You Recorded</div>
-        <div class="table-responsive">
-            <table class="table table-striped align-middle mb-0">
-                <thead><tr><th>Plan Holder</th><th>Method</th><th>Date</th><th class="text-end">Amount</th><th>Status</th></tr></thead>
-                <tbody>
-                    <?php $rows = $s['recent_payments'] ?? []; ?>
-                    <?php if (empty($rows)): ?>
-                        <tr><td colspan="5" class="text-center py-4 text-muted">No payments recorded under your account yet.</td></tr>
-                    <?php else: ?>
+<section class="cs-panel">
+    <div class="cs-panel__head">
+        <div>
+            <h2 class="cs-panel__title">Recent payments you recorded</h2>
+        </div>
+        <a class="btn btn-ghost btn-sm" href="<?= base_url('collector/commission') ?>">
+            Commission <i class="ti ti-arrow-narrow-right" aria-hidden="true"></i>
+        </a>
+    </div>
+    <div class="cs-panel__body cs-panel__body--flush">
+        <?php $rows = $s['recent_payments'] ?? []; ?>
+        <?php if (empty($rows)): ?>
+            <?= view('components/empty_state', [
+                'icon'  => 'ti-cash-off',
+                'title' => 'No payments recorded yet',
+                'text'  => 'Payments you record for plan holders will show up here.',
+            ]) ?>
+        <?php else: ?>
+            <div class="cs-tablewrap">
+                <table class="cs-table">
+                    <thead>
+                        <tr>
+                            <th>Plan holder</th>
+                            <th>Method</th>
+                            <th>Date</th>
+                            <th class="cs-num">Amount</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
                         <?php foreach ($rows as $row): ?>
                             <tr>
-                                <td><?= esc(trim(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? '')) ?: '-') ?></td>
-                                <td><?= esc(strtoupper((string) ($row['payment_method'] ?? '-'))) ?></td>
-                                <td><?= esc((string) ($row['payment_date'] ?? '-')) ?></td>
-                                <td class="text-end">P<?= esc(number_format((float) ($row['amount'] ?? 0), 2)) ?></td>
-                                <td><span class="badge bg-<?= ($row['status'] ?? '') === 'paid' ? 'success' : 'secondary' ?>"><?= esc(ucfirst((string) ($row['status'] ?? '-'))) ?></span></td>
+                                <td><?= esc(trim(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? '')) ?: '—') ?></td>
+                                <td><?= esc(strtoupper((string) ($row['payment_method'] ?? '—'))) ?></td>
+                                <td class="cs-table__sub text-nowrap"><?= cs_date($row['payment_date'] ?? null) ?></td>
+                                <td class="cs-num"><?= cs_money($row['amount'] ?? 0) ?></td>
+                                <td><?= cs_status((string) ($row['status'] ?? '')) ?></td>
                             </tr>
                         <?php endforeach; ?>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
+                    </tbody>
+                </table>
+            </div>
+        <?php endif; ?>
     </div>
-</div>
+</section>
 <?= $this->endSection() ?>

@@ -39,6 +39,7 @@ class Dashboard extends BaseController
         return view('dashboards/admin', [
             'role_layout' => $this->resolveLayoutView(),
             'page_title' => 'System Admin Dashboard',
+            'page_sub' => 'Membership, collections, and approvals across every branch.',
             'breadcrumb' => ['Dashboard'],
             'analytics' => $analytics,
             'recent_activity' => $recentActivity,
@@ -69,6 +70,7 @@ class Dashboard extends BaseController
         return view('dashboards/branch_admin', [
             'role_layout' => $this->resolveLayoutView(),
             'page_title' => 'Branch Operations Control Center',
+            'page_sub' => 'Operational dashboard for branch performance, approvals, payments, and service readiness.',
             'breadcrumb' => ['Dashboard'],
             'branch_name' => $branchName,
             'operator_name' => $operatorName,
@@ -98,6 +100,7 @@ class Dashboard extends BaseController
         return view('dashboards/staff', [
             'role_layout' => $this->resolveLayoutView(),
             'page_title' => 'Staff Dashboard',
+            'page_sub' => 'Your branch\'s membership, payments, and service activity.',
             'breadcrumb' => ['Dashboard'],
             'analytics' => $analytics,
         ]);
@@ -118,6 +121,7 @@ class Dashboard extends BaseController
         return view('dashboards/collector', [
             'role_layout' => $this->resolveLayoutView(),
             'page_title' => 'Collector Dashboard',
+            'page_sub' => 'What you\'ve collected and what\'s still due.',
             'breadcrumb' => ['Dashboard'],
             'summary' => $summary,
         ]);

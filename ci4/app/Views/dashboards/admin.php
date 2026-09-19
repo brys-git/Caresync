@@ -123,9 +123,7 @@ $logs = $recent_activity ?? [];
                 ];
                 ?>
                 <?php foreach ($links as [$url, $icon, $label, $count]): ?>
-                    <a class="d-flex align-items-center gap-2 px-3 py-2 text-body"
-                       href="<?= base_url($url) ?>"
-                       style="border-bottom:1px solid var(--cs-line-soft); font-size:.875rem">
+                    <a class="cs-linkrow" href="<?= base_url($url) ?>">
                         <i class="ti <?= $icon ?> cs-muted" aria-hidden="true"></i>
                         <span><?= esc($label) ?></span>
                         <?php if ($count > 0): ?>

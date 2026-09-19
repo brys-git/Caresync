@@ -64,7 +64,7 @@ $this->setData(['wizard' => [
         <div class="cs-panel__foot d-flex justify-content-between align-items-center flex-wrap gap-2">
             <div class="d-flex align-items-center gap-2">
                 <label class="form-label mb-0" for="status">Status</label>
-                <select id="status" name="status" class="form-select form-select-sm" style="width:auto" required>
+                <select id="status" name="status" class="form-select form-select-sm w-auto" required>
                     <option value="active" <?= old('status', (string) ($client['plan_holder_status'] ?? 'active')) === 'active' ? 'selected' : '' ?>>Active</option>
                     <option value="inactive" <?= old('status', (string) ($client['plan_holder_status'] ?? 'active')) === 'inactive' ? 'selected' : '' ?>>Inactive</option>
                 </select>

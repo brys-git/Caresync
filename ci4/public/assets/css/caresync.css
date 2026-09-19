@@ -857,6 +857,20 @@ body.cs-nav-collapsed .cs-brand { justify-content: center; }
 .cs-empty__title { font-size: .9375rem; font-weight: 600; color: var(--cs-ink); margin-bottom: .25rem; }
 .cs-empty__text { font-size: .875rem; margin: 0 auto 1rem; max-width: 46ch; }
 
+/* Dashboard "jump to" link lists - a panel body full of plain nav rows */
+.cs-linkrow {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .625rem 1.125rem;
+  font-size: .875rem;
+  color: var(--cs-ink);
+  border-bottom: 1px solid var(--cs-line-soft);
+}
+.cs-linkrow:last-child { border-bottom: none; }
+.cs-linkrow:hover { background: var(--cs-rail); color: var(--cs-ink); }
+.cs-linkrow--block { display: block; }
+
 /* --------------------------------------------------------------------------
    14. Balance meter — the plan holder's one real question
    -------------------------------------------------------------------------- */

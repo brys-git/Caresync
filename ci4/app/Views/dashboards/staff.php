@@ -2,38 +2,61 @@
 
 <?= $this->section('content') ?>
 <?php $a = $analytics ?? []; ?>
-<div class="container-fluid">
-    <div class="mb-3">
-        <h1 class="h3 mb-1"><?= esc((string) ($page_title ?? 'Staff Dashboard')) ?></h1>
-        <p class="text-muted mb-0">Your branch's day-to-day operations at a glance.</p>
-    </div>
 
-    <div class="row g-3 mb-4">
-        <div class="col-lg-3 col-md-6">
-            <div class="card"><div class="card-body"><div class="text-muted small">Branch Members</div><div class="h4 mb-0"><?= esc((string) ($a['staff_members'] ?? 0)) ?></div></div></div>
-        </div>
-        <div class="col-lg-3 col-md-6">
-            <div class="card"><div class="card-body"><div class="text-muted small">Pending Requests</div><div class="h4 mb-0 text-warning"><?= esc((string) ($a['pending_requests'] ?? 0)) ?></div></div></div>
-        </div>
-        <div class="col-lg-3 col-md-6">
-            <div class="card"><div class="card-body"><div class="text-muted small">Approved Services</div><div class="h4 mb-0 text-success"><?= esc((string) ($a['assigned_services'] ?? 0)) ?></div></div></div>
-        </div>
-        <div class="col-lg-3 col-md-6">
-            <div class="card"><div class="card-body"><div class="text-muted small">Cash Collected Today</div><div class="h4 mb-0">P<?= esc(number_format((float) ($a['cash_collected_today'] ?? 0), 2)) ?></div></div></div>
-        </div>
-    </div>
+<?= view('components/stat_rail', ['stats' => [
+    [
+        'label' => 'Branch members',
+        'icon'  => 'ti-users',
+        'value' => $a['staff_members'] ?? 0,
+    ],
+    [
+        'label' => 'Pending requests',
+        'icon'  => 'ti-clipboard-list',
+        'value' => $a['pending_requests'] ?? 0,
+        'tone'  => ((int) ($a['pending_requests'] ?? 0) > 0) ? 'warn' : '',
+    ],
+    [
+        'label' => 'Approved services',
+        'icon'  => 'ti-checkbox',
+        'value' => $a['assigned_services'] ?? 0,
+        'tone'  => 'ok',
+    ],
+    [
+        'label' => 'Cash collected today',
+        'icon'  => 'ti-cash',
+        'value' => $a['cash_collected_today'] ?? 0,
+        'money' => true,
+        'tone'  => 'money',
+    ],
+]]) ?>
 
-    <div class="card">
-        <div class="card-header">Quick Links</div>
-        <div class="list-group list-group-flush">
-            <a href="<?= base_url('staff/services/requests') ?>" class="list-group-item list-group-item-action px-3 py-2">Review Service Requests <?php if (($a['pending_requests'] ?? 0) > 0): ?><span class="badge bg-warning float-end"><?= esc((string) $a['pending_requests']) ?></span><?php endif; ?></a>
-            <a href="<?= base_url('staff/client-management') ?>" class="list-group-item list-group-item-action px-3 py-2">Client Management</a>
-            <a href="<?= base_url('staff/payment-management') ?>" class="list-group-item list-group-item-action px-3 py-2">Payment Management</a>
-            <a href="<?= base_url('staff/services') ?>" class="list-group-item list-group-item-action px-3 py-2">Services &amp; Packages</a>
-            <a href="<?= base_url('staff/services/ongoing') ?>" class="list-group-item list-group-item-action px-3 py-2">Ongoing Services</a>
-            <a href="<?= base_url('staff/reports') ?>" class="list-group-item list-group-item-action px-3 py-2">Reports</a>
-            <a href="<?= base_url('staff/analytics') ?>" class="list-group-item list-group-item-action px-3 py-2">My Analytics</a>
-        </div>
+<section class="cs-panel">
+    <div class="cs-panel__head">
+        <h2 class="cs-panel__title">Quick links</h2>
     </div>
-</div>
+    <div class="cs-panel__body cs-panel__body--flush">
+        <?php
+        $links = [
+            ['staff/services/requests', 'ti-clipboard-list', 'Review service requests', (int) ($a['pending_requests'] ?? 0)],
+            ['staff/client-management', 'ti-users', 'Plan holders', 0],
+            ['staff/payment-management', 'ti-cash', 'Payment management', 0],
+            ['staff/services', 'ti-package', 'Services & packages', 0],
+            ['staff/services/ongoing', 'ti-clock', 'Ongoing services', 0],
+            ['staff/reports', 'ti-report', 'Reports', 0],
+            ['staff/analytics', 'ti-chart-bar', 'My analytics', 0],
+        ];
+        ?>
+        <?php foreach ($links as [$url, $icon, $label, $count]): ?>
+            <a class="cs-linkrow" href="<?= base_url($url) ?>">
+                <i class="ti <?= $icon ?> cs-muted" aria-hidden="true"></i>
+                <span><?= esc($label) ?></span>
+                <?php if ($count > 0): ?>
+                    <span class="cs-status cs-status--pending ms-auto"><?= esc((string) $count) ?></span>
+                <?php else: ?>
+                    <i class="ti ti-chevron-right cs-muted ms-auto" aria-hidden="true"></i>
+                <?php endif; ?>
+            </a>
+        <?php endforeach; ?>
+    </div>
+</section>
 <?= $this->endSection() ?>

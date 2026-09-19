@@ -38,6 +38,8 @@ class Analytics extends BaseController
         // the same way Branch Admin's analytics already was (see below).
         return view('dashboards/admin_analytics', [
             'role_layout' => 'layouts/admin',
+            'page_title' => 'System analytics',
+            'page_sub' => 'Membership, collections, and branch performance system-wide.',
             'analytics' => $analytics,
         ]);
     }
@@ -64,6 +66,8 @@ class Analytics extends BaseController
         // needed a view sized to match it.
         return view('dashboards/branch_admin_analytics', [
             'role_layout' => 'layouts/branch_admin',
+            'page_title' => 'Branch analytics',
+            'page_sub' => 'Membership, collections, and service activity for your branch.',
             'analytics' => $analytics,
         ]);
     }
@@ -86,6 +90,8 @@ class Analytics extends BaseController
         // dashboards/staff view instead of a view sized to this data.
         return view('dashboards/staff_analytics', [
             'role_layout' => 'layouts/staff',
+            'page_title' => 'My analytics',
+            'page_sub' => 'Your service and cash-handling activity.',
             'analytics' => $analytics,
         ]);
     }

@@ -1,30 +1,19 @@
 <?= $this->extend($role_layout ?? 'layouts/staff') ?>
 
 <?= $this->section('content') ?>
-<div class="container-fluid py-3">
-    <h1 class="h4 mb-3">My Analytics</h1>
+<?php $a = $analytics ?? []; ?>
 
-    <?php $a = $analytics ?? []; ?>
-    <div class="row g-3 mb-4">
-        <div class="col-lg-3 col-md-6">
-            <div class="card"><div class="card-body"><div class="text-muted small">Branch Members</div><div class="h4 mb-0"><?= esc((string) ($a['staff_members'] ?? 0)) ?></div></div></div>
-        </div>
-        <div class="col-lg-3 col-md-6">
-            <div class="card"><div class="card-body"><div class="text-muted small">Approved Services</div><div class="h4 mb-0"><?= esc((string) ($a['assigned_services'] ?? 0)) ?></div></div></div>
-        </div>
-        <div class="col-lg-3 col-md-6">
-            <div class="card"><div class="card-body"><div class="text-muted small">Pending Requests</div><div class="h4 mb-0"><?= esc((string) ($a['pending_requests'] ?? 0)) ?></div></div></div>
-        </div>
-        <div class="col-lg-3 col-md-6">
-            <div class="card"><div class="card-body"><div class="text-muted small">Cash Payments Today</div><div class="h4 mb-0"><?= esc((string) ($a['cash_payments_today'] ?? 0)) ?></div></div></div>
-        </div>
-    </div>
+<?= view('components/stat_rail', ['stats' => [
+    ['label' => 'Branch members', 'icon' => 'ti-users', 'value' => $a['staff_members'] ?? 0],
+    ['label' => 'Approved services', 'icon' => 'ti-checkbox', 'value' => $a['assigned_services'] ?? 0, 'tone' => 'ok'],
+    ['label' => 'Pending requests', 'icon' => 'ti-clipboard-list', 'value' => $a['pending_requests'] ?? 0, 'tone' => ((int) ($a['pending_requests'] ?? 0) > 0) ? 'warn' : ''],
+    ['label' => 'Cash payments today', 'icon' => 'ti-cash-banknote', 'value' => $a['cash_payments_today'] ?? 0],
+]]) ?>
 
-    <div class="card">
-        <div class="card-body">
-            <div class="text-muted small">Cash Collected Today (Pending Verification)</div>
-            <div class="h4 mb-0">P<?= esc(number_format((float) ($a['cash_collected_today'] ?? 0), 2)) ?></div>
-        </div>
+<section class="cs-panel">
+    <div class="cs-panel__body">
+        <span class="cs-muted">Cash collected today (pending verification)</span>
+        <div class="cs-stat__value mt-1"><?= cs_money($a['cash_collected_today'] ?? 0) ?></div>
     </div>
-</div>
+</section>
 <?= $this->endSection() ?>
