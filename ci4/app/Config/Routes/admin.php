@@ -30,6 +30,8 @@ $routes->group('admin', ['filter' => 'auth'], static function (RouteCollection $
     $routes->get('client-management/view/(:num)', 'Admin\ClientManagementController::view/$1', ['filter' => 'role:1']);
     $routes->get('client-management/edit/(:num)', 'Admin\ClientManagementController::edit/$1', ['filter' => 'role:1']);
     $routes->post('client-management/update/(:num)', 'Admin\ClientManagementController::update/$1', ['filter' => 'role:1']);
+    $routes->get('client/register', 'Admin\ClientManagementController::create', ['filter' => 'role:1']);
+    $routes->post('client/store', 'Admin\ClientManagementController::store', ['filter' => 'role:1']);
 
     // Payment Monitoring
     $routes->get('payment-monitoring', 'PaymentTracking::admin', ['filter' => 'role:1']);

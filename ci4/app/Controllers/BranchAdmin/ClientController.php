@@ -8,6 +8,7 @@ use App\Services\ClientService;
 use App\Services\GovernmentIdVerificationService;
 use App\Services\MembershipService;
 use App\Services\NotificationService;
+use App\Services\PlanHolderRegistrationService;
 use CodeIgniter\Exceptions\PageNotFoundException;
 
 class ClientController extends BaseController
@@ -203,6 +204,20 @@ class ClientController extends BaseController
         ]);
     }
 
+    /**
+     * Thin now (Prompt 7, Step D): required/format validation only, then
+     * PlanHolderRegistrationService::register() owns PSGC verification,
+     * Government ID enforcement (including matching the identity of
+     * whichever account - new or linked-existing - actually gets used),
+     * beneficiaries, and plan_holder/plan/account creation. The
+     * new-vs-existing distinction no longer needs branching here: the
+     * "existing account" mode's own JS (caresync-wizard.js's Account
+     * section) already autofills first_name/middle_name/last_name/
+     * contact_number from the matched account before submit, so the posted
+     * identity is correct either way, and ClientService::registerPlanHolder()
+     * (called inside the service) already auto-detects an existing account
+     * by email.
+     */
     public function store()
     {
         $branchId = (int) session('branch_id');
@@ -211,115 +226,33 @@ class ClientController extends BaseController
             return redirect()->back()->with('error', 'Branch information is missing.');
         }
 
-        $mode = (string) $this->request->getPost('client_account_mode');
-        if (! in_array($mode, ['existing', 'new'], true)) {
-            $mode = 'existing';
-        }
-
-        // Government ID Verification - same reusable component and
-        // pending-token pattern as Users::create()/PlanHolders::store().
-        $pendingVerificationToken = trim((string) $this->request->getPost('government_id_pending_token'));
-        if ($pendingVerificationToken === '') {
-            return redirect()->back()->withInput()->with('error', 'Please complete the Government ID Verification step before submitting.');
-        }
-
         $rules = [
+            'first_name' => 'required|max_length[50]',
+            'last_name' => 'required|max_length[50]',
+            'email' => 'required|valid_email|max_length[100]',
             'contact_number' => 'permit_empty|max_length[30]',
             'date_of_birth' => 'permit_empty|valid_date',
             'gender' => 'permit_empty|in_list[Male,Female,Other]',
             'civil_status' => 'permit_empty|in_list[Single,Married,Divorced,Widowed]',
             'citizenship' => 'permit_empty|max_length[50]',
-            'address_street' => 'permit_empty|max_length[100]',
-            'address_barangay' => 'permit_empty|max_length[100]',
-            'address_city' => 'permit_empty|max_length[100]',
         ];
-
-        if ($mode === 'existing') {
-            $rules['email'] = 'required|valid_email|max_length[100]';
-        } else {
-            $rules['first_name'] = 'required|max_length[50]';
-            $rules['last_name'] = 'required|max_length[50]';
-            $rules['email'] = 'required|valid_email|max_length[100]|is_unique[users.email]';
-        }
 
         if (! $this->validate($rules)) {
             return redirect()->back()->withInput()->with('error', implode(' ', $this->validator->getErrors()));
         }
 
-        $idVerificationService = new GovernmentIdVerificationService();
-        $pendingVerification = $idVerificationService->peekPending($pendingVerificationToken);
-        if ($pendingVerification === null) {
-            return redirect()->back()->withInput()->with('error', 'Your Government ID verification could not be found. Please verify the ID again.');
-        }
-
         try {
-            $existingUser = null;
-            if ($mode === 'existing') {
-                $existingUser = $this->clientService->findUserByEmail(trim((string) $this->request->getPost('email')));
-                if (! $existingUser) {
-                    return redirect()->back()->withInput()->with('error', 'No existing account found for the provided email.');
-                }
-            }
+            $planHolderId = (new PlanHolderRegistrationService())->register(
+                $this->request->getPost() ?? [],
+                $branchId,
+                'staff',
+                null,
+                (int) session('user_id')
+            );
 
-            $firstNameForId = $mode === 'existing' ? trim((string) ($existingUser['first_name'] ?? '')) : trim((string) $this->request->getPost('first_name'));
-            $middleNameForId = $mode === 'existing' ? trim((string) ($existingUser['middle_name'] ?? '')) : trim((string) $this->request->getPost('middle_name'));
-            $lastNameForId = $mode === 'existing' ? trim((string) ($existingUser['last_name'] ?? '')) : trim((string) $this->request->getPost('last_name'));
-
-            if (! $idVerificationService->isValidForSubmission($pendingVerification, [
-                'first_name'    => $firstNameForId,
-                'middle_name'   => $middleNameForId,
-                'last_name'     => $lastNameForId,
-                'date_of_birth' => trim((string) $this->request->getPost('date_of_birth')),
-                'gender'        => trim((string) $this->request->getPost('gender')),
-            ])) {
-                $message = (string) ($pendingVerification['verification_status'] ?? '') === 'failed'
-                    ? 'The Government ID does not match the details entered. Please correct the details or upload the correct ID.'
-                    : 'The details were changed after verifying the Government ID. Please verify the ID again.';
-
-                return redirect()->back()->withInput()->with('error', $message);
-            }
-
-            $dateOfBirth = trim((string) $this->request->getPost('date_of_birth'));
-            if ($dateOfBirth !== '' && $dateOfBirth > date('Y-m-d')) {
-                return redirect()->back()->withInput()->with('error', 'Date of birth cannot be in the future.');
-            }
-
-            $planHolderId = $this->clientService->registerPlanHolder([
-                'first_name' => $firstNameForId,
-                'middle_name' => $middleNameForId,
-                'last_name' => $lastNameForId,
-                'email' => trim((string) $this->request->getPost('email')),
-                'contact_number' => $mode === 'existing' ? trim((string) ($existingUser['contact_number'] ?? '')) : trim((string) $this->request->getPost('contact_number')),
-                'date_of_birth' => $dateOfBirth,
-                'place_of_birth' => trim((string) $this->request->getPost('place_of_birth')),
-                'age' => cs_age_from_dob($dateOfBirth),
-                'gender' => trim((string) $this->request->getPost('gender')),
-                'civil_status' => trim((string) $this->request->getPost('civil_status')),
-                'citizenship' => trim((string) $this->request->getPost('citizenship')),
-                'height' => trim((string) $this->request->getPost('height')),
-                'weight' => trim((string) $this->request->getPost('weight')),
-                'address_no' => trim((string) $this->request->getPost('address_no')),
-                'address_street' => trim((string) $this->request->getPost('address_street')),
-                'address_barangay' => trim((string) $this->request->getPost('address_barangay')),
-                'address_city' => trim((string) $this->request->getPost('address_city')),
-                'spouse_name' => trim((string) $this->request->getPost('spouse_name')),
-                'spouse_birthdate' => trim((string) $this->request->getPost('spouse_birthdate')),
-                'spouse_occupation' => trim((string) $this->request->getPost('spouse_occupation')),
-                'senior_citizen_id' => trim((string) $this->request->getPost('senior_citizen_id')),
-                'organization_affiliation' => trim((string) $this->request->getPost('organization_affiliation')),
-            ], $branchId);
-
-            $targetUserId = 0;
-            if ($mode === 'existing') {
-                $targetUserId = (int) ($existingUser['user_id'] ?? 0);
-            } else {
-                $newlyCreated = $this->clientService->findUserByEmail(trim((string) $this->request->getPost('email')));
-                $targetUserId = (int) ($newlyCreated['user_id'] ?? 0);
-            }
-
+            $client = $this->clientService->getClientDetails($planHolderId);
+            $targetUserId = (int) ($client['user_id'] ?? 0);
             if ($targetUserId > 0) {
-                $idVerificationService->commitPending($pendingVerificationToken, $targetUserId);
-
                 (new NotificationService())->notify(
                     $targetUserId,
                     'Your account was linked as a plan holder and your Damayan Burial Program plan was registered by branch admin.',
@@ -330,7 +263,7 @@ class ClientController extends BaseController
                     (int) session('user_id'),
                     'created',
                     'plan_holder',
-                    (int) $planHolderId,
+                    $planHolderId,
                     'Registered plan holder from branch admin client form',
                     null,
                     ['branch_id' => $branchId]
@@ -338,8 +271,10 @@ class ClientController extends BaseController
             }
 
             return redirect()->to('/branch-admin/client/view/' . $planHolderId)->with('success', 'Plan holder registered successfully!');
-        } catch (\Throwable $e) {
+        } catch (\RuntimeException $e) {
             return redirect()->back()->withInput()->with('error', $e->getMessage());
+        } catch (\Throwable $e) {
+            return redirect()->back()->withInput()->with('error', 'Registration failed. Please try again.');
         }
     }
 

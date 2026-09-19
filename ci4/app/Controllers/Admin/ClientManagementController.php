@@ -4,6 +4,9 @@ namespace App\Controllers\Admin;
 
 use App\Controllers\BaseController;
 use App\Services\ClientService;
+use App\Services\GovernmentIdVerificationService;
+use App\Services\MembershipService;
+use App\Services\PlanHolderRegistrationService;
 use CodeIgniter\Exceptions\PageNotFoundException;
 
 class ClientManagementController extends BaseController
@@ -94,6 +97,87 @@ class ClientManagementController extends BaseController
             'page_title' => 'Client Details',
             'page_sub' => 'Plan Holder #' . (string) ($client['plan_holder_id'] ?? $id),
         ]);
+    }
+
+    /**
+     * Prompt 7, Step C: System Admin registration - the only mode that
+     * picks a branch explicitly rather than using session('branch_id'),
+     * since an Admin account isn't scoped to one branch.
+     */
+    public function create(): string
+    {
+        $this->ensureAdminAccess();
+
+        $db = db_connect();
+
+        $branches = $db->table('branches')
+            ->select('branch_id, branch_name')
+            ->where('status', 'active')
+            ->orderBy('branch_name', 'ASC')
+            ->get()
+            ->getResultArray();
+
+        $existingUsers = $db->table('users u')
+            ->select('u.user_id, u.first_name, u.middle_name, u.last_name, u.email, u.contact_number')
+            ->join('plan_holders ph', 'ph.user_id = u.user_id', 'left')
+            ->where('u.role_id', 4)
+            ->where('ph.plan_holder_id IS NULL', null, false)
+            ->orderBy('u.first_name', 'ASC')
+            ->orderBy('u.last_name', 'ASC')
+            ->get()
+            ->getResultArray();
+
+        return view('admin/client_management/register', [
+            'role_layout' => 'layouts/admin',
+            'page_title' => 'Register Plan Holder',
+            'page_sub' => 'Add a new plan holder to any branch.',
+            'branches' => $branches,
+            'existing_users' => $existingUsers,
+            'program' => MembershipService::getProgramInfo(),
+            'id_types' => (new GovernmentIdVerificationService())->idTypes(),
+        ]);
+    }
+
+    public function store()
+    {
+        $this->ensureAdminAccess();
+
+        $branchId = (int) $this->request->getPost('branch_id');
+        $branchExists = $branchId > 0 && db_connect()->table('branches')->where('branch_id', $branchId)->where('status', 'active')->countAllResults() > 0;
+        if (! $branchExists) {
+            return redirect()->back()->withInput()->with('error', 'Please select a valid, active branch.');
+        }
+
+        $rules = [
+            'first_name' => 'required|max_length[50]',
+            'last_name' => 'required|max_length[50]',
+            'email' => 'required|valid_email|max_length[100]',
+            'contact_number' => 'permit_empty|max_length[30]',
+            'date_of_birth' => 'permit_empty|valid_date',
+            'gender' => 'permit_empty|in_list[Male,Female,Other]',
+            'civil_status' => 'permit_empty|in_list[Single,Married,Divorced,Widowed]',
+            'citizenship' => 'permit_empty|max_length[50]',
+        ];
+
+        if (! $this->validate($rules)) {
+            return redirect()->back()->withInput()->with('error', implode(' ', $this->validator->getErrors()));
+        }
+
+        try {
+            $planHolderId = (new PlanHolderRegistrationService())->register(
+                $this->request->getPost() ?? [],
+                $branchId,
+                'staff',
+                null,
+                (int) session('user_id')
+            );
+
+            return redirect()->to('/admin/client-management/view/' . $planHolderId)->with('success', 'Plan holder registered successfully!');
+        } catch (\RuntimeException $e) {
+            return redirect()->back()->withInput()->with('error', $e->getMessage());
+        } catch (\Throwable $e) {
+            return redirect()->back()->withInput()->with('error', 'Registration failed. Please try again.');
+        }
     }
 
     public function edit(int $id): string

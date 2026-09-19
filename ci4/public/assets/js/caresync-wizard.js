@@ -307,6 +307,79 @@ window.CareSyncWizard = (function () {
         });
 
         // ==================================================================
+        // Staff-mode Account section (_step_applicant_account.php) - the
+        // "Create a new account" / "Link to an existing account" toggle.
+        // No-ops entirely when the page has neither radio (self mode, or a
+        // page that doesn't show_account_section).
+        // ==================================================================
+        const modeNew = document.getElementById('mode_new');
+        const modeExisting = document.getElementById('mode_existing');
+        if (modeNew && modeExisting) {
+            const existingUsers = config.existingUsers || [];
+            const emailField = document.getElementById('email');
+            const firstNameField = document.getElementById('first_name');
+            const middleNameField = document.getElementById('middle_name');
+            const lastNameField = document.getElementById('last_name');
+            const contactField = document.getElementById('contact_number');
+            const helpEl = document.getElementById('accountModeHelp');
+
+            function isExistingMode() {
+                return modeExisting.checked;
+            }
+
+            function autofillByEmail() {
+                if (!isExistingMode() || !emailField) {
+                    return;
+                }
+                const email = (emailField.value || '').trim().toLowerCase();
+                if (!email) {
+                    if (helpEl) helpEl.textContent = 'Enter the registered email and details auto-fill.';
+                    return;
+                }
+                const matched = existingUsers.find(function (u) { return u.email === email; });
+                if (!matched) {
+                    if (helpEl) helpEl.textContent = 'No existing account found for this email.';
+                    return;
+                }
+                if (firstNameField) firstNameField.value = matched.first_name || '';
+                if (middleNameField) middleNameField.value = matched.middle_name || '';
+                if (lastNameField) lastNameField.value = matched.last_name || '';
+                if (contactField) contactField.value = matched.contact_number || '';
+                if (helpEl) helpEl.textContent = 'Existing account found. Details were auto-filled.';
+            }
+
+            // Only clears/autofills on a user-triggered mode switch - never
+            // on initial page load, so a failed-validation repopulation
+            // (old() values already in the fields) is never wiped out just
+            // because the radio's own old() default happens to read 'new'.
+            function syncAccountMode(userTriggered) {
+                const existing = isExistingMode();
+                [firstNameField, middleNameField, lastNameField, contactField].forEach(function (el) {
+                    if (el) el.readOnly = existing;
+                });
+                if (existing) {
+                    if (helpEl) helpEl.textContent = 'Enter the registered email and details auto-fill.';
+                    if (userTriggered) autofillByEmail();
+                } else {
+                    if (userTriggered) {
+                        [firstNameField, middleNameField, lastNameField, contactField].forEach(function (el) {
+                            if (el) el.value = '';
+                        });
+                    }
+                    if (helpEl) helpEl.textContent = "Fill in the applicant's name and details below, then their email.";
+                }
+            }
+
+            modeNew.addEventListener('change', function () { syncAccountMode(true); });
+            modeExisting.addEventListener('change', function () { syncAccountMode(true); });
+            if (emailField) {
+                emailField.addEventListener('input', autofillByEmail);
+                emailField.addEventListener('change', autofillByEmail);
+            }
+            syncAccountMode(false);
+        }
+
+        // ==================================================================
         // Government ID Verification (Step 2) - shared widget, see
         // public/assets/js/id-verification-widget.js.
         // ==================================================================

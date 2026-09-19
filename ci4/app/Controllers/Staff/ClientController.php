@@ -6,6 +6,7 @@ use App\Controllers\BaseController;
 use App\Services\ClientService;
 use App\Services\GovernmentIdVerificationService;
 use App\Services\MembershipService;
+use App\Services\PlanHolderRegistrationService;
 use CodeIgniter\Exceptions\PageNotFoundException;
 
 class ClientController extends BaseController
@@ -152,15 +153,33 @@ class ClientController extends BaseController
             throw PageNotFoundException::forPageNotFound();
         }
 
+        $existingUsers = db_connect()->table('users u')
+            ->select('u.user_id, u.first_name, u.middle_name, u.last_name, u.email, u.contact_number')
+            ->join('plan_holders ph', 'ph.user_id = u.user_id', 'left')
+            ->where('u.role_id', 4)
+            ->where('ph.plan_holder_id IS NULL', null, false)
+            ->orderBy('u.first_name', 'ASC')
+            ->orderBy('u.last_name', 'ASC')
+            ->get()
+            ->getResultArray();
+
         return view('staff/clients/register', [
             'page_title' => 'Register Plan Holder',
             'page_sub' => 'Add a new plan holder to your branch',
             'program' => MembershipService::getProgramInfo(),
             'role_layout' => 'layouts/staff',
             'id_types' => (new GovernmentIdVerificationService())->idTypes(),
+            'existing_users' => $existingUsers,
         ]);
     }
 
+    /**
+     * Thin now (Prompt 7, Step D): required/format validation only, then
+     * PlanHolderRegistrationService::register() owns PSGC verification,
+     * Government ID enforcement, beneficiaries, and plan_holder/plan/
+     * account creation - the same routine Branch Admin, System Admin, and
+     * client self-service now share.
+     */
     public function store()
     {
         $branchId = (int) session('branch_id');
@@ -169,90 +188,35 @@ class ClientController extends BaseController
             return redirect()->back()->with('error', 'Branch information is missing.');
         }
 
-        // Government ID Verification - same reusable component and
-        // pending-token pattern as Users::create()/PlanHolders::store().
-        $pendingVerificationToken = trim((string) $this->request->getPost('government_id_pending_token'));
-        if ($pendingVerificationToken === '') {
-            return redirect()->back()->withInput()->with('error', 'Please complete the Government ID Verification step before submitting.');
-        }
-
         $rules = [
             'first_name' => 'required|max_length[50]',
             'last_name' => 'required|max_length[50]',
-            'email' => 'required|valid_email|max_length[100]|is_unique[users.email]',
+            'email' => 'required|valid_email|max_length[100]',
             'contact_number' => 'permit_empty|max_length[30]',
             'date_of_birth' => 'permit_empty|valid_date',
             'gender' => 'permit_empty|in_list[Male,Female,Other]',
             'civil_status' => 'permit_empty|in_list[Single,Married,Divorced,Widowed]',
             'citizenship' => 'permit_empty|max_length[50]',
-            'address_street' => 'permit_empty|max_length[100]',
-            'address_barangay' => 'permit_empty|max_length[100]',
-            'address_city' => 'permit_empty|max_length[100]',
         ];
 
         if (! $this->validate($rules)) {
             return redirect()->back()->withInput()->with('error', implode(' ', $this->validator->getErrors()));
         }
 
-        $idVerificationService = new GovernmentIdVerificationService();
-        $pendingVerification = $idVerificationService->peekPending($pendingVerificationToken);
-        if ($pendingVerification === null) {
-            return redirect()->back()->withInput()->with('error', 'Your Government ID verification could not be found. Please verify the ID again.');
-        }
-
-        if (! $idVerificationService->isValidForSubmission($pendingVerification, [
-            'first_name'    => trim((string) $this->request->getPost('first_name')),
-            'middle_name'   => trim((string) $this->request->getPost('middle_name')),
-            'last_name'     => trim((string) $this->request->getPost('last_name')),
-            'date_of_birth' => trim((string) $this->request->getPost('date_of_birth')),
-            'gender'        => trim((string) $this->request->getPost('gender')),
-        ])) {
-            $message = (string) ($pendingVerification['verification_status'] ?? '') === 'failed'
-                ? 'The Government ID does not match the details entered. Please correct the details or upload the correct ID.'
-                : 'The details were changed after verifying the Government ID. Please verify the ID again.';
-
-            return redirect()->back()->withInput()->with('error', $message);
-        }
-
-        $dateOfBirth = trim((string) $this->request->getPost('date_of_birth'));
-        if ($dateOfBirth !== '' && $dateOfBirth > date('Y-m-d')) {
-            return redirect()->back()->withInput()->with('error', 'Date of birth cannot be in the future.');
-        }
-
         try {
-            $planHolderId = $this->clientService->registerPlanHolder([
-                'first_name' => trim((string) $this->request->getPost('first_name')),
-                'middle_name' => trim((string) $this->request->getPost('middle_name')),
-                'last_name' => trim((string) $this->request->getPost('last_name')),
-                'email' => trim((string) $this->request->getPost('email')),
-                'contact_number' => trim((string) $this->request->getPost('contact_number')),
-                'date_of_birth' => $dateOfBirth,
-                'place_of_birth' => trim((string) $this->request->getPost('place_of_birth')),
-                'age' => cs_age_from_dob($dateOfBirth),
-                'gender' => trim((string) $this->request->getPost('gender')),
-                'civil_status' => trim((string) $this->request->getPost('civil_status')),
-                'citizenship' => trim((string) $this->request->getPost('citizenship')),
-                'height' => trim((string) $this->request->getPost('height')),
-                'weight' => trim((string) $this->request->getPost('weight')),
-                'address_no' => trim((string) $this->request->getPost('address_no')),
-                'address_street' => trim((string) $this->request->getPost('address_street')),
-                'address_barangay' => trim((string) $this->request->getPost('address_barangay')),
-                'address_city' => trim((string) $this->request->getPost('address_city')),
-                'spouse_name' => trim((string) $this->request->getPost('spouse_name')),
-                'spouse_birthdate' => trim((string) $this->request->getPost('spouse_birthdate')),
-                'spouse_occupation' => trim((string) $this->request->getPost('spouse_occupation')),
-                'senior_citizen_id' => trim((string) $this->request->getPost('senior_citizen_id')),
-                'organization_affiliation' => trim((string) $this->request->getPost('organization_affiliation')),
-            ], $branchId);
+            $planHolderId = (new PlanHolderRegistrationService())->register(
+                $this->request->getPost() ?? [],
+                $branchId,
+                'staff',
+                null,
+                (int) session('user_id')
+            );
 
-            $registeredUser = $this->clientService->findUserByEmail(trim((string) $this->request->getPost('email')));
-            if ($registeredUser) {
-                $idVerificationService->commitPending($pendingVerificationToken, (int) $registeredUser['user_id']);
-            }
-
-            return redirect()->to('/staff/client/view/' . $planHolderId)->with('success', 'Plan holder registered successfully!');
-        } catch (\Throwable $e) {
+            return redirect()->to('/staff/client/view/' . $planHolderId)->with('success', 'Plan holder registered successfully! They can sign in using the generated username - a password reset sends them their first login link.');
+        } catch (\RuntimeException $e) {
             return redirect()->back()->withInput()->with('error', $e->getMessage());
+        } catch (\Throwable $e) {
+            return redirect()->back()->withInput()->with('error', 'Registration failed. Please try again.');
         }
     }
 

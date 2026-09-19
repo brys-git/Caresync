@@ -13,40 +13,28 @@ use CodeIgniter\HTTP\ResponseInterface;
 
 class PlanHolders extends BaseController
 {
+    /**
+     * Prompt 7, Step B: this page's own registration FORM is gone - it now
+     * only shows the "Plan Holder Verification Queue" (approvals), with a
+     * link out to the signed-in role's own new register page
+     * (branch-admin/client/register or admin/client/register, both built
+     * on the same shared wizard client self-service uses). branches/
+     * existingUsers/id_types are no longer needed here since there's no
+     * form left on this page to feed.
+     */
     public function register()
     {
-        // Only Admin (role 1) and BranchAdmin (role 2) can register plan holders
+        // Only Admin (role 1) and BranchAdmin (role 2) can review approvals here.
         $roleId = (int) session('role_id');
         if (!in_array($roleId, [1, 2], true)) {
-            return redirect()->to('/unauthorized')->with('error', 'You do not have permission to register plan holders.');
+            return redirect()->to('/unauthorized')->with('error', 'You do not have permission to view this page.');
         }
 
         $db = db_connect();
-        $roleId = (int) session('role_id');
-        $requestedTab = (string) $this->request->getGet('tab');
-        $activeTab = in_array($requestedTab, ['registration', 'approvals'], true) ? $requestedTab : 'registration';
-
-        $branches = $db->table('branches')
-            ->select('branch_id, branch_name')
-            ->where('status', 'active')
-            ->orderBy('branch_name', 'ASC')
-            ->get()
-            ->getResultArray();
-
-        $existingUsers = $db->table('users u')
-            ->select('u.user_id, u.username, u.email, u.first_name, u.last_name, u.contact_number')
-            ->join('plan_holders ph', 'ph.user_id = u.user_id', 'left')
-            ->where('u.role_id', 4)
-            ->where('ph.plan_holder_id IS NULL', null, false)
-            ->orderBy('u.first_name', 'ASC')
-            ->orderBy('u.last_name', 'ASC')
-            ->get()
-            ->getResultArray();
 
         $approvalRegistrations = [];
         $hasPendingTable = $this->pendingTableExists();
-        $canReviewApprovals = in_array($roleId, [1, 2], true);
-        if ($canReviewApprovals && $hasPendingTable) {
+        if ($hasPendingTable) {
             $approvalRegistrations = $db->table('pending_plan_holder_registrations pr')
                 ->select('pr.*, u.first_name, u.last_name, u.email, u.contact_number, b.branch_name, reviewer.first_name AS reviewer_first_name, reviewer.last_name AS reviewer_last_name')
                 ->join('users u', 'u.user_id = pr.user_id', 'left')
@@ -58,14 +46,10 @@ class PlanHolders extends BaseController
         }
 
         return view('plan_holders/register', [
-            'branches' => $branches,
-            'existing_users' => $existingUsers,
-            'active_tab' => $activeTab,
-            'can_review_approvals' => $canReviewApprovals,
             'has_pending_table' => $hasPendingTable,
             'approval_registrations' => $approvalRegistrations,
             'role_layout' => $this->resolveLayoutView(),
-            'id_types' => (new GovernmentIdVerificationService())->idTypes(),
+            'register_url' => $roleId === 1 ? base_url('admin/client/register') : base_url('branch-admin/client/register'),
         ]);
     }
 

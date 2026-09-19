@@ -12,6 +12,7 @@ class PlanHolderModel extends Model
     protected $useAutoIncrement = true;
     protected $allowedFields    = [
         'user_id',
+        'registered_by',
         'id_control_no',
         'coordinator',
         'application_date',

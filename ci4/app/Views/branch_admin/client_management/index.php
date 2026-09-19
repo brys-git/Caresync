@@ -3,6 +3,12 @@
 <?= $this->section('content') ?>
 <?php // Flash messages are already surfaced as toasts by layouts/_shell.php - no need to render them again here. ?>
 
+<div class="mb-3 text-end">
+    <a class="btn btn-primary btn-sm" href="<?= base_url('branch-admin/client/register') ?>">
+        <i class="ti ti-user-plus" aria-hidden="true"></i> Register plan holder
+    </a>
+</div>
+
 <section class="cs-panel">
     <div class="cs-panel__body cs-panel__body--flush">
         <?php if (empty($holders)): ?>

@@ -63,6 +63,10 @@ $hasFilters     = $selectedBranch > 0 || $selectedStatus !== '' || $search !== '
         </div>
 
         <div class="d-flex gap-2">
+            <a class="btn btn-primary btn-sm" href="<?= base_url('admin/client/register') ?>">
+                <i class="ti ti-user-plus" aria-hidden="true"></i>
+                <span class="d-none d-sm-inline">Register plan holder</span>
+            </a>
             <button class="btn btn-ghost btn-sm" type="button" data-cs-density aria-pressed="false">
                 <i class="ti ti-baseline-density-medium" aria-hidden="true"></i>
                 <span class="d-none d-sm-inline">Density</span>
