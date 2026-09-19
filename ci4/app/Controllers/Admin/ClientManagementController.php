@@ -226,6 +226,7 @@ class ClientManagementController extends BaseController
             'contact_number' => 'permit_empty|max_length[30]',
             'date_of_birth' => 'permit_empty|valid_date',
             'spouse_birthdate' => 'permit_empty|valid_date',
+            'application_date' => 'permit_empty|valid_date',
             'height' => 'permit_empty|decimal',
             'weight' => 'permit_empty|decimal',
             'status' => 'required|in_list[active,inactive]',
@@ -243,13 +244,19 @@ class ClientManagementController extends BaseController
         try {
             $this->clientService->updateClient($id, [
                 'first_name' => trim((string) $this->request->getPost('first_name')),
+                'middle_name' => trim((string) $this->request->getPost('middle_name')),
                 'last_name' => trim((string) $this->request->getPost('last_name')),
                 'email' => trim((string) $this->request->getPost('email')),
                 'contact_number' => trim((string) $this->request->getPost('contact_number')),
+                'id_control_no' => trim((string) $this->request->getPost('id_control_no')),
+                'coordinator' => trim((string) $this->request->getPost('coordinator')),
+                'application_date' => trim((string) $this->request->getPost('application_date')),
                 'address_no' => trim((string) $this->request->getPost('address_no')),
                 'address_street' => trim((string) $this->request->getPost('address_street')),
                 'address_barangay' => trim((string) $this->request->getPost('address_barangay')),
                 'address_city' => trim((string) $this->request->getPost('address_city')),
+                'barangay_code' => trim((string) $this->request->getPost('barangay_code')),
+                'city_municipality_code' => trim((string) $this->request->getPost('city_municipality_code')),
                 'date_of_birth' => $dateOfBirth,
                 'place_of_birth' => trim((string) $this->request->getPost('place_of_birth')),
                 // Age is never trusted from the client - always derived
@@ -266,6 +273,7 @@ class ClientManagementController extends BaseController
                 'senior_citizen_id' => trim((string) $this->request->getPost('senior_citizen_id')),
                 'organization_affiliation' => trim((string) $this->request->getPost('organization_affiliation')),
                 'status' => trim((string) $this->request->getPost('status')),
+                'beneficiaries' => $this->request->getPost('beneficiaries') ?? [],
             ]);
         } catch (\Throwable $e) {
             return redirect()->back()->withInput()->with('error', $e->getMessage());

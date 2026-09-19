@@ -247,8 +247,15 @@ class PlanHolderRegistrationService
         }
     }
 
-    /** @return array<int,array<string,mixed>> */
-    private function parseBeneficiaries(array $input): array
+    /**
+     * Public (not just used internally by register()) so ClientService::
+     * updateClient() can reuse the exact same validation for the plan
+     * holder edit pages' Beneficiaries section (partials/registration/
+     * _edit_form.php) instead of a second, drifting copy of these rules.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function parseBeneficiaries(array $input): array
     {
         $rowsInput = $input['beneficiaries'] ?? [];
         $rowsInput = is_array($rowsInput) ? $rowsInput : [];
@@ -319,7 +326,8 @@ class PlanHolderRegistrationService
         return $beneficiaries;
     }
 
-    private function saveBeneficiaries(int $planHolderId, array $beneficiaries): void
+    /** Public for the same reason as parseBeneficiaries() above. */
+    public function saveBeneficiaries(int $planHolderId, array $beneficiaries): void
     {
         $db = db_connect();
         foreach ($beneficiaries as &$row) {

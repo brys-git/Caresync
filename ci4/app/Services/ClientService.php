@@ -111,6 +111,7 @@ class ClientService
 
             $updatedUser = $userModel->update((int) $client['user_id'], [
                 'first_name' => (string) ($data['first_name'] ?? ''),
+                'middle_name' => (string) ($data['middle_name'] ?? ''),
                 'last_name' => (string) ($data['last_name'] ?? ''),
                 'email' => (string) ($data['email'] ?? ''),
                 'contact_number' => (string) ($data['contact_number'] ?? ''),
@@ -121,10 +122,15 @@ class ClientService
             }
 
             $updatedPlanHolder = $planHolderModel->update($planHolderId, [
+                'id_control_no' => (string) ($data['id_control_no'] ?? ''),
+                'coordinator' => (string) ($data['coordinator'] ?? ''),
+                'application_date' => $this->nullable($data['application_date'] ?? null),
                 'address_no' => (string) ($data['address_no'] ?? ''),
                 'address_street' => (string) ($data['address_street'] ?? ''),
                 'address_barangay' => (string) ($data['address_barangay'] ?? ''),
                 'address_city' => (string) ($data['address_city'] ?? ''),
+                'barangay_code' => (string) ($data['barangay_code'] ?? ''),
+                'city_municipality_code' => (string) ($data['city_municipality_code'] ?? ''),
                 'date_of_birth' => $this->nullable($data['date_of_birth'] ?? null),
                 'place_of_birth' => (string) ($data['place_of_birth'] ?? ''),
                 'age' => $this->nullableInt($data['age'] ?? null),
@@ -143,6 +149,16 @@ class ClientService
 
             if (! $updatedPlanHolder) {
                 throw new \RuntimeException('Failed to update plan holder details.');
+            }
+
+            // Beneficiaries: same parsing/validation as registration
+            // (PlanHolderRegistrationService), reused rather than
+            // duplicated - requires at least one valid beneficiary row,
+            // same as the registration wizard's Beneficiaries step.
+            if (array_key_exists('beneficiaries', $data) && is_array($data['beneficiaries'])) {
+                $registrationService = new PlanHolderRegistrationService();
+                $beneficiaries = $registrationService->parseBeneficiaries($data);
+                $registrationService->saveBeneficiaries($planHolderId, $beneficiaries);
             }
 
             if ($db->transStatus() === false) {
