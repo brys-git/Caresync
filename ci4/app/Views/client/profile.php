@@ -3,17 +3,6 @@
 <?= $this->section('content') ?>
 <?php $editMode = $edit_mode ?? false; ?>
 
-<?php if (! $editMode): ?>
-    <div class="d-flex flex-wrap justify-content-end gap-2 mb-3">
-        <a href="<?= base_url('client/profile') ?>?edit=1" class="btn btn-primary btn-sm">
-            <i class="ti ti-pencil me-1"></i> Edit Profile
-        </a>
-        <a href="#password-section" class="btn btn-outline-secondary btn-sm">
-            <i class="ti ti-key me-1"></i> Change Password
-        </a>
-    </div>
-<?php endif; ?>
-
 <?php // Flash messages are already surfaced as toasts by layouts/_shell.php - no need to render them again here. ?>
 
 <div class="row g-3 mb-3">
@@ -21,18 +10,14 @@
     <div class="col-lg-4">
         <section class="cs-panel h-100">
             <div class="cs-panel__body text-center">
-                <div class="cs-avatar cs-avatar--lg mx-auto mb-3" style="width:80px;height:80px;flex-basis:80px;font-size:2rem;">
+                <div class="cs-avatar cs-avatar--xl mx-auto mb-3">
                     <?= esc(cs_initials(trim(($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? '')))) ?>
                 </div>
 
-                <h5 class="mb-1">
+                <h2 class="cs-panel__title mb-1">
                     <?= esc(trim(($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? ''))) ?: 'User' ?>
-                </h5>
-                <p class="text-muted small mb-3">Plan Holder</p>
-
-                <div class="mb-3">
-                    <span class="badge bg-primary">Plan Holder</span>
-                </div>
+                </h2>
+                <p class="cs-muted small mb-3">Plan holder</p>
 
                 <hr>
                 <div class="text-start">
@@ -93,11 +78,9 @@
                         </div>
 
                         <div class="d-flex justify-content-end gap-2 mt-4">
-                            <a href="<?= base_url('client/profile') ?>" class="btn btn-outline-secondary">
-                                Cancel
-                            </a>
+                            <a href="<?= base_url('client/profile') ?>" class="btn btn-ghost">Cancel</a>
                             <button type="submit" class="btn btn-primary">
-                                <i class="ti ti-check me-1"></i> Save Changes
+                                <i class="ti ti-check me-1"></i> Save changes
                             </button>
                         </div>
                     </form>

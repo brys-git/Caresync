@@ -6,8 +6,7 @@
 
 <section class="cs-panel">
     <div class="cs-panel__head">
-        <h2 class="cs-panel__title">Make Payment</h2>
-        <a href="<?= base_url('client/payment') ?>" class="btn btn-outline-secondary btn-sm">Back to Payments</a>
+        <h2 class="cs-panel__title">Payment details</h2>
     </div>
     <div class="cs-panel__body">
         <div class="row g-3 mb-4">
@@ -22,13 +21,13 @@
         </div>
 
         <?php if ($remaining_months <= 0): ?>
-            <div class="alert alert-info mb-0">Your plan has no remaining months left to pay. There's nothing more to submit right now.</div>
+            <?= view('components/alert', ['type' => 'info', 'dismissible' => false, 'class' => 'mb-0', 'message' => 'Your plan has no remaining months left to pay. There\'s nothing more to submit right now.']) ?>
         <?php else: ?>
             <form method="post" action="<?= base_url('client/payment/make') ?>" id="makePaymentForm" data-cs-once>
                 <?= csrf_field() ?>
                 <div class="row g-3">
                     <div class="col-md-4">
-                        <label class="form-label" for="months_covered">Number of Months to Pay</label>
+                        <label class="form-label" for="months_covered">Number of months to pay</label>
                         <select id="months_covered" name="months_covered" class="form-select" required>
                             <?php for ($m = 1; $m <= $remaining_months; $m++): ?>
                                 <option value="<?= $m ?>"><?= $m ?> Month<?= $m === 1 ? '' : 's' ?></option>
@@ -37,15 +36,15 @@
                         <div class="form-text"><?= esc((string) $remaining_months) ?> month(s) left on this plan.</div>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label d-block">Total Amount</label>
+                        <label class="form-label d-block">Total amount</label>
                         <strong id="totalAmountDisplay" class="fs-5"></strong>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label d-block">Payment Method</label>
+                        <label class="form-label d-block">Payment method</label>
                         <strong>GCash</strong>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label" for="reference_number">GCash Reference Number</label>
+                        <label class="form-label" for="reference_number">GCash reference number</label>
                         <input
                             id="reference_number"
                             name="reference_number"
@@ -61,7 +60,7 @@
                     </div>
                 </div>
 
-                <button type="button" class="btn btn-primary mt-4" id="openConfirmModal">Submit</button>
+                <button type="button" class="btn btn-primary mt-4" id="openConfirmModal">Review payment</button>
             </form>
 
             <div class="modal fade" id="confirmPaymentModal" tabindex="-1" aria-labelledby="confirmPaymentModalLabel" aria-hidden="true">
@@ -87,8 +86,8 @@
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Go Back</button>
-                            <button type="submit" class="btn btn-primary" id="confirmSubmitBtn" form="makePaymentForm" disabled>Confirm &amp; Submit</button>
+                            <button type="button" class="btn btn-ghost" data-bs-dismiss="modal">Go back</button>
+                            <button type="submit" class="btn btn-primary" id="confirmSubmitBtn" form="makePaymentForm" disabled>Confirm &amp; submit payment</button>
                         </div>
                     </div>
                 </div>

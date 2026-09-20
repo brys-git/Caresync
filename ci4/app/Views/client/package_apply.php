@@ -10,91 +10,88 @@
     $basePrice = (float) ($package['base_price'] ?? 0);
     $baseDue = $isEntitlement ? 0.0 : max(0, $basePrice - $benefitCredit);
 ?>
-<style>
-    .summary-box { border: 1px solid #e5e7eb; border-radius: 12px; padding: 1rem 1.25rem; background: #f8fafc; }
-    .summary-line { display: flex; justify-content: space-between; padding: .35rem 0; }
-    .summary-total { border-top: 1px solid #cbd5e1; margin-top: .5rem; padding-top: .5rem; font-weight: 700; }
-</style>
-<div style="max-width: 760px;">
-    <div class="mb-3 text-end">
-        <a class="btn btn-outline-secondary btn-sm" href="<?= site_url('/client/package/' . (int) ($package['package_id'] ?? 0)) ?>">Back</a>
-    </div>
-
+<div class="cs-narrow">
     <?php if (! $canApply): ?>
         <?php if ($state === 'pending'): ?>
-            <div class="alert alert-warning">Approval required before requesting services.</div>
+            <?= view('components/alert', ['type' => 'warning', 'dismissible' => false, 'message' => 'Approval required before requesting services.']) ?>
         <?php else: ?>
-            <div class="alert alert-info">You must register as a Plan Holder to apply.</div>
-            <a class="btn btn-primary" href="<?= site_url('/plan-info') ?>">Register Now</a>
+            <?= view('components/alert', ['type' => 'info', 'dismissible' => false, 'message' => 'You must register as a Plan Holder to apply.']) ?>
+            <a class="btn btn-primary mb-3" href="<?= site_url('/plan-info') ?>">Register now</a>
         <?php endif; ?>
     <?php endif; ?>
 
-    <section class="cs-panel mb-3">
-        <div class="cs-panel__body">
-            <h5 class="mb-2"><?= esc((string) ($package['package_name'] ?? '-')) ?></h5>
-            <p class="text-muted mb-3"><?= esc((string) ($package['description'] ?? 'No description available.')) ?></p>
-            <div class="fw-semibold">Package Price: <?= cs_money($basePrice) ?></div>
-        </div>
-    </section>
-
-    <form class="mt-3" method="post" enctype="multipart/form-data" action="<?= site_url('/client/apply-package/' . (int) ($package['package_id'] ?? 0)) ?>">
+    <form method="post" enctype="multipart/form-data" action="<?= site_url('/client/apply-package/' . (int) ($package['package_id'] ?? 0)) ?>">
         <?= csrf_field() ?>
 
-        <div class="mb-3 form-check">
-            <input type="checkbox" class="form-check-input" id="burial_attire" name="burial_attire" value="1" <?= old('burial_attire') ? 'checked' : '' ?>>
-            <label class="form-check-label" for="burial_attire">
-                Add Burial Attire Package (Optional Add-on) - <?= cs_money($attirePrice) ?>
-            </label>
-        </div>
+        <section class="cs-panel mb-3">
+            <div class="cs-panel__head">
+                <div>
+                    <h2 class="cs-panel__title"><?= esc((string) ($package['package_name'] ?? '—')) ?></h2>
+                    <p class="cs-panel__note"><?= esc((string) ($package['description'] ?? 'No description available.')) ?></p>
+                </div>
+                <span class="fw-semibold"><?= cs_money($basePrice) ?></span>
+            </div>
+            <div class="cs-panel__body">
+                <div class="form-check mb-3">
+                    <input type="checkbox" class="form-check-input" id="burial_attire" name="burial_attire" value="1" <?= old('burial_attire') ? 'checked' : '' ?>>
+                    <label class="form-check-label" for="burial_attire">
+                        Add Burial Attire Package (optional add-on) — <?= cs_money($attirePrice) ?>
+                    </label>
+                </div>
 
-        <div class="summary-box mb-4">
-            <?php if ($isEntitlement): ?>
-                <div class="summary-line"><span>Regular Wood Casket (Damayan Entitlement)</span><span><?= cs_money($basePrice) ?></span></div>
-                <div class="summary-line text-success"><span>Damayan Benefit Applied</span><span>- <?= cs_money($basePrice) ?></span></div>
-            <?php else: ?>
-                <div class="summary-line"><span>Package Price</span><span><?= cs_money($basePrice) ?></span></div>
-                <?php if ($benefitCredit > 0): ?>
-                    <div class="summary-line text-success"><span>Damayan Benefit Credit</span><span>- <?= cs_money($benefitCredit) ?></span></div>
+                <?php if ($isEntitlement): ?>
+                    <div class="cs-routerow"><span>Regular Wood Casket (Damayan entitlement)</span><?= cs_money($basePrice) ?></div>
+                    <div class="cs-routerow cs-routerow--credit"><span>Damayan benefit applied</span><span>− <?= cs_money($basePrice) ?></span></div>
+                <?php else: ?>
+                    <div class="cs-routerow"><span>Package price</span><?= cs_money($basePrice) ?></div>
+                    <?php if ($benefitCredit > 0): ?>
+                        <div class="cs-routerow cs-routerow--credit"><span>Damayan benefit credit</span><span>− <?= cs_money($benefitCredit) ?></span></div>
+                    <?php endif; ?>
                 <?php endif; ?>
-            <?php endif; ?>
-            <div class="summary-line" id="attire-line" style="display:none;"><span>Burial Attire Add-on</span><span><?= cs_money($attirePrice) ?></span></div>
-            <div class="summary-line summary-total"><span>Amount Due</span><span id="amount-due" class="cs-money"><?= esc(number_format($baseDue, 2)) ?></span></div>
-        </div>
+                <div class="cs-routerow d-none" id="attire-line"><span>Burial attire add-on</span><?= cs_money($attirePrice) ?></div>
+                <div class="cs-routerow cs-routerow--total"><span>Amount due</span><span id="amount-due" class="cs-money"><?= esc(number_format($baseDue, 2)) ?></span></div>
+            </div>
+        </section>
 
-        <div class="mb-3">
-            <label class="form-label">Deceased full name</label>
-            <input type="text" name="deceased_name" class="form-control" value="<?= old('deceased_name') ?>" required />
-        </div>
-        <div class="mb-3 row">
-            <div class="col-md-6">
-                <label class="form-label">Date of death</label>
-                <input type="date" name="deceased_date_of_death" class="form-control" value="<?= old('deceased_date_of_death') ?>" />
+        <section class="cs-panel">
+            <div class="cs-panel__head"><h2 class="cs-panel__title">Deceased and beneficiary details</h2></div>
+            <div class="cs-panel__body">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label" for="deceased_name">Deceased full name</label>
+                        <input type="text" id="deceased_name" name="deceased_name" class="form-control" value="<?= old('deceased_name') ?>" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="deceased_date_of_death">Date of death</label>
+                        <input type="date" id="deceased_date_of_death" name="deceased_date_of_death" class="form-control" value="<?= old('deceased_date_of_death') ?>">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="relationship_to_deceased">Relationship to deceased</label>
+                        <input type="text" id="relationship_to_deceased" name="relationship_to_deceased" class="form-control" value="<?= old('relationship_to_deceased') ?>">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="deceased_address">Deceased address</label>
+                        <input type="text" id="deceased_address" name="deceased_address" class="form-control" value="<?= old('deceased_address') ?>">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="beneficiary_name">Beneficiary name</label>
+                        <input type="text" id="beneficiary_name" name="beneficiary_name" class="form-control" value="<?= old('beneficiary_name') ?>">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="beneficiary_contact">Beneficiary contact number</label>
+                        <input type="text" id="beneficiary_contact" name="beneficiary_contact" class="form-control" value="<?= old('beneficiary_contact') ?>">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="documents">Upload supporting documents (IDs, death certificate)</label>
+                        <input type="file" id="documents" name="documents[]" multiple class="form-control" accept="image/*,application/pdf">
+                    </div>
+                </div>
             </div>
-            <div class="col-md-6">
-                <label class="form-label">Relationship to deceased</label>
-                <input type="text" name="relationship_to_deceased" class="form-control" value="<?= old('relationship_to_deceased') ?>" />
+            <div class="cs-panel__foot d-flex justify-content-end gap-2">
+                <a class="btn btn-ghost" href="<?= site_url('/client/service?tab=packages') ?>">Cancel</a>
+                <button class="btn btn-primary" type="submit" <?= $canApply ? '' : 'disabled' ?>><?= $isEntitlement ? 'Claim regular casket' : 'Avail package' ?></button>
             </div>
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Deceased address</label>
-            <input type="text" name="deceased_address" class="form-control" value="<?= old('deceased_address') ?>" />
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Beneficiary name</label>
-            <input type="text" name="beneficiary_name" class="form-control" value="<?= old('beneficiary_name') ?>" />
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Beneficiary contact number</label>
-            <input type="text" name="beneficiary_contact" class="form-control" value="<?= old('beneficiary_contact') ?>" />
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Upload supporting documents (IDs, death certificate)</label>
-            <input type="file" name="documents[]" multiple class="form-control" accept="image/*,application/pdf" />
-        </div>
-        <button class="btn <?= $isEntitlement ? 'btn-claim-big' : 'btn-primary' ?>" style="<?= $isEntitlement ? 'background-color:#b45309;border-color:#b45309;' : '' ?>" type="submit" <?= $canApply ? '' : 'disabled' ?>>
-            <?= $isEntitlement ? '[ CLAIM REGULAR CASKET ]' : '[ AVAIL PACKAGE ]' ?>
-        </button>
-        <a class="btn btn-outline-secondary" href="<?= site_url('/client/service?tab=packages') ?>">Cancel</a>
+        </section>
     </form>
 </div>
 
@@ -112,7 +109,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function recalc() {
         var selected = checkbox.checked;
-        attireLine.style.display = selected ? 'flex' : 'none';
+        attireLine.classList.toggle('d-none', !selected);
         amountDue.textContent = format(baseDue + (selected ? attirePrice : 0));
     }
 

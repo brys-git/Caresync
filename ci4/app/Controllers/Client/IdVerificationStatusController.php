@@ -48,7 +48,7 @@ class IdVerificationStatusController extends BaseController
 
         return view('client/id_verification_status', [
             'role_layout' => 'layouts/plan_holder',
-            'page_title' => 'Government ID Verification',
+            'page_title' => 'Government ID verification',
             'page_sub' => 'One more step before you can make your initial payment.',
             'status' => $status,
             'verification' => $verification,

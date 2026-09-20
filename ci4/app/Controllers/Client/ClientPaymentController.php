@@ -43,7 +43,7 @@ class ClientPaymentController extends BaseController
         if (($access['state'] ?? 'unregistered') === 'unregistered' || ! $planHolder) {
             return view('client/payment', [
                 'role_layout' => 'layouts/plan_holder',
-                'page_title' => 'Payment',
+                'page_title' => 'Payments',
                 'page_sub' => 'Track contribution records.',
                 'access' => $access,
                 'plan' => null,
@@ -83,7 +83,7 @@ class ClientPaymentController extends BaseController
 
         return view('client/payment', [
             'role_layout' => 'layouts/plan_holder',
-            'page_title' => 'Payment',
+            'page_title' => 'Payments',
             'page_sub' => 'Track contribution records.',
             'access' => $access,
             'plan' => $plan,
@@ -165,8 +165,9 @@ class ClientPaymentController extends BaseController
 
         return view('client/payment_make', [
             'role_layout' => 'layouts/plan_holder',
-            'page_title' => 'Make Payment',
+            'page_title' => 'Make payment',
             'page_sub' => 'Submit a GCash payment toward your plan.',
+            'page_actions' => '<a class="btn btn-ghost" href="' . esc(base_url('client/payment'), 'attr') . '">Back to payments</a>',
             'plan' => $plan,
             'plan_name' => (new MembershipService())->resolvePackageName((int) ($plan['package_id'] ?? 0)),
             'plan_term_months' => $planTermMonths,

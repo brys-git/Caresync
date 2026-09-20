@@ -71,6 +71,8 @@ class ClientDashboardController extends BaseController
 
         return view('client/dashboard', [
             'role_layout' => 'layouts/plan_holder',
+            'page_title' => 'Overview',
+            'page_sub' => 'Your membership, payments, and next steps.',
             'user' => $user,
             'plan_holder' => $planHolder,
             'plan' => $latestPlan,

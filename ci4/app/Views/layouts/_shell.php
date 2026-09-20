@@ -40,7 +40,7 @@ $isHolder   = $cs_role === 'plan_holder';
     <link rel="stylesheet" href="<?= base_url('assets/css/main.css') ?>">
     <link rel="stylesheet" href="<?= base_url('assets/css/caresync.css') ?>">
 </head>
-<body class="<?= $navPref === 'collapsed' ? 'cs-nav-collapsed' : '' ?>">
+<body class="<?= $navPref === 'collapsed' ? 'cs-nav-collapsed' : '' ?> <?= $isHolder ? 'cs-holder-view' : '' ?>">
 
 <div class="cs-app">
     <?php

@@ -94,7 +94,7 @@ class ClientServiceController extends BaseController
 
         return view('client/services', [
             'role_layout' => 'layouts/plan_holder',
-            'page_title' => 'Services & Packages',
+            'page_title' => 'Request a service',
             'page_sub' => 'Browse available funeral services and casket packages.',
             'access' => $access,
             'active_tab' => $activeTab,
@@ -150,7 +150,7 @@ class ClientServiceController extends BaseController
         return view('client/service_details', [
             'role_layout' => 'layouts/plan_holder',
             'page_title' => (string) ($service['service_name'] ?? 'Service'),
-            'show_page_head' => false,
+            'page_sub' => 'Service details and pricing.',
             'access' => $access,
             'service' => $service,
             'routes' => $routes,
@@ -207,7 +207,7 @@ class ClientServiceController extends BaseController
         return view('client/package_details', [
             'role_layout' => 'layouts/plan_holder',
             'page_title' => (string) ($package['package_name'] ?? 'Package'),
-            'show_page_head' => false,
+            'page_sub' => 'Package details, inclusions, and pricing.',
             'access' => $access,
             'package' => $package,
             'inclusions' => $inclusions,
@@ -253,6 +253,7 @@ class ClientServiceController extends BaseController
             'role_layout' => 'layouts/plan_holder',
             'page_title' => 'Apply for Service',
             'page_sub' => 'Confirm your service request.',
+            'page_actions' => '<a class="btn btn-ghost" href="' . esc(site_url('/client/service/' . (int) ($service['service_list_id'] ?? 0)), 'attr') . '">Back</a>',
             'access' => $access,
             'service' => $service,
             'routes' => $routes,
@@ -302,6 +303,7 @@ class ClientServiceController extends BaseController
             'page_sub' => $isEntitlement
                 ? 'Claim your Damayan entitlement. Staff or an Encoder will review and process your claim.'
                 : 'Confirm your package selection. Staff or an Encoder will review and process your application.',
+            'page_actions' => '<a class="btn btn-ghost" href="' . esc(site_url('/client/package/' . (int) ($package['package_id'] ?? 0)), 'attr') . '">Back</a>',
             'access' => $access,
             'package' => $package,
             'is_entitlement' => $isEntitlement,

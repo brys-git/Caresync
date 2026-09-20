@@ -490,6 +490,7 @@ body.cs-nav-collapsed .cs-brand { justify-content: center; }
   letter-spacing: .01em;
 }
 .cs-avatar--lg { width: 44px; height: 44px; flex-basis: 44px; font-size: 1rem; }
+.cs-avatar--xl { width: 80px; height: 80px; flex-basis: 80px; font-size: 2rem; }
 
 .cs-user__name {
   font-size: .84375rem;
@@ -544,6 +545,11 @@ body.cs-nav-collapsed .cs-brand { justify-content: center; }
   font-size: 1.75rem;
   letter-spacing: -.01em;
 }
+
+/* Plan-holder buttons are larger targets - this is the one role that's
+   often tapping on a phone, not clicking with a mouse at a branch desk. */
+.cs-holder-view .btn { min-height: 44px; }
+.cs-holder-view .btn-sm { min-height: 34px; }
 
 /* --------------------------------------------------------------------------
    7. Surfaces
@@ -1125,3 +1131,87 @@ body.cs-nav-collapsed .cs-brand { justify-content: center; }
   .signin__statement { font-size: 1.5rem; max-width: none; }
   .signin__main { padding: 2rem 1.5rem 3rem; }
 }
+
+/* --------------------------------------------------------------------------
+   21. Catalog cards (client services/packages) - product-style tiles for
+   things a plan holder browses rather than scans, so they stay off cs-table.
+   -------------------------------------------------------------------------- */
+.cs-catalog { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.25rem; }
+.cs-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--cs-surface);
+  border: 1px solid var(--cs-line);
+  border-radius: var(--cs-r-lg);
+  box-shadow: var(--cs-lift-1);
+  overflow: hidden;
+  transition: box-shadow var(--cs-ease);
+}
+.cs-card:hover { box-shadow: var(--cs-lift-2); }
+.cs-card--featured { border-color: var(--cs-brass); }
+.cs-card__thumb {
+  height: 180px;
+  display: grid;
+  place-items: center;
+  background: var(--cs-sage);
+  color: var(--cs-pine-500);
+  font-size: 3rem;
+  border-bottom: 1px solid var(--cs-line);
+}
+.cs-card__thumb img { width: 100%; height: 100%; object-fit: cover; }
+.cs-card__body { display: flex; flex-direction: column; flex: 1; padding: 1.125rem; }
+.cs-card__title { font-size: 1rem; font-weight: 600; margin: 0; }
+.cs-card__actions { display: flex; gap: .5rem; margin-top: auto; }
+.cs-card__actions .btn:first-child { flex: 1; }
+.cs-routerow {
+  display: flex;
+  justify-content: space-between;
+  font-size: .85rem;
+  padding: .25rem 0;
+  border-bottom: 1px dashed var(--cs-line);
+}
+.cs-routerow:last-child { border-bottom: none; }
+
+/* Client detail pages (package/service): narrow reading column + hero */
+.cs-narrow { max-width: 960px; }
+.cs-hero {
+  background: var(--cs-surface);
+  border: 1px solid var(--cs-line);
+  border-radius: var(--cs-r-lg);
+  overflow: hidden;
+}
+.cs-hero__image {
+  height: 260px;
+  display: grid;
+  place-items: center;
+  background: var(--cs-sage);
+  color: var(--cs-pine-500);
+  font-size: 4.5rem;
+}
+.cs-hero__image img { width: 100%; height: 100%; object-fit: cover; }
+.cs-hero__body { padding: 1.5rem; }
+.cs-panel--brass { background: var(--cs-brass-tint); border-color: var(--cs-brass); }
+.cs-routerow--total { font-weight: 600; }
+.cs-routerow--credit { color: var(--cs-ok); }
+.cs-routerow, .cs-panel__body > .cs-routerow { padding-block: .5rem; }
+
+/* Label/value tile used on read-only record pages (client membership) */
+.cs-fact { border: 1px solid var(--cs-line-soft); border-radius: var(--cs-r-md); padding: .75rem 1rem; height: 100%; background: var(--cs-surface); }
+.cs-fact__label { display: block; font-size: .78125rem; color: var(--cs-ink-3); }
+.cs-fact__value { font-weight: 600; word-break: break-word; }
+
+/* Locked-preview upsell (blurred content + overlay card) */
+.cs-restricted { position: relative; }
+.cs-restricted__blur { filter: blur(4px); pointer-events: none; user-select: none; }
+.cs-restricted__overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, .55); }
+.cs-restricted__card { max-width: 420px; box-shadow: var(--cs-lift-2); }
+.cs-kv { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding-bottom: .5rem; margin-bottom: .5rem; border-bottom: 1px solid var(--cs-line-soft); }
+.cs-kv:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+
+/* Show/hide toggle joined to a password field */
+.input-group > .cs-input-toggle { border: 1px solid var(--cs-line); border-left: 0; }
+.input-group > .cs-input-toggle:hover { background: var(--cs-rail); }
+
+.cs-narrow--sm { max-width: 700px; }
+.cs-incl__check { color: var(--cs-pine-500); font-size: 1.05rem; line-height: 1.4; }
+.cs-incl__sub { font-size: .9rem; }

@@ -45,8 +45,9 @@ class ClientProfileController extends BaseController
 
         return view('client/profile', [
             'role_layout' => 'layouts/plan_holder',
-            'page_title' => 'My Profile',
+            'page_title' => 'My profile',
             'page_sub' => 'Login credentials and personal information',
+            'page_actions' => $editMode ? '' : '<a href="' . esc(base_url('client/profile') . '?edit=1', 'attr') . '" class="btn btn-primary"><i class="ti ti-pencil me-1"></i> Edit profile</a><a href="' . esc(base_url('client/profile/change-password'), 'attr') . '" class="btn btn-ghost"><i class="ti ti-key me-1"></i> Change password</a>',
             'user' => $user,
             'plan_holder' => $planHolder,
             'access' => $access,
@@ -132,8 +133,9 @@ class ClientProfileController extends BaseController
 
         return view('client/profile_change_password', [
             'role_layout' => 'layouts/plan_holder',
-            'page_title' => 'Change Password',
+            'page_title' => 'Change password',
             'page_sub' => 'Update your login password',
+            'page_actions' => '<a class="btn btn-ghost" href="' . esc(base_url('client/profile'), 'attr') . '"><i class="ti ti-arrow-left me-1"></i> Back to profile</a>',
             'user' => $user,
             'access' => $access,
         ]);

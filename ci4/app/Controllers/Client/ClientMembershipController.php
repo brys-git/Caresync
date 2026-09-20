@@ -69,7 +69,7 @@ class ClientMembershipController extends BaseController
 
         return view('client/membership', [
             'role_layout' => 'layouts/plan_holder',
-            'page_title' => 'Membership Details',
+            'page_title' => 'My plan',
             'page_sub' => 'Damayan program membership overview.',
             'access' => $access,
             'active_plan' => $activePlan,
