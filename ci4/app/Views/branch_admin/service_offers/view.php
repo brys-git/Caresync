@@ -3,7 +3,7 @@
 <?= $this->section('content') ?>
 <div class="mb-3 text-end">
     <a href="<?= site_url('/branch-admin/services/edit/' . (int) ($service['service_list_id'] ?? 0)) ?>" class="btn btn-primary btn-sm">Edit</a>
-    <a href="<?= site_url('/branch-admin/service-package/services') ?>" class="btn btn-outline-secondary btn-sm">Back</a>
+    <a href="<?= site_url('/branch-admin/service-package/services') ?>" class="btn btn-ghost btn-sm">Back</a>
 </div>
 
 <section class="cs-panel">

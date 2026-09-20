@@ -30,6 +30,8 @@ class UiPlaceholder extends BaseController
 
         return view('placeholders/module', [
             'role_layout' => $layout,
+            'page_title' => $moduleLabel,
+            'page_sub' => $roleLabel . ' module shell',
             'role_label' => $roleLabel,
             'module_label' => $moduleLabel,
             'breadcrumb' => [$moduleLabel],

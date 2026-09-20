@@ -13,9 +13,9 @@ if (! empty($range['from']) || ! empty($range['to'])) {
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
     <p class="cs-muted mb-0">Showing: <?= esc($rangeLabel) ?></p>
     <div class="d-flex gap-2">
-        <a class="btn btn-sm <?= $quick === 'this_month' ? 'btn-primary' : 'btn-outline-secondary' ?>" href="?quick=this_month">This month</a>
-        <a class="btn btn-sm <?= $quick === 'last_month' ? 'btn-primary' : 'btn-outline-secondary' ?>" href="?quick=last_month">Last month</a>
-        <a class="btn btn-sm <?= $quick === 'all_time' ? 'btn-primary' : 'btn-outline-secondary' ?>" href="?quick=all_time">All time</a>
+        <a class="btn btn-sm <?= $quick === 'this_month' ? 'btn-primary' : 'btn-ghost' ?>" href="?quick=this_month">This month</a>
+        <a class="btn btn-sm <?= $quick === 'last_month' ? 'btn-primary' : 'btn-ghost' ?>" href="?quick=last_month">Last month</a>
+        <a class="btn btn-sm <?= $quick === 'all_time' ? 'btn-primary' : 'btn-ghost' ?>" href="?quick=all_time">All time</a>
     </div>
 </div>
 

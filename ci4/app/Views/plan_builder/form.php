@@ -110,18 +110,18 @@ if (empty($inclusions)) {
                             <input name="inclusions[<?= $i ?>][description]" class="form-control" placeholder="Details (optional)" value="<?= esc((string) ($item['description'] ?? '')) ?>">
                         </div>
                         <div class="col-md-1">
-                            <button type="button" class="btn btn-outline-danger btn-sm remove-row-btn" title="Remove row"><i class="ti ti-x"></i></button>
+                            <button type="button" class="btn btn-danger btn-sm remove-row-btn" title="Remove row"><i class="ti ti-x"></i></button>
                         </div>
                     </div>
                 <?php endforeach; ?>
             </div>
-            <button type="button" class="btn btn-outline-secondary btn-sm" id="addRowBtn"><i class="ti ti-plus me-1"></i>Add inclusion</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="addRowBtn"><i class="ti ti-plus me-1"></i>Add inclusion</button>
         </div>
     </section>
 
     <div class="d-flex gap-2 mb-4">
         <button type="submit" class="btn btn-primary"><?= $isEdit ? 'Save Changes' : 'Create Plan' ?></button>
-        <a href="<?= base_url($isEdit ? 'plan-builder/' . (int) $program_id : 'plan-builder') ?>" class="btn btn-outline-secondary">Cancel</a>
+        <a href="<?= base_url($isEdit ? 'plan-builder/' . (int) $program_id : 'plan-builder') ?>" class="btn btn-ghost">Cancel</a>
     </div>
 </form>
 
@@ -135,7 +135,7 @@ if (empty($inclusions)) {
             <input name="inclusions[__INDEX__][description]" class="form-control" placeholder="Details (optional)">
         </div>
         <div class="col-md-1">
-            <button type="button" class="btn btn-outline-danger btn-sm remove-row-btn" title="Remove row"><i class="ti ti-x"></i></button>
+            <button type="button" class="btn btn-danger btn-sm remove-row-btn" title="Remove row"><i class="ti ti-x"></i></button>
         </div>
     </div>
 </template>

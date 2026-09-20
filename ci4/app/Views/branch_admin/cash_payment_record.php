@@ -41,7 +41,7 @@
 
             <div class="mt-4">
                 <button type="submit" class="btn btn-primary">Record Payment</button>
-                <a href="<?= base_url('branch-admin/cash-payments') ?>" class="btn btn-outline-secondary">View Payments</a>
+                <a href="<?= base_url('branch-admin/cash-payments') ?>" class="btn btn-ghost">View Payments</a>
             </div>
         </form>
     </div>

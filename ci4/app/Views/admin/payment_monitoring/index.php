@@ -46,7 +46,7 @@
 </form>
 
 <div class="d-flex justify-content-end mb-2">
-    <a class="btn btn-outline-secondary btn-sm" href="<?= base_url('admin/payment-monitoring/export?' . http_build_query($filters ?? [])) ?>">
+    <a class="btn btn-ghost btn-sm" href="<?= base_url('admin/payment-monitoring/export?' . http_build_query($filters ?? [])) ?>">
         <i class="ti ti-download me-1"></i> Export CSV
     </a>
 </div>

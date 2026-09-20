@@ -49,7 +49,7 @@
             <div class="cs-panel__head"><h2 class="cs-panel__title">Security</h2></div>
             <div class="cs-panel__body">
                 <p class="text-muted small">Use this to change your password regularly for account safety.</p>
-                <a href="<?= site_url('/change-password') ?>" class="btn btn-outline-secondary w-100">Change Password</a>
+                <a href="<?= site_url('/change-password') ?>" class="btn btn-ghost w-100">Change Password</a>
             </div>
         </section>
     </div>

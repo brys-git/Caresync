@@ -3,7 +3,7 @@
 <?= $this->section('content') ?>
 <div class="mb-3 text-end">
     <div class="d-flex gap-2 justify-content-end">
-        <a href="<?= base_url('staff/client') ?>" class="btn btn-outline-secondary btn-sm">Back to List</a>
+        <a href="<?= base_url('staff/client') ?>" class="btn btn-ghost btn-sm">Back to List</a>
         <a href="<?= base_url('staff/client/edit/' . $client['plan_holder_id']) ?>" class="btn btn-primary btn-sm">Edit Client</a>
     </div>
 </div>

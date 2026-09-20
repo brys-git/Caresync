@@ -12,7 +12,7 @@
             <input type="hidden" name="payment_method" value="<?= esc($filters['payment_method']) ?>">
             <input type="hidden" name="received_by" value="<?= esc((string) $filters['received_by']) ?>">
             <input type="hidden" name="action" value="print">
-            <button type="submit" class="btn btn-outline-secondary btn-sm">Print</button>
+            <button type="submit" class="btn btn-ghost btn-sm">Print</button>
         </form>
         <form method="post" action="<?= site_url('/branch-admin/reports/remittance/generate') ?>" class="d-inline">
             <?= csrf_field() ?>
@@ -30,7 +30,7 @@
             <input type="hidden" name="payment_method" value="<?= esc($filters['payment_method']) ?>">
             <input type="hidden" name="received_by" value="<?= esc((string) $filters['received_by']) ?>">
             <input type="hidden" name="action" value="csv">
-            <button type="submit" class="btn btn-outline-success btn-sm">Export Excel</button>
+            <button type="submit" class="btn btn-outline-primary btn-sm">Export Excel</button>
         </form>
     </div>
 </div>

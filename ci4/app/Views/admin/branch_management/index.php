@@ -70,7 +70,7 @@
                                             <input type="hidden" name="branch_id" value="<?= (int) ($selected_branch_id ?? 0) ?>">
                                             <input type="hidden" name="return_tab" value="availability">
                                             <input type="hidden" name="is_available" value="<?= (int) ($row['is_available'] ?? 0) === 1 ? 0 : 1 ?>">
-                                            <button type="submit" class="btn btn-sm <?= (int) ($row['is_available'] ?? 0) === 1 ? 'btn-outline-danger' : 'btn-outline-success' ?>">
+                                            <button type="submit" class="btn btn-sm <?= (int) ($row['is_available'] ?? 0) === 1 ? 'btn-danger' : 'btn-outline-primary' ?>">
                                                 <?= (int) ($row['is_available'] ?? 0) === 1 ? 'Disable' : 'Enable' ?>
                                             </button>
                                         </form>
@@ -111,7 +111,7 @@
                 </div>
                 <div class="cs-filters__actions">
                     <button class="btn btn-primary" type="submit">Filter</button>
-                    <a class="btn btn-outline-secondary" href="<?= site_url('/admin/branch-management/export-transactions?branch_id=' . (int) ($selected_branch_id ?? 0) . '&date_from=' . rawurlencode((string) ($date_from ?? '')) . '&date_to=' . rawurlencode((string) ($date_to ?? ''))) ?>">Export</a>
+                    <a class="btn btn-ghost" href="<?= site_url('/admin/branch-management/export-transactions?branch_id=' . (int) ($selected_branch_id ?? 0) . '&date_from=' . rawurlencode((string) ($date_from ?? '')) . '&date_to=' . rawurlencode((string) ($date_to ?? ''))) ?>">Export</a>
                 </div>
             </form>
         </div>
@@ -244,7 +244,7 @@
                                             <?php if (($row['status'] ?? '') === 'pending'): ?>
                                                 <form method="post" action="<?= site_url('/admin/branch-management/approval/service/approve/' . (int) $row['pending_service_id']) ?>" class="d-inline">
                                                     <?= csrf_field() ?>
-                                                    <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                                                    <button type="submit" class="btn btn-sm btn-primary">Approve</button>
                                                 </form>
                                                 <form method="post" action="<?= site_url('/admin/branch-management/approval/service/reject/' . (int) $row['pending_service_id']) ?>" class="d-inline">
                                                     <?= csrf_field() ?>
@@ -294,7 +294,7 @@
                                             <?php if (($row['status'] ?? '') === 'pending'): ?>
                                                 <form method="post" action="<?= site_url('/admin/branch-management/approval/package/approve/' . (int) $row['pending_package_id']) ?>" class="d-inline">
                                                     <?= csrf_field() ?>
-                                                    <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                                                    <button type="submit" class="btn btn-sm btn-primary">Approve</button>
                                                 </form>
                                                 <form method="post" action="<?= site_url('/admin/branch-management/approval/package/reject/' . (int) $row['pending_package_id']) ?>" class="d-inline">
                                                     <?= csrf_field() ?>

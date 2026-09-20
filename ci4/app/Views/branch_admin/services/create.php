@@ -2,7 +2,7 @@
 
 <?= $this->section('content') ?>
 <div class="mb-3 text-end">
-    <a href="<?= base_url('branch-admin/service-package/services') ?>" class="btn btn-outline-secondary btn-sm">Back</a>
+    <a href="<?= base_url('branch-admin/service-package/services') ?>" class="btn btn-ghost btn-sm">Back</a>
 </div>
 
 <?php // Flash messages are already surfaced as toasts by layouts/_shell.php - no need to render them again here. ?>
@@ -55,7 +55,7 @@
             </div>
 
             <div class="d-flex justify-content-end gap-2 mt-4">
-                <a href="<?= base_url('branch-admin/service-package/services') ?>" class="btn btn-outline-secondary">Cancel</a>
+                <a href="<?= base_url('branch-admin/service-package/services') ?>" class="btn btn-ghost">Cancel</a>
                 <button type="submit" class="btn btn-primary">Create Service</button>
             </div>
         </form>

@@ -8,24 +8,14 @@
     <link rel="icon" href="<?= base_url('assets/favicon_io/favicon.ico') ?>">
     <link rel="stylesheet" href="<?= base_url('assets/css/main.css') ?>">
     <link rel="stylesheet" href="<?= base_url('assets/css/caresync.css') ?>">
-    <style>
-        body {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: var(--cs-paper);
-            padding: 1.25rem;
-        }
-    </style>
 </head>
-<body>
-    <section class="cs-panel" style="max-width: 420px; width: 100%;">
+<body class="cs-center-screen">
+    <section class="cs-panel cs-center-card">
         <div class="cs-panel__body text-center">
-            <i class="ti ti-lock" style="font-size: 2.5rem; color: var(--cs-stop);" aria-hidden="true"></i>
-            <h1 class="h4 mt-3 mb-2">Access Denied</h1>
+            <i class="ti ti-lock cs-center-card__icon" aria-hidden="true"></i>
+            <h1 class="h4 mt-3 mb-2">Access denied</h1>
             <p class="cs-muted mb-4">You do not have permission to access this page.</p>
-            <a href="<?= base_url('dashboard') ?>" class="btn btn-primary">Go to Dashboard</a>
+            <a href="<?= base_url('dashboard') ?>" class="btn btn-primary">Go to dashboard</a>
         </div>
     </section>
 </body>

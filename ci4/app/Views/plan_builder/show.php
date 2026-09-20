@@ -15,14 +15,14 @@ $holderCount = (int) ($plan_holder_count ?? 0);
         <h2 class="cs-panel__title"><?= esc((string) $program['program_name']) ?></h2>
         <?php if (! empty($can_manage)): ?>
             <div class="d-flex gap-2">
-                <a href="<?= base_url('plan-builder/' . (int) $program['program_id'] . '/edit') ?>" class="btn btn-outline-secondary btn-sm">Edit</a>
+                <a href="<?= base_url('plan-builder/' . (int) $program['program_id'] . '/edit') ?>" class="btn btn-ghost btn-sm">Edit</a>
                 <form method="post" action="<?= base_url('plan-builder/' . (int) $program['program_id'] . '/toggle') ?>" data-cs-confirm="<?= $isActive ? 'Deactivate this plan?' : 'Activate this plan?' ?>">
                     <?= csrf_field() ?>
-                    <button type="submit" class="btn btn-outline-secondary btn-sm"><?= $isActive ? 'Deactivate' : 'Activate' ?></button>
+                    <button type="submit" class="btn btn-ghost btn-sm"><?= $isActive ? 'Deactivate' : 'Activate' ?></button>
                 </form>
                 <form method="post" action="<?= base_url('plan-builder/' . (int) $program['program_id'] . '/delete') ?>" data-cs-confirm="Delete this plan? This cannot be undone.">
                     <?= csrf_field() ?>
-                    <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
+                    <button type="submit" class="btn btn-danger btn-sm">Delete</button>
                 </form>
             </div>
         <?php endif; ?>

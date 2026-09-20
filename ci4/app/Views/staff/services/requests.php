@@ -44,7 +44,7 @@
                                     <?php if ($status === 'pending'): ?>
                                         <form action="<?= site_url('/staff/services/requests/approve/' . (int) $request['application_id']) ?>" method="post" class="d-inline">
                                             <?= csrf_field() ?>
-                                            <button class="btn btn-sm btn-success" type="submit">Approve</button>
+                                            <button class="btn btn-sm btn-primary" type="submit">Approve</button>
                                         </form>
                                         <form action="<?= site_url('/staff/services/requests/reject/' . (int) $request['application_id']) ?>" method="post" class="d-inline">
                                             <?= csrf_field() ?>

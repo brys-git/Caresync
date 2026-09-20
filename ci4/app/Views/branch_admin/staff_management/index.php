@@ -2,7 +2,7 @@
 
 <?= $this->section('content') ?>
 <div class="mb-3 text-end">
-    <a href="<?= site_url('/branch-admin/staff-monitoring') ?>" class="btn btn-outline-secondary btn-sm">Back to Staff Monitoring</a>
+    <a href="<?= site_url('/branch-admin/staff-monitoring') ?>" class="btn btn-ghost btn-sm">Back to Staff Monitoring</a>
 </div>
 
 <?php // Flash messages are already surfaced as toasts by layouts/_shell.php - no need to render them again here. ?>

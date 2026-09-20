@@ -7,7 +7,7 @@
     <div class="d-flex gap-2 justify-content-end">
         <a
             href="<?= site_url('/staff/reports?' . http_build_query(array_merge($filters, ['mode' => 'print']))) ?>"
-            class="btn btn-outline-secondary btn-sm"
+            class="btn btn-ghost btn-sm"
             target="_blank"
             rel="noopener"
         >Print</a>
@@ -17,7 +17,7 @@
         >Export PDF</a>
         <a
             href="<?= site_url('/staff/reports?' . http_build_query(array_merge($filters, ['mode' => 'csv']))) ?>"
-            class="btn btn-outline-success btn-sm"
+            class="btn btn-outline-primary btn-sm"
         >Export Excel</a>
     </div>
 </div>
@@ -69,7 +69,7 @@
                     <input type="text" class="form-control" name="search" value="<?= esc($filters['search']) ?>" placeholder="Plan holder / ref #">
                 </div>
                 <div class="col-12 d-flex justify-content-end gap-2">
-                    <a href="<?= site_url('/staff/reports') ?>" class="btn btn-outline-secondary">Reset</a>
+                    <a href="<?= site_url('/staff/reports') ?>" class="btn btn-ghost">Reset</a>
                     <button type="submit" class="btn btn-primary">Apply Filters</button>
                 </div>
             </div>

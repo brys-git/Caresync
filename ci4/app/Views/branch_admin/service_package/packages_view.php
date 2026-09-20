@@ -3,7 +3,7 @@
 <?= $this->section('content') ?>
 <div class="mb-3 text-end">
     <a href="<?= site_url('/branch-admin/packages/edit/' . (int) $package['package_id']) ?>" class="btn btn-primary btn-sm">Edit</a>
-    <a href="<?= site_url('/branch-admin/service-package/packages') ?>" class="btn btn-outline-secondary btn-sm">Back</a>
+    <a href="<?= site_url('/branch-admin/service-package/packages') ?>" class="btn btn-ghost btn-sm">Back</a>
 </div>
 
 <?php // Flash messages are already surfaced as toasts by layouts/_shell.php - no need to render them again here. ?>

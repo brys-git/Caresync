@@ -10,28 +10,6 @@ $statusLabels = [
     'no_balance_due' => 'NO BALANCE DUE',
 ];
 ?>
-<?php // Table collapses into cards below 576px so a collector never has to scroll sideways on a phone. ?>
-<style>
-    @media (max-width: 575.98px) {
-        .cl-table thead { display: none; }
-        .cl-table, .cl-table tbody, .cl-table tr, .cl-table td { display: block; width: 100%; }
-        .cl-table tr { border: 1px solid #e5e7eb; border-radius: 10px; margin-bottom: .75rem; padding: .5rem .75rem; }
-        .cl-table td { display: flex; justify-content: space-between; gap: .75rem; padding: .35rem 0; border: none; text-align: right; }
-        .cl-table td::before { content: attr(data-label); font-weight: 600; color: var(--cs-ink-3, #6b7280); text-align: left; flex: 0 0 auto; }
-        .cl-table td.cl-name-cell { flex-direction: column; align-items: flex-start; text-align: left; }
-        .cl-table td.cl-name-cell::before { display: none; }
-        .cl-table td.cl-actions-cell { justify-content: center; }
-        .cl-table td.cl-actions-cell::before { display: none; }
-    }
-    .cl-remarks-form { display: flex; gap: .4rem; align-items: center; min-width: 180px; }
-    .cl-remarks-form input { flex: 1 1 auto; }
-    @media (max-width: 575.98px) { .cl-remarks-form { min-width: 0; } }
-    .cl-statbar { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: .75rem; margin-bottom: 1rem; }
-    .cl-stat { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: .75rem 1rem; }
-    .cl-stat__value { font-size: 1.25rem; font-weight: 700; }
-    .cl-stat__label { font-size: .75rem; color: #6b7280; text-transform: uppercase; letter-spacing: .03em; }
-</style>
-
 <?php if (! empty($no_assignment)): ?>
     <?= view('components/empty_state', [
         'icon' => 'ti-map-pin-off',
@@ -81,7 +59,7 @@ $statusLabels = [
         <?php endif; ?>
         <div class="cs-filters__actions">
             <button type="submit" class="btn btn-primary">Apply</button>
-            <a class="btn btn-outline-secondary" href="<?= esc((string) ($print_url ?? '#')) ?>" target="_blank">
+            <a class="btn btn-ghost" href="<?= esc((string) ($print_url ?? '#')) ?>" target="_blank">
                 <i class="ti ti-printer me-1"></i> Print Route Sheet
             </a>
         </div>
@@ -150,7 +128,7 @@ $statusLabels = [
                                         <form class="cl-remarks-form" method="post" action="<?= base_url($remarks_route_base . '/' . (int) $row['plan_holder_id']) ?>">
                                             <?= csrf_field() ?>
                                             <input type="text" name="remarks" class="form-control form-control-sm" value="<?= esc($row['remarks']) ?>" placeholder="Leave a note about this client&hellip;" maxlength="1000">
-                                            <button type="submit" class="btn btn-outline-secondary btn-sm">Save</button>
+                                            <button type="submit" class="btn btn-ghost btn-sm">Save</button>
                                         </form>
                                     </td>
                                     <?php if (! empty($can_record_payment)): ?>

@@ -2,7 +2,7 @@
 
 <?= $this->section('content') ?>
 <div class="mb-3 text-end">
-    <a class="btn btn-outline-secondary btn-sm" href="<?= site_url(($reports_base_path ?? '/admin/reports') . '/collections?mode=csv&date_from=' . urlencode((string) ($filters['date_from'] ?? '')) . '&date_to=' . urlencode((string) ($filters['date_to'] ?? ''))) ?>">
+    <a class="btn btn-ghost btn-sm" href="<?= site_url(($reports_base_path ?? '/admin/reports') . '/collections?mode=csv&date_from=' . urlencode((string) ($filters['date_from'] ?? '')) . '&date_to=' . urlencode((string) ($filters['date_to'] ?? ''))) ?>">
         <i class="ti ti-download me-1"></i> Export CSV
     </a>
 </div>

@@ -78,9 +78,9 @@
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="remember" name="remember" value="1">
-                        <label class="form-check-label" for="remember" style="font-size:.875rem">Keep me signed in</label>
+                        <label class="form-check-label signin__small" for="remember">Keep me signed in</label>
                     </div>
-                    <a href="<?= base_url('forgot-password') ?>" style="font-size:.875rem">Forgot password?</a>
+                    <a class="signin__small" href="<?= base_url('forgot-password') ?>">Forgot password?</a>
                 </div>
 
                 <button class="btn btn-primary w-100" type="submit">Sign in</button>
@@ -88,7 +88,7 @@
 
             <hr class="cs-hairline">
 
-            <p class="cs-muted mb-0" style="font-size:.875rem">
+            <p class="cs-muted signin__small mb-0">
                 Buying a plan for the first time?
                 <a href="<?= base_url('register') ?>">Create a plan holder account</a>
             </p>

@@ -3,10 +3,10 @@
 <?= $this->section('content') ?>
 <?php $commissionQuery = 'date_from=' . urlencode((string) ($filters['date_from'] ?? '')) . '&date_to=' . urlencode((string) ($filters['date_to'] ?? '')); ?>
 <div class="mb-3 text-end">
-    <a class="btn btn-outline-secondary btn-sm" href="<?= site_url(($reports_base_path ?? '/admin/reports') . '/commission?mode=print&' . $commissionQuery) ?>" target="_blank" rel="noopener">
+    <a class="btn btn-ghost btn-sm" href="<?= site_url(($reports_base_path ?? '/admin/reports') . '/commission?mode=print&' . $commissionQuery) ?>" target="_blank" rel="noopener">
         <i class="ti ti-printer me-1"></i> Print
     </a>
-    <a class="btn btn-outline-secondary btn-sm" href="<?= site_url(($reports_base_path ?? '/admin/reports') . '/commission?mode=csv&' . $commissionQuery) ?>">
+    <a class="btn btn-ghost btn-sm" href="<?= site_url(($reports_base_path ?? '/admin/reports') . '/commission?mode=csv&' . $commissionQuery) ?>">
         <i class="ti ti-file-spreadsheet me-1"></i> Export Excel
     </a>
     <a class="btn btn-primary btn-sm" href="<?= site_url(($reports_base_path ?? '/admin/reports') . '/commission?mode=pdf&' . $commissionQuery) ?>">

@@ -92,7 +92,7 @@
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Go Back</button>
+                            <button type="button" class="btn btn-ghost" data-bs-dismiss="modal">Go Back</button>
                             <button type="submit" class="btn btn-primary" id="confirmSubmitBtn" form="recordPaymentForm" disabled>Confirm &amp; Save</button>
                         </div>
                     </div>

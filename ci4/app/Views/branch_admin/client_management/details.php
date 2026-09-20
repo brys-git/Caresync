@@ -6,7 +6,7 @@
     $paymentStatus = strtolower((string) ($initial_payment['status'] ?? 'none'));
 ?>
 <div class="mb-3 text-end">
-    <a href="<?= base_url('branch-admin/client-management') ?>" class="btn btn-outline-secondary btn-sm">Back to Client Management</a>
+    <a href="<?= base_url('branch-admin/client-management') ?>" class="btn btn-ghost btn-sm">Back to Client Management</a>
 </div>
 
 <?php // Flash messages are already surfaced as toasts by layouts/_shell.php - no need to render them again here. ?>
@@ -55,10 +55,10 @@
                 <?php if ($can_approve): ?>
                     <form method="post" action="<?= base_url('branch-admin/client-management/approve/' . (int) $holder['plan_holder_id']) ?>">
                         <?= csrf_field() ?>
-                        <button type="submit" class="btn btn-success">Approve Registration</button>
+                        <button type="submit" class="btn btn-primary">Approve Registration</button>
                     </form>
                 <?php else: ?>
-                    <button type="button" class="btn btn-secondary" disabled>Approve Registration</button>
+                    <button type="button" class="btn btn-ghost" disabled>Approve Registration</button>
                     <div class="form-text mt-2"><?= esc((string) $approval_message) ?></div>
                 <?php endif; ?>
             </div>

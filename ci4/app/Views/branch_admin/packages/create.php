@@ -2,7 +2,7 @@
 
 <?= $this->section('content') ?>
 <div class="mb-3 text-end">
-    <a href="<?= base_url('branch-admin/service-package/packages') ?>" class="btn btn-outline-secondary btn-sm">Back</a>
+    <a href="<?= base_url('branch-admin/service-package/packages') ?>" class="btn btn-ghost btn-sm">Back</a>
 </div>
 
 <?php // Flash messages are already surfaced as toasts by layouts/_shell.php - no need to render them again here. ?>
@@ -86,13 +86,13 @@
                         <input type="text" name="item_description[]" class="form-control service-description" placeholder="Description" readonly>
                     </div>
                     <div class="col-md-1 d-grid">
-                        <button type="button" class="btn btn-outline-danger remove-item">-</button>
+                        <button type="button" class="btn btn-danger remove-item">-</button>
                     </div>
                 </div>
             </div>
 
             <div class="d-flex justify-content-end gap-2 mt-4">
-                <a href="<?= base_url('branch-admin/service-package/packages') ?>" class="btn btn-outline-secondary">Cancel</a>
+                <a href="<?= base_url('branch-admin/service-package/packages') ?>" class="btn btn-ghost">Cancel</a>
                 <button type="submit" class="btn btn-primary">Create Package</button>
             </div>
         </form>
@@ -119,7 +119,7 @@
                 <input type="text" name="item_description[]" class="form-control service-description" placeholder="Description" readonly>
             </div>
             <div class="col-md-1 d-grid">
-                <button type="button" class="btn btn-outline-danger remove-item">-</button>
+                <button type="button" class="btn btn-danger remove-item">-</button>
             </div>
         `;
         container.appendChild(row);

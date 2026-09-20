@@ -36,7 +36,7 @@
                                     <td><?= esc($row['contact_number'] ?? '-') ?></td>
                                     <td><?= cs_status($statusValue) ?></td>
                                     <td class="cs-table__actions">
-                                        <a href="<?= site_url('/branch-admin/staff-monitoring?staff_id=' . (int) $row['user_id']) ?>" class="btn btn-sm btn-outline-secondary">View Profile</a>
+                                        <a href="<?= site_url('/branch-admin/staff-monitoring?staff_id=' . (int) $row['user_id']) ?>" class="btn btn-sm btn-ghost">View Profile</a>
                                         <a href="<?= site_url('/branch-admin/staff-management/edit/' . (int) $row['user_id']) ?>" class="btn btn-sm btn-outline-primary">Edit Staff</a>
                                     </td>
                                 </tr>

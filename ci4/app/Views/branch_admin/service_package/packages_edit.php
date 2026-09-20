@@ -2,7 +2,7 @@
 
 <?= $this->section('content') ?>
 <div class="mb-3 text-end">
-    <a href="<?= site_url('/branch-admin/packages/view/' . (int) $package['package_id']) ?>" class="btn btn-outline-secondary btn-sm">Back</a>
+    <a href="<?= site_url('/branch-admin/packages/view/' . (int) $package['package_id']) ?>" class="btn btn-ghost btn-sm">Back</a>
 </div>
 
 <?php // Flash messages are already surfaced as toasts by layouts/_shell.php - no need to render them again here. ?>
@@ -68,7 +68,7 @@
                         </select>
                     </div>
                     <div class="col-md-6"><input type="text" name="new_item_description[]" class="form-control service-description" placeholder="Description" readonly></div>
-                    <div class="col-md-1 d-grid"><button type="button" class="btn btn-outline-danger remove-new-item">-</button></div>
+                    <div class="col-md-1 d-grid"><button type="button" class="btn btn-danger remove-new-item">-</button></div>
                 </div>
             </div>
             <button type="button" id="addNewItem" class="btn btn-sm btn-outline-primary">Add Service</button>
@@ -89,7 +89,7 @@
             row.className = 'row g-2 mb-2 new-item-row';
             row.innerHTML = '<div class="col-md-5"><select name="new_service_list_id[]" class="form-select service-select" required><option value="">Select service</option><?php foreach (($service_list ?? []) as $service): ?><option value="<?= (int) $service['service_list_id'] ?>" data-description="<?= esc($service['description'] ?? '') ?>"><?= esc($service['service_name'] ?? '') ?></option><?php endforeach; ?></select></div>' +
                 '<div class="col-md-6"><input type="text" name="new_item_description[]" class="form-control service-description" placeholder="Description" readonly></div>' +
-                '<div class="col-md-1 d-grid"><button type="button" class="btn btn-outline-danger remove-new-item">-</button></div>';
+                '<div class="col-md-1 d-grid"><button type="button" class="btn btn-danger remove-new-item">-</button></div>';
             container.appendChild(row);
         });
 

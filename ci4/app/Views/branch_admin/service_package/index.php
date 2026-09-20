@@ -41,7 +41,7 @@
                                     <td class="cs-num"><?= cs_money($row['base_price'] ?? 0) ?></td>
                                     <td><?= cs_status((string) ($row['status'] ?? '')) ?></td>
                                     <td class="cs-table__actions">
-                                        <a href="<?= site_url('/branch-admin/services/view/' . $serviceId) ?>" class="btn btn-sm btn-outline-secondary">View</a>
+                                        <a href="<?= site_url('/branch-admin/services/view/' . $serviceId) ?>" class="btn btn-sm btn-ghost">View</a>
                                         <a href="<?= site_url('/branch-admin/services/edit/' . $serviceId) ?>" class="btn btn-sm btn-outline-primary">Edit</a>
                                     </td>
                                 </tr>
@@ -83,7 +83,7 @@
                                     <td class="cs-num"><?= cs_money($row['base_price'] ?? 0) ?></td>
                                     <td><?= ((int) ($row['is_customizable'] ?? 0) === 1) ? 'Yes' : 'No' ?></td>
                                     <td class="cs-table__actions">
-                                        <a href="<?= site_url('/branch-admin/packages/view/' . (int) $row['package_id']) ?>" class="btn btn-sm btn-outline-secondary">View</a>
+                                        <a href="<?= site_url('/branch-admin/packages/view/' . (int) $row['package_id']) ?>" class="btn btn-sm btn-ghost">View</a>
                                         <a href="<?= site_url('/branch-admin/packages/edit/' . (int) $row['package_id']) ?>" class="btn btn-sm btn-outline-primary">Edit</a>
                                     </td>
                                 </tr>
@@ -190,7 +190,7 @@
                                         <?php if (($row['status'] ?? '') === 'pending'): ?>
                                             <form action="<?= site_url('/branch-admin/service-package/requests/approve/' . (int) $row['application_id']) ?>" method="post" class="d-inline">
                                                 <?= csrf_field() ?>
-                                                <button class="btn btn-sm btn-success" type="submit">Approve</button>
+                                                <button class="btn btn-sm btn-primary" type="submit">Approve</button>
                                             </form>
                                             <form action="<?= site_url('/branch-admin/service-package/requests/reject/' . (int) $row['application_id']) ?>" method="post" class="d-inline">
                                                 <?= csrf_field() ?>

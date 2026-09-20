@@ -155,7 +155,7 @@
                                             <td class="cs-table__actions">
                                                 <?php if (($row['status'] ?? '') === 'pending'): ?>
                                                     <form method="post" action="<?= site_url('/admin/service-offer/approval/service/approve/' . (int) $row['pending_service_id']) ?>" class="d-inline">
-                                                        <?= csrf_field() ?><button class="btn btn-sm btn-success" type="submit">Approve</button>
+                                                        <?= csrf_field() ?><button class="btn btn-sm btn-primary" type="submit">Approve</button>
                                                     </form>
                                                     <form method="post" action="<?= site_url('/admin/service-offer/approval/service/reject/' . (int) $row['pending_service_id']) ?>" class="d-inline">
                                                         <?= csrf_field() ?><button class="btn btn-sm btn-danger" type="submit">Reject</button>
@@ -192,7 +192,7 @@
                                             <td class="cs-table__actions">
                                                 <?php if (($row['status'] ?? '') === 'pending'): ?>
                                                     <form method="post" action="<?= site_url('/admin/service-offer/approval/package/approve/' . (int) $row['pending_package_id']) ?>" class="d-inline">
-                                                        <?= csrf_field() ?><button class="btn btn-sm btn-success" type="submit">Approve</button>
+                                                        <?= csrf_field() ?><button class="btn btn-sm btn-primary" type="submit">Approve</button>
                                                     </form>
                                                     <form method="post" action="<?= site_url('/admin/service-offer/approval/package/reject/' . (int) $row['pending_package_id']) ?>" class="d-inline">
                                                         <?= csrf_field() ?><button class="btn btn-sm btn-danger" type="submit">Reject</button>

@@ -95,7 +95,7 @@
 
             <hr class="cs-hairline">
 
-            <p class="cs-muted mb-0" style="font-size:.875rem">
+            <p class="cs-muted signin__small mb-0">
                 Already have an account?
                 <a href="<?= base_url('login') ?>">Back to sign in</a>
             </p>

@@ -1215,3 +1215,29 @@ body.cs-nav-collapsed .cs-brand { justify-content: center; }
 .cs-narrow--sm { max-width: 700px; }
 .cs-incl__check { color: var(--cs-pine-500); font-size: 1.05rem; line-height: 1.4; }
 .cs-incl__sub { font-size: .9rem; }
+
+/* Centered single-card screens (access denied etc.) */
+.cs-center-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--cs-paper); padding: 1.25rem; }
+.cs-center-card { max-width: 420px; width: 100%; }
+.cs-center-card__icon { font-size: 2.5rem; color: var(--cs-stop); }
+
+/* Collection list (collector's field view): table collapses to cards on phones */
+@media (max-width: 575.98px) {
+  .cl-table thead { display: none; }
+  .cl-table, .cl-table tbody, .cl-table tr, .cl-table td { display: block; width: 100%; }
+  .cl-table tr { border: 1px solid var(--cs-line); border-radius: var(--cs-r-md); margin-bottom: .75rem; padding: .5rem .75rem; }
+  .cl-table td { display: flex; justify-content: space-between; gap: .75rem; padding: .35rem 0; border: none; text-align: right; }
+  .cl-table td::before { content: attr(data-label); font-weight: 600; color: var(--cs-ink-3); text-align: left; flex: 0 0 auto; }
+  .cl-table td.cl-name-cell { flex-direction: column; align-items: flex-start; text-align: left; }
+  .cl-table td.cl-name-cell::before { display: none; }
+  .cl-table td.cl-actions-cell { justify-content: center; }
+  .cl-table td.cl-actions-cell::before { display: none; }
+  .cl-remarks-form { min-width: 0; }
+}
+.cl-remarks-form { display: flex; gap: .4rem; align-items: center; min-width: 180px; }
+.cl-remarks-form input { flex: 1 1 auto; }
+.cl-statbar { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: .75rem; margin-bottom: 1rem; }
+.cl-stat { background: var(--cs-surface); border: 1px solid var(--cs-line); border-radius: var(--cs-r-md); padding: .75rem 1rem; }
+.cl-stat__value { font-size: 1.25rem; font-weight: 700; }
+.cl-stat__label { font-size: .75rem; color: var(--cs-ink-3); text-transform: uppercase; letter-spacing: .03em; }
+.signin__small { font-size: .875rem; }

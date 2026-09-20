@@ -37,7 +37,7 @@
                                 <td class="text-nowrap"><?= cs_date($row['service_date'] ?? null) ?></td>
                                 <td><?= cs_status((string) ($row['status'] ?? '')) ?></td>
                                 <td class="cs-table__actions">
-                                    <a href="<?= site_url('/staff/services?tab=services&service_id=' . (int) ($row['service_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-secondary">View</a>
+                                    <a href="<?= site_url('/staff/services?tab=services&service_id=' . (int) ($row['service_id'] ?? 0)) ?>" class="btn btn-sm btn-ghost">View</a>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

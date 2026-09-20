@@ -4,7 +4,7 @@
 <?php if (! ($edit_mode ?? false)): ?>
     <div class="d-flex flex-wrap justify-content-end gap-2 mb-3">
         <a href="<?= site_url('/admin/profile/edit') ?>" class="btn btn-primary btn-sm">Edit Profile</a>
-        <a href="#security-section" class="btn btn-outline-secondary btn-sm">Change Password</a>
+        <a href="#security-section" class="btn btn-ghost btn-sm">Change Password</a>
     </div>
 <?php endif; ?>
 
@@ -41,7 +41,7 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label text-muted mb-1">Role</label>
-                        <div><span class="badge text-bg-primary">Admin</span></div>
+                        <div><?= cs_status('active', 'Admin') ?></div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label text-muted mb-1">Account Status</label>
@@ -102,7 +102,7 @@
                     </div>
                 </div>
                 <div class="d-flex justify-content-end gap-2 mt-3">
-                    <a href="<?= site_url('/admin/profile') ?>" class="btn btn-outline-secondary">Cancel</a>
+                    <a href="<?= site_url('/admin/profile') ?>" class="btn btn-ghost">Cancel</a>
                     <button type="submit" class="btn btn-primary">Save</button>
                 </div>
             </form>

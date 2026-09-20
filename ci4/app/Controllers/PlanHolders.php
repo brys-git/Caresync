@@ -305,6 +305,8 @@ class PlanHolders extends BaseController
 
         return view('plan_holders/approvals', [
             'role_layout' => $this->resolveLayoutView(),
+            'page_title' => 'Plan holder registration approvals',
+            'page_sub' => 'Review pending account registration requests before granting plan holder access.',
             'registrations' => $registrations,
         ]);
     }

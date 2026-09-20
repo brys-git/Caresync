@@ -2,7 +2,7 @@
 
 <?= $this->section('content') ?>
 <div class="mb-3 text-end">
-    <a class="btn btn-outline-secondary btn-sm" href="<?= site_url('/admin/reports/remittance?mode=csv&' . http_build_query($filters ?? [])) ?>">
+    <a class="btn btn-ghost btn-sm" href="<?= site_url('/admin/reports/remittance?mode=csv&' . http_build_query($filters ?? [])) ?>">
         <i class="ti ti-download me-1"></i> Export CSV
     </a>
 </div>

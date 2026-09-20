@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Collection Route Sheet - CareSync</title>
+    <link rel="stylesheet" href="<?= base_url('assets/css/caresync.css') ?>">
     <style>
         @page { size: A4 portrait; margin: 10mm; }
         * { box-sizing: border-box; }
-        body { font-family: Arial, Helvetica, sans-serif; font-size: 10pt; color: #111; margin: 0; }
+        body { font-family: var(--cs-sans); font-size: 10pt; color: #111; margin: 0; }
         h1 { font-size: 14pt; margin: 0 0 2px; }
         .cl-meta { font-size: 9pt; color: #444; margin-bottom: 10px; }
         table { width: 100%; border-collapse: collapse; }
@@ -27,7 +28,7 @@
     </div>
 
     <h1>Collection Route Sheet</h1>
-    <div class="cl-meta">As of <?= esc(date('F j, Y', strtotime((string) $as_of))) ?> — generated <?= esc($generated_at) ?></div>
+    <div class="cl-meta">As of <?= cs_date($as_of) ?> — generated <?= cs_datetime($generated_at) ?></div>
 
     <table>
         <thead>
@@ -53,9 +54,9 @@
                         <td><?= esc($row['barangay']) ?></td>
                         <td><?= esc($row['plan_number']) ?></td>
                         <td><?= esc($row['contact_number']) ?></td>
-                        <td class="num"><?= esc(number_format($row['monthly_fee'], 2)) ?></td>
+                        <td class="num"><?= cs_money($row['monthly_fee']) ?></td>
                         <td><?= $row['months_behind'] > 0 ? esc((string) $row['months_behind']) : '-' ?></td>
-                        <td class="num"><?= esc(number_format($row['amount_due'], 2)) ?></td>
+                        <td class="num"><?= cs_money($row['amount_due']) ?></td>
                         <td></td>
                         <td></td>
                     </tr>

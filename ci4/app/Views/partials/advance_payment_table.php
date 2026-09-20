@@ -97,7 +97,7 @@ $apPlanTermMonths = 60;
                                     <form method="post" action="<?= esc($remarksActionBase . '/' . (int) $row['payment_id'], 'attr') ?>" style="display:flex;gap:.4rem;align-items:center;min-width:180px;">
                                         <?= csrf_field() ?>
                                         <input type="text" name="remarks" class="form-control form-control-sm" style="flex:1 1 auto;" value="<?= esc((string) ($row['remarks'] ?? '')) ?>" placeholder="Add a note&hellip;" maxlength="1000">
-                                        <button type="submit" class="btn btn-outline-secondary btn-sm">Save</button>
+                                        <button type="submit" class="btn btn-ghost btn-sm">Save</button>
                                     </form>
                                 <?php else: ?>
                                     <?= esc((string) ($row['remarks'] ?: '-')) ?>
@@ -118,7 +118,7 @@ $apPlanTermMonths = 60;
                                 <?php if ($status === 'pending'): ?>
                                     <form method="post" action="<?= esc($actionBase . '/approve/' . (int) $row['payment_id'], 'attr') ?>" class="d-inline">
                                         <?= csrf_field() ?>
-                                        <button class="btn btn-sm btn-success" type="submit">Approve</button>
+                                        <button class="btn btn-sm btn-primary" type="submit">Approve</button>
                                     </form>
                                     <form method="post" action="<?= esc($actionBase . '/reject/' . (int) $row['payment_id'], 'attr') ?>" class="d-inline">
                                         <?= csrf_field() ?>

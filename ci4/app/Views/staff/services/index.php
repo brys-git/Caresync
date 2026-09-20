@@ -42,7 +42,7 @@
                                     <td class="text-nowrap"><?= cs_date($row['service_date'] ?? null) ?></td>
                                     <td><?= cs_status((string) ($row['status'] ?? '')) ?></td>
                                     <td class="cs-table__actions">
-                                        <a href="<?= site_url('/staff/services?tab=services&service_id=' . (int) ($row['service_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-secondary">View</a>
+                                        <a href="<?= site_url('/staff/services?tab=services&service_id=' . (int) ($row['service_id'] ?? 0)) ?>" class="btn btn-sm btn-ghost">View</a>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -91,7 +91,7 @@
                                     <td><?= esc((string) ($row['description'] ?? '-')) ?></td>
                                     <td class="cs-num"><?= cs_money($row['base_price'] ?? 0) ?></td>
                                     <td class="cs-table__actions">
-                                        <a href="<?= site_url('/staff/services?tab=packages&package_id=' . (int) ($row['package_id'] ?? 0)) ?>" class="btn btn-sm btn-outline-secondary">View</a>
+                                        <a href="<?= site_url('/staff/services?tab=packages&package_id=' . (int) ($row['package_id'] ?? 0)) ?>" class="btn btn-sm btn-ghost">View</a>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>

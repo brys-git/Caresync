@@ -50,18 +50,14 @@ $config = $stateConfig[$state] ?? $stateConfig['active'];
 
 <?php if ($compact): ?>
     <!-- Compact badge-only display -->
-    <span class="badge text-bg-<?= esc($config['badge_class']) ?>">
-        <?= esc($config['icon']) ?> <?= esc($config['label']) ?>
-    </span>
+    <?= cs_status($state, $config['label']) ?>
 <?php else: ?>
     <!-- Detailed display with context -->
     <div class="d-flex align-items-center gap-2">
-        <span class="badge text-bg-<?= esc($config['badge_class']) ?> p-2" style="font-size: 1.2em;">
-            <?= esc($config['icon']) ?>
-        </span>
+        <?= cs_status($state, $config['icon']) ?>
         <div>
             <strong><?= esc($config['label']) ?></strong>
-            <p class="text-muted small mb-0"><?= esc($config['description']) ?></p>
+            <p class="cs-muted small mb-0"><?= esc($config['description']) ?></p>
         </div>
     </div>
 <?php endif; ?>

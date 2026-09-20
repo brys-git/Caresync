@@ -5,7 +5,7 @@
 <?php $row = $row ?? []; ?>
 
 <div class="mb-3">
-    <a href="<?= esc((string) ($queue_url ?? '#')) ?>" class="btn btn-outline-secondary btn-sm">
+    <a href="<?= esc((string) ($queue_url ?? '#')) ?>" class="btn btn-ghost btn-sm">
         <i class="ti ti-arrow-left" aria-hidden="true"></i> Back to Queue
     </a>
 </div>
@@ -76,13 +76,13 @@
         <h3 class="h6 text-primary mb-2">Decision</h3>
         <p class="text-muted small mb-3">Does the ID image match the name, date of birth, and gender typed above?</p>
         <div class="d-flex gap-2">
-            <form method="post" action="<?= esc((string) $action_base . '/' . (int) $row['verification_id'] . '/verify', 'attr') ?>" onsubmit="return confirm('Confirm this ID matches the applicant\'s details?');">
+            <form method="post" action="<?= esc((string) $action_base . '/' . (int) $row['verification_id'] . '/verify', 'attr') ?>">
                 <?= csrf_field() ?>
-                <button type="submit" class="btn btn-success"><i class="ti ti-circle-check me-1" aria-hidden="true"></i> Matches - Mark Verified</button>
+                <button type="submit" class="btn btn-primary" data-cs-confirm="Confirm this ID matches the applicant's details?"><i class="ti ti-circle-check me-1" aria-hidden="true"></i> Matches - Mark Verified</button>
             </form>
-            <form method="post" action="<?= esc((string) $action_base . '/' . (int) $row['verification_id'] . '/fail', 'attr') ?>" onsubmit="return confirm('Mark this ID as not matching? The applicant will be notified.');">
+            <form method="post" action="<?= esc((string) $action_base . '/' . (int) $row['verification_id'] . '/fail', 'attr') ?>">
                 <?= csrf_field() ?>
-                <button type="submit" class="btn btn-outline-danger"><i class="ti ti-circle-x me-1" aria-hidden="true"></i> Doesn't Match</button>
+                <button type="submit" class="btn btn-danger" data-cs-confirm="Mark this ID as not matching? The applicant will be notified."><i class="ti ti-circle-x me-1" aria-hidden="true"></i> Doesn't Match</button>
             </form>
         </div>
     </div>

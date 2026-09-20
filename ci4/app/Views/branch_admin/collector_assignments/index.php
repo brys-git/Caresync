@@ -89,9 +89,9 @@
                                                     <?php else: ?>
                                                         <span><?= esc((string) ($barangayNames[$row['barangay_code']] ?? $row['barangay_code'])) ?></span>
                                                     <?php endif; ?>
-                                                    <form method="post" action="<?= base_url('branch-admin/collector-assignments/delete/' . (int) $row['assignment_id']) ?>" class="d-inline" onsubmit="return confirm('Remove this assignment?');">
+                                                    <form method="post" action="<?= base_url('branch-admin/collector-assignments/delete/' . (int) $row['assignment_id']) ?>" class="d-inline">
                                                         <?= csrf_field() ?>
-                                                        <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+                                                        <button type="submit" class="btn btn-sm btn-danger" data-cs-confirm="Remove this assignment?">Remove</button>
                                                     </form>
                                                 </li>
                                             <?php endforeach; ?>

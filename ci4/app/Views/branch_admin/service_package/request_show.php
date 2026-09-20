@@ -13,7 +13,7 @@ $claimBasePath = (string) ($claim_base_path ?? '/branch-admin/service-package/re
 
 <?= $this->section('content') ?>
 <div class="mb-3 text-end">
-    <a href="<?= site_url($claimBasePath) ?>" class="btn btn-outline-secondary btn-sm">Back to Claims</a>
+    <a href="<?= site_url($claimBasePath) ?>" class="btn btn-ghost btn-sm">Back to Claims</a>
 </div>
 
 <?php // Flash messages are already surfaced as toasts by layouts/_shell.php - no need to render them again here. ?>
@@ -78,7 +78,7 @@ $claimBasePath = (string) ($claim_base_path ?? '/branch-admin/service-package/re
                 <?php if (($request['status'] ?? '') === 'pending'): ?>
                     <form action="<?= site_url($claimBasePath . '/approve/' . (int) $request['application_id']) ?>" method="post" class="d-inline-block me-2">
                         <?= csrf_field() ?>
-                        <button type="submit" class="btn btn-success">Approve</button>
+                        <button type="submit" class="btn btn-primary">Approve</button>
                     </form>
                     <form action="<?= site_url($claimBasePath . '/reject/' . (int) $request['application_id']) ?>" method="post" class="d-inline-block">
                         <?= csrf_field() ?>
