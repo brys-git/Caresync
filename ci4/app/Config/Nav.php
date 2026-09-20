@@ -80,7 +80,7 @@ class Nav extends BaseConfig
                     'items' => [
                         ['key' => 'clients',  'label' => 'Plan holders',     'icon' => 'ti-users',            'url' => 'branch-admin/client-management'],
                         ['key' => 'id-verification', 'label' => 'ID review', 'icon' => 'ti-id-badge-2',       'url' => 'branch-admin/id-verification', 'count' => 'ids_needing_review'],
-                        ['key' => 'requests', 'label' => 'Service requests', 'icon' => 'ti-clipboard-list',   'url' => 'branch-admin/service-applications', 'count' => 'pending_requests'],
+                        ['key' => 'requests', 'label' => 'Service requests', 'icon' => 'ti-clipboard-list',   'url' => 'branch-admin/service-package/requests', 'count' => 'pending_requests'],
                     ],
                 ],
                 [
