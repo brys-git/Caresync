@@ -24,3 +24,6 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           server-dir: /htdocs/
           local-dir: ./inapp-1.0.0/
+          exclude: |
+            .DS_Store
+            **/.DS_Store
