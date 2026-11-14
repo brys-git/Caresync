@@ -17,5 +17,15 @@ class ServiceListModel extends Model
         'status',
         'is_available',
         'image_path',
+        'item_code',
+        'category',
+        'short_description',
+        'availability_status',
+        'eligibility_rules',
+        'terms',
+        'notes',
+        'created_by',
+        'updated_by',
+        'updated_at',
     ];
 }

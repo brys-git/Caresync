@@ -8,6 +8,7 @@ $this->setData(['wizard' => registration_wizard_config('branch_admin', [
     'selected_branch_id' => session('branch_id'),
     'existing_users' => $existing_users ?? [],
     'program' => $program ?? [],
+    'plans' => $plans ?? [],
     'id_types' => $id_types ?? [],
 ])]) ?>
 <div class="cs-wizard">

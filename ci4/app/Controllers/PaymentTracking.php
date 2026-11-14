@@ -110,6 +110,7 @@ class PaymentTracking extends BaseController
             'initial_rows' => $this->initialPaymentRows($branchId),
             'can_approve' => true,
             'selected_status' => (string) $this->request->getGet('status'),
+            'search' => $this->searchTerm(),
             'active_tab' => $tab,
         ]);
     }
@@ -131,6 +132,7 @@ class PaymentTracking extends BaseController
             'rows' => $this->paymentRows($branchId),
             'can_approve' => false,
             'selected_status' => (string) $this->request->getGet('status'),
+            'search' => $this->searchTerm(),
         ]);
     }
 
@@ -177,7 +179,8 @@ class PaymentTracking extends BaseController
             return redirect()->back()->withInput()->with('error', 'Amount must match the monthly fee multiplied by months covered.');
         }
 
-        if ($amount > (float) ($plan['remaining_balance'] ?? 0)) {
+        // Remaining balance from the one shared calculation (plans.remaining_balance is not maintained).
+        if ($amount > (float) ((new \App\Services\ClientPlanSummary())->forPlan((int) $plan['plan_id'])['remaining_balance'] ?? 0)) {
             return redirect()->back()->withInput()->with('error', 'Payment exceeds remaining balance.');
         }
 
@@ -788,10 +791,23 @@ class PaymentTracking extends BaseController
         }));
     }
 
+    private function searchTerm(): string
+    {
+        return cs_search_term($this->request->getGet('search'));
+    }
+
+    /** Columns the payment search box looks in (plan holder, plan number, receipt/reference, remarks). */
+    private const SEARCH_COLUMNS = [
+        'users.first_name', 'users.last_name', 'users.contact_number', 'plan_holders.unique_identifier',
+        'payments.reference_number', 'payments.official_receipt_number', 'payments.remarks',
+    ];
+
     private function paymentRows(int $branchId): array
     {
         $status = strtolower(trim((string) $this->request->getGet('status')));
-        
+        $params = [$branchId];
+        $searchSql = cs_search_sql($this->searchTerm(), self::SEARCH_COLUMNS, $params);
+
         $sql = "SELECT payments.*, users.first_name, users.last_name, plan_holders.unique_identifier, plan_holders.plan_holder_id,
                 staff_u.first_name AS staff_first_name, staff_u.last_name AS staff_last_name, plans.payment_coverage_until, plans.months_paid
             FROM payments
@@ -799,15 +815,15 @@ class PaymentTracking extends BaseController
             INNER JOIN plan_holders ON plan_holders.plan_holder_id = plans.plan_holder_id
             INNER JOIN users ON users.user_id = plan_holders.user_id
             LEFT JOIN users staff_u ON staff_u.user_id = payments.received_by
-            WHERE payments.branch_id = ?
+            WHERE payments.branch_id = ?{$searchSql}
             ORDER BY payments.payment_id DESC";
 
         $db = db_connect();
-        $query = $db->query($sql, [$branchId]);
+        $query = $db->query($sql, $params);
         $result = $query->getResultArray();
 
         if (!in_array($status, ['pending', 'paid', 'cancelled'], true)) {
-            return $this->ensurePaymentColumns($result);
+            return $this->withLivePlanFigures($this->ensurePaymentColumns($result));
         }
         
         // Filter by status after fetching
@@ -815,11 +831,47 @@ class PaymentTracking extends BaseController
             return $row['status'] === $status;
         });
         
-        return $this->ensurePaymentColumns($filtered);
+        return $this->withLivePlanFigures($this->ensurePaymentColumns($filtered));
+    }
+
+    /**
+     * The months-paid column on the plans table is not kept up to date, so the
+     * figure shown beside each payment comes from the one shared calculation
+     * (ClientPlanSummary), looked up once per plan.
+     *
+     * @param array<int|string,array<string,mixed>> $rows
+     *
+     * @return array<int|string,array<string,mixed>>
+     */
+    private function withLivePlanFigures(array $rows): array
+    {
+        $summary = new \App\Services\ClientPlanSummary();
+        $cache   = [];
+
+        foreach ($rows as &$row) {
+            $planId = (int) ($row['plan_id'] ?? 0);
+            if ($planId <= 0) {
+                continue;
+            }
+
+            $cache[$planId] ??= $summary->forPlan($planId) ?? false;
+            if ($cache[$planId] !== false) {
+                $row['months_paid']       = $cache[$planId]['months_paid'];
+                $row['plan_total_months'] = $cache[$planId]['total_months'];
+            }
+        }
+        unset($row);
+
+        return $rows;
     }
 
     private function initialPaymentRows(int $branchId): array
     {
+        // The Initial Payments tab has no search box, so the monitoring tab's
+        // search term must not silently filter it.
+        $params = [$branchId];
+        $searchSql = '';
+
         $sql = "SELECT payments.*, users.first_name, users.last_name, plan_holders.unique_identifier, plan_holders.plan_holder_id,
                 staff_u.first_name AS staff_first_name, staff_u.last_name AS staff_last_name, plans.payment_coverage_until
             FROM payments
@@ -827,12 +879,12 @@ class PaymentTracking extends BaseController
             INNER JOIN plan_holders ON plan_holders.plan_holder_id = plans.plan_holder_id
             INNER JOIN users ON users.user_id = plan_holders.user_id
             LEFT JOIN users staff_u ON staff_u.user_id = payments.received_by
-            WHERE payments.branch_id = ?
+            WHERE payments.branch_id = ?{$searchSql}
             GROUP BY payments.payment_id
             ORDER BY payments.payment_id DESC";
         
         $db = db_connect();
-        $query = $db->query($sql, [$branchId]);
+        $query = $db->query($sql, $params);
         $rows = $query->getResultArray();
 
         $filtered = array_filter($rows, function (array $row): bool {
@@ -864,6 +916,7 @@ class PaymentTracking extends BaseController
             WHERE 1=1";
         
         $params = [];
+        $sql .= cs_search_sql($filters["search"], self::SEARCH_COLUMNS, $params);
         
         if ($filters['status'] !== '') {
             $sql .= " AND payments.status = ?";
@@ -909,7 +962,7 @@ class PaymentTracking extends BaseController
     }
 
     /**
-     * @return array{status:string,payment_method:string,branch_id:int,date_from:string,date_to:string}
+     * @return array{status:string,payment_method:string,branch_id:int,date_from:string,date_to:string,search:string}
      */
     private function adminFilters(): array
     {
@@ -933,6 +986,7 @@ class PaymentTracking extends BaseController
             'branch_id' => max(0, $branchId),
             'date_from' => $dateFrom,
             'date_to' => $dateTo,
+            'search' => $this->searchTerm(),
         ];
     }
 

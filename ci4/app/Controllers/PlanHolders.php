@@ -286,7 +286,7 @@ class PlanHolders extends BaseController
         }
 
         if (! $this->pendingTableExists()) {
-            return redirect()->back()->with('error', 'Plan holder registration queue is not available yet. Please run database migrations.');
+            return redirect()->back()->with('error', 'The registration queue is not available right now. Please try again later or contact the System Administrator.');
         }
 
         $db = db_connect();
@@ -403,7 +403,7 @@ class PlanHolders extends BaseController
         }
 
         if (! $this->pendingTableExists()) {
-            return redirect()->back()->with('error', 'Plan holder registration queue is not available yet. Please run database migrations.');
+            return redirect()->back()->with('error', 'The registration queue is not available right now. Please try again later or contact the System Administrator.');
         }
 
         $db = db_connect();

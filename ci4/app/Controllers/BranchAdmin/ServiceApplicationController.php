@@ -20,11 +20,13 @@ class ServiceApplicationController extends BaseController
         $this->ensureBranchAdminAccess();
 
         $branchId = (int) session('branch_id');
+        $search = cs_search_term($this->request->getGet('search'));
 
         return view('branch_admin/service_package/index', [
             'page_title' => 'Service / Package Management',
             'active_tab' => 'requests',
-            'requests' => $this->claimService->getBranchClaims($branchId),
+            'search' => $search,
+            'requests' => $this->claimService->getBranchClaims($branchId, $search),
             'role_layout' => 'layouts/branch_admin',
         ]);
     }

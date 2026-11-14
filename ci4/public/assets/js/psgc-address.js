@@ -1,11 +1,12 @@
 /**
- * PSGC Cloud address dropdowns (Town/City -> Barangay), extracted verbatim
- * (Prompt 7, Step A) from client/plan_registration.php's own inline
- * <script> so every registration page built on partials/registration/*
- * gets the identical search-as-you-type city/barangay picker instead of
- * staff-side forms' old free-text address boxes.
+ * Oriental Mindoro address dropdowns (Town/City -> Barangay), reading from
+ * the local window.CARESYNC_ADDRESS data (public/assets/js/data/
+ * oriental-mindoro-address.js) instead of fetching PSGC Cloud - see
+ * CARESYNC_PROMPT_LOCAL_ADDRESS_DATA.md. Scope is Oriental Mindoro only: 15
+ * cities/municipalities, 426 barangays, all filtering/lookup is instant
+ * (no network request, no debounce, no loading state).
  *
- * Usage: window.CareSyncPsgc.init({ addressApiBase: '<?= base_url('api/address') ?>' })
+ * Usage: window.CareSyncPsgc.init()
  * Expects the same fixed field ids _step_applicant.php renders:
  *   city_search, address_city, city_municipality_code,
  *   barangay_search, address_barangay, barangay_code,
@@ -15,13 +16,11 @@
  * using caresync-wizard.js necessarily has the address step wired in yet.
  */
 window.CareSyncPsgc = (function () {
-    function init(config) {
+    function init() {
         const citySearch = document.getElementById('city_search');
         if (!citySearch) {
             return null;
         }
-
-        const ADDRESS_API_BASE = config.addressApiBase;
 
         const addressCityInput = document.getElementById('address_city');
         const cityCodeInput = document.getElementById('city_municipality_code');
@@ -34,8 +33,6 @@ window.CareSyncPsgc = (function () {
         const barangayDropdown = barangaySearch.closest('.psgc-field').querySelector('.psgc-dropdown');
         const barangayError = document.querySelector('.psgc-error[data-field="barangay"]');
 
-        let cityDebounce = null;
-        let citySearchToken = 0;
         let barangayOptions = [];
         let lastSelectedCityName = addressCityInput.value || '';
         let lastSelectedBarangayName = addressBarangayInput.value || '';
@@ -43,20 +40,27 @@ window.CareSyncPsgc = (function () {
         function showDropdown(el) { el.classList.remove('d-none'); }
         function hideDropdown(el) { el.classList.add('d-none'); el.innerHTML = ''; }
 
-        function renderMessage(el, text, isError, retryFn) {
+        function renderEmpty(el, text) {
             el.innerHTML = '';
-            const rowEl = document.createElement('div');
-            rowEl.className = isError ? 'psgc-retry' : 'psgc-loading';
-            rowEl.textContent = text + ' ';
-            if (isError && retryFn) {
-                const retryBtn = document.createElement('button');
-                retryBtn.type = 'button';
-                retryBtn.className = 'btn btn-link btn-sm p-0 align-baseline';
-                retryBtn.textContent = 'Retry';
-                retryBtn.addEventListener('click', retryFn);
-                rowEl.appendChild(retryBtn);
-            }
-            el.appendChild(rowEl);
+            const empty = document.createElement('div');
+            empty.className = 'psgc-empty';
+            empty.textContent = text;
+            el.appendChild(empty);
+            showDropdown(el);
+        }
+
+        function renderResults(el, results, onPick) {
+            el.innerHTML = '';
+            results.forEach(function (rowData) {
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'list-group-item list-group-item-action py-2';
+                item.textContent = rowData.name;
+                item.addEventListener('click', function () {
+                    onPick(rowData);
+                });
+                el.appendChild(item);
+            });
             showDropdown(el);
         }
 
@@ -65,50 +69,66 @@ window.CareSyncPsgc = (function () {
             el.textContent = '';
         }
 
-        function searchCities(query) {
-            const token = ++citySearchToken;
-            renderMessage(cityDropdown, 'Loading towns/cities...', false);
-
-            fetch(ADDRESS_API_BASE + '/cities?q=' + encodeURIComponent(query))
-                .then((res) => {
-                    if (!res.ok) { throw new Error('bad_status'); }
-                    return res.json();
-                })
-                .then((payload) => {
-                    if (token !== citySearchToken) { return; }
-                    const results = Array.isArray(payload.data) ? payload.data : [];
-                    renderCityResults(results);
-                })
-                .catch(() => {
-                    if (token !== citySearchToken) { return; }
-                    renderMessage(cityDropdown, 'Unable to load Philippine address data. Please try again.', true, function () {
-                        searchCities(query);
-                    });
-                });
+        function showFieldError(el, text) {
+            el.textContent = text;
+            el.classList.remove('d-none');
         }
 
-        function renderCityResults(results) {
-            cityDropdown.innerHTML = '';
+        // The data file's own city.code is always 10-digit (matches what's
+        // already saved in plan_holders.city_municipality_code/barangay_code -
+        // checked directly against the live table before choosing this), so
+        // every hidden field gets set to .code even when a match came in via
+        // .old_code on preselect (a saved 9-digit legacy code, if any ever
+        // existed, normalizes to 10-digit going forward).
+        const address = window.CARESYNC_ADDRESS;
+        if (!address || !Array.isArray(address.cities)) {
+            console.error('CareSyncPsgc: window.CARESYNC_ADDRESS is missing or malformed.');
+            showFieldError(cityError, 'Address list failed to load - refresh the page.');
+            showFieldError(barangayError, 'Address list failed to load - refresh the page.');
+            citySearch.disabled = true;
+            barangaySearch.disabled = true;
+            return { selectCity: function () {}, selectBarangay: function () {} };
+        }
+
+        // "City of Calapan" should match a search for "Calapan" - strip a
+        // leading "City of " before comparing, both for the stored name and
+        // whatever the user typed.
+        function normalize(name) {
+            return name.toLowerCase().replace(/^city of\s+/, '').trim();
+        }
+
+        const cities = address.cities.map(function (city) {
+            return { code: city.code, name: city.name };
+        });
+
+        // code/old_code -> city (with its own .barangays), and
+        // code/old_code -> {code, name, cityCode}, for preselect on an edit
+        // page (which may hold either format) and for the city-mismatch
+        // guard filterBarangays()/selectBarangay() don't need but the server
+        // side (PsgcService) still checks at save time.
+        const citiesByCode = {};
+        const barangaysByCode = {};
+        address.cities.forEach(function (city) {
+            citiesByCode[city.code] = city;
+            citiesByCode[city.old_code] = city;
+            city.barangays.forEach(function (barangay) {
+                const row = { code: barangay.code, name: barangay.name, cityCode: city.code };
+                barangaysByCode[barangay.code] = row;
+                barangaysByCode[barangay.old_code] = row;
+            });
+        });
+
+        function searchCities(query) {
+            const needle = normalize(query);
+            const results = needle === ''
+                ? cities
+                : cities.filter(function (c) { return normalize(c.name).indexOf(needle) !== -1; });
+
             if (results.length === 0) {
-                const empty = document.createElement('div');
-                empty.className = 'psgc-empty';
-                empty.textContent = 'No matching town/city found.';
-                cityDropdown.appendChild(empty);
-                showDropdown(cityDropdown);
+                renderEmpty(cityDropdown, 'No matching town/city found.');
                 return;
             }
-
-            results.forEach(function (rowData) {
-                const item = document.createElement('button');
-                item.type = 'button';
-                item.className = 'list-group-item list-group-item-action py-2';
-                item.textContent = rowData.name;
-                item.addEventListener('click', function () {
-                    selectCity(rowData);
-                });
-                cityDropdown.appendChild(item);
-            });
-            showDropdown(cityDropdown);
+            renderResults(cityDropdown, results, selectCity);
         }
 
         function selectCity(rowData) {
@@ -124,7 +144,7 @@ window.CareSyncPsgc = (function () {
 
         function resetBarangay() {
             barangaySearch.value = '';
-            barangaySearch.placeholder = 'Loading barangays...';
+            barangaySearch.placeholder = 'Search barangay...';
             barangaySearch.disabled = true;
             addressBarangayInput.value = '';
             barangayCodeInput.value = '';
@@ -139,53 +159,31 @@ window.CareSyncPsgc = (function () {
                 addressCityInput.value = '';
                 cityCodeInput.value = '';
             }
-
-            const query = citySearch.value.trim();
-            window.clearTimeout(cityDebounce);
-
-            if (query.length < 2) {
-                hideDropdown(cityDropdown);
-                return;
-            }
-
-            cityDebounce = window.setTimeout(function () {
-                searchCities(query);
-            }, 300);
+            searchCities(citySearch.value.trim());
         });
 
         citySearch.addEventListener('focus', function () {
-            if (citySearch.value.trim().length >= 2) {
-                searchCities(citySearch.value.trim());
-            }
+            searchCities(citySearch.value.trim());
         });
 
         function loadBarangays(cityCode, preselectCode) {
-            renderMessage(barangayDropdown, 'Loading barangays...', false);
+            const city = citiesByCode[cityCode];
+            barangayOptions = city
+                ? city.barangays.map(function (b) { return { code: b.code, name: b.name }; })
+                : [];
+            barangaySearch.disabled = false;
+            barangaySearch.placeholder = 'Search barangay...';
+            hideDropdown(barangayDropdown);
 
-            fetch(ADDRESS_API_BASE + '/barangays/' + encodeURIComponent(cityCode))
-                .then((res) => {
-                    if (!res.ok) { throw new Error('bad_status'); }
-                    return res.json();
-                })
-                .then((payload) => {
-                    barangayOptions = Array.isArray(payload.data) ? payload.data : [];
-                    barangaySearch.disabled = false;
-                    barangaySearch.placeholder = 'Search barangay...';
-                    hideDropdown(barangayDropdown);
-
-                    if (preselectCode) {
-                        const match = barangayOptions.find(function (b) { return b.code === preselectCode; });
-                        if (match) {
-                            selectBarangay(match);
-                        }
-                    }
-                })
-                .catch(() => {
-                    barangaySearch.placeholder = 'Unable to load barangays';
-                    renderMessage(barangayDropdown, 'Unable to load Philippine address data. Please try again.', true, function () {
-                        loadBarangays(cityCode, preselectCode);
-                    });
-                });
+            if (preselectCode) {
+                const match = barangayOptions.find(function (b) { return b.code === preselectCode; })
+                    || (barangaysByCode[preselectCode] && barangaysByCode[preselectCode].cityCode === cityCode
+                        ? barangaysByCode[preselectCode]
+                        : null);
+                if (match) {
+                    selectBarangay(match);
+                }
+            }
         }
 
         function filterBarangays(query) {
@@ -194,27 +192,11 @@ window.CareSyncPsgc = (function () {
                 ? barangayOptions
                 : barangayOptions.filter(function (b) { return b.name.toLowerCase().indexOf(needle) !== -1; });
 
-            barangayDropdown.innerHTML = '';
             if (results.length === 0) {
-                const empty = document.createElement('div');
-                empty.className = 'psgc-empty';
-                empty.textContent = 'No matching barangay found.';
-                barangayDropdown.appendChild(empty);
-                showDropdown(barangayDropdown);
+                renderEmpty(barangayDropdown, 'No matching barangay found.');
                 return;
             }
-
-            results.forEach(function (rowData) {
-                const item = document.createElement('button');
-                item.type = 'button';
-                item.className = 'list-group-item list-group-item-action py-2';
-                item.textContent = rowData.name;
-                item.addEventListener('click', function () {
-                    selectBarangay(rowData);
-                });
-                barangayDropdown.appendChild(item);
-            });
-            showDropdown(barangayDropdown);
+            renderResults(barangayDropdown, results, selectBarangay);
         }
 
         function selectBarangay(rowData) {
@@ -252,8 +234,16 @@ window.CareSyncPsgc = (function () {
         const savedCityCode = cityCodeInput.value.trim();
         const savedBarangayCode = barangayCodeInput.value.trim();
         if (savedCityCode !== '') {
-            barangaySearch.value = lastSelectedBarangayName;
-            loadBarangays(savedCityCode, savedBarangayCode || null);
+            const savedCity = citiesByCode[savedCityCode];
+            if (savedCity) {
+                // Normalize a legacy 9-digit old_code to the canonical
+                // 10-digit code, same as a fresh selection would.
+                cityCodeInput.value = savedCity.code;
+                barangaySearch.value = lastSelectedBarangayName;
+                loadBarangays(savedCity.code, savedBarangayCode || null);
+            } else {
+                barangaySearch.placeholder = 'Select a Town/City first';
+            }
         } else {
             barangaySearch.placeholder = 'Select a Town/City first';
         }

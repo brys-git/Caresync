@@ -24,5 +24,14 @@ class BranchModel extends Model
         'manager_position',
         'date_established',
         'status',
+        'branch_code',
+        'branch_type',
+        'address_region',
+        'email',
+        'operating_hours',
+        'manager_user_id',
+        'manager_contact_number',
+        'created_by',
+        'updated_by',
     ];
 }

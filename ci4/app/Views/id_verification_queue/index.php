@@ -4,6 +4,12 @@
 <?php // Flash messages are already surfaced as toasts by layouts/_shell.php - no need to render them again here. ?>
 <?php $rows = $rows ?? []; ?>
 
+<?= view('partials/search_bar', [
+    'action'      => $search_action ?? '',
+    'term'        => $search ?? '',
+    'placeholder' => 'Applicant name or email',
+]) ?>
+
 <section class="cs-panel">
     <div class="cs-panel__head">
         <h2 class="cs-panel__title">Awaiting Review (<?= count($rows) ?>)</h2>
@@ -12,8 +18,8 @@
         <?php if (empty($rows)): ?>
             <?= view('components/empty_state', [
                 'icon' => 'ti-id-badge-2',
-                'title' => 'Nothing to review right now',
-                'text' => 'Applicants whose Government ID needs a manual look will show up here.',
+                'title' => ! empty($search) ? 'No applicants match "' . $search . '"' : 'Nothing to review right now',
+                'text' => ! empty($search) ? 'Check the spelling or try fewer words, then search again - or clear the search.' : 'Applicants whose Government ID needs a manual look will show up here.',
             ]) ?>
         <?php else: ?>
             <div class="cs-tablewrap">

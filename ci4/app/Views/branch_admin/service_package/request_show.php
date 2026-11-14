@@ -58,13 +58,20 @@ $claimBasePath = (string) ($claim_base_path ?? '/branch-admin/service-package/re
         <section class="cs-panel mb-3">
             <div class="cs-panel__head"><h2 class="cs-panel__title">Supporting Documents</h2></div>
             <div class="cs-panel__body">
+                <?php if ((int) ($request['awaiting_death_certificate'] ?? 0) === 1): ?>
+                    <div class="alert alert-warning mb-3">Awaiting death certificate. The client submitted without it.</div>
+                <?php endif; ?>
                 <?php if (empty($documents)): ?>
                     <div class="text-muted">No documents uploaded yet.</div>
                 <?php else: ?>
                     <ul class="list-group list-group-flush">
                         <?php foreach ($documents as $document): ?>
                             <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <span><?= esc((string) ($document['original_name'] ?? 'Unnamed document')) ?></span>
+                                <span>
+                                    <?php $documentTypeLabels = ['death_certificate' => 'Death certificate', 'beneficiary_id' => 'Beneficiary ID', 'other' => 'Other']; ?>
+                                    <?php if (! empty($document['document_type'])): ?><strong><?= esc($documentTypeLabels[$document['document_type']] ?? (string) $document['document_type']) ?>:</strong> <?php endif; ?>
+                                    <?= esc((string) ($document['original_name'] ?? 'Unnamed document')) ?>
+                                </span>
                                 <a href="<?= site_url($claimBasePath . '/document/' . (int) $document['document_id']) ?>" class="btn btn-sm btn-outline-primary">Download</a>
                             </li>
                         <?php endforeach; ?>

@@ -18,6 +18,11 @@ $routes->group('admin', ['filter' => 'auth'], static function (RouteCollection $
 
     // Branch Management
     $routes->get('branch-management', 'Admin\BranchManagementController::index', ['filter' => 'role:1']);
+    $routes->get('branch-management/create', 'Admin\BranchManagementController::create', ['filter' => 'role:1']);
+    $routes->post('branch-management/store', 'Admin\BranchManagementController::store', ['filter' => 'role:1']);
+    $routes->get('branch-management/edit/(:num)', 'Admin\BranchManagementController::edit/$1', ['filter' => 'role:1']);
+    $routes->post('branch-management/update/(:num)', 'Admin\BranchManagementController::update/$1', ['filter' => 'role:1']);
+    $routes->post('branch-management/toggle-status/(:num)', 'Admin\BranchManagementController::toggleStatus/$1', ['filter' => 'role:1']);
     $routes->post('branch-management/toggle-availability', 'Admin\BranchManagementController::toggleAvailability', ['filter' => 'role:1']);
     $routes->get('branch-management/export-transactions', 'Admin\BranchManagementController::exportTransactions', ['filter' => 'role:1']);
     $routes->post('branch-management/approval/service/approve/(:num)', 'Admin\BranchManagementController::approveService/$1', ['filter' => 'role:1']);
@@ -27,11 +32,21 @@ $routes->group('admin', ['filter' => 'auth'], static function (RouteCollection $
 
     // Client Management
     $routes->get('client-management', 'Admin\ClientManagementController::index', ['filter' => 'role:1']);
-    $routes->get('client-management/view/(:num)', 'Admin\ClientManagementController::view/$1', ['filter' => 'role:1']);
+    $routes->get('client-management/view/(:num)', 'ClientDetailController::show/$1', ['filter' => 'role:1']);
+    $routes->get('client-management/statement/(:num)', 'ClientDetailController::statement/$1', ['filter' => 'role:1']);
+    $routes->post('client-management/note/(:num)', 'ClientDetailController::saveNote/$1', ['filter' => 'role:1']);
+    $routes->get('client-management/file/(:num)/(:segment)/(:num)', 'ClientDetailController::file/$1/$2/$3', ['filter' => 'role:1']);
     $routes->get('client-management/edit/(:num)', 'Admin\ClientManagementController::edit/$1', ['filter' => 'role:1']);
     $routes->post('client-management/update/(:num)', 'Admin\ClientManagementController::update/$1', ['filter' => 'role:1']);
     $routes->get('client/register', 'Admin\ClientManagementController::create', ['filter' => 'role:1']);
     $routes->post('client/store', 'Admin\ClientManagementController::store', ['filter' => 'role:1']);
+
+    // Create Account (Branch Admin / Staff / Client)
+    $routes->get('create-account', 'Admin\AccountController::create', ['filter' => 'role:1']);
+    $routes->post('create-account', 'Admin\AccountController::store', ['filter' => 'role:1']);
+
+    $routes->post('client-management/resend-login/(:num)', 'AccountLoginDetails::resend/$1', ['filter' => 'role:1']);
+    $routes->post('client-management/reinstate/(:num)', 'PlanReinstatement::record/$1', ['filter' => 'role:1']);
 
     // Payment Monitoring
     $routes->get('payment-monitoring', 'PaymentTracking::admin', ['filter' => 'role:1']);
@@ -45,6 +60,20 @@ $routes->group('admin', ['filter' => 'auth'], static function (RouteCollection $
     $routes->get('reports/commission', 'Reports::commission', ['filter' => 'role:1']);
     $routes->get('reports/remittance', 'Reports::remittance', ['filter' => 'role:1']);
     $routes->get('analytics', 'Analytics::admin', ['filter' => 'role:1']);
+
+    // One-time credentials files from bulk client imports (System Admin only)
+    $routes->get('imports/credentials', 'Admin\ImportCredentialsController::index', ['filter' => 'role:1']);
+    $routes->get('imports/credentials/(:segment)', 'Admin\ImportCredentialsController::show/$1', ['filter' => 'role:1']);
+    $routes->get('imports/credentials/(:segment)/download', 'Admin\ImportCredentialsController::download/$1', ['filter' => 'role:1']);
+    $routes->post('imports/credentials/(:segment)/delete', 'Admin\ImportCredentialsController::delete/$1', ['filter' => 'role:1']);
+
+    // Packages & Services Management (packages, services, add-ons)
+    $routes->get('catalog', 'Admin\CatalogController::index', ['filter' => 'role:1']);
+    $routes->get('catalog/new/(:segment)', 'Admin\CatalogController::create/$1', ['filter' => 'role:1']);
+    $routes->get('catalog/edit/(:segment)/(:num)', 'Admin\CatalogController::edit/$1/$2', ['filter' => 'role:1']);
+    $routes->post('catalog/save/(:segment)', 'Admin\CatalogController::save/$1', ['filter' => 'role:1']);
+    $routes->post('catalog/save/(:segment)/(:num)', 'Admin\CatalogController::save/$1/$2', ['filter' => 'role:1']);
+    $routes->post('catalog/availability/(:segment)/(:num)', 'Admin\CatalogController::setAvailability/$1/$2', ['filter' => 'role:1']);
 
     // Service Offer Management
     $routes->get('service-offer', 'Admin\ServiceOfferController::index', ['filter' => 'role:1']);

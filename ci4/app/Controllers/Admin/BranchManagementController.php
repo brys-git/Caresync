@@ -30,8 +30,8 @@ class BranchManagementController extends BaseController
 
         $db = db_connect();
         $tab = (string) $this->request->getGet('tab');
-        if (! in_array($tab, ['availability', 'transactions', 'contribution', 'approval'], true)) {
-            $tab = 'availability';
+        if (! in_array($tab, ['branches', 'availability', 'transactions', 'contribution', 'approval'], true)) {
+            $tab = 'branches';
         }
 
         $approvalTab = (string) $this->request->getGet('approval_tab');
@@ -112,6 +112,7 @@ class BranchManagementController extends BaseController
             'tab' => $tab,
             'approval_tab' => $approvalTab,
             'branches' => $branches,
+            'branch_rows' => $tab === 'branches' ? $this->branchRows() : [],
             'selected_branch_id' => $branchId,
             'date_from' => $dateFrom,
             'date_to' => $dateTo,
@@ -121,6 +122,324 @@ class BranchManagementController extends BaseController
             'pending_services' => $pendingServices,
             'pending_packages' => $pendingPackages,
         ]);
+    }
+
+    // ------------------------------------------------------------------
+    // Branch records: create / edit / activate-deactivate. Branches are never
+    // deleted - clients, payments, services and reports all point at them.
+    // ------------------------------------------------------------------
+
+    public function create(): string
+    {
+        $this->ensureAdminAccess();
+
+        return $this->renderForm(null);
+    }
+
+    public function store()
+    {
+        $this->ensureAdminAccess();
+
+        $input = $this->readBranchInput();
+        $errors = $this->validateBranch($input, 0);
+        if ($errors !== []) {
+            return redirect()->back()->withInput()->with('errors', $errors);
+        }
+
+        $db = db_connect();
+        $adminId = (int) session('user_id');
+        $manager = $this->managerRecord((int) $input['manager_user_id']);
+
+        $db->transStart();
+        $row = $this->branchPayload($input, $manager) + [
+            'branch_code' => $this->generateBranchCode($input['address_city']),
+            'created_by'  => $adminId,
+            'updated_by'  => $adminId,
+        ];
+        $db->table('branches')->insert($row);
+        $branchId = (int) $db->insertID();
+        $this->recordManagerChange($branchId, (int) $input['manager_user_id'], $adminId);
+        $db->transComplete();
+
+        if (! $db->transStatus()) {
+            return redirect()->back()->withInput()->with('error', 'The branch could not be saved. Please try again.');
+        }
+
+        $this->activityLogService->log($adminId, 'created', 'branch', $branchId, 'Created branch ' . $row['branch_code'] . ' - ' . $row['branch_name'], null, $row);
+
+        return redirect()->to('/admin/branch-management?tab=branches')->with('success', 'Branch ' . $row['branch_code'] . ' (' . $row['branch_name'] . ') was created.');
+    }
+
+    public function edit(int $id): string
+    {
+        $this->ensureAdminAccess();
+
+        $branch = db_connect()->table('branches')->where('branch_id', $id)->get()->getRowArray();
+        if (! $branch) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        return $this->renderForm($branch);
+    }
+
+    public function update(int $id)
+    {
+        $this->ensureAdminAccess();
+
+        $db = db_connect();
+        $before = $db->table('branches')->where('branch_id', $id)->get()->getRowArray();
+        if (! $before) {
+            return redirect()->to('/admin/branch-management?tab=branches')->with('error', 'Branch not found.');
+        }
+
+        $input = $this->readBranchInput();
+        $errors = $this->validateBranch($input, $id);
+        if ($errors !== []) {
+            return redirect()->back()->withInput()->with('errors', $errors);
+        }
+
+        $adminId = (int) session('user_id');
+        $manager = $this->managerRecord((int) $input['manager_user_id']);
+
+        // branch_code is never changed after creation.
+        $row = $this->branchPayload($input, $manager) + ['updated_by' => $adminId];
+
+        $db->transStart();
+        $db->table('branches')->where('branch_id', $id)->update($row);
+        if ((int) ($before['manager_user_id'] ?? 0) !== (int) $input['manager_user_id']) {
+            $this->recordManagerChange($id, (int) $input['manager_user_id'], $adminId);
+        }
+        $db->transComplete();
+
+        $this->activityLogService->log($adminId, 'updated', 'branch', $id, 'Updated branch ' . ($before['branch_code'] ?? $id), $before, $row);
+
+        return redirect()->to('/admin/branch-management?tab=branches')->with('success', 'Branch details were updated.');
+    }
+
+    public function toggleStatus(int $id)
+    {
+        $this->ensureAdminAccess();
+
+        $db = db_connect();
+        $branch = $db->table('branches')->where('branch_id', $id)->get()->getRowArray();
+        if (! $branch) {
+            return redirect()->to('/admin/branch-management?tab=branches')->with('error', 'Branch not found.');
+        }
+
+        $new = ($branch['status'] ?? 'active') === 'active' ? 'inactive' : 'active';
+        $adminId = (int) session('user_id');
+        $db->table('branches')->where('branch_id', $id)->update(['status' => $new, 'updated_by' => $adminId]);
+
+        $this->activityLogService->log($adminId, $new === 'active' ? 'activated' : 'deactivated', 'branch', $id, ucfirst($new) . ' branch ' . ($branch['branch_code'] ?? $id), ['status' => $branch['status']], ['status' => $new]);
+
+        return redirect()->to('/admin/branch-management?tab=branches')->with('success', $branch['branch_name'] . ' is now ' . $new . '. Its records are unchanged.');
+    }
+
+    private function branchRows(): array
+    {
+        return db_connect()->table('branches b')
+            ->select('b.*, u.first_name AS mgr_first, u.last_name AS mgr_last, (SELECT COUNT(*) FROM plan_holders ph WHERE ph.branch_id = b.branch_id) AS client_count', false)
+            ->join('users u', 'u.user_id = b.manager_user_id', 'left')
+            ->orderBy('b.branch_name', 'ASC')
+            ->get()
+            ->getResultArray();
+    }
+
+    private function renderForm(?array $branch): string
+    {
+        $db = db_connect();
+
+        // Only existing Branch Admin / Staff accounts can manage a branch.
+        $managers = $db->table('users u')
+            ->select('u.user_id, u.first_name, u.last_name, u.contact_number, u.role_id, r.role_name, b.branch_name')
+            ->join('roles r', 'r.role_id = u.role_id', 'left')
+            ->join('branches b', 'b.branch_id = u.branch_id', 'left')
+            ->whereIn('u.role_id', [2, 3])
+            ->where('u.status', 'active')
+            ->orderBy('u.first_name', 'ASC')
+            ->get()
+            ->getResultArray();
+
+        // Next sequence per city prefix, for the live code preview (the server
+        // generates the real code at save time).
+        $counters = [];
+        foreach ($db->table('branches')->select('branch_code')->get()->getResultArray() as $r) {
+            if (preg_match('/^(KKM-[A-Z]{3})-(\d+)$/', (string) $r['branch_code'], $m)) {
+                $counters[$m[1]] = max($counters[$m[1]] ?? 0, (int) $m[2]);
+            }
+        }
+
+        return view('admin/branch_management/form', [
+            'role_layout' => 'layouts/admin',
+            'page_title'  => $branch ? 'Edit Branch' : 'Create New Branch',
+            'page_sub'    => $branch ? 'Update branch details. The branch code cannot be changed.' : 'Register a new branch. Fields marked * are required.',
+            'branch'      => $branch,
+            'managers'    => $managers,
+            'counters'    => $counters,
+        ]);
+    }
+
+    private function readBranchInput(): array
+    {
+        $keys = ['branch_name', 'branch_type', 'date_established', 'address_street', 'address_barangay', 'address_city',
+            'address_province', 'address_region', 'contact_number', 'email', 'operating_hours', 'manager_user_id',
+            'manager_position', 'manager_contact_number', 'status'];
+        $input = [];
+        foreach ($keys as $key) {
+            $input[$key] = trim((string) $this->request->getPost($key));
+        }
+
+        return $input;
+    }
+
+    /** @return array<string,string> field => message */
+    private function validateBranch(array &$input, int $ignoreId): array
+    {
+        $errors = [];
+        $required = [
+            'branch_name' => 'Branch name', 'address_street' => 'House/Building No. and Street', 'address_barangay' => 'Barangay',
+            'address_city' => 'City/Municipality', 'address_province' => 'Province', 'contact_number' => 'Branch contact number',
+            'manager_user_id' => 'Assigned branch manager',
+        ];
+        foreach ($required as $key => $label) {
+            if ($input[$key] === '') {
+                $errors[$key] = $label . ' is required.';
+            }
+        }
+
+        if (! in_array($input['branch_type'], ['main', 'branch'], true)) {
+            $input['branch_type'] = 'branch';
+        }
+        if (! in_array($input['status'], ['active', 'inactive'], true)) {
+            $input['status'] = 'active';
+        }
+
+        if ($input['date_established'] !== '') {
+            $d = \DateTime::createFromFormat('Y-m-d', $input['date_established']);
+            if (! $d || $d->format('Y-m-d') !== $input['date_established'] || $d > new \DateTime('today')) {
+                $errors['date_established'] = 'Enter a valid date that is not in the future.';
+            }
+        }
+
+        foreach (['contact_number' => 'Branch contact number', 'manager_contact_number' => 'Manager contact number'] as $key => $label) {
+            if ($input[$key] === '') {
+                continue;
+            }
+            if (! \App\Validation\ValidationRules::validPhilippinePhone($input[$key])) {
+                $errors[$key] = $label . ' must be a Philippine mobile number like 0917-123-4567.';
+            } else {
+                $input[$key] = $this->formatPhone($input[$key]);
+            }
+        }
+
+        if ($input['email'] !== '' && ! filter_var($input['email'], FILTER_VALIDATE_EMAIL)) {
+            $errors['email'] = 'Enter a valid email address.';
+        }
+
+        if (! isset($errors['manager_user_id']) && $this->managerRecord((int) $input['manager_user_id']) === null) {
+            $errors['manager_user_id'] = 'Choose an existing active Branch Admin or Staff account.';
+        }
+
+        foreach (['branch_name' => 100, 'address_street' => 100, 'address_barangay' => 100, 'address_city' => 100, 'address_province' => 100,
+            'address_region' => 100, 'email' => 100, 'operating_hours' => 150, 'manager_position' => 50] as $key => $max) {
+            if (mb_strlen($input[$key]) > $max) {
+                $errors[$key] = 'Must be ' . $max . ' characters or fewer.';
+            }
+        }
+
+        // Same name at the same address is a duplicate.
+        if (! isset($errors['branch_name']) && $input['address_street'] !== '' && $input['address_city'] !== '') {
+            $dup = db_connect()->table('branches')
+                ->where('LOWER(branch_name)', mb_strtolower($input['branch_name']))
+                ->where('LOWER(address_street)', mb_strtolower($input['address_street']))
+                ->where('LOWER(address_barangay)', mb_strtolower($input['address_barangay']))
+                ->where('LOWER(address_city)', mb_strtolower($input['address_city']));
+            if ($ignoreId > 0) {
+                $dup->where('branch_id !=', $ignoreId);
+            }
+            if ($dup->countAllResults() > 0) {
+                $errors['branch_name'] = 'A branch with this name and address already exists.';
+            }
+        }
+
+        return $errors;
+    }
+
+    private function formatPhone(string $raw): string
+    {
+        $digits = preg_replace('/\D/', '', $raw);
+        if (strlen($digits) === 12 && str_starts_with($digits, '63')) {
+            $digits = '0' . substr($digits, 2);
+        }
+
+        return substr($digits, 0, 4) . '-' . substr($digits, 4, 3) . '-' . substr($digits, 7, 4);
+    }
+
+    private function managerRecord(int $userId): ?array
+    {
+        if ($userId <= 0) {
+            return null;
+        }
+
+        return db_connect()->table('users')
+            ->select('user_id, first_name, middle_name, last_name, name_extension')
+            ->where('user_id', $userId)
+            ->whereIn('role_id', [2, 3])
+            ->where('status', 'active')
+            ->get()
+            ->getRowArray();
+    }
+
+    private function branchPayload(array $input, ?array $manager): array
+    {
+        return [
+            'branch_name'            => $input['branch_name'],
+            'branch_type'            => $input['branch_type'],
+            'date_established'       => $input['date_established'] !== '' ? $input['date_established'] : null,
+            'address_street'         => $input['address_street'],
+            'address_barangay'       => $input['address_barangay'],
+            'address_city'           => $input['address_city'],
+            'address_province'       => $input['address_province'],
+            'address_region'         => $input['address_region'] !== '' ? $input['address_region'] : null,
+            'contact_number'         => $input['contact_number'],
+            'email'                  => $input['email'] !== '' ? $input['email'] : null,
+            'operating_hours'        => $input['operating_hours'] !== '' ? $input['operating_hours'] : null,
+            'manager_user_id'        => (int) $input['manager_user_id'],
+            'manager_position'       => $input['manager_position'] !== '' ? $input['manager_position'] : null,
+            'manager_contact_number' => $input['manager_contact_number'] !== '' ? $input['manager_contact_number'] : null,
+            // Older screens still read the manager's name from the branch row.
+            'manager_first_name'     => $manager['first_name'] ?? null,
+            'manager_middle_name'    => $manager['middle_name'] ?? null,
+            'manager_last_name'      => $manager['last_name'] ?? null,
+            'manager_extension'      => $manager['name_extension'] ?? null,
+            'status'                 => $input['status'],
+        ];
+    }
+
+    /** Close the previous manager's stint (never deletes it) and open a new one. */
+    private function recordManagerChange(int $branchId, int $managerUserId, int $adminId): void
+    {
+        $db = db_connect();
+        $now = date('Y-m-d H:i:s');
+        $db->table('branch_manager_history')->where('branch_id', $branchId)->where('ended_at', null)->update(['ended_at' => $now]);
+        $db->table('branch_manager_history')->insert([
+            'branch_id' => $branchId, 'manager_user_id' => $managerUserId, 'assigned_at' => $now, 'assigned_by' => $adminId,
+        ]);
+    }
+
+    /** KKM-<city letters>-<next 3-digit number>, unique. */
+    private function generateBranchCode(string $city): string
+    {
+        $clean = preg_replace('/\b(city|of|municipality)\b/i', '', $city);
+        $letters = strtoupper(preg_replace('/[^A-Za-z]/', '', (string) $clean));
+        $prefix = 'KKM-' . str_pad(substr($letters, 0, 3), 3, 'X') . '-';
+        $db = db_connect();
+        $n = 1;
+        do {
+            $code = $prefix . str_pad((string) $n++, 3, '0', STR_PAD_LEFT);
+        } while ($db->table('branches')->where('branch_code', $code)->countAllResults() > 0);
+
+        return $code;
     }
 
     public function toggleAvailability()
@@ -528,8 +847,8 @@ class BranchManagementController extends BaseController
 
     private function buildReturnUrl(string $tab): string
     {
-        if (! in_array($tab, ['availability', 'transactions', 'contribution', 'approval'], true)) {
-            $tab = 'availability';
+        if (! in_array($tab, ['branches', 'availability', 'transactions', 'contribution', 'approval'], true)) {
+            $tab = 'branches';
         }
 
         return '/admin/branch-management?tab=' . $tab;

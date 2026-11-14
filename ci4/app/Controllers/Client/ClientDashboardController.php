@@ -60,6 +60,11 @@ class ClientDashboardController extends BaseController
                 ->limit(5)
                 ->get()
                 ->getResultArray();
+
+            // Verified existing-member records, labelled "Recorded by branch".
+            $recentPayments = array_merge($recentPayments, \App\Services\LegacyRecordService::verifiedPaymentsAsRows((int) $latestPlan['plan_id']));
+            usort($recentPayments, static fn (array $a, array $b): int => strcmp((string) $b['payment_date'], (string) $a['payment_date']));
+            $recentPayments = array_slice($recentPayments, 0, 5);
         }
 
         $membershipSince = '';
@@ -69,7 +74,13 @@ class ClientDashboardController extends BaseController
             $membershipSince = date('F Y', strtotime((string) $user['created_at']));
         }
 
+        $standing = ! empty($latestPlan['plan_id']) ? (new \App\Services\PlanLedgerService())->summarize((int) $latestPlan['plan_id']) : null;
+        // The same figures the staff client page shows (one source: ClientPlanSummary).
+        $summary = ! empty($latestPlan['plan_id']) ? (new \App\Services\ClientPlanSummary())->forPlan((int) $latestPlan['plan_id']) : null;
+
         return view('client/dashboard', [
+            'standing' => $standing,
+            'summary' => $summary,
             'role_layout' => 'layouts/plan_holder',
             'page_title' => 'Overview',
             'page_sub' => 'Your membership, payments, and next steps.',

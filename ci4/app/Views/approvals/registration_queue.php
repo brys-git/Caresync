@@ -8,12 +8,18 @@
     <?= view('components/alert', ['type' => 'success', 'message' => session()->getFlashdata('success')]) ?>
 <?php endif; ?>
 
+<?= view('partials/search_bar', [
+    'action'      => $search_action ?? '',
+    'term'        => $search ?? '',
+    'placeholder' => 'Applicant name, email or GCash reference',
+]) ?>
+
 <section class="cs-panel">
     <div class="cs-panel__body cs-panel__body--flush">
         <?php if (empty($rows)): ?>
             <?= view('components/empty_state', [
                 'icon'  => 'ti-user-check',
-                'title' => 'No pending registrations for approval',
+                'title' => ! empty($search) ? 'No pending registrations match "' . $search . '"' : 'No pending registrations for approval',
             ]) ?>
         <?php else: ?>
             <div class="cs-tablewrap">

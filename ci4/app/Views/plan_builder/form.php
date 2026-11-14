@@ -5,17 +5,23 @@
 $errors = $errors ?? [];
 $plan = $plan ?? null;
 $package = $package ?? null;
-$inclusions = $inclusions ?? [];
+$packages = $packages ?? [];
 $isEdit = $program_id !== null;
 $actionUrl = $isEdit ? base_url('plan-builder/' . (int) $program_id . '/update') : base_url('plan-builder/store');
-if (empty($inclusions)) {
-    $inclusions = [['item_name' => '', 'description' => '']];
-}
+$selectedPackageId = (string) old('package_id', (string) ($plan['package_id'] ?? ''));
 ?>
 
 <a class="text-decoration-none text-muted mb-3 d-inline-block" href="<?= base_url($isEdit ? 'plan-builder/' . (int) $program_id : 'plan-builder') ?>">
     <i class="ti ti-arrow-left me-1"></i> <?= $isEdit ? 'Back to Plan' : 'Back to Plan Builder' ?>
 </a>
+
+<?php if (! empty($needs_approval)): ?>
+    <?= view('components/alert', [
+        'type' => 'info',
+        'dismissible' => false,
+        'message' => 'This plan will be submitted to System Admin for approval - it will not appear at registration or be selectable until approved.',
+    ]) ?>
+<?php endif; ?>
 
 <form method="post" action="<?= $actionUrl ?>" id="planBuilderForm">
     <?= csrf_field() ?>
@@ -77,71 +83,84 @@ if (empty($inclusions)) {
     <section class="cs-panel mb-3">
         <div class="cs-panel__head"><h2 class="cs-panel__title">Entitled package</h2></div>
         <div class="cs-panel__body">
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <label class="form-label" for="package_name">Package Name</label>
-                    <input id="package_name" name="package_name" class="form-control <?= isset($errors['package_name']) ? 'is-invalid' : '' ?>" maxlength="100" required
-                        value="<?= esc(old('package_name', (string) ($package['package_name'] ?? ''))) ?>">
-                    <?php if (isset($errors['package_name'])): ?><div class="invalid-feedback"><?= esc($errors['package_name']) ?></div><?php endif; ?>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label" for="package_description">Package Description</label>
-                    <input id="package_description" name="package_description" class="form-control" maxlength="500"
-                        value="<?= esc(old('package_description', (string) ($package['description'] ?? ''))) ?>">
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="cs-panel mb-3">
-        <div class="cs-panel__head"><h2 class="cs-panel__title">Inclusions</h2></div>
-        <div class="cs-panel__body">
-            <?php if (isset($errors['inclusions'])): ?>
-                <div class="alert alert-danger py-2"><?= esc($errors['inclusions']) ?></div>
-            <?php endif; ?>
-            <div id="inclusionRows">
-                <?php foreach ($inclusions as $i => $item): ?>
-                    <div class="row g-2 mb-2 inclusion-row">
-                        <input type="hidden" name="inclusions[<?= $i ?>][item_id]" value="<?= esc((string) ($item['item_id'] ?? '')) ?>">
-                        <div class="col-md-5">
-                            <input name="inclusions[<?= $i ?>][item_name]" class="form-control" placeholder="Item name (e.g. Embalming)" value="<?= esc((string) ($item['item_name'] ?? '')) ?>">
-                        </div>
-                        <div class="col-md-6">
-                            <input name="inclusions[<?= $i ?>][description]" class="form-control" placeholder="Details (optional)" value="<?= esc((string) ($item['description'] ?? '')) ?>">
-                        </div>
-                        <div class="col-md-1">
-                            <button type="button" class="btn btn-danger btn-sm remove-row-btn" title="Remove row"><i class="ti ti-x"></i></button>
+            <?php if (empty($packages)): ?>
+                <?= view('components/alert', [
+                    'type' => 'info',
+                    'dismissible' => false,
+                    'message' => 'No packages exist yet in the Services & Packages catalog. Create one there first, then come back to build this plan.',
+                ]) ?>
+                <a href="<?= base_url((int) session('role_id') === 2 ? 'branch-admin/packages/create' : 'admin/service-offer?tab=packages') ?>" class="btn btn-outline-primary btn-sm">
+                    <i class="ti ti-plus me-1"></i> Create a package
+                </a>
+            <?php else: ?>
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label class="form-label" for="package_id">Package</label>
+                        <select id="package_id" name="package_id" class="form-select <?= isset($errors['package_id']) ? 'is-invalid' : '' ?>" required>
+                            <option value="">Select a package Kaagapay offers&hellip;</option>
+                            <?php foreach ($packages as $pkg): ?>
+                                <option value="<?= (int) $pkg['package_id'] ?>" <?= $selectedPackageId === (string) $pkg['package_id'] ? 'selected' : '' ?>>
+                                    <?= esc((string) $pkg['package_name']) ?> (<?= cs_peso($pkg['base_price'] ?? 0) ?>)<?= (int) ($pkg['is_available'] ?? 1) === 0 ? ' - unavailable' : '' ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <?php if (isset($errors['package_id'])): ?><div class="invalid-feedback"><?= esc($errors['package_id']) ?></div><?php endif; ?>
+                        <div class="form-text">
+                            Managed on the <a href="<?= base_url((int) session('role_id') === 2 ? 'branch-admin/service-package' : 'admin/catalog') ?>">Services &amp; Packages</a> page - its name, price, and inclusions aren't edited here.
                         </div>
                     </div>
-                <?php endforeach; ?>
-            </div>
-            <button type="button" class="btn btn-ghost btn-sm" id="addRowBtn"><i class="ti ti-plus me-1"></i>Add inclusion</button>
+                </div>
+                <div id="packageInclusionsPreview" class="mt-3"></div>
+            <?php endif; ?>
         </div>
     </section>
 
     <div class="d-flex gap-2 mb-4">
-        <button type="submit" class="btn btn-primary"><?= $isEdit ? 'Save Changes' : 'Create Plan' ?></button>
+        <button type="submit" class="btn btn-primary" <?= empty($packages) ? 'disabled' : '' ?>><?= $isEdit ? 'Save Changes' : 'Create Plan' ?></button>
         <a href="<?= base_url($isEdit ? 'plan-builder/' . (int) $program_id : 'plan-builder') ?>" class="btn btn-ghost">Cancel</a>
     </div>
 </form>
 
-<template id="inclusionRowTemplate">
-    <div class="row g-2 mb-2 inclusion-row">
-        <input type="hidden" name="inclusions[__INDEX__][item_id]" value="">
-        <div class="col-md-5">
-            <input name="inclusions[__INDEX__][item_name]" class="form-control" placeholder="Item name (e.g. Embalming)">
-        </div>
-        <div class="col-md-6">
-            <input name="inclusions[__INDEX__][description]" class="form-control" placeholder="Details (optional)">
-        </div>
-        <div class="col-md-1">
-            <button type="button" class="btn btn-danger btn-sm remove-row-btn" title="Remove row"><i class="ti ti-x"></i></button>
-        </div>
-    </div>
-</template>
-
 <script>
 (function () {
+    function esc(str) {
+        const div = document.createElement('div');
+        div.textContent = str == null ? '' : String(str);
+        return div.innerHTML;
+    }
+
+    const packageSelect = document.getElementById('package_id');
+    const preview = document.getElementById('packageInclusionsPreview');
+
+    if (packageSelect && preview) {
+        function loadPreview() {
+            const id = packageSelect.value;
+            if (!id) {
+                preview.innerHTML = '';
+                return;
+            }
+            preview.innerHTML = '<span class="cs-muted small"><i class="ti ti-loader-2 me-1"></i>Loading inclusions&hellip;</span>';
+            fetch('<?= base_url('plan-builder/package-inclusions') ?>?package_id=' + encodeURIComponent(id), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (!data.items || !data.items.length) {
+                        preview.innerHTML = '<span class="cs-muted small">No inclusions listed for this package.</span>';
+                        return;
+                    }
+                    const list = data.items.map(function (item) {
+                        return '<li><strong>' + esc(item.name) + '</strong>' + (item.description ? ' - ' + esc(item.description) : '') + '</li>';
+                    }).join('');
+                    preview.innerHTML = '<div class="cs-muted small mb-1">Inclusions:</div><ul class="mb-0 small">' + list + '</ul>';
+                })
+                .catch(function () { preview.innerHTML = ''; });
+        }
+
+        packageSelect.addEventListener('change', loadPreview);
+        if (packageSelect.value) {
+            loadPreview();
+        }
+    }
+
     const priceInput = document.getElementById('plan_price');
     const feeInput = document.getElementById('monthly_fee');
     const termDisplay = document.getElementById('termDisplay');
@@ -159,33 +178,6 @@ if (empty($inclusions)) {
     priceInput.addEventListener('input', updateTerm);
     feeInput.addEventListener('input', updateTerm);
     updateTerm();
-
-    const rowsContainer = document.getElementById('inclusionRows');
-    const template = document.getElementById('inclusionRowTemplate');
-    let nextIndex = <?= (int) count($inclusions) ?>;
-
-    document.getElementById('addRowBtn').addEventListener('click', function () {
-        const html = template.innerHTML.replace(/__INDEX__/g, String(nextIndex));
-        nextIndex += 1;
-
-        const wrapper = document.createElement('div');
-        wrapper.innerHTML = html.trim();
-        rowsContainer.appendChild(wrapper.firstElementChild);
-    });
-
-    rowsContainer.addEventListener('click', function (e) {
-        const btn = e.target.closest('.remove-row-btn');
-        if (!btn) {
-            return;
-        }
-        const rows = rowsContainer.querySelectorAll('.inclusion-row');
-        if (rows.length > 1) {
-            btn.closest('.inclusion-row').remove();
-        } else {
-            // Keep at least one row - just clear it instead of removing.
-            btn.closest('.inclusion-row').querySelectorAll('input').forEach(function (input) { input.value = ''; });
-        }
-    });
 })();
 </script>
 <?= $this->endSection() ?>

@@ -6,7 +6,7 @@
 <?= view('components/alert', [
     'type' => 'info',
     'dismissible' => false,
-    'message' => 'Dedicated collection-entry, remittance, and commission-tracking screens for this role are still being built. This overview reflects payments already on record where you\'re the one who received them.',
+    'message' => 'This overview shows the payments you have received. Use Collection list to record new payments and My commission to see what you have earned.',
 ]) ?>
 
 <?= view('components/stat_rail', ['stats' => [

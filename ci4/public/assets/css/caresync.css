@@ -11,39 +11,40 @@
    -------------------------------------------------------------------------- */
 :root {
   /* Core palette */
-  --cs-ink: #14211f;
-  --cs-ink-2: #3d4b48;
-  --cs-ink-3: #6b7975;
-  --cs-paper: #f6f7f5;
+  --cs-ink: #171a2b;
+  --cs-ink-2: #414659;
+  --cs-ink-3: #6b7084;
+  --cs-paper: #f5f6fa;
   --cs-surface: #ffffff;
-  --cs-rail: #f0f2ef;
+  --cs-rail: #eef0f7;
 
-  --cs-pine: #1c3a34;
-  --cs-pine-dark: #12241f;
-  --cs-pine-600: #2a5a50;
-  --cs-pine-500: #35705f;
-  --cs-sage: #e7ede9;
-  --cs-sage-deep: #cfdcd5;
+  --cs-pine: #1b2473;
+  --cs-pine-dark: #111752;
+  --cs-pine-600: #2c3a9c;
+  --cs-pine-500: #4453c4;
+  --cs-sage: #e6e9f7;
+  --cs-sage-deep: #c8cdec;
 
-  --cs-brass: #a8762c;
-  --cs-brass-tint: #f7efdf;
+  --cs-brass: #9c6a3c;
+  --cs-brass-tint: #f6ede4;
+  --cs-brass-on-dark: #d79a5e;
 
   /* Semantic */
   --cs-ok: #2f7a4f;
   --cs-ok-tint: #e6f2ea;
-  --cs-warn: #b07300;
+  --cs-warn: #8f5d00;
   --cs-warn-tint: #fbf0da;
   --cs-stop: #a32b2b;
   --cs-stop-tint: #f8e7e7;
-  --cs-info: #2b5f8f;
-  --cs-info-tint: #e6eef6;
+  --cs-info: #146070;
+  --cs-info-tint: #e0f0f3;
 
   /* Lines & elevation. Flat surfaces by default; shadow means "floating". */
-  --cs-line: #dfe4e0;
-  --cs-line-soft: #ebefec;
-  --cs-lift-1: 0 1px 2px rgba(20, 33, 31, .06);
-  --cs-lift-2: 0 6px 16px -4px rgba(20, 33, 31, .12), 0 2px 6px rgba(20, 33, 31, .06);
-  --cs-lift-3: 0 20px 44px -12px rgba(20, 33, 31, .22);
+  --cs-line: #dbdfec;
+  --cs-line-soft: #e8eaf3;
+  --cs-lift-1: 0 1px 2px rgba(23, 26, 43, .06);
+  --cs-lift-2: 0 6px 16px -4px rgba(23, 26, 43, .12), 0 2px 6px rgba(23, 26, 43, .06);
+  --cs-lift-3: 0 20px 44px -12px rgba(23, 26, 43, .22);
 
   /* Shape */
   --cs-r-xs: 4px;
@@ -71,9 +72,9 @@
   --bs-border-radius-sm: var(--cs-r-sm);
   --bs-border-radius-lg: var(--cs-r-lg);
   --bs-primary: var(--cs-pine-600);
-  --bs-primary-rgb: 42, 90, 80;
+  --bs-primary-rgb: 44, 58, 156;
   --bs-link-color: var(--cs-pine-600);
-  --bs-link-color-rgb: 42, 90, 80;
+  --bs-link-color-rgb: 44, 58, 156;
   --bs-link-hover-color: var(--cs-pine-dark);
   --bs-secondary-color: var(--cs-ink-3);
   --bs-emphasis-color: var(--cs-ink);
@@ -186,7 +187,7 @@ body.cs-nav-collapsed .cs-brand { justify-content: center; }
   display: flex;
   flex-direction: column;
   background: var(--cs-pine);
-  color: #e4ece8;
+  color: #e7eaf8;
   border-right: 1px solid var(--cs-pine-dark);
   overflow: hidden;
   z-index: 40;
@@ -205,14 +206,20 @@ body.cs-nav-collapsed .cs-brand { justify-content: center; }
 .cs-brand:hover { text-decoration: none; color: #fff; }
 
 .cs-brand__mark {
-  width: 32px; height: 32px;
-  flex: 0 0 32px;
+  width: 44px; height: 44px;
+  flex: 0 0 44px;
   display: grid; place-items: center;
   border-radius: var(--cs-r-sm);
-  background: rgba(255, 255, 255, .1);
+  background: #fff;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12);
+  overflow: hidden;
 }
-.cs-brand__mark img { width: 20px; height: 20px; }
+/* The Kaagapay logo file has its own solid white background (not
+   transparent), so it sits in a small white chip rather than directly on
+   the sidebar. A slight inset (not filling the chip edge-to-edge) plus
+   object-fit: contain keeps the whole square mark visible and tidy
+   instead of looking like a hard-edged sticker. */
+.cs-brand__mark img { width: 38px; height: 38px; object-fit: contain; border-radius: 3px; }
 
 .cs-brand__text { line-height: 1.15; min-width: 0; }
 .cs-brand__name {
@@ -287,7 +294,7 @@ body.cs-nav-collapsed .cs-brand { justify-content: center; }
   transform: translateY(-50%);
   width: 3px; height: 18px;
   border-radius: 0 2px 2px 0;
-  background: var(--cs-brass);
+  background: var(--cs-brass-on-dark);
 }
 
 .cs-nav__label { overflow: hidden; text-overflow: ellipsis; }
@@ -300,8 +307,8 @@ body.cs-nav-collapsed .cs-brand { justify-content: center; }
   display: inline-grid;
   place-items: center;
   border-radius: 9px;
-  background: var(--cs-brass);
-  color: #fff;
+  background: var(--cs-brass-on-dark);
+  color: var(--cs-pine);
   font-size: .6875rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -360,8 +367,7 @@ body.cs-nav-collapsed .cs-brand { justify-content: center; }
   gap: .75rem;
   height: var(--cs-topbar-h);
   padding: 0 1.25rem;
-  background: rgba(255, 255, 255, .88);
-  backdrop-filter: saturate(180%) blur(10px);
+  background: #fff;
   border-bottom: 1px solid var(--cs-line);
 }
 
@@ -490,6 +496,7 @@ body.cs-nav-collapsed .cs-brand { justify-content: center; }
   letter-spacing: .01em;
 }
 .cs-avatar--lg { width: 44px; height: 44px; flex-basis: 44px; font-size: 1rem; }
+.cs-avatar--photo { object-fit: cover; background: none; }
 .cs-avatar--xl { width: 80px; height: 80px; flex-basis: 80px; font-size: 2rem; }
 
 .cs-user__name {
@@ -680,7 +687,7 @@ body.cs-nav-collapsed .cs-brand { justify-content: center; }
 
 .cs-table tbody tr:last-child td { border-bottom: 0; }
 .cs-table tbody tr { transition: background-color 90ms linear; }
-.cs-table tbody tr:hover { background: #fafbfa; }
+.cs-table tbody tr:hover { background: #fafbfd; }
 
 .cs-table__primary { font-weight: 600; color: var(--cs-ink); }
 .cs-table__sub { font-size: .78125rem; color: var(--cs-ink-3); }
@@ -798,7 +805,7 @@ body.cs-nav-collapsed .cs-brand { justify-content: center; }
   color: var(--cs-ink);
   background-color: #fff;
 }
-.form-control::placeholder { color: #9aa5a1; }
+.form-control::placeholder { color: #9aa0b4; }
 
 .form-control:focus, .form-select:focus {
   border-color: var(--cs-pine-500);
@@ -817,6 +824,12 @@ body.cs-nav-collapsed .cs-brand { justify-content: center; }
   border-color: var(--cs-pine-600);
 }
 .form-check-input:focus { border-color: var(--cs-pine-500); box-shadow: 0 0 0 3px rgba(53, 112, 95, .14); }
+
+/* Registration wizard's plan picker (Step 1, only shown when 2+ approved
+   plans exist) - a selectable card per plan built from a radio + label. */
+.cs-plan-option { cursor: pointer; border-color: var(--cs-line) !important; transition: border-color .15s, background-color .15s; }
+.cs-plan-option:hover { border-color: var(--cs-pine-400) !important; }
+.cs-plan-option:has(input:checked) { border-color: var(--cs-pine-600) !important; background: var(--cs-pine-50, rgba(53, 112, 95, .06)); }
 
 .input-group-text {
   background: var(--cs-rail);
@@ -892,7 +905,7 @@ body.cs-nav-collapsed .cs-brand { justify-content: center; }
   background: linear-gradient(90deg, var(--cs-pine-500), var(--cs-pine-600));
   transition: width 420ms cubic-bezier(.2, 0, .2, 1);
 }
-.cs-meter__fill--warn { background: linear-gradient(90deg, #c99235, var(--cs-brass)); }
+.cs-meter__fill--warn { background: linear-gradient(90deg, #c08a55, var(--cs-brass)); }
 
 .cs-meterrow {
   display: flex;
@@ -919,7 +932,7 @@ body.cs-nav-collapsed .cs-brand { justify-content: center; }
 .alert-success { background: var(--cs-ok-tint);   border-color: #c3ddce; color: #1f5b39; }
 .alert-warning { background: var(--cs-warn-tint); border-color: #e7d4a8; color: #7d5200; }
 .alert-danger  { background: var(--cs-stop-tint); border-color: #e5c2c2; color: #7d2020; }
-.alert-info    { background: var(--cs-info-tint); border-color: #c3d5e6; color: #204a6e; }
+.alert-info    { background: var(--cs-info-tint); border-color: #bcdde3; color: #0f4a57; }
 
 .cs-toasts {
   position: fixed;
@@ -937,7 +950,7 @@ body.cs-nav-collapsed .cs-brand { justify-content: center; }
   padding: .75rem .875rem;
   border-radius: var(--cs-r-md);
   background: var(--cs-ink);
-  color: #edf1ef;
+  color: #edeff7;
   font-size: .875rem;
   box-shadow: var(--cs-lift-3);
   animation: cs-toast-in 220ms cubic-bezier(.2, 0, .2, 1);
@@ -973,8 +986,8 @@ body.cs-nav-collapsed .cs-brand { justify-content: center; }
   .cs-content { padding: 0; max-width: none; }
   body { background: #fff; font-size: 11pt; }
 
-  .cs-panel, .cs-statrail, .card { border-color: #b9c2bd; break-inside: avoid; }
-  .cs-table thead th { position: static; background: #eef1ef !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .cs-panel, .cs-statrail, .card { border-color: #bcc1d6; break-inside: avoid; }
+  .cs-table thead th { position: static; background: #eef0f7 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .cs-table tbody tr { break-inside: avoid; }
   .cs-status { border: 1px solid currentColor; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   a[href]::after { content: ""; }
@@ -1072,7 +1085,7 @@ body.cs-nav-collapsed .cs-brand { justify-content: center; }
 .psgc-dropdown .psgc-loading,
 .psgc-dropdown .psgc-retry {
   padding: .5rem .75rem;
-  color: #6c757d;
+  color: var(--cs-ink-3);
   font-size: .875rem;
 }
 .psgc-dropdown .psgc-retry button {
@@ -1092,7 +1105,7 @@ body.cs-nav-collapsed .cs-brand { justify-content: center; }
 }
 .signin__aside {
   background: var(--cs-pine);
-  color: #dce5e1;
+  color: #e7eaf8;
   padding: 3rem;
   display: flex;
   flex-direction: column;
@@ -1100,6 +1113,18 @@ body.cs-nav-collapsed .cs-brand { justify-content: center; }
 }
 .signin__wordmark { display: flex; align-items: center; gap: .625rem; color: #fff; }
 .signin__wordmark span { font-family: var(--cs-serif); font-size: 1.25rem; font-weight: 600; }
+/* The Kaagapay logo file has its own solid white background (not
+   transparent), so on the dark .signin__aside it needs a deliberate white
+   chip behind it rather than sitting directly on the pine background. */
+.signin__logo {
+  display: grid; place-items: center;
+  width: 64px; height: 64px;
+  border-radius: var(--cs-r-sm);
+  background: #fff;
+  overflow: hidden;
+  flex: 0 0 64px;
+}
+.signin__logo img { width: 56px; height: 56px; object-fit: contain; border-radius: 3px; }
 .signin__statement {
   font-family: var(--cs-serif);
   font-size: clamp(1.75rem, 2.6vw, 2.5rem);
@@ -1213,6 +1238,9 @@ body.cs-nav-collapsed .cs-brand { justify-content: center; }
 .input-group > .cs-input-toggle:hover { background: var(--cs-rail); }
 
 .cs-narrow--sm { max-width: 700px; }
+
+/* Collector GCash QR code (client Make Payment + collector's own settings). */
+.cs-qr { max-width: 240px; width: 100%; }
 .cs-incl__check { color: var(--cs-pine-500); font-size: 1.05rem; line-height: 1.4; }
 .cs-incl__sub { font-size: .9rem; }
 
@@ -1241,3 +1269,74 @@ body.cs-nav-collapsed .cs-brand { justify-content: center; }
 .cl-stat__value { font-size: 1.25rem; font-weight: 700; }
 .cl-stat__label { font-size: .75rem; color: var(--cs-ink-3); text-transform: uppercase; letter-spacing: .03em; }
 .signin__small { font-size: .875rem; }
+
+/* Client details page (shared by System Admin, Branch Admin, Staff) */
+.cs-cd-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.cs-cd-strip .cs-stat { border-bottom: 1px solid var(--cs-line-soft); }
+.cs-cd-strip .cs-stat:nth-child(4n) { border-right: 0; }
+.cs-cd-strip .cs-stat:nth-last-child(-n+4) { border-bottom: 0; }
+.cs-cd-strip .cs-stat__value.cs-cd-text { font-size: 1.1875rem; }
+@media (max-width: 991.98px) {
+  .cs-cd-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cs-cd-strip .cs-stat:nth-child(4n) { border-right: 1px solid var(--cs-line-soft); }
+  .cs-cd-strip .cs-stat:nth-child(2n) { border-right: 0; }
+  .cs-cd-strip .cs-stat:nth-last-child(-n+4) { border-bottom: 1px solid var(--cs-line-soft); }
+  .cs-cd-strip .cs-stat:nth-last-child(-n+2) { border-bottom: 0; }
+}
+
+.cs-mgrid { display: flex; flex-wrap: wrap; gap: .3125rem; }
+.cs-mg {
+  display: inline-grid; place-items: center;
+  width: 2.125rem; height: 2.125rem;
+  border-radius: var(--cs-r-sm);
+  border: 1px solid var(--cs-line);
+  background: var(--cs-surface);
+  color: var(--cs-ink-3);
+  font-size: .75rem; font-weight: 600;
+}
+.cs-mg--paid     { background: var(--cs-ok-tint);   border-color: #c3ddce; color: var(--cs-ok); }
+.cs-mg--partial  { background: var(--cs-warn-tint); border-color: #e7d4a8; color: var(--cs-warn); background-image: linear-gradient(135deg, transparent 50%, rgba(143, 93, 0, .18) 50%); }
+.cs-mg--overdue  { background: var(--cs-stop-tint); border-color: #e5c2c2; color: var(--cs-stop); }
+.cs-mg--advance  { background: var(--cs-info-tint); border-color: #bcdde3; color: var(--cs-info); }
+.cs-mg--upcoming { background: var(--cs-surface);   border-style: dashed; }
+.cs-mg--key { width: .875rem; height: .875rem; vertical-align: -2px; margin-right: .125rem; }
+.cs-mlegend { display: flex; flex-wrap: wrap; gap: .25rem 1rem; }
+
+.cs-timeline { border-left: 2px solid var(--cs-line); margin-left: .5rem; padding-left: 1rem; }
+.cs-timeline li { position: relative; padding-bottom: .875rem; }
+.cs-timeline li::before {
+  content: ""; position: absolute; left: -1.4375rem; top: .4375rem;
+  width: .5625rem; height: .5625rem; border-radius: 50%;
+  background: var(--cs-pine-500); border: 2px solid var(--cs-surface);
+}
+
+/* --------------------------------------------------------------------------
+   Confirmation dialog (partials/confirm_dialog.php, opened by caresync.js
+   for anything marked data-cs-confirm)
+   -------------------------------------------------------------------------- */
+.cs-confirm {
+  border: 0;
+  padding: 0;
+  border-radius: var(--cs-r-md);
+  background: var(--cs-surface);
+  color: var(--cs-ink);
+  box-shadow: var(--cs-lift-3);
+  width: min(440px, calc(100vw - 2rem));
+}
+.cs-confirm::backdrop { background: rgba(23, 26, 43, .55); }
+.cs-confirm__box { padding: 1.5rem 1.5rem 1.25rem; }
+.cs-confirm__icon {
+  display: inline-grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: var(--cs-sage);
+  color: var(--cs-pine);
+  font-size: 1.375rem;
+  margin-bottom: .75rem;
+}
+.cs-confirm--danger .cs-confirm__icon { background: var(--cs-stop-tint); color: var(--cs-stop); }
+.cs-confirm__title { font-size: 1.0625rem; font-weight: 600; margin: 0 0 .375rem; }
+.cs-confirm__message { margin: 0 0 1.25rem; color: var(--cs-ink-2); font-size: .9375rem; }
+.cs-confirm__actions { display: flex; justify-content: flex-end; gap: .5rem; }

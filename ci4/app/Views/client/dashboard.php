@@ -15,17 +15,25 @@ if (! empty($plan['plan_id'])) {
     $paidAmount = (float) ($plan['paid_amount'] ?? $plan['total_paid'] ?? 0);
 }
 $remainingBalance = max(0, (float) ($plan['remaining_balance'] ?? ($planAmount - $paidAmount)));
+if (! empty($summary)) {
+    // One source with the staff client page: ClientPlanSummary.
+    $planAmount = (float) $summary['contract_amount'];
+    $paidAmount = (float) $summary['total_paid'];
+    $remainingBalance = (float) $summary['remaining_balance'];
+}
 $latestPayment = $recent_payments[0] ?? null;
 $latestPaymentLabel = $latestPayment ? ('#' . (string) ($latestPayment['payment_id'] ?? '')) : 'None yet';
 $statusTone = $state === 'active' ? 'active' : ($state === 'awaiting_activation' ? 'pending' : 'inactive');
 $statusText = $state === 'active'
     ? 'Your account is fully verified and eligible for services.'
     : ($state === 'awaiting_activation' ? 'Please complete your initial payment.' : 'Please complete registration to unlock access.');
-$progress = $planAmount > 0 ? min(100, max(0, (($paidAmount / max($planAmount, 1)) * 100))) : 0;
+$progress = ! empty($summary) ? (float) $summary['progress_pct'] : ($planAmount > 0 ? min(100, max(0, (($paidAmount / max($planAmount, 1)) * 100))) : 0);
 ?>
 <p class="cs-muted mb-3">
     Welcome back, <?= esc($userFullName ?: 'Member') ?> — Kaagapay member since <?= esc($membership_since !== '' ? $membership_since : 'not available') ?>.
 </p>
+
+<?= view('partials/plan_standing', ['standing' => $standing ?? null, 'standing_details' => true]) ?>
 
 <?php if (session()->getFlashdata('error')): ?>
     <?= view('components/alert', ['type' => 'danger', 'message' => session()->getFlashdata('error')]) ?>
@@ -47,7 +55,7 @@ $progress = $planAmount > 0 ? min(100, max(0, (($paidAmount / max($planAmount, 1
             <div class="cs-panel__head">
                 <div>
                     <h2 class="cs-panel__title">Membership completion</h2>
-                    <p class="cs-panel__note"><?= esc((int) floor($paidAmount / max($monthlyFee ?: 1, 1))) ?> of <?= esc((int) ceil($planAmount / max($monthlyFee ?: 1, 1))) ?> payments completed</p>
+                    <p class="cs-panel__note"><?= ! empty($summary) ? (int) $summary['months_paid'] . ' of ' . (int) $summary['total_months'] : esc((int) floor($paidAmount / max($monthlyFee ?: 1, 1))) . ' of ' . esc((int) ceil($planAmount / max($monthlyFee ?: 1, 1))) ?> months paid</p>
                 </div>
                 <span class="cs-muted">Latest payment: <?= esc($latestPaymentLabel) ?></span>
             </div>
@@ -74,7 +82,13 @@ $progress = $planAmount > 0 ? min(100, max(0, (($paidAmount / max($planAmount, 1
                                 <?php foreach ($recent_payments as $payment): ?>
                                     <tr>
                                         <td class="text-nowrap"><?= cs_date($payment['payment_date'] ?? ($payment['created_at'] ?? null)) ?></td>
-                                        <td>Payment recorded via <?= esc(strtoupper((string) ($payment['payment_method'] ?? '—'))) ?></td>
+                                        <td>
+                                            <?php if (! empty($payment['is_legacy'])): ?>
+                                                Payment <strong>recorded by branch</strong> (<?= esc((string) ($payment['channel_label'] ?? 'Cash')) ?>)
+                                            <?php else: ?>
+                                                Payment recorded via <?= esc(strtoupper((string) ($payment['payment_method'] ?? '—'))) ?>
+                                            <?php endif; ?>
+                                        </td>
                                         <td><?= cs_status((string) ($payment['status'] ?? 'pending')) ?></td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -105,7 +119,7 @@ $progress = $planAmount > 0 ? min(100, max(0, (($paidAmount / max($planAmount, 1
             <div class="cs-panel__head"><h2 class="cs-panel__title">Quick actions</h2></div>
             <div class="cs-panel__body cs-panel__body--flush">
                 <a class="cs-linkrow" href="<?= base_url('client/membership') ?>"><span>View membership</span><i class="ti ti-chevron-right cs-muted ms-auto" aria-hidden="true"></i></a>
-                <a class="cs-linkrow" href="<?= base_url('initial-payment') ?>"><span>Make payment</span><i class="ti ti-chevron-right cs-muted ms-auto" aria-hidden="true"></i></a>
+                <a class="cs-linkrow" href="<?= base_url($state === 'awaiting_activation' ? 'initial-payment' : 'client/payment/make') ?>"><span>Make payment</span><i class="ti ti-chevron-right cs-muted ms-auto" aria-hidden="true"></i></a>
                 <a class="cs-linkrow" href="<?= base_url('client/payment') ?>"><span>View payment history</span><i class="ti ti-chevron-right cs-muted ms-auto" aria-hidden="true"></i></a>
                 <a class="cs-linkrow" href="<?= base_url('client/service') ?>"><span>Request a service</span><i class="ti ti-chevron-right cs-muted ms-auto" aria-hidden="true"></i></a>
                 <a class="cs-linkrow" href="<?= base_url('client/profile') ?>"><span>Update profile</span><i class="ti ti-chevron-right cs-muted ms-auto" aria-hidden="true"></i></a>

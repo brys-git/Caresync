@@ -34,6 +34,43 @@ $isEdit = ($wizard['context'] ?? 'register') === 'edit';
             </ul>
         </div>
     </div>
+    <?php if (! empty($wizard['show_plan_select'])): ?>
+    <div class="cs-panel mb-4">
+        <div class="cs-panel__head">
+            <h2 class="cs-panel__title">Choose a Plan</h2>
+        </div>
+        <div class="cs-panel__body">
+            <div class="row g-3">
+                <?php $selectedProgramId = (string) old('program_id', (string) ($wizard['plans'][0]['program_id'] ?? '')); ?>
+                <?php foreach ($wizard['plans'] as $planOption): ?>
+                    <?php $optionId = 'program_id_' . (int) $planOption['program_id']; ?>
+                    <div class="col-md-6">
+                        <label class="cs-plan-option d-block border rounded p-3 h-100" for="<?= esc($optionId, 'attr') ?>">
+                            <div class="d-flex align-items-start gap-2">
+                                <input class="form-check-input mt-1" type="radio" name="program_id" id="<?= esc($optionId, 'attr') ?>"
+                                    value="<?= (int) $planOption['program_id'] ?>"
+                                    <?= $selectedProgramId === (string) $planOption['program_id'] ? 'checked' : '' ?> required>
+                                <span>
+                                    <strong class="d-block"><?= esc((string) $planOption['program_name']) ?></strong>
+                                    <span class="cs-muted small d-block">
+                                        <?= cs_money($planOption['plan_price'] ?? 0) ?> total &middot;
+                                        <?= cs_money($planOption['monthly_fee'] ?? 0) ?>/month &middot;
+                                        <?= (int) ($planOption['term_months'] ?? 0) ?> months
+                                    </span>
+                                    <?php if (! empty($planOption['description'])): ?>
+                                        <span class="cs-muted small d-block mt-1"><?= esc((string) $planOption['description']) ?></span>
+                                    <?php endif; ?>
+                                </span>
+                            </div>
+                        </label>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </div>
+    <?php elseif (! empty($wizard['plans'])): ?>
+        <input type="hidden" name="program_id" value="<?= (int) $wizard['plans'][0]['program_id'] ?>">
+    <?php endif; ?>
     <?php endif; ?>
 
     <div class="cs-panel mb-4">

@@ -10,8 +10,12 @@ use Config\Services;
 
 class Users extends BaseController
 {
-    public function create(): string
+    public function create()
     {
+        if ((int) session('role_id') !== 1) {
+            return redirect()->to('/unauthorized');
+        }
+
         $db = db_connect();
 
         $roles = $db->table('roles')->select('role_id, role_name')->orderBy('role_id', 'ASC')->get()->getResultArray();
@@ -36,6 +40,12 @@ class Users extends BaseController
     public function store()
     {
         $creatorRole = (int) session('role_id');
+
+        // System Admin only. Branch Admin and Staff create accounts from their
+        // own Create Account pages; the route filter is not the only guard.
+        if ($creatorRole !== 1) {
+            return redirect()->to('/unauthorized');
+        }
 
         $rules = [
             'username' => 'required|min_length[4]|max_length[50]|is_unique[users.username]',

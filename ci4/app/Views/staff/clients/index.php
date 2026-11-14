@@ -50,10 +50,17 @@
             >
                 <p class="cs-muted mb-3">View and manage all registered plan holders in your branch</p>
 
+                <?= view('partials/search_bar', [
+                    'action'      => base_url('staff/client-management'),
+                    'term'        => $search ?? '',
+                    'placeholder' => 'Name, email, mobile number, or plan number',
+                ]) ?>
+
                 <?php if (empty($clients)): ?>
                     <?= view('components/empty_state', [
                         'icon'  => 'ti-users',
-                        'title' => 'No plan holders found for this branch',
+                        'title' => ! empty($search) ? 'No plan holders match "' . $search . '"' : 'No plan holders found for this branch',
+                        'text'  => ! empty($search) ? 'Check the spelling or try fewer words, then search again - or clear the search to see everyone.' : '',
                     ]) ?>
                 <?php else: ?>
                     <div class="cs-tablewrap">

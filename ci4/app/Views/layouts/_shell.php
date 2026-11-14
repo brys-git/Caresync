@@ -24,6 +24,29 @@ $cs_role = $cs_role ?? basename((string) ($role_layout ?? 'layouts/admin'), '.ph
 $nav        = config('Nav');
 $navDef     = $nav->for($cs_role);
 $navCounts  = $nav_counts ?? [];
+// Nothing ever passed nav_counts['unread'] from a controller, so the bell
+// badge (topbar.php) and the plan_holder sidebar's "Notifications" count
+// (Nav.php) were permanently stuck at 0 even with real unread rows in the
+// table. Computed here, once, as the shared shell every role's layout
+// extends - so it fills in the badge everywhere without touching every
+// controller's view() call, and any controller that does pass its own
+// 'unread' still wins.
+if (! array_key_exists('unread', $navCounts)) {
+    $navUserId = (int) (session('user_id') ?? 0);
+    $navCounts['unread'] = $navUserId > 0
+        ? (new \App\Services\NotificationService())->getUnreadCount($navUserId)
+        : 0;
+}
+// Sidebar badges (pending service requests, IDs needing review) for Branch Admin and
+// Staff. Computed by MetricsService, the same source as the dashboards; a controller
+// that passes its own nav_counts still wins.
+if (in_array((int) (session('role_id') ?? 0), [2, 3], true) && ! array_key_exists('pending_requests', $navCounts)) {
+    try {
+        $navCounts += (new \App\Services\MetricsService())->navCounts((int) session('role_id'), (int) (session('branch_id') ?? 0));
+    } catch (\Throwable $e) {
+        log_message('error', 'Sidebar counts unavailable: ' . $e->getMessage());
+    }
+}
 $activeNav  = (string) ($active_nav ?? '');
 $pageTitle  = (string) ($page_title ?? 'Dashboard');
 $navPref    = (string) (service('request')->getCookie('cs_nav') ?? 'open');
@@ -34,11 +57,11 @@ $isHolder   = $cs_role === 'plan_holder';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#1c3a34">
+    <meta name="theme-color" content="#1b2473">
     <title><?= esc($pageTitle) ?> · CareSync</title>
     <link rel="icon" href="<?= base_url('assets/favicon_io/favicon.ico') ?>">
     <link rel="stylesheet" href="<?= base_url('assets/css/main.css') ?>">
-    <link rel="stylesheet" href="<?= base_url('assets/css/caresync.css') ?>">
+    <link rel="stylesheet" href="<?= cs_asset_url('assets/css/caresync.css') ?>">
 </head>
 <body class="<?= $navPref === 'collapsed' ? 'cs-nav-collapsed' : '' ?> <?= $isHolder ? 'cs-holder-view' : '' ?>">
 
@@ -92,6 +115,8 @@ $isHolder   = $cs_role === 'plan_holder';
 </div>
 
 <div class="cs-scrim" data-cs-scrim aria-hidden="true"></div>
+
+<?= view('partials/confirm_dialog') ?>
 
 <script src="<?= base_url('assets/js/caresync.js') ?>" defer></script>
 <script src="<?= base_url('assets/js/main.js') ?>" type="module"></script>

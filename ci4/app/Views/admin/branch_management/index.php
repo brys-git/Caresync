@@ -3,7 +3,14 @@
 <?= $this->section('content') ?>
 <?php // Flash messages are already surfaced as toasts by layouts/_shell.php - no need to render them again here. ?>
 
+<div class="mb-3 text-end">
+    <a href="<?= site_url('/admin/branch-management/create') ?>" class="btn btn-primary"><i class="ti ti-plus" aria-hidden="true"></i> Add Branch</a>
+</div>
+
 <ul class="nav nav-tabs mb-4">
+    <li class="nav-item">
+        <a class="nav-link <?= ($tab ?? '') === 'branches' ? 'active' : '' ?>" href="<?= site_url('/admin/branch-management?tab=branches') ?>">Branches</a>
+    </li>
     <li class="nav-item">
         <a class="nav-link <?= ($tab ?? '') === 'availability' ? 'active' : '' ?>" href="<?= site_url('/admin/branch-management?tab=availability') ?>">Branch Services / Availability</a>
     </li>
@@ -17,6 +24,58 @@
         <a class="nav-link <?= ($tab ?? '') === 'approval' ? 'active' : '' ?>" href="<?= site_url('/admin/branch-management?tab=approval') ?>">Approval (Services &amp; Packages)</a>
     </li>
 </ul>
+
+<?php if (($tab ?? '') === 'branches'): ?>
+    <section class="cs-panel">
+        <div class="cs-panel__body cs-panel__body--flush">
+            <?php if (empty($branch_rows ?? [])): ?>
+                <?= view('components/empty_state', ['icon' => 'ti-building-store', 'title' => 'No branches yet']) ?>
+            <?php else: ?>
+                <div class="cs-tablewrap">
+                    <table class="cs-table">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Branch</th>
+                                <th>Address</th>
+                                <th>Manager</th>
+                                <th>Contact</th>
+                                <th>Plan holders</th>
+                                <th>Status</th>
+                                <th class="cs-table__actions">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($branch_rows as $b): ?>
+                                <?php $isActive = ($b['status'] ?? '') === 'active'; ?>
+                                <tr>
+                                    <td class="text-nowrap"><?= esc($b['branch_code'] ?? '-') ?></td>
+                                    <td>
+                                        <?= esc($b['branch_name']) ?>
+                                        <div class="cs-muted small"><?= ($b['branch_type'] ?? '') === 'main' ? 'Main Office' : 'Branch Office' ?></div>
+                                    </td>
+                                    <td><?= esc(implode(', ', array_filter([$b['address_street'] ?? '', $b['address_barangay'] ?? '', $b['address_city'] ?? '', $b['address_province'] ?? '']))) ?></td>
+                                    <td><?= esc(trim(($b['mgr_first'] ?? $b['manager_first_name'] ?? '') . ' ' . ($b['mgr_last'] ?? $b['manager_last_name'] ?? '')) ?: '-') ?></td>
+                                    <td><?= esc($b['contact_number'] ?? '-') ?></td>
+                                    <td><?= (int) ($b['client_count'] ?? 0) ?></td>
+                                    <td><?= cs_status($isActive ? 'active' : 'inactive') ?></td>
+                                    <td class="cs-table__actions">
+                                        <a class="btn btn-sm btn-outline-primary" href="<?= site_url('/admin/branch-management/edit/' . (int) $b['branch_id']) ?>">Edit</a>
+                                        <form method="post" action="<?= site_url('/admin/branch-management/toggle-status/' . (int) $b['branch_id']) ?>" class="d-inline"
+                                              data-cs-confirm="<?= $isActive ? 'Deactivate' : 'Activate' ?> this branch? Its records are not deleted." data-cs-confirm-title="<?= $isActive ? 'Deactivate branch' : 'Activate branch' ?>" data-cs-confirm-ok="<?= $isActive ? 'Deactivate' : 'Activate' ?>">
+                                            <?= csrf_field() ?>
+                                            <button type="submit" class="btn btn-sm <?= $isActive ? 'btn-danger' : 'btn-outline-primary' ?>"><?= $isActive ? 'Deactivate' : 'Activate' ?></button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </div>
+    </section>
+<?php endif; ?>
 
 <?php if (($tab ?? '') === 'availability'): ?>
     <section class="cs-panel">

@@ -24,7 +24,7 @@ class Dashboard extends BaseController
             return redirect()->to('/dashboard/collector');
         }
 
-        return redirect()->to('/dashboard/plan-holder');
+        return redirect()->to('/client/dashboard');
     }
 
     public function admin(): string
@@ -247,12 +247,7 @@ class Dashboard extends BaseController
         }
 
         $db = db_connect();
-        $pendingPayments = (int) $db->table('payments pay')
-            ->join('plans p', 'p.plan_id = pay.plan_id', 'inner')
-            ->join('plan_holders ph', 'ph.plan_holder_id = p.plan_holder_id', 'inner')
-            ->where('ph.branch_id', $branchId)
-            ->where('pay.status', 'pending')
-            ->countAllResults();
+        $pendingPayments = (new \App\Services\MetricsService())->pendingPayments($branchId);
 
         $unassignedServices = 0;
         if ($this->serviceCalendarExists()) {
@@ -342,36 +337,26 @@ class Dashboard extends BaseController
             $totals[$label] = 0.0;
         }
 
-        $result = $db->table('payments pay')
-            ->select("DATE_FORMAT(pay.payment_date, '%Y-%m') AS month, SUM(pay.amount) AS total")
-            ->join('plans p', 'p.plan_id = pay.plan_id', 'inner')
-            ->join('plan_holders ph', 'ph.plan_holder_id = p.plan_holder_id', 'inner')
-            ->where('ph.branch_id', $branchId)
-            ->where('pay.status', 'approved')
-            ->where('pay.payment_date >=', $startDate)
-            ->groupBy('month')
-            ->get()
-            ->getResultArray();
-
-        foreach ($result as $row) {
-            if (array_key_exists($row['month'], $totals)) {
-                $totals[$row['month']] = (float) $row['total'];
+        // Same paid-only, branch-scoped figures as analytics and reports.
+        $metrics = new \App\Services\MetricsService();
+        foreach ($metrics->collectedByMonth($branchId, $startDate, date('Y-m-t')) as $row) {
+            if (array_key_exists($row['month_key'], $totals)) {
+                $totals[$row['month_key']] = $row['total_amount'];
             }
         }
 
-        $methodRows = $db->table('payments pay')
-            ->select('pay.payment_method, SUM(pay.amount) AS total')
-            ->join('plans p', 'p.plan_id = pay.plan_id', 'inner')
-            ->join('plan_holders ph', 'ph.plan_holder_id = p.plan_holder_id', 'inner')
-            ->where('ph.branch_id', $branchId)
-            ->where('pay.status', 'approved')
-            ->where('DATE_FORMAT(pay.payment_date, "%Y-%m")', date('Y-m'))
-            ->groupBy('pay.payment_method')
-            ->get()
-            ->getResultArray();
+        $monthStart = date('Y-m-01');
+        $methodRows = [];
+        foreach (['cash', 'gcash'] as $method) {
+            $amount = $metrics->collected($branchId, $monthStart, date('Y-m-t'), ['method' => $method]);
+            if ($amount > 0) {
+                $methodRows[] = ['payment_method' => $method, 'total' => $amount];
+            }
+        }
 
         $methodBreakdown = [];
-        $monthlyTotal = array_sum($totals);
+        // Share of THIS month's collections (the method rows are this month only).
+        $monthlyTotal = $metrics->collected($branchId, $monthStart, date('Y-m-t'));
         foreach ($methodRows as $row) {
             $methodBreakdown[] = [
                 'method' => $row['payment_method'] ?: 'Other',

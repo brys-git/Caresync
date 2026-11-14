@@ -19,11 +19,7 @@ $eligibleToClaim = $isEntitlement && (bool) ($entitlement['eligible'] ?? false);
 
     <div class="cs-hero mb-3">
         <div class="cs-hero__image">
-            <?php if (! empty($package['image_path'])): ?>
-                <img src="<?= esc(base_url((string) $package['image_path'])) ?>" alt="<?= esc((string) ($package['package_name'] ?? 'Package')) ?>">
-            <?php else: ?>
-                <i class="ti ti-package" aria-hidden="true"></i>
-            <?php endif; ?>
+            <img src="<?= esc(cs_image_url($package['image_path'] ?? null)) ?>" alt="<?= esc((string) ($package['package_name'] ?? 'Package')) ?>" onerror="this.onerror=null;this.src='<?= esc(base_url('assets/images/no-image.png')) ?>'">
         </div>
         <div class="cs-hero__body">
             <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">

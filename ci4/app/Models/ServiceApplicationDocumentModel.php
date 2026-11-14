@@ -12,6 +12,7 @@ class ServiceApplicationDocumentModel extends Model
     protected $useAutoIncrement = true;
     protected $allowedFields    = [
         'application_id',
+        'document_type',
         'filename',
         'original_name',
         'mime_type',

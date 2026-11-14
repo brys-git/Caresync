@@ -4,7 +4,7 @@
 <?php if (! empty($show_reports_nav)): ?>
     <?php $this->setData(['reports_base_path' => $reports_base_path ?? '/admin/reports', 'active_report' => '']) ?>
     <?= $this->include('partials/reports_nav') ?>
-    <p class="cs-muted small mt-n2 mb-3">Overdue, Ledger, Collections, Commission, and Remittance are dedicated, exportable reports (panel brief section 7) - the dashboard below stays as a general at-a-glance summary.</p>
+    <p class="cs-muted small mt-n2 mb-3">Overdue, Ledger, Collections, Commission, and Remittance are separate reports you can print or save as PDF. The summary below is a quick overview.</p>
 <?php endif; ?>
 
 <?= view('components/stat_rail', ['stats' => [
@@ -18,7 +18,7 @@
     ['label' => 'Total members', 'icon' => 'ti-users', 'value' => $summary['member_status']['total_members'] ?? 0],
     ['label' => 'Active members', 'icon' => 'ti-user-check', 'value' => $summary['member_status']['active_members'] ?? 0, 'tone' => 'ok'],
     ['label' => 'Inactive members', 'icon' => 'ti-user-off', 'value' => $summary['member_status']['inactive_members'] ?? 0, 'tone' => 'idle'],
-    ['label' => 'Monthly collections', 'icon' => 'ti-cash', 'value' => $summary['payment_breakdown']['total_amount'] ?? 0, 'money' => true, 'tone' => 'money'],
+    ['label' => 'Collected this year', 'icon' => 'ti-cash', 'value' => $summary['payment_breakdown']['total_amount'] ?? 0, 'money' => true, 'tone' => 'money'],
 ]]) ?>
 
 <section class="cs-panel mb-3">

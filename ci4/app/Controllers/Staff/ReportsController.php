@@ -4,9 +4,9 @@ namespace App\Controllers\Staff;
 
 use App\Controllers\BaseController;
 use App\Models\PaymentModel;
+use App\Services\ReportPdfService;
+use App\Services\ReportService;
 use CodeIgniter\Exceptions\PageNotFoundException;
-use Dompdf\Dompdf;
-use Dompdf\Options;
 
 class ReportsController extends BaseController
 {
@@ -40,12 +40,8 @@ class ReportsController extends BaseController
             return $this->exportCsv($filters);
         }
 
-        if ($mode === 'pdf') {
-            return $this->exportPdf($filters);
-        }
-
-        if ($mode === 'print') {
-            return view('staff/reports/remittance_export', $this->buildExportViewData($filters, true));
+        if ($mode === 'pdf' || $mode === 'print') {
+            return $this->remittancePdf($filters, $mode === 'print');
         }
 
         return view('staff/reports/index', $this->buildViewData($filters, false));
@@ -86,7 +82,13 @@ class ReportsController extends BaseController
 
         return [
             'total_transactions' => (int) ($row['total_transactions'] ?? 0),
-            'total_collected' => (float) ($row['total_collected'] ?? 0),
+            // Collected money comes from MetricsService (paid only), like every other report.
+            'total_collected' => (new \App\Services\MetricsService())->collected(
+                (int) $filters['branch_id'],
+                (string) $filters['date_from'],
+                (string) $filters['date_to'],
+                ['method' => (string) ($filters['payment_method'] ?? ''), 'received_by' => (int) ($filters['received_by'] ?? 0), 'search' => (string) ($filters['search'] ?? '')]
+            ),
             'total_pending' => (float) ($row['total_pending'] ?? 0),
             'total_cancelled' => (float) ($row['total_cancelled'] ?? 0),
         ];
@@ -103,85 +105,6 @@ class ReportsController extends BaseController
             ->orderBy('u.last_name', 'ASC')
             ->get()
             ->getResultArray();
-    }
-
-    private function buildExportViewData(array $filters, bool $autoPrint): array
-    {
-        $rows = $this->getRows($filters);
-        $staffOptions = $this->getStaffOptions((int) $filters['branch_id']);
-        $branch = db_connect()->table('branches')
-            ->select('branch_id, branch_name, address_street, address_barangay, address_city, address_province')
-            ->where('branch_id', (int) $filters['branch_id'])
-            ->get()
-            ->getRowArray();
-
-        $coordinatorName = '';
-        $coordinatorContact = '';
-        if ((int) $filters['received_by'] > 0) {
-            foreach ($staffOptions as $staff) {
-                if ((int) $staff['user_id'] === (int) $filters['received_by']) {
-                    $coordinatorName = trim(((string) ($staff['first_name'] ?? '')) . ' ' . ((string) ($staff['last_name'] ?? '')));
-                    $coordinatorContact = (string) ($staff['contact_number'] ?? '');
-                    break;
-                }
-            }
-        }
-
-        $exportRows = [];
-        $maxRows = 30;
-        $index = 1;
-
-        foreach ($rows as $row) {
-            if ($index > $maxRows) {
-                break;
-            }
-
-            $monthMap = array_fill(1, 12, '');
-            $monthNumber = (int) date('n', strtotime((string) ($row['payment_date'] ?? date('Y-m-d'))));
-            if ($monthNumber >= 1 && $monthNumber <= 12) {
-                $monthMap[$monthNumber] = number_format((float) ($row['amount'] ?? 0), 2);
-            }
-
-            $exportRows[] = [
-                'no' => $index,
-                'plan_holder_name' => trim(((string) ($row['client_first'] ?? '')) . ' ' . ((string) ($row['client_last'] ?? ''))),
-                'control_no' => (string) ($row['unique_identifier'] ?? ''),
-                'date_started' => (string) ($row['start_date'] ?? ''),
-                'months' => $monthMap,
-            ];
-
-            $index++;
-        }
-
-        while (count($exportRows) < $maxRows) {
-            $exportRows[] = [
-                'no' => count($exportRows) + 1,
-                'plan_holder_name' => '',
-                'control_no' => '',
-                'date_started' => '',
-                'months' => array_fill(1, 12, ''),
-            ];
-        }
-
-        $location = '';
-        if ($branch) {
-            $parts = array_filter([
-                (string) ($branch['branch_name'] ?? ''),
-                (string) ($branch['address_barangay'] ?? ''),
-                (string) ($branch['address_city'] ?? ''),
-                (string) ($branch['address_province'] ?? ''),
-            ]);
-            $location = implode(', ', $parts);
-        }
-
-        return [
-            'export_rows' => $exportRows,
-            'export_date' => date('Y-m-d'),
-            'coordinator_name' => $coordinatorName,
-            'coordinator_contact' => $coordinatorContact,
-            'location_area' => $location,
-            'auto_print' => $autoPrint,
-        ];
     }
 
     private function baseQuery(array $filters)
@@ -207,16 +130,12 @@ class ReportsController extends BaseController
             $builder->where('p.received_by', (int) $filters['received_by']);
         }
 
-        if (! empty($filters['search'])) {
-            $search = (string) $filters['search'];
-            $builder->groupStart()
-                ->like('cu.first_name', $search)
-                ->orLike('cu.last_name', $search)
-                ->orLike("CONCAT(cu.first_name, ' ', cu.last_name)", $search, 'both', false)
-                ->orLike('ph.unique_identifier', $search)
-                ->orLike('p.reference_number', $search)
-                ->groupEnd();
-        }
+        // Was a CONCAT(...) LIKE with escaping switched off, so the raw search
+        // text went straight into the SQL. Every word is now matched with the
+        // builder's escaped LIKE, which also finds "Juan Cruz" across both name columns.
+        cs_apply_search($builder, (string) ($filters['search'] ?? ''), [
+            'cu.first_name', 'cu.last_name', 'cu.contact_number', 'ph.unique_identifier', 'p.reference_number', 'p.official_receipt_number',
+        ]);
 
         return $builder;
     }
@@ -231,7 +150,7 @@ class ReportsController extends BaseController
         $method = strtolower(trim((string) ($input['payment_method'] ?? '')));
         $status = strtolower(trim((string) ($input['status'] ?? '')));
         $receivedBy = (int) ($input['received_by'] ?? 0);
-        $search = trim((string) ($input['search'] ?? ''));
+        $search = cs_search_term($input['search'] ?? '');
 
         if ($dateFrom === '' || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFrom)) {
             $dateFrom = $startOfMonth;
@@ -275,6 +194,47 @@ class ReportsController extends BaseController
         ];
     }
 
+    private function remittancePdf(array $filters, bool $inline)
+    {
+        $rows = $this->getRows($filters);
+        $summary = $this->getSummary($filters);
+
+        // Same figures and labels as the on-screen summary cards.
+        $totals = [
+            ['label' => 'Total Pending', 'amount' => $summary['total_pending']],
+            ['label' => 'Total Cancelled', 'amount' => $summary['total_cancelled']],
+            ['label' => 'Total Collected', 'amount' => $summary['total_collected'], 'strong' => true],
+        ];
+
+        $filterLines = [];
+        if ($filters['payment_method'] !== '') {
+            $filterLines[] = 'Method: ' . strtoupper($filters['payment_method']);
+        }
+        if ($filters['status'] !== '') {
+            $filterLines[] = 'Status: ' . ucfirst($filters['status']);
+        }
+        if ((int) $filters['received_by'] > 0) {
+            foreach ($this->getStaffOptions((int) $filters['branch_id']) as $staff) {
+                if ((int) $staff['user_id'] === (int) $filters['received_by']) {
+                    $filterLines[] = 'Received by: ' . trim((string) $staff['first_name'] . ' ' . (string) $staff['last_name']);
+                    break;
+                }
+            }
+        }
+        if ($filters['search'] !== '') {
+            $filterLines[] = 'Search: "' . $filters['search'] . '"';
+        }
+
+        $branch = (new ReportService())->getBranchInfo((int) $filters['branch_id']);
+
+        return (new ReportPdfService())->respond($this->response, 'remittance', ['rows' => $rows, 'totals' => $totals], [
+            'branch_name'  => (string) ($branch['branch_name'] ?? ''),
+            'date_from'    => $filters['date_from'],
+            'date_to'      => $filters['date_to'],
+            'filter_lines' => $filterLines,
+        ], $inline);
+    }
+
     private function exportCsv(array $filters)
     {
         $rows = $this->getRows($filters);
@@ -303,27 +263,6 @@ class ReportsController extends BaseController
             ->setHeader('Content-Type', 'text/csv; charset=UTF-8')
             ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
             ->setBody((string) $csv);
-    }
-
-    private function exportPdf(array $filters)
-    {
-        $html = view('staff/reports/remittance_export', $this->buildExportViewData($filters, false));
-
-        $options = new Options();
-        $options->set('isRemoteEnabled', true);
-        $options->set('isHtml5ParserEnabled', true);
-
-        $dompdf = new Dompdf($options);
-        $dompdf->loadHtml($html);
-        $dompdf->setPaper('A4', 'portrait');
-        $dompdf->render();
-
-        $filename = 'staff_remittance_report_' . date('Ymd_His') . '.pdf';
-
-        return $this->response
-            ->setHeader('Content-Type', 'application/pdf')
-            ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
-            ->setBody($dompdf->output());
     }
 
     private function ensureStaffAccess(): void

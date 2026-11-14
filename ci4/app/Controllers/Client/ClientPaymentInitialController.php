@@ -3,6 +3,7 @@
 namespace App\Controllers\Client;
 
 use App\Controllers\BaseController;
+use App\Services\CollectorGcashService;
 use App\Services\NotificationService;
 use App\Services\ApprovalService;
 use App\Config\ValidationRules;
@@ -77,7 +78,15 @@ class ClientPaymentInitialController extends BaseController
         $monthlyFee = (float) ($program['monthly_fee'] ?? ($plan['monthly_fee'] ?? 0));
         $latestInitialPayment = $this->latestInitialPayment($planHolderId);
 
+        // Shown only while the client has GCash selected - same
+        // barangay-matched collector account as the advance payment page.
+        $gcashAccount = (new CollectorGcashService())->resolveForClient(
+            (int) ($planHolder['branch_id'] ?? 0),
+            $planHolder['barangay_code'] ?? null
+        );
+
         return view('client/initial_payment', [
+            'gcash_account' => $gcashAccount,
             'role_layout' => 'layouts/plan_holder',
             'page_title' => 'Initial payment',
             'page_sub' => 'Submit your initial contribution (minimum 2 months) for verification.',

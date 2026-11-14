@@ -57,6 +57,7 @@ $apPlanTermMonths = 60;
                     <th>Date</th>
                     <th>Method</th>
                     <th>Reference / OR</th>
+                    <th>Receipt</th>
                     <th>Staff Account</th>
                     <th>Remaining Months</th>
                     <?php if ($showStatus): ?><th>Status</th><?php endif; ?>
@@ -74,7 +75,7 @@ $apPlanTermMonths = 60;
                         ? $paymentService->describeCoverage($coverageStart, (int) ($row['months_covered'] ?? 1))
                         : (int) ($row['months_covered'] ?? 1) . ' month(s)';
                     $remaining = $remainingFromMonthsPaid
-                        ? max(0, $apPlanTermMonths - (int) ($row['months_paid'] ?? 0))
+                        ? max(0, (int) ($row['plan_total_months'] ?? $apPlanTermMonths) - (int) ($row['months_paid'] ?? 0))
                         : $paymentService->remainingMonths($row['payment_coverage_until'] ?? null);
                     $staffName = trim((string) ($row['staff_first_name'] ?? '') . ' ' . (string) ($row['staff_last_name'] ?? ''));
                     ?>
@@ -88,6 +89,7 @@ $apPlanTermMonths = 60;
                         <td class="text-nowrap"><?= cs_date($row['payment_date']) ?></td>
                         <td><?= esc(strtoupper((string) $row['payment_method'])) ?></td>
                         <td><?= esc((string) ($row['reference_number'] ?: ($row['official_receipt_number'] ?: '-'))) ?></td>
+                        <td class="text-nowrap"><?php if (in_array($status, ['paid', 'approved', 'verified'], true) && ! empty($row['payment_id'])): ?><a href="<?= base_url('receipt/' . (int) $row['payment_id']) ?>"><i class="ti ti-download" aria-hidden="true"></i> PDF</a><?php else: ?><span class="text-muted">-</span><?php endif; ?></td>
                         <td><?= $staffName !== '' ? esc($staffName) : '<span class="text-muted">-</span>' ?></td>
                         <td><?= $remaining > 0 ? esc((string) $remaining) : '<span class="text-muted">-</span>' ?></td>
                         <?php if ($showStatus): ?><td><?= cs_status($status) ?></td><?php endif; ?>

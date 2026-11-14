@@ -7,10 +7,16 @@
 
 <?php // Flash messages are already surfaced as toasts by layouts/_shell.php - no need to render them again here. ?>
 
+<?= view('partials/search_bar', [
+    'action'      => site_url('/branch-admin/staff-management'),
+    'term'        => $search ?? '',
+    'placeholder' => 'Staff name, email, username or mobile number',
+]) ?>
+
 <section class="cs-panel">
     <div class="cs-panel__body cs-panel__body--flush">
         <?php if (empty($staff ?? [])): ?>
-            <?= view('components/empty_state', ['icon' => 'ti-users', 'title' => 'No staff records found']) ?>
+            <?= view('components/empty_state', ['icon' => 'ti-users', 'title' => ! empty($search) ? 'No staff match "' . $search . '"' : 'No staff records found', 'text' => ! empty($search) ? 'Check the spelling or try fewer words, then search again - or clear the search.' : '']) ?>
         <?php else: ?>
             <div class="cs-tablewrap">
                 <table class="cs-table">

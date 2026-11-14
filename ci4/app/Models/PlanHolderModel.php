@@ -36,6 +36,7 @@ class PlanHolderModel extends Model
         'senior_citizen_id',
         'organization_affiliation',
         'emergency_contact_name',
+        'emergency_contact_relationship',
         'emergency_contact_number',
         'emergency_contact_address',
         'branch_id',

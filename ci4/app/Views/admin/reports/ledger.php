@@ -8,8 +8,8 @@
     <div class="cs-panel__body">
         <form class="cs-filters" method="get" action="<?= site_url(($reports_base_path ?? '/admin/reports') . '/ledger') ?>">
             <div class="cs-filters__field cs-filters__field--wide">
-                <label class="form-label">Search by name or unique ID</label>
-                <input type="text" name="q" class="form-control" value="<?= esc((string) ($query ?? '')) ?>" placeholder="e.g. Dela Cruz or PH-00015-20260418">
+                <label class="form-label">Search by name, mobile number, email or plan number</label>
+                <input type="text" name="q" class="form-control" value="<?= esc((string) ($query ?? '')) ?>" placeholder="e.g. Juan Dela Cruz, 0917…, or PH-00015-20260418">
             </div>
             <div class="cs-filters__actions">
                 <button type="submit" class="btn btn-primary">Search</button>

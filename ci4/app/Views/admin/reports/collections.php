@@ -2,7 +2,7 @@
 
 <?= $this->section('content') ?>
 <div class="mb-3 text-end">
-    <a class="btn btn-ghost btn-sm" href="<?= site_url(($reports_base_path ?? '/admin/reports') . '/collections?mode=csv&date_from=' . urlencode((string) ($filters['date_from'] ?? '')) . '&date_to=' . urlencode((string) ($filters['date_to'] ?? ''))) ?>">
+    <a class="btn btn-ghost btn-sm" href="<?= site_url(($reports_base_path ?? '/admin/reports') . '/collections?mode=csv&search=' . urlencode((string) ($filters['search'] ?? '')) . '&date_from=' . urlencode((string) ($filters['date_from'] ?? '')) . '&date_to=' . urlencode((string) ($filters['date_to'] ?? ''))) ?>">
         <i class="ti ti-download me-1"></i> Export CSV
     </a>
 </div>
@@ -11,6 +11,10 @@
 <?= $this->include('partials/reports_nav') ?>
 
 <form class="cs-filters mb-3" method="get" action="<?= site_url(($reports_base_path ?? '/admin/reports') . '/collections') ?>">
+    <div class="cs-filters__field cs-filters__field--wide">
+        <label class="form-label">Search</label>
+        <input type="search" name="search" class="form-control" maxlength="100" value="<?= esc((string) ($filters['search'] ?? ''), 'attr') ?>" placeholder="Collector name">
+    </div>
     <div class="cs-filters__field">
         <label class="form-label">Date From</label>
         <input type="date" name="date_from" class="form-control" value="<?= esc((string) ($filters['date_from'] ?? '')) ?>">

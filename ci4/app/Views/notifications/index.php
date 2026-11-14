@@ -9,10 +9,10 @@
 <?php endif; ?>
 
 <?php
-$typeOptions = ['general', 'registration_pending', 'payment_approved', 'payment_rejected', 'service_approved', 'service_rejected', 'service_completed'];
+$typeOptions = ['general', 'overdue', 'registration_pending', 'payment_approved', 'payment_rejected', 'service_approved', 'service_rejected', 'service_completed'];
 $hasFilters = ($selected_type ?? '') !== '' || ($selected_status ?? '') !== '';
 ?>
-<form class="cs-filters" method="get" action="<?= base_url('client/notification') ?>">
+<form class="cs-filters" method="get" action="<?= base_url($base_path ?? 'client/notification') ?>">
     <div class="cs-filters__field">
         <label class="form-label" for="f-type">Type</label>
         <select class="form-select" id="f-type" name="type">
@@ -33,7 +33,7 @@ $hasFilters = ($selected_type ?? '') !== '' || ($selected_status ?? '') !== '';
     <div class="cs-filters__actions">
         <button class="btn btn-primary" type="submit"><i class="ti ti-filter" aria-hidden="true"></i> Apply</button>
         <?php if ($hasFilters): ?>
-            <a class="btn btn-ghost" href="<?= base_url('client/notification') ?>">Reset</a>
+            <a class="btn btn-ghost" href="<?= base_url($base_path ?? 'client/notification') ?>">Reset</a>
         <?php endif; ?>
     </div>
 </form>
@@ -57,7 +57,7 @@ $hasFilters = ($selected_type ?? '') !== '' || ($selected_status ?? '') !== '';
                         <small class="cs-muted"><?= cs_datetime($notification['created_at'] ?? null) ?></small>
                     </div>
                     <?php if ((int) ($notification['is_read'] ?? 0) === 0): ?>
-                        <form method="post" action="<?= base_url('client/notification/read') ?>" class="m-0">
+                        <form method="post" action="<?= base_url(($base_path ?? 'client/notification') . '/read') ?>" class="m-0">
                             <?= csrf_field() ?>
                             <input type="hidden" name="notification_id" value="<?= esc((string) $notification['notification_id']) ?>">
                             <button class="btn btn-ghost btn-sm" type="submit">Mark read</button>

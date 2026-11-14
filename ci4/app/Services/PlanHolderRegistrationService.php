@@ -87,7 +87,7 @@ class PlanHolderRegistrationService
             }
         }
         if ($cityMatch === null) {
-            throw new \RuntimeException('Please select a valid Town/City from the list.');
+            throw new \RuntimeException('Please choose a town/city and barangay in Oriental Mindoro.');
         }
 
         $barangays = $psgc->getBarangaysForCity($cityCode);
@@ -103,7 +103,7 @@ class PlanHolderRegistrationService
             }
         }
         if ($barangayMatch === null) {
-            throw new \RuntimeException('Please select a valid Barangay for the chosen Town/City.');
+            throw new \RuntimeException('Please choose a town/city and barangay in Oriental Mindoro.');
         }
 
         $dateOfBirth = trim((string) ($input['date_of_birth'] ?? ''));
@@ -369,6 +369,7 @@ class PlanHolderRegistrationService
             'senior_citizen_id' => trim((string) ($input['senior_citizen_id'] ?? '')),
             'organization_affiliation' => trim((string) ($input['organization_affiliation'] ?? '')),
             'emergency_contact_name' => trim((string) ($input['emergency_contact_name'] ?? '')),
+            'emergency_contact_relationship' => trim((string) ($input['emergency_contact_relationship'] ?? '')),
             'emergency_contact_number' => trim((string) ($input['emergency_contact_number'] ?? '')),
             'emergency_contact_address' => trim((string) ($input['emergency_contact_address'] ?? '')),
             'branch_id' => $branchId,
@@ -403,12 +404,14 @@ class PlanHolderRegistrationService
         $planModel = new PlanModel();
         $existingPlan = $planModel->where('plan_holder_id', $planHolderId)->orderBy('plan_id', 'DESC')->first();
         if (! $existingPlan) {
-            $packageData = $this->resolvePackageAndVersion();
-            $monthlyFee = MembershipService::MONTHLY_FEE;
+            $chosenProgram = $this->resolveChosenProgram($input);
+            $packageData = $this->resolvePackageAndVersion($chosenProgram['package_id'] ?? null);
+            $monthlyFee = $chosenProgram['monthly_fee'] ?? MembershipService::MONTHLY_FEE;
 
             $planModel->insert($this->filterTableData('plans', [
                 'plan_holder_id' => $planHolderId,
                 'package_id' => $packageData['package_id'],
+                'program_id' => $chosenProgram['program_id'] ?? null,
                 'monthly_fee' => $monthlyFee,
                 'passbook_fee' => 50,
                 'start_date' => date('Y-m-d'),
@@ -430,8 +433,12 @@ class PlanHolderRegistrationService
     private function registerStaff(int $branchId, array $input, ?string $dateOfBirth, array $cityMatch, array $barangayMatch, ?int $actingUserId): int
     {
         $clientService = new ClientService();
+        $chosenProgram = $this->resolveChosenProgram($input);
 
         $planHolderId = $clientService->registerPlanHolder([
+            'program_id' => $chosenProgram['program_id'] ?? null,
+            'package_id' => $chosenProgram['package_id'] ?? null,
+            'monthly_fee' => $chosenProgram['monthly_fee'] ?? null,
             'first_name' => trim((string) ($input['first_name'] ?? '')),
             'middle_name' => trim((string) ($input['middle_name'] ?? '')),
             'last_name' => trim((string) ($input['last_name'] ?? '')),
@@ -461,12 +468,38 @@ class PlanHolderRegistrationService
             'barangay_code' => $barangayMatch['code'],
             'city_municipality_code' => $cityMatch['code'],
             'emergency_contact_name' => trim((string) ($input['emergency_contact_name'] ?? '')),
+            'emergency_contact_relationship' => trim((string) ($input['emergency_contact_relationship'] ?? '')),
             'emergency_contact_number' => trim((string) ($input['emergency_contact_number'] ?? '')),
             'emergency_contact_address' => trim((string) ($input['emergency_contact_address'] ?? '')),
             'registered_by' => $actingUserId,
         ]));
 
         return $planHolderId;
+    }
+
+    /**
+     * The plan chosen on the registration wizard's "Choose a Plan" step
+     * (program_id, only rendered/required when 2+ approved+active plans
+     * exist - see registration_wizard_config()/_step_applicant.php), or
+     * null when not submitted/not a valid approved+active plan. Falling
+     * back to null (not throwing) matters: with 0 or 1 plans the form never
+     * renders the picker at all, so program_id legitimately won't be in
+     * $input, and registration must keep working exactly as before.
+     */
+    private function resolveChosenProgram(array $input): ?array
+    {
+        $programId = (int) ($input['program_id'] ?? 0);
+        if ($programId <= 0) {
+            return null;
+        }
+
+        return db_connect()->table('membership_programs')
+            ->select('program_id, package_id, monthly_fee, plan_price, term_months')
+            ->where('program_id', $programId)
+            ->where('approval_status', 'approved')
+            ->where('is_active', 1)
+            ->get()
+            ->getRowArray() ?: null;
     }
 
     /**
@@ -477,12 +510,24 @@ class PlanHolderRegistrationService
      * to DEFAULT_PACKAGE_ID then to any package; for the version, prefers
      * an active package_versions row, falls back to the newest one, and
      * creates one if the package has none yet at all.
+     *
+     * $forcedPackageId short-circuits the above lookup entirely - used when
+     * a specific plan was chosen at registration, so its own entitled
+     * package is resolved instead of whichever package happens to carry
+     * the legacy Damayan flag.
      */
-    private function resolvePackageAndVersion(): array
+    private function resolvePackageAndVersion(?int $forcedPackageId = null): array
     {
         $db = db_connect();
 
-        $package = $db->table('packages')->select('package_id')->where('is_damayan_entitlement', 1)->orderBy('package_id', 'ASC')->get()->getRowArray();
+        if ($forcedPackageId !== null) {
+            $package = $db->table('packages')->select('package_id')->where('package_id', $forcedPackageId)->get()->getRowArray();
+            if (! $package) {
+                throw new \RuntimeException('The selected plan\'s package could not be found.');
+            }
+        } else {
+            $package = $db->table('packages')->select('package_id')->where('is_damayan_entitlement', 1)->orderBy('package_id', 'ASC')->get()->getRowArray();
+        }
         if (! $package) {
             $package = $db->table('packages')->select('package_id')->where('package_id', MembershipService::DEFAULT_PACKAGE_ID)->get()->getRowArray();
         }

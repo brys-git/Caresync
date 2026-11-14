@@ -19,6 +19,8 @@ $routes->group('client', ['filter' => 'auth'], static function (RouteCollection 
     $routes->post('profile/update', 'Client\ClientProfileController::updateProfile', ['filter' => 'role:4']);
     $routes->get('profile/change-password', 'Client\ClientProfileController::changePassword', ['filter' => 'role:4']);
     $routes->post('profile/update-password', 'Client\ClientProfileController::updatePassword', ['filter' => 'role:4']);
+    $routes->post('profile/photo', 'Client\ClientProfileController::uploadPhoto', ['filter' => 'role:4']);
+    $routes->get('profile/photo', 'Client\ClientProfileController::photo', ['filter' => 'role:4']);
 
     // Payment Management
     $routes->get('payment', 'Client\ClientPaymentController::payment', ['filter' => 'role:4']);
@@ -34,7 +36,7 @@ $routes->group('client', ['filter' => 'auth'], static function (RouteCollection 
     // Phase 1: per-transaction receipt (was a single "latest payment"
     // dashboard quick action - now a link on each verified row in Payment
     // History instead).
-    $routes->get('payment/download-receipt/(:num)', 'Client\ClientPaymentController::downloadReceipt/$1', ['filter' => 'role:4']);
+    $routes->get('payment/download-receipt/(:num)', 'ReceiptController::download/$1', ['filter' => 'role:4']);
     $routes->post('payment/submit-gcash', 'Client\ClientPaymentController::submitGcashPayment', ['filter' => 'role:4']);
 
     // Service balance continuation
@@ -58,6 +60,7 @@ $routes->group('client', ['filter' => 'auth'], static function (RouteCollection 
     $routes->post('apply-service/(:num)', 'Client\ClientServiceController::submitServiceApplication/$1', ['filter' => 'role:4']);
     $routes->get('apply-package/(:num)', 'Client\ClientServiceController::applyPackageForm/$1', ['filter' => 'role:4']);
     $routes->post('apply-package/(:num)', 'Client\ClientServiceController::submitPackageApplication/$1', ['filter' => 'role:4']);
+    $routes->get('apply-package/submitted/(:num)', 'Client\ClientServiceController::packageSubmitted/$1', ['filter' => 'role:4']);
 
     // (legacy aliases removed) Use canonical apply-service/apply-package routes instead
 

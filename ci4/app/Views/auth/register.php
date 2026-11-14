@@ -3,17 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#1c3a34">
+    <meta name="theme-color" content="#1b2473">
     <title>Create account · CareSync</title>
+    <meta name="description" content="Create a CareSync plan holder account. CareSync is the member plan and payment records system of Kaagapay.">
     <link rel="icon" href="<?= base_url('assets/favicon_io/favicon.ico') ?>">
     <link rel="stylesheet" href="<?= base_url('assets/css/main.css') ?>">
-    <link rel="stylesheet" href="<?= base_url('assets/css/caresync.css') ?>">
+    <link rel="stylesheet" href="<?= cs_asset_url('assets/css/caresync.css') ?>">
 </head>
 <body>
 <main class="signin">
     <aside class="signin__aside">
         <div class="signin__wordmark">
-            <img src="<?= base_url('assets/images/logo-icon.svg') ?>" alt="" width="26">
+            <span class="signin__logo"><img src="<?= cs_asset_url('assets/images/company-logo.png') ?>" alt=""></span>
             <span>CareSync</span>
         </div>
 
@@ -53,45 +54,17 @@
                 </div>
             <?php endif; ?>
 
-            <form method="post" action="<?= base_url('register') ?>" data-cs-once>
-                <?= csrf_field() ?>
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label" for="username">Username</label>
-                        <input id="username" name="username" type="text" class="form-control" value="<?= old('username') ?>" placeholder="Choose a username" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label" for="email">Email</label>
-                        <input id="email" name="email" type="email" class="form-control" value="<?= old('email') ?>" placeholder="name@example.com" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label" for="first_name">First Name</label>
-                        <input id="first_name" name="first_name" type="text" class="form-control" value="<?= old('first_name') ?>" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label" for="last_name">Last Name</label>
-                        <input id="last_name" name="last_name" type="text" class="form-control" value="<?= old('last_name') ?>" required>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label" for="unique_identifier">Unique Identifier (Optional, for existing membership linking)</label>
-                        <input id="unique_identifier" name="unique_identifier" type="text" class="form-control" value="<?= old('unique_identifier') ?>" placeholder="Enter existing membership identifier if available">
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label" for="contact_number">Contact Number</label>
-                        <input id="contact_number" name="contact_number" type="text" class="form-control" value="<?= old('contact_number') ?>" placeholder="09xxxxxxxxx">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label" for="password">Password</label>
-                        <input id="password" name="password" type="password" class="form-control" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label" for="password_confirm">Confirm Password</label>
-                        <input id="password_confirm" name="password_confirm" type="password" class="form-control" required>
-                    </div>
+            <?php if (! empty($isFirstAccount)): ?>
+                <div class="alert alert-info" role="status">
+                    <i class="ti ti-info-circle" aria-hidden="true"></i>
+                    <span>This first account will be the System Administrator.</span>
                 </div>
+            <?php endif; ?>
 
-                <button class="btn btn-primary w-100 mt-4" type="submit">Submit Registration</button>
-            </form>
+            <?= view('auth/_account_form', [
+                'formAction'  => base_url('register'),
+                'submitLabel' => 'Submit Registration',
+            ]) ?>
 
             <hr class="cs-hairline">
 
@@ -99,10 +72,17 @@
                 Already have an account?
                 <a href="<?= base_url('login') ?>">Back to sign in</a>
             </p>
+
+            <p class="cs-muted signin__small mt-4 mb-0">
+                CareSync is the official records system of Kaagapay.<br>
+                Questions or account problems? Contact
+                <a href="mailto:bry041005@gmail.com">bry041005@gmail.com</a>.
+            </p>
         </div>
     </div>
 </main>
 
+<?= view('partials/confirm_dialog') ?>
 <script src="<?= base_url('assets/js/caresync.js') ?>" defer></script>
 </body>
 </html>

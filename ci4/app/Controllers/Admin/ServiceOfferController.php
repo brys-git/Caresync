@@ -73,6 +73,10 @@ class ServiceOfferController extends BaseController
             ->orderBy('package_name', 'ASC')
             ->findAll();
 
+        $search = cs_search_term($this->request->getGet('search'));
+        $services = cs_filter_rows($services, $search, ['service_name', 'description']);
+        $packages = cs_filter_rows($packages, $search, ['package_name', 'description']);
+
         $packageVersions = $db->table('package_versions pv')
             ->select('pv.version_id, pv.package_id, pv.price, pv.effective_date, pv.status, p.package_name')
             ->join('packages p', 'p.package_id = pv.package_id', 'inner')
@@ -99,6 +103,7 @@ class ServiceOfferController extends BaseController
             'page_title' => 'Service Offer',
             'page_sub' => 'Create live packages and services, then review branch-admin requests in one place.',
             'tab' => $tab,
+            'search' => $search,
             'approval_tab' => $approvalTab,
             'services' => $services,
             'packages' => $packages,

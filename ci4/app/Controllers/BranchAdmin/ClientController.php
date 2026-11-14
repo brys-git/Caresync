@@ -23,12 +23,14 @@ class ClientController extends BaseController
     public function index(): string
     {
         $branchId = (int) session('branch_id');
+        $search = cs_search_term($this->request->getGet('search'));
         $clients = $branchId > 0
-            ? $this->clientService->getClientsByBranch($branchId)
+            ? $this->clientService->getClientsByBranch($branchId, $search)
             : [];
-        
+
         return view('branch_admin/client_management/index', [
             'holders' => $clients,
+            'search' => $search,
             'program' => MembershipService::getProgramInfo(),
             'role_layout' => 'layouts/branch_admin',
             'page_title' => 'Client Management',
@@ -123,6 +125,10 @@ class ClientController extends BaseController
                 'senior_citizen_id' => trim((string) $this->request->getPost('senior_citizen_id')),
                 'organization_affiliation' => trim((string) $this->request->getPost('organization_affiliation')),
                 'status' => trim((string) $this->request->getPost('status')),
+                'emergency_contact_name' => trim((string) $this->request->getPost('emergency_contact_name')),
+                'emergency_contact_relationship' => trim((string) $this->request->getPost('emergency_contact_relationship')),
+                'emergency_contact_number' => trim((string) $this->request->getPost('emergency_contact_number')),
+                'emergency_contact_address' => trim((string) $this->request->getPost('emergency_contact_address')),
                 'beneficiaries' => $this->request->getPost('beneficiaries') ?? [],
             ]);
         } catch (\Throwable $e) {
@@ -130,64 +136,6 @@ class ClientController extends BaseController
         }
 
         return redirect()->to('/branch-admin/client/view/' . $id)->with('success', 'Client information updated successfully.');
-    }
-
-    public function view(int $id): string
-    {
-        $client = $this->clientService->getClientDetails($id);
-
-        if (! $client) {
-            throw PageNotFoundException::forPageNotFound();
-        }
-
-        $this->enforceBranchOwnership($client);
-
-        $planId = isset($client['plan']['plan_id']) ? (int) $client['plan']['plan_id'] : null;
-        $payments = $this->clientService->getClientPayments($planId);
-        $services = $this->clientService->getClientServices($id);
-
-        // Get initial payment (first payment for this plan)
-        $initialPayment = null;
-        if ($planId) {
-            $initialPayment = db_connect()->table('payments')
-                ->where('plan_id', $planId)
-                ->where('status !=', '')
-                ->where('status IS NOT NULL', null, false)
-                ->orderBy('payment_date', 'ASC')
-                ->orderBy('payment_id', 'ASC')
-                ->get()
-                ->getRowArray();
-        }
-
-        // The view's "Approve Registration" button/message needs to know
-        // whether there's actually a pending payment to approve - this was
-        // previously never computed here at all (undefined variable, 500
-        // on every visit), even though approve() below implements exactly
-        // this same eligibility check for the button's target action.
-        $pendingPayment = $planId
-            ? db_connect()->table('payments')
-                ->where('plan_id', $planId)
-                ->where('status', 'pending')
-                ->orderBy('payment_date', 'DESC')
-                ->get()
-                ->getRowArray()
-            : null;
-        $canApprove = (bool) $pendingPayment;
-        $approvalMessage = $canApprove
-            ? ''
-            : ($planId ? 'No pending payment found for approval.' : 'This client has no plan yet.');
-
-        return view('branch_admin/client_management/details', [
-            'page_title' => 'Plan Holder Details',
-            'page_sub' => 'Approve registration only after initial payment has been verified.',
-            'holder' => $client,
-            'initial_payment' => $initialPayment,
-            'payments' => $payments,
-            'services' => $services,
-            'can_approve' => $canApprove,
-            'approval_message' => $approvalMessage,
-            'role_layout' => 'layouts/branch_admin',
-        ]);
     }
 
     public function create(): string
@@ -214,6 +162,7 @@ class ClientController extends BaseController
             'existing_users' => $existingUsers,
             'branch_name' => (string) ($branch['branch_name'] ?? ''),
             'program' => MembershipService::getProgramInfo(),
+            'plans' => (new \App\Services\PlanBuilderService())->listApprovedActive(),
             'role_layout' => 'layouts/branch_admin',
             'page_title' => 'Register plan holder',
             'page_sub' => 'Add a new plan holder to your branch.',

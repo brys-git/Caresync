@@ -30,16 +30,14 @@ use App\Models\PlanModel;
  *                       (already claimed this cycle).
  *   'paid_unclaimed' - ₱14,500 fully paid, no claim made yet. Owes
  *                       nothing further, CLAIM stays enabled indefinitely
- *                       until used, and the plan must be exempted from
- *                       overdue/delinquency/forfeiture processing - see
- *                       afterPaymentVerified() (clears next_due_date) and
- *                       the exemption checks in OverduePolicyService::
- *                       applyForfeitures() and MembershipService::
- *                       updateMembershipStates().
+ *                       until used. Nothing is overdue on a fully paid
+ *                       plan: PlanLedgerService (the one overdue rule)
+ *                       reports it as 'fully_paid', and
+ *                       afterPaymentVerified() clears next_due_date.
  *
  * plans.contribution_cycle_started_at (Phase 0) keeps its existing job:
  * it marks "count progress from here forward only" *within* whichever
- * cycle is current. That's what lets a 60-day forfeiture reset progress
+ * cycle is current. That's what let the old 60-day forfeiture reset progress (that reset is gone: a plan now just lapses and nothing is erased - see PlanLedgerService)
  * without also closing/advancing the cycle - forfeiture still zeroes
  * months_paid and bumps this marker exactly as it always has, but never
  * touches current_cycle_number, so a plan holder who already claimed in
@@ -193,11 +191,8 @@ class CycleService
         // already set above - nothing more to do. Otherwise, check whether
         // this payment brought the plan into paid-unclaimed: fully paid,
         // not yet claimed, owes nothing further until claimed. Clear the
-        // due date so it's never shown as owing and so
-        // OverduePolicyService::notifyOverdueAccounts() (which requires
-        // next_due_date IS NOT NULL) stops considering it - the forfeiture
-        // sweep and delinquency ladder have their own direct exemption
-        // checks, since neither depends on next_due_date.
+        // due date so it's never shown as owing (PlanLedgerService reports
+        // the plan as fully_paid, which has no overdue and no reminders).
         $cycle = $this->currentCycle($planId);
         if ($cycle['state'] === 'paid_unclaimed') {
             $this->planModel->update($planId, [

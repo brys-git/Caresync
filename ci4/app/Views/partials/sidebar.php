@@ -10,7 +10,7 @@ $activeNav = (string) ($activeNav ?? '');
 <aside class="cs-sidebar" id="cs-sidebar">
     <a class="cs-brand" href="<?= base_url('dashboard') ?>">
         <span class="cs-brand__mark">
-            <img src="<?= base_url('assets/images/logo-icon.svg') ?>" alt="">
+            <img src="<?= cs_asset_url('assets/images/company-logo.png') ?>" alt="">
         </span>
         <span class="cs-brand__text">
             <span class="cs-brand__name">CareSync</span>
@@ -57,12 +57,12 @@ $activeNav = (string) ($activeNav ?? '');
     </nav>
 
     <div class="cs-sidebar__foot">
-        <a class="cs-nav__link" href="<?= base_url(($cs_role ?? '') === 'plan_holder' ? 'client/profile' : ($cs_role ?? 'admin') . '/profile') ?>">
+        <a class="cs-nav__link" href="<?= base_url(cs_role_url_prefix($cs_role ?? 'admin') . '/profile') ?>">
             <i class="ti ti-settings" aria-hidden="true"></i>
             <span class="cs-nav__label cs-sidebar__foot-text">Account settings</span>
         </a>
         <a class="cs-nav__link cs-nav__link--exit" href="<?= base_url('logout') ?>"
-           data-cs-confirm="Sign out of CareSync?">
+           data-cs-confirm="Sign out of CareSync?" data-cs-confirm-title="Sign out" data-cs-confirm-ok="Sign out">
             <i class="ti ti-logout" aria-hidden="true"></i>
             <span class="cs-nav__label cs-sidebar__foot-text">Sign out</span>
         </a>

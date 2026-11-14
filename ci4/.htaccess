@@ -1,0 +1,38 @@
+# ----------------------------------------------------------------------
+# CareSync - project root .htaccess
+#
+# For hosts (such as InfinityFree) where the web root cannot be pointed at the
+# public/ folder. Every request is sent into public/, and the application,
+# framework, config and secret files are refused outright.
+#
+# No "Options" directives here: shared hosts reject them with a 500 error.
+# ----------------------------------------------------------------------
+
+<IfModule mod_rewrite.c>
+	RewriteEngine On
+
+	# 1. Never serve the application, framework, uploads store, vendor code,
+	#    tests or tooling. (403 Forbidden)
+	RewriteRule ^(app|system|writable|vendor|tests|tools|build)(/|$) - [F,L,NC]
+
+	# 2. Never serve config / secrets / project files.
+	RewriteRule ^(\.env.*|env|spark|preload\.php|composer\.(json|lock|phar)|phpunit\.xml\.dist|INFINITYFREE_ENV\.txt)$ - [F,L,NC]
+	RewriteRule \.md$ - [F,L,NC]
+	RewriteRule \.(sql|log|bak|zip)$ - [F,L,NC]
+
+	# 3. Hidden files and folders (.git, .htaccess, .env ...), except
+	#    /.well-known/ which hosts use for certificate checks.
+	RewriteRule (^|/)\.(?!well-known) - [F,L]
+
+	# 4. Everything else is answered from public/ (assets, uploads, and the
+	#    front controller through public/.htaccess). The (?!public/) test stops
+	#    the rewrite from looping and works when the site sits in a sub-folder.
+	RewriteRule ^(?!public/)(.*)$ public/$1 [L]
+</IfModule>
+
+<IfModule !mod_rewrite.c>
+	# Without mod_rewrite the site cannot be served safely from here.
+	<IfModule mod_authz_core.c>
+		Require all denied
+	</IfModule>
+</IfModule>

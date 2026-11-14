@@ -8,12 +8,20 @@
     <?= view('components/alert', ['type' => 'danger', 'message' => session()->getFlashdata('error')]) ?>
 <?php endif; ?>
 
+<?php if (! empty($show_search)): ?>
+    <?= view('partials/search_bar', [
+        'action'      => base_url($route_prefix),
+        'term'        => $search ?? '',
+        'placeholder' => 'Plan holder, plan number, package or beneficiary',
+    ]) ?>
+<?php endif; ?>
+
 <section class="cs-panel">
     <div class="cs-panel__body cs-panel__body--flush">
         <?php if (empty($balances)): ?>
             <?= view('components/empty_state', [
                 'icon'  => 'ti-receipt-2',
-                'title' => 'No service balances found',
+                'title' => ! empty($search) ? 'No service balances match "' . $search . '"' : 'No service balances found',
                 'text'  => 'Funeral package balances tracked separately from membership contributions will appear here.',
             ]) ?>
         <?php else: ?>

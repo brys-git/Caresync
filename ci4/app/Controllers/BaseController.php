@@ -68,10 +68,27 @@ abstract class BaseController extends Controller
 
         $name = trim((string) session('first_name') . ' ' . (string) session('last_name'));
 
+        $photoUrl = null;
+        if ((int) session('role_id') === 4) {
+            try {
+                $photo = db_connect()->table('users')
+                    ->select('profile_photo')
+                    ->where('user_id', (int) session('user_id'))
+                    ->get()
+                    ->getRowArray()['profile_photo'] ?? null;
+            } catch (\CodeIgniter\Database\Exceptions\DatabaseException) {
+                $photo = null;
+            }
+            if ($photo !== null && $photo !== '') {
+                $photoUrl = base_url('client/profile/photo') . '?v=' . urlencode((string) $photo);
+            }
+        }
+
         service('renderer')->setData([
             'cs_user' => [
                 'name' => $name,
                 'role' => (string) session('role_name'),
+                'photo_url' => $photoUrl,
             ],
             'cs_branch' => (string) session('branch_name'),
         ], 'raw');

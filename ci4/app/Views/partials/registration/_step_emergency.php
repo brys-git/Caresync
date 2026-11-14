@@ -16,6 +16,10 @@ $isEdit = ($wizard['context'] ?? 'register') === 'edit';
                     <input id="emergency_contact_name" name="emergency_contact_name" class="form-control" value="<?= esc(old('emergency_contact_name', (string) ($planHolder['emergency_contact_name'] ?? ''))) ?>">
                 </div>
                 <div class="col-md-4">
+                    <label class="form-label" for="emergency_contact_relationship">Relationship</label>
+                    <input id="emergency_contact_relationship" name="emergency_contact_relationship" class="form-control" maxlength="60" value="<?= esc(old('emergency_contact_relationship', (string) ($planHolder['emergency_contact_relationship'] ?? ''))) ?>">
+                </div>
+                <div class="col-md-4">
                     <label class="form-label" for="emergency_contact_number">Contact #</label>
                     <input id="emergency_contact_number" name="emergency_contact_number" class="form-control" value="<?= esc(old('emergency_contact_number', (string) ($planHolder['emergency_contact_number'] ?? ''))) ?>">
                     <small class="text-danger d-none" id="emergencyContactError">Please enter a valid contact number (at least 10 digits).</small>

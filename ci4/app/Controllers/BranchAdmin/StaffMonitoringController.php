@@ -23,6 +23,7 @@ class StaffMonitoringController extends BaseController
         }
 
         $staff = $this->staffService->getStaffByBranch($branchId);
+        $search = cs_search_term($this->request->getGet('search'));
 
         $selectedStaff = null;
         $selectedId = (int) $this->request->getGet('staff_id');
@@ -38,7 +39,8 @@ class StaffMonitoringController extends BaseController
         return view('branch_admin/staff_monitoring/index', [
             'page_title' => 'Staff Monitoring',
             'active_tab' => 'staff-list',
-            'staff' => $staff,
+            'search' => $search,
+            'staff' => cs_filter_rows($staff, $search, ['first_name', 'last_name', 'email', 'contact_number', 'username']),
             'selected_staff' => $selectedStaff,
             'role_layout' => 'layouts/branch_admin',
         ]);

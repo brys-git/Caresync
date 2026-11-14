@@ -32,12 +32,15 @@ class IdVerificationQueueController extends BaseController
     {
         $branchId = (int) session('branch_id');
         $service = new GovernmentIdVerificationService();
+        $search = cs_search_term($this->request->getGet('search'));
 
         return view('id_verification_queue/index', [
+            'search' => $search,
+            'search_action' => $actionBase,
             'role_layout' => $layout,
             'page_title' => 'Government ID Review',
             'page_sub' => 'Compare each applicant\'s uploaded ID against what they typed in their registration form.',
-            'rows' => $branchId > 0 ? $service->listNeedingReview($branchId) : [],
+            'rows' => $branchId > 0 ? cs_filter_rows($service->listNeedingReview($branchId), $search, ['first_name', 'last_name', 'email', 'claimed_first_name', 'claimed_last_name']) : [],
             'action_base' => $actionBase,
         ]);
     }

@@ -13,10 +13,38 @@ $routes->group('staff', ['filter' => 'auth'], static function (RouteCollection $
     // Dashboard
     $routes->get('dashboard', 'Dashboard::staff', ['filter' => 'role:3']);
 
+    // Existing member records (past plan, payments, history) - role:3
+    $routes->get('existing-records', 'LegacyRecords::index', ['filter' => 'role:3']);
+    $routes->get('existing-records/client/(:num)', 'LegacyRecords::workspace/$1', ['filter' => 'role:3']);
+    $routes->post('existing-records/client/(:num)/plan', 'LegacyRecords::savePlan/$1', ['filter' => 'role:3']);
+    $routes->post('existing-records/client/(:num)/beneficiary', 'LegacyRecords::addBeneficiary/$1', ['filter' => 'role:3']);
+    $routes->post('existing-records/client/(:num)/payments', 'LegacyRecords::addPayments/$1', ['filter' => 'role:3']);
+    $routes->post('existing-records/client/(:num)/payment/(:num)', 'LegacyRecords::updatePayment/$1/$2', ['filter' => 'role:3']);
+    $routes->post('existing-records/client/(:num)/remittance', 'LegacyRecords::addRemittance/$1', ['filter' => 'role:3']);
+    $routes->post('existing-records/client/(:num)/service', 'LegacyRecords::addService/$1', ['filter' => 'role:3']);
+    $routes->post('existing-records/client/(:num)/document', 'LegacyRecords::addDocument/$1', ['filter' => 'role:3']);
+    $routes->post('existing-records/client/(:num)/note', 'LegacyRecords::addNote/$1', ['filter' => 'role:3']);
+    $routes->post('existing-records/delete/(:alpha)/(:num)', 'LegacyRecords::delete/$1/$2', ['filter' => 'role:3']);
+    $routes->get('existing-records/document/(:num)', 'LegacyRecords::document/$1', ['filter' => 'role:3']);
+    $routes->get('existing-records/import', 'LegacyRecords::importForm', ['filter' => 'role:3']);
+    $routes->get('existing-records/import/template', 'LegacyRecords::importTemplate', ['filter' => 'role:3']);
+    $routes->post('existing-records/import/preview', 'LegacyRecords::importPreview', ['filter' => 'role:3']);
+    $routes->post('existing-records/import/commit', 'LegacyRecords::importCommit', ['filter' => 'role:3']);
+    $routes->get('existing-records/import/errors/(:segment)', 'LegacyRecords::importErrors/$1', ['filter' => 'role:3']);
+
+    // Create Account (Client only, own branch)
+    $routes->get('create-account', 'Staff\AccountController::create', ['filter' => 'role:3']);
+    $routes->post('create-account', 'Staff\AccountController::store', ['filter' => 'role:3']);
+    $routes->post('client/resend-login/(:num)', 'AccountLoginDetails::resend/$1', ['filter' => 'role:3']);
+    $routes->post('client/reinstate/(:num)', 'PlanReinstatement::record/$1', ['filter' => 'role:3']);
+
     // Client Management
     $routes->get('client-management', 'Staff\ClientController::index', ['filter' => 'role:3']);
     $routes->get('client', 'Staff\ClientController::index', ['filter' => 'role:3']);
-    $routes->get('client/view/(:num)', 'Staff\ClientController::view/$1', ['filter' => 'role:3']);
+    $routes->get('client/view/(:num)', 'ClientDetailController::show/$1', ['filter' => 'role:3']);
+    $routes->get('client/statement/(:num)', 'ClientDetailController::statement/$1', ['filter' => 'role:3']);
+    $routes->post('client/note/(:num)', 'ClientDetailController::saveNote/$1', ['filter' => 'role:3']);
+    $routes->get('client/file/(:num)/(:segment)/(:num)', 'ClientDetailController::file/$1/$2/$3', ['filter' => 'role:3']);
     $routes->get('client/edit/(:num)', 'Staff\ClientController::edit/$1', ['filter' => 'role:3']);
     $routes->post('client/update/(:num)', 'Staff\ClientController::update/$1', ['filter' => 'role:3']);
     $routes->get('client/register', 'Staff\ClientController::create', ['filter' => 'role:3']);

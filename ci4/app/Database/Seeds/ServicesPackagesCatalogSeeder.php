@@ -41,35 +41,35 @@ class ServicesPackagesCatalogSeeder extends Seeder
                 'description' => 'The standard Damayan Plan Holder entitlement casket package.',
                 'base_price' => 20000,
                 'is_damayan_entitlement' => 1,
-                'image_path' => 'assets/images/regular-wood-casket.jfif',
+                'image_path' => 'assets/images/Regular_Wood_Casket.jfif',
             ],
             [
                 'package_name' => 'Oversized Wood Casket',
                 'description' => 'A larger wood casket for oversized requirements.',
                 'base_price' => 50000,
                 'is_damayan_entitlement' => 0,
-                'image_path' => 'assets/images/oversized-wood-casket.jfif',
+                'image_path' => 'assets/images/Oversized_Wood_Casket.jfif',
             ],
             [
                 'package_name' => 'Regular Half-Glass Metal Casket',
                 'description' => 'A metal casket with a half-glass viewing window.',
                 'base_price' => 45000,
                 'is_damayan_entitlement' => 0,
-                'image_path' => 'assets/images/regular-half-glass-metal-casket.jfif',
+                'image_path' => 'assets/images/Regular_Half-Glass_Metal_Casket.jfif',
             ],
             [
                 'package_name' => 'Regular Full-Glass Metal Casket',
                 'description' => 'A metal casket with a full-glass viewing window.',
                 'base_price' => 75000,
                 'is_damayan_entitlement' => 0,
-                'image_path' => 'assets/images/regular-full-glass-metal-casket.jfif',
+                'image_path' => 'assets/images/Regular_Full-Glass_Metal_Casket.jfif',
             ],
             [
                 'package_name' => 'Oversized Metal Casket',
                 'description' => 'A larger metal casket for oversized requirements.',
                 'base_price' => 200000,
                 'is_damayan_entitlement' => 0,
-                'image_path' => 'assets/images/oversized-metal-casket.jfif',
+                'image_path' => 'assets/images/Oversized_Metal_Casket.jfif',
             ],
         ];
 
@@ -81,6 +81,8 @@ class ServicesPackagesCatalogSeeder extends Seeder
 
             if ($existing) {
                 $packageId = (int) $existing['package_id'];
+                // Already seeded: just make sure the photo path is the current one (matched by name).
+                $this->db->table('packages')->where('package_id', $packageId)->update(['image_path' => $package['image_path']]);
             } else {
                 $this->db->table('packages')->insert([
                     'package_name' => $package['package_name'],
@@ -129,7 +131,7 @@ class ServicesPackagesCatalogSeeder extends Seeder
                 'base_price' => 35000,
                 'status' => 'active',
                 'is_available' => 1,
-                'image_path' => '/uploads/services/balik-probinsya.jpg',
+                'image_path' => null,
                 'created_at' => date('Y-m-d H:i:s'),
             ]);
             $serviceListId = (int) $this->db->insertID();

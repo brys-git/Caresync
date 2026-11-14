@@ -27,6 +27,11 @@ $statusLabels = [
     </div>
 
     <form class="cs-filters mb-3" method="get">
+        <div class="cs-filters__field cs-filters__field--wide">
+            <label class="form-label" for="search">Search</label>
+            <input id="search" name="search" type="search" class="form-control" maxlength="100"
+                   value="<?= esc((string) ($filters['search'] ?? ''), 'attr') ?>" placeholder="Name, mobile number, plan number or barangay">
+        </div>
         <div class="cs-filters__field">
             <label class="form-label" for="period">Period</label>
             <input id="period" name="period" type="month" class="form-control" value="<?= esc((string) $filters['period']) ?>">
@@ -59,6 +64,9 @@ $statusLabels = [
         <?php endif; ?>
         <div class="cs-filters__actions">
             <button type="submit" class="btn btn-primary">Apply</button>
+            <?php if (! empty($filters['search'])): ?>
+                <a class="btn btn-ghost" href="?<?= http_build_query(array_filter(['period' => $filters['period'], 'status' => $filters['status'], 'barangay_code' => $filters['barangay_code'], 'collector_id' => $filters['collector_id']])) ?>">Clear search</a>
+            <?php endif; ?>
             <a class="btn btn-ghost" href="<?= esc((string) ($print_url ?? '#')) ?>" target="_blank">
                 <i class="ti ti-printer me-1"></i> Print Route Sheet
             </a>

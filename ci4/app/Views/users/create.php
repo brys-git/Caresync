@@ -187,7 +187,7 @@
                                 <?= view('components/alert', [
                                     'type' => 'info',
                                     'dismissible' => false,
-                                    'message' => 'A temporary password will be auto-generated, sent via email, and the user will be forced to change password on first login.',
+                                    'message' => 'A temporary password is created for this account and shown once on the next screen. It is also emailed to the person when email is set up. They must choose a new password the first time they sign in.',
                                 ]) ?>
                             </div>
                         <?php endif; ?>

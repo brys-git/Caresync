@@ -5,11 +5,18 @@
     $holderStatus = strtolower((string) ($holder['plan_holder_status'] ?? 'inactive'));
     $paymentStatus = strtolower((string) ($initial_payment['status'] ?? 'none'));
 ?>
-<div class="mb-3 text-end">
+<div class="mb-3 d-flex gap-2 justify-content-end">
     <a href="<?= base_url('branch-admin/client-management') ?>" class="btn btn-ghost btn-sm">Back to Client Management</a>
+    <a href="<?= base_url('branch-admin/existing-records/client/' . (int) $holder['user_id']) ?>" class="btn btn-outline-primary btn-sm"><i class="ti ti-history" aria-hidden="true"></i> Add past records</a>
+    <form method="post" action="<?= base_url('branch-admin/client-management/resend-login/' . $holder['plan_holder_id']) ?>" class="d-inline">
+        <?= csrf_field() ?>
+        <button type="submit" class="btn btn-ghost btn-sm" data-cs-confirm="Issue a new temporary password? The client's current password will stop working.">Resend login details</button>
+    </form>
 </div>
 
 <?php // Flash messages are already surfaced as toasts by layouts/_shell.php - no need to render them again here. ?>
+
+<?= view('partials/plan_ledger_panel', ['ledger' => $ledger ?? null, 'reinstate_url' => $reinstate_url ?? null]) ?>
 
 <div class="row g-3">
     <div class="col-lg-6">

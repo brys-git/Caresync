@@ -2,7 +2,7 @@
 /**
  * Shared "What's Included" list for package details/apply pages.
  * Expects $inclusions (rows with item_name/description) via $this->setData()
- * before $this->include('partials/inclusions_list') - CI4's include() does
+ * before $this->include('client/partials/inclusions_list') - CI4's include() does
  * not inherit the caller's local view variables automatically.
  * Optional $compact = true renders a tighter list for the apply-review page.
  */

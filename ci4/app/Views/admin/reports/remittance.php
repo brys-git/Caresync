@@ -1,9 +1,16 @@
 <?= $this->extend($role_layout ?? 'layouts/admin') ?>
 
 <?= $this->section('content') ?>
+<?php $remitQuery = http_build_query($filters ?? []); ?>
 <div class="mb-3 text-end">
-    <a class="btn btn-ghost btn-sm" href="<?= site_url('/admin/reports/remittance?mode=csv&' . http_build_query($filters ?? [])) ?>">
-        <i class="ti ti-download me-1"></i> Export CSV
+    <a class="btn btn-ghost btn-sm" href="<?= site_url('/admin/reports/remittance?mode=print&' . $remitQuery) ?>" target="_blank" rel="noopener">
+        <i class="ti ti-printer me-1"></i> Print
+    </a>
+    <a class="btn btn-ghost btn-sm" href="<?= site_url('/admin/reports/remittance?mode=csv&' . $remitQuery) ?>">
+        <i class="ti ti-file-spreadsheet me-1"></i> Export Excel
+    </a>
+    <a class="btn btn-primary btn-sm" href="<?= site_url('/admin/reports/remittance?mode=pdf&' . $remitQuery) ?>">
+        <i class="ti ti-file-type-pdf me-1"></i> Export PDF
     </a>
 </div>
 
@@ -13,6 +20,10 @@
 <section class="cs-panel mb-3">
     <div class="cs-panel__body">
         <form class="cs-filters" method="get" action="<?= site_url('/admin/reports/remittance') ?>">
+            <div class="cs-filters__field cs-filters__field--wide">
+                <label class="form-label">Search</label>
+                <input type="search" name="search" class="form-control" maxlength="100" value="<?= esc((string) ($filters['search'] ?? ''), 'attr') ?>" placeholder="Client, collector, receipt or reference">
+            </div>
             <div class="cs-filters__field">
                 <label class="form-label">Date From</label>
                 <input type="date" class="form-control" name="date_from" value="<?= esc((string) ($filters['date_from'] ?? '')) ?>">

@@ -10,7 +10,11 @@
 $crumbs   = $crumbs   ?? [];
 $csUser   = $cs_user  ?? [];
 $csBranch = (string) ($cs_branch ?? '');
-$unread   = (int) (($nav_counts['unread'] ?? 0));
+// _shell.php pushes this to every include as 'navCounts' (matching
+// partials/sidebar.php's own $navCounts) via setData() - this used to read
+// $nav_counts, a variable that's never actually passed here, so the badge
+// was permanently stuck at 0.
+$unread   = (int) (($navCounts['unread'] ?? 0));
 
 $userName = trim((string) ($csUser['name'] ?? ''));
 if ($userName === '') {
@@ -30,7 +34,23 @@ foreach (preg_split('/\s+/', $userName) as $part) {
 $initials = $initials !== '' ? $initials : 'CS';
 
 $isHolder    = ($cs_role ?? '') === 'plan_holder';
-$profileUrl  = $isHolder ? 'client/profile' : ($cs_role ?? 'admin') . '/profile';
+// Collector has no client-management page (their own Collection List is
+// already scoped to their assigned area) - this used to still render
+// action="collector/client-management", a route that's never existed, so
+// submitting the search box 404'd.
+// Each role's own plan-holder list. (The role key 'branch_admin' is not the URL
+// segment 'branch-admin', so building the URL from the key 404'd for Branch Admin.)
+$clientSearchUrls = [
+    'admin'        => 'admin/client-management',
+    'branch_admin' => 'branch-admin/client-management',
+    'staff'        => 'staff/client-management',
+];
+$hasClientSearch = isset($clientSearchUrls[$cs_role ?? '']);
+$topSearchTerm   = (string) ($search_term ?? '');
+if ($topSearchTerm === '' && $hasClientSearch && str_ends_with(trim(service('request')->getUri()->getPath(), '/'), 'client-management')) {
+    $topSearchTerm = cs_search_term(service('request')->getGet('search'));
+}
+$profileUrl  = cs_role_url_prefix($cs_role ?? 'admin') . '/profile';
 $passwordUrl = 'change-password';
 ?>
 <header class="cs-topbar">
@@ -70,11 +90,11 @@ $passwordUrl = 'change-password';
         </span>
     <?php endif; ?>
 
-    <?php if (! $isHolder): ?>
-        <form class="cs-topsearch" role="search" method="get" action="<?= base_url(($cs_role ?? 'admin') . '/client-management') ?>">
+    <?php if ($hasClientSearch): ?>
+        <form class="cs-topsearch" role="search" method="get" action="<?= base_url($clientSearchUrls[$cs_role]) ?>">
             <i class="ti ti-search" aria-hidden="true"></i>
             <input type="search" name="search" placeholder="Find a plan holder"
-                   aria-label="Find a plan holder" value="<?= esc((string) ($search_term ?? '')) ?>">
+                   aria-label="Find a plan holder" value="<?= esc($topSearchTerm) ?>" maxlength="100">
         </form>
     <?php else: ?>
         <span class="ms-auto"></span>
@@ -92,14 +112,22 @@ $passwordUrl = 'change-password';
 
     <div class="dropdown">
         <button class="cs-user" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-            <span class="cs-avatar" aria-hidden="true"><?= esc($initials) ?></span>
+            <?php if (! empty($csUser['photo_url'])): ?>
+                <img class="cs-avatar cs-avatar--photo" src="<?= esc($csUser['photo_url'], 'attr') ?>" alt="" aria-hidden="true">
+            <?php else: ?>
+                <span class="cs-avatar" aria-hidden="true"><?= esc($initials) ?></span>
+            <?php endif; ?>
             <span class="cs-user__name"><?= esc($userName) ?></span>
             <i class="ti ti-chevron-down cs-muted" aria-hidden="true" style="font-size:.875rem"></i>
         </button>
 
         <ul class="dropdown-menu dropdown-menu-end">
             <li class="px-2 py-2 d-flex align-items-center gap-2" style="min-width:220px">
-                <span class="cs-avatar cs-avatar--lg" aria-hidden="true"><?= esc($initials) ?></span>
+                <?php if (! empty($csUser['photo_url'])): ?>
+                    <img class="cs-avatar cs-avatar--lg cs-avatar--photo" src="<?= esc($csUser['photo_url'], 'attr') ?>" alt="" aria-hidden="true">
+                <?php else: ?>
+                    <span class="cs-avatar cs-avatar--lg" aria-hidden="true"><?= esc($initials) ?></span>
+                <?php endif; ?>
                 <span class="lh-sm">
                     <span class="d-block fw-semibold"><?= esc($userName) ?></span>
                     <span class="d-block cs-muted" style="font-size:.78125rem">
@@ -121,7 +149,7 @@ $passwordUrl = 'change-password';
             <li><hr class="dropdown-divider"></li>
             <li>
                 <a class="dropdown-item text-danger" href="<?= base_url('logout') ?>"
-                   data-cs-confirm="Sign out of CareSync?">
+                   data-cs-confirm="Sign out of CareSync?" data-cs-confirm-title="Sign out" data-cs-confirm-ok="Sign out">
                     <i class="ti ti-logout me-1" aria-hidden="true"></i> Sign out
                 </a>
             </li>

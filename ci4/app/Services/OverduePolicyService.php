@@ -2,189 +2,55 @@
 
 namespace App\Services;
 
+use Config\CareSync;
+
 /**
- * Panel brief, section 8: "Define and implement a policy on overdue
- * accounts and penalties" - the brief flagged this as needing explicit
- * business rules before implementation. The user supplied them directly:
+ * Overdue wording helpers.
  *
- *   If a plan holder misses a monthly contribution, they have 60 days from
- *   the missed due date to pay it. If they pay within 60 days, nothing
- *   happens. If they do NOT pay within 60 days, their accumulated
- *   months_paid counter resets to 0 - e.g. someone with 5 months paid who
- *   then misses a payment and doesn't catch up within 60 days goes back to
- *   0. The plan holder is NOT deactivated or unregistered; they remain a
- *   registered plan holder with a fresh start, only the paid-months
- *   progress is forfeited.
+ * The overdue RULE no longer lives here. The old rule (after 60 days,
+ * months_paid is reset to 0) erased a member's history; it was replaced by
+ * one rule in PlanLedgerService, driven by Config\CareSync:
  *
- * This is a distinct concept from the existing membership_state
- * (active/delinquent/suspended) ladder in MembershipService::
- * updateMembershipStates(), which tracks standing at whole-month
- * granularity (3/6 months overdue) and never resets anything - that logic
- * is left untouched. This service only handles the specific 60-day
- * forfeiture rule, run from the same daily cron command
- * (membership:update-status) so both checks happen on the same cadence.
+ *   grace period -> Lapsed (on hold, nothing erased) -> optionally Forfeited
+ *
+ * What is left here is only the text used by notification rows that were
+ * created before the change (NotificationService re-derives their wording
+ * from the plan's due date).
  */
 class OverduePolicyService
 {
-    public const GRACE_PERIOD_DAYS = 60;
-
-    /**
-     * Sweeps every active plan that's overdue past the grace period and
-     * still has paid-months progress to lose, resets it, and gives the
-     * plan a fresh coverage start from today (so the forfeiture is a clean
-     * reset, not an accumulating debt) - matching "the paid months will
-     * return to zero... but the client is still considered registered."
-     *
-     * @return array{checked: int, forfeited: int}
-     */
-    public function applyForfeitures(): array
+    public function graceDays(): int
     {
-        $db = db_connect();
-        $today = date('Y-m-d');
-        $result = ['checked' => 0, 'forfeited' => 0];
-
-        $candidates = $db->table('plans p')
-            ->select('p.plan_id, p.plan_holder_id, p.months_paid, p.payment_coverage_until, ph.user_id')
-            ->join('plan_holders ph', 'ph.plan_holder_id = p.plan_holder_id', 'inner')
-            ->where('p.status', 'active')
-            ->where('p.months_paid >', 0)
-            ->where('p.payment_coverage_until IS NOT NULL', null, false)
-            ->get()
-            ->getResultArray();
-
-        $notificationService = new NotificationService();
-
-        foreach ($candidates as $plan) {
-            $result['checked']++;
-
-            $planId = (int) $plan['plan_id'];
-
-            // Entitlement cycle model: a plan that's fully paid its
-            // current ₱14,500 cycle and is only waiting on the plan
-            // holder to claim owes nothing further - it must never be
-            // forfeited just because time has passed since
-            // payment_coverage_until, or this would destroy a cycle
-            // they've already earned. See CycleService's class doc
-            // comment.
-            if ((new CycleService())->currentCycle($planId)['state'] === 'paid_unclaimed') {
-                continue;
-            }
-
-            $coverageUntil = (string) ($plan['payment_coverage_until'] ?? '');
-            if ($coverageUntil === '') {
-                continue;
-            }
-
-            $daysOverdue = (int) floor((strtotime($today) - strtotime($coverageUntil)) / 86400);
-            if ($daysOverdue <= self::GRACE_PERIOD_DAYS) {
-                continue;
-            }
-
-            $monthsForfeited = (int) $plan['months_paid'];
-
-            $db->table('plans')->where('plan_id', $planId)->update([
-                'months_paid' => 0,
-                // Client dashboard rebuild, Phase 0: marks "a new
-                // contribution cycle starts today" so
-                // MembershipService::recalculateMonthsPaid() only counts
-                // payments from this reset forward - without this, the
-                // next payment verified on this plan would sum its entire
-                // history and silently restore the months just forfeited.
-                'contribution_cycle_started_at' => $today,
-                'overdue_months' => 0,
-                'membership_state' => 'active',
-                'payment_coverage_until' => $today,
-                'next_due_date' => date('Y-m-d', strtotime('+1 day', strtotime($today))),
-            ]);
-
-            $userId = (int) ($plan['user_id'] ?? 0);
-            if ($userId > 0) {
-                // Panel brief, section 9: "Notify plan holder when
-                // forfeited," delivered via email and/or SMS in addition to
-                // the in-app record.
-                $notificationService->notify(
-                    $userId,
-                    "Your contribution was not settled within the {$this->graceDays()}-day grace period, so your {$monthsForfeited} paid month(s) have been forfeited and reset to 0. Your plan remains active - simply resume your monthly contribution to start building it back up.",
-                    'general',
-                    true,
-                    true
-                );
-            }
-
-            $result['forfeited']++;
-        }
-
-        return $result;
+        return (int) config(CareSync::class)->gracePeriodDays;
     }
 
-    /**
-     * Panel brief, section 9: "Notify plan holder when overdue." Fires once
-     * per unpaid cycle (gated by plans.overdue_notified_at, cleared by
-     * PaymentService::recomputePlan() whenever a payment comes in) rather
-     * than every single day an account stays overdue.
-     *
-     * @return array{checked: int, notified: int}
-     */
-    public function notifyOverdueAccounts(): array
-    {
-        $db = db_connect();
-        $today = date('Y-m-d');
-        $result = ['checked' => 0, 'notified' => 0];
-
-        $candidates = $db->table('plans p')
-            ->select('p.plan_id, p.next_due_date, ph.user_id')
-            ->join('plan_holders ph', 'ph.plan_holder_id = p.plan_holder_id', 'inner')
-            ->where('p.status', 'active')
-            ->where('p.next_due_date IS NOT NULL', null, false)
-            ->where('p.next_due_date <', $today)
-            ->where('p.overdue_notified_at IS NULL', null, false)
-            ->get()
-            ->getResultArray();
-
-        $notificationService = new NotificationService();
-
-        foreach ($candidates as $plan) {
-            $result['checked']++;
-
-            $planId = (int) $plan['plan_id'];
-            $userId = (int) ($plan['user_id'] ?? 0);
-            $daysOverdue = (int) floor((strtotime($today) - strtotime((string) $plan['next_due_date'])) / 86400);
-            $daysLeft = $this->daysUntilForfeiture($daysOverdue);
-
-            if ($userId > 0) {
-                // Panel brief, section 9: "Notify plan holder when overdue,"
-                // delivered via email and/or SMS in addition to the in-app
-                // record.
-                $notificationService->notify(
-                    $userId,
-                    "Your monthly contribution is now overdue. Please settle it within {$daysLeft} day(s) to avoid forfeiting your paid months (a {$this->graceDays()}-day grace period applies from your due date).",
-                    'general',
-                    true,
-                    true
-                );
-                $result['notified']++;
-            }
-
-            $db->table('plans')->where('plan_id', $planId)->update([
-                'overdue_notified_at' => date('Y-m-d H:i:s'),
-            ]);
-        }
-
-        return $result;
-    }
-
-    /**
-     * For display (e.g. the Overdue Report): how many days a plan has left
-     * before it hits the forfeiture threshold, given its current overdue
-     * days. Returns 0 once the grace period has already passed.
-     */
+    /** Days left of the grace period, given days overdue (0 once it has passed). */
     public function daysUntilForfeiture(int $daysOverdue): int
     {
-        return max(0, self::GRACE_PERIOD_DAYS - $daysOverdue);
+        return max(0, $this->graceDays() - $daysOverdue);
     }
 
-    private function graceDays(): int
+    /**
+     * @return array{days_overdue: int, days_left: int, message: string}
+     */
+    public function describeOverdue(string $dueDate, ?string $today = null): array
     {
-        return self::GRACE_PERIOD_DAYS;
+        $today = $today ?? date('Y-m-d');
+        $daysOverdue = max(0, (int) floor((strtotime($today) - strtotime($dueDate)) / 86400));
+        $daysLeft = $this->daysUntilForfeiture($daysOverdue);
+        $missedOn = date('F j, Y', strtotime($dueDate));
+        $grace = $this->graceDays();
+
+        $message = $daysOverdue === 0
+            ? "Your monthly contribution due on {$missedOn} is no longer overdue."
+            : ($daysLeft > 0
+                ? "Your monthly contribution due on {$missedOn} is now {$daysOverdue} day(s) overdue. You have {$daysLeft} day(s) left to pay it before your plan is put on hold (a {$grace}-day grace period applies from that due date)."
+                : "Your monthly contribution due on {$missedOn} is {$daysOverdue} day(s) overdue and the {$grace}-day grace period has passed, so your plan is on hold. Nothing has been erased - pay what is overdue at your branch to reinstate it.");
+
+        return [
+            'days_overdue' => $daysOverdue,
+            'days_left'    => $daysLeft,
+            'message'      => $message,
+        ];
     }
 }

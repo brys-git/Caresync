@@ -331,7 +331,7 @@ class ValidationRules
         $existing = $db->table('service_requests')
             ->where('user_id', (int) $userId)
             ->where('status', 'pending')
-            ->where('requested_date >= DATE_SUB(NOW(), INTERVAL 7 DAY)', null, false)
+            ->where('requested_date >=', date('Y-m-d H:i:s', strtotime('-7 days')))
             ->countAllResults();
 
         // Allow if no duplicate pending requests in last 7 days

@@ -14,7 +14,7 @@ $hasFilters     = $selectedBranch > 0 || $selectedStatus !== '' || $search !== '
     <div class="cs-filters__field cs-filters__field--wide">
         <label class="form-label" for="f-search">Search</label>
         <input class="form-control" id="f-search" type="search" name="search"
-               value="<?= esc($search) ?>" placeholder="Name, email, or plan number">
+               value="<?= esc($search) ?>" placeholder="Name, email, mobile number, or plan number">
     </div>
 
     <div class="cs-filters__field">

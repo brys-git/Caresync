@@ -142,19 +142,161 @@
 
   /* ----------------------------------------------- destructive confirmation */
   // Money and member records get deleted here. Ask first, and say what will go.
+  // Anything with data-cs-confirm="message" asks through the shared dialog
+  // (partials/confirm_dialog.php). Optional: data-cs-confirm-title,
+  // data-cs-confirm-ok, data-cs-confirm-danger (red style; btn-danger buttons
+  // get it automatically). After OK the form is submitted or the link is
+  // followed exactly once.
+  var confirmDialog = null;
+
+  function getConfirmDialog() {
+    if (confirmDialog) return confirmDialog;
+
+    var dlg = document.getElementById('cs-confirm');
+    if (!dlg) {
+      dlg = document.createElement('dialog');
+      dlg.className = 'cs-confirm';
+      dlg.id = 'cs-confirm';
+      dlg.setAttribute('aria-labelledby', 'cs-confirm-title');
+      dlg.setAttribute('aria-describedby', 'cs-confirm-message');
+      dlg.innerHTML =
+        '<form method="dialog" class="cs-confirm__box">' +
+        '<div class="cs-confirm__icon" data-cs-confirm-icon aria-hidden="true"><i class="ti ti-help-circle"></i></div>' +
+        '<h2 class="cs-confirm__title" id="cs-confirm-title" data-cs-confirm-title>Please confirm</h2>' +
+        '<p class="cs-confirm__message" id="cs-confirm-message" data-cs-confirm-message></p>' +
+        '<div class="cs-confirm__actions">' +
+        '<button type="button" class="btn btn-ghost" data-cs-confirm-cancel>Cancel</button>' +
+        '<button type="button" class="btn btn-primary" data-cs-confirm-accept>Confirm</button>' +
+        '</div></form>';
+      document.body.appendChild(dlg);
+    }
+
+    confirmDialog = dlg;
+    return dlg;
+  }
+
+  // Opens the dialog and calls onOk once if the person accepts. Cancel, Esc
+  // and a click on the backdrop all just close it.
+  function askConfirm(opts, onOk) {
+    var dlg = getConfirmDialog();
+    var okBtn = dlg.querySelector('[data-cs-confirm-accept]');
+    var cancelBtn = dlg.querySelector('[data-cs-confirm-cancel]');
+    var accepted = false;
+
+    dlg.querySelector('[data-cs-confirm-title]').textContent = opts.title || 'Please confirm';
+    dlg.querySelector('[data-cs-confirm-message]').textContent = opts.message;
+    okBtn.textContent = opts.ok || 'Confirm';
+    okBtn.className = 'btn ' + (opts.danger ? 'btn-danger' : 'btn-primary');
+    dlg.classList.toggle('cs-confirm--danger', !!opts.danger);
+    dlg.querySelector('[data-cs-confirm-icon] i').className = 'ti ' + (opts.danger ? 'ti-alert-triangle' : 'ti-help-circle');
+
+    function cleanup() {
+      okBtn.removeEventListener('click', onAccept);
+      cancelBtn.removeEventListener('click', onCancel);
+      dlg.removeEventListener('close', onClose);
+      dlg.removeEventListener('click', onBackdrop);
+    }
+    function onAccept() { accepted = true; dlg.close(); }
+    function onCancel() { dlg.close(); }
+    function onBackdrop(ev) { if (ev.target === dlg) dlg.close(); }
+    function onClose() {
+      cleanup();
+      if (accepted) onOk();
+    }
+
+    okBtn.addEventListener('click', onAccept);
+    cancelBtn.addEventListener('click', onCancel);
+    dlg.addEventListener('click', onBackdrop);
+    dlg.addEventListener('close', onClose);
+
+    if (typeof dlg.showModal === 'function') {
+      dlg.showModal();
+      // The browser keeps focus inside the dialog. For a destructive action
+      // it starts on Cancel, the safe choice.
+      (opts.danger ? cancelBtn : okBtn).focus();
+    } else {
+      // A browser without <dialog>: go ahead rather than block the action.
+      cleanup();
+      onOk();
+    }
+  }
+
+  function confirmOptions(el, submitter) {
+    var danger = el.hasAttribute('data-cs-confirm-danger')
+      || el.classList.contains('btn-danger')
+      || (submitter && submitter.classList.contains('btn-danger'))
+      || (el.tagName === 'FORM' && !!el.querySelector('[type="submit"].btn-danger'));
+
+    return {
+      message: el.getAttribute('data-cs-confirm') || 'Are you sure?',
+      title: el.getAttribute('data-cs-confirm-title') || '',
+      ok: el.getAttribute('data-cs-confirm-ok') || '',
+      danger: danger
+    };
+  }
+
+  var confirmedForms = new WeakSet();
+  var confirmedClicks = new WeakSet();
+
+  // Links, submit buttons and plain buttons.
   document.addEventListener('click', function (e) {
     var trigger = e.target.closest('[data-cs-confirm]');
-    if (!trigger) return;
-    if (!window.confirm(trigger.getAttribute('data-cs-confirm'))) {
-      e.preventDefault();
-      e.stopPropagation();
+    if (!trigger || trigger.tagName === 'FORM') return; // forms are handled on submit
+
+    if (confirmedClicks.has(trigger)) {
+      confirmedClicks.delete(trigger);
+      return; // already confirmed: let this one click through
     }
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    askConfirm(confirmOptions(trigger, null), function () {
+      var form = trigger.form || trigger.closest('form');
+      var isSubmit = (trigger.tagName === 'BUTTON' || trigger.tagName === 'INPUT')
+        && (trigger.type === 'submit' || trigger.type === 'image');
+
+      if (isSubmit && form) {
+        confirmedForms.add(form);
+        if (typeof form.requestSubmit === 'function') form.requestSubmit(trigger);
+        else form.submit();
+      } else if (trigger.tagName === 'A' && trigger.href) {
+        if (trigger.target && trigger.target !== '_self') window.open(trigger.href, trigger.target);
+        else window.location.href = trigger.href;
+      } else {
+        confirmedClicks.add(trigger);
+        trigger.click();
+      }
+    });
   });
+
+  // A form that carries data-cs-confirm itself (this also covers Enter-key
+  // submits). Capture phase, so it runs before the double-submit guard below.
+  document.addEventListener('submit', function (e) {
+    var form = e.target;
+    if (!form || !form.hasAttribute || !form.hasAttribute('data-cs-confirm')) return;
+
+    if (confirmedForms.has(form)) {
+      confirmedForms.delete(form);
+      return;
+    }
+
+    e.preventDefault();
+    e.stopImmediatePropagation();
+
+    var submitter = e.submitter || null;
+    askConfirm(confirmOptions(form, submitter), function () {
+      confirmedForms.add(form);
+      if (typeof form.requestSubmit === 'function') form.requestSubmit(submitter || undefined);
+      else form.submit();
+    });
+  }, true);
 
   /* ------------------------------------------------- double-submit guarding */
   // A resubmitted payment form is a duplicate ledger entry. Lock on submit.
   Array.prototype.forEach.call(document.querySelectorAll('form[data-cs-once]'), function (form) {
-    form.addEventListener('submit', function () {
+    form.addEventListener('submit', function (e) {
+      if (e.defaultPrevented) return;
       var btn = form.querySelector('[type="submit"]');
       if (!btn) return;
       setTimeout(function () {

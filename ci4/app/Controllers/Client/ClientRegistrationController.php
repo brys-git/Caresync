@@ -125,6 +125,7 @@ class ClientRegistrationController extends BaseController
         $planId = $planId > 0 ? $planId : (int) ($program['package_id'] ?? 0);
 
         $branches = (new BranchModel())
+            ->where('status', 'active')
             ->orderBy('branch_name', 'ASC')
             ->findAll();
 
@@ -140,6 +141,7 @@ class ClientRegistrationController extends BaseController
             'crumbs' => [['label' => 'Plan registration']],
             'access' => $access,
             'program' => $program,
+            'plans' => (new \App\Services\PlanBuilderService())->listApprovedActive(),
             'plan_id' => $planId,
             'branches' => $branches,
             'plan_holder' => $planHolder,

@@ -6,7 +6,7 @@
 <section class="cs-panel">
     <div class="cs-panel__body cs-panel__body--flush">
         <?php if (! ($has_pending_table ?? false)): ?>
-            <?= view('components/alert', ['type' => 'warning', 'message' => 'Pending registration queue is unavailable. Run database migrations first.']) ?>
+            <?= view('components/alert', ['type' => 'warning', 'message' => 'The pending registration queue is not available right now. Please contact the System Administrator.']) ?>
         <?php elseif (empty($approval_registrations)): ?>
             <?= view('components/empty_state', [
                 'icon' => 'ti-shield-check',

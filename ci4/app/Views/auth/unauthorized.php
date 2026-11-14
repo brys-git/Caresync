@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#1c3a34">
+    <meta name="theme-color" content="#1b2473">
     <title>Access denied · CareSync</title>
     <link rel="icon" href="<?= base_url('assets/favicon_io/favicon.ico') ?>">
     <link rel="stylesheet" href="<?= base_url('assets/css/main.css') ?>">
-    <link rel="stylesheet" href="<?= base_url('assets/css/caresync.css') ?>">
+    <link rel="stylesheet" href="<?= cs_asset_url('assets/css/caresync.css') ?>">
 </head>
 <body class="cs-center-screen">
     <section class="cs-panel cs-center-card">

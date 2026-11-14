@@ -49,6 +49,13 @@ class ClientMembershipController extends BaseController
                 ->getResultArray()
             : [];
 
+        // Verified existing-member records count as contributions too.
+        if ($planId > 0) {
+            $currentContributions = array_merge($currentContributions, \App\Services\LegacyRecordService::verifiedPaymentsAsRows($planId));
+            usort($currentContributions, static fn (array $a, array $b): int => strcmp((string) $b['payment_date'], (string) $a['payment_date']));
+            $currentContributions = array_slice($currentContributions, 0, 12);
+        }
+
         $beneficiaries = $planHolderId > 0
             ? db_connect()->table('beneficiaries')
                 ->select('beneficiary_id, first_name, middle_name, last_name, relationship, is_primary, name_extension, date_of_birth')
@@ -70,6 +77,7 @@ class ClientMembershipController extends BaseController
         return view('client/membership', [
             'role_layout' => 'layouts/plan_holder',
             'page_title' => 'My plan',
+            'show_page_head' => false,
             'page_sub' => 'Damayan program membership overview.',
             'access' => $access,
             'active_plan' => $activePlan,

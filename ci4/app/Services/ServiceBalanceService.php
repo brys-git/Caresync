@@ -36,14 +36,12 @@ class ServiceBalanceService
 
         $monthsPaid = (int) ($plan['months_paid'] ?? 0);
         $overdueMonths = (int) ($plan['overdue_months'] ?? 0);
-        $state = strtolower((string) ($plan['membership_state'] ?? 'inactive'));
 
-        if ($state !== 'active') {
-            return ['valid' => false, 'error' => 'Membership must be active before a service can be availed.'];
-        }
-
-        if ($overdueMonths > 2) {
-            return ['valid' => false, 'error' => 'Your membership is delinquent. Please settle overdue contributions first.'];
+        // Active and in-grace plans may avail; lapsed / forfeited follow the one
+        // status rules (PlanLedgerService, Config\CareSync) and say why.
+        $access = $this->membershipService->serviceAccess($planHolderId);
+        if (! $access['allowed']) {
+            return ['valid' => false, 'error' => (string) ($access['reason'] ?: 'Membership must be active before a service can be availed.')];
         }
 
         if ($monthsPaid < self::MINIMUM_PAID_MONTHS) {

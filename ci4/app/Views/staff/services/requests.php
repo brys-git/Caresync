@@ -14,11 +14,17 @@
     <li class="nav-item"><a class="nav-link" href="<?= site_url('/staff/services/ongoing') ?>">Ongoing Services</a></li>
 </ul>
 
+<?= view('partials/search_bar', [
+    'action'      => site_url('/staff/services/requests'),
+    'term'        => $search ?? '',
+    'placeholder' => 'Plan holder, plan number, or package / service claimed',
+]) ?>
+
 <section class="cs-panel">
     <div class="cs-panel__body cs-panel__body--flush">
         <?php $rows = $requests ?? []; ?>
         <?php if (empty($rows)): ?>
-            <?= view('components/empty_state', ['icon' => 'ti-clipboard-list', 'title' => 'No claims found for your branch']) ?>
+            <?= view('components/empty_state', ['icon' => 'ti-clipboard-list', 'title' => ! empty($search) ? 'No claims match "' . $search . '"' : 'No claims found for your branch', 'text' => ! empty($search) ? 'Check the spelling or try fewer words, then search again - or clear the search.' : '']) ?>
         <?php else: ?>
             <div class="cs-tablewrap">
                 <table class="cs-table">

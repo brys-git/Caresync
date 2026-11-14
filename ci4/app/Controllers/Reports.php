@@ -2,9 +2,8 @@
 
 namespace App\Controllers;
 
+use App\Services\ReportPdfService;
 use App\Services\ReportService;
-use Dompdf\Dompdf;
-use Dompdf\Options;
 
 class Reports extends BaseController
 {
@@ -64,7 +63,7 @@ class Reports extends BaseController
      */
     public function overdue()
     {
-        $filters = ['branch_id' => $this->reportBranchFilter()];
+        $filters = ['branch_id' => $this->reportBranchFilter(), 'search' => cs_search_term($this->request->getGet('search'))];
         $reportService = new ReportService();
         $rows = $reportService->getOverdueReport($filters);
         $mode = (string) $this->request->getGet('mode');
@@ -72,7 +71,7 @@ class Reports extends BaseController
         if ($mode === 'csv') {
             return $this->csvResponse(
                 'overdue_report',
-                ['Plan Holder', 'Unique ID', 'Branch', 'Contact', 'Remaining Balance', 'Months Paid', 'Overdue Months', 'Days Overdue', 'Next Due Date', 'Days Until Forfeiture'],
+                ['Plan Holder', 'Unique ID', 'Branch', 'Contact', 'Remaining Balance', 'Months Paid', 'Overdue Months', 'Days Overdue', 'Next Due Date', 'Status'],
                 $rows,
                 static fn (array $row): array => [
                     trim((string) ($row['first_name'] ?? '') . ' ' . (string) ($row['last_name'] ?? '')),
@@ -84,17 +83,13 @@ class Reports extends BaseController
                     (string) ($row['overdue_months'] ?? 0),
                     (string) ($row['days_overdue'] ?? 0),
                     (string) ($row['next_due_date'] ?? ''),
-                    $row['days_until_forfeiture'] === null ? 'N/A' : (string) $row['days_until_forfeiture'],
+                    (string) ($row['status_text'] ?? ''),
                 ]
             );
         }
 
-        if ($mode === 'pdf') {
-            return $this->exportOverduePdf($rows);
-        }
-
-        if ($mode === 'print') {
-            return view('admin/reports/overdue_export', ['rows' => $rows, 'auto_print' => true]);
+        if ($mode === 'pdf' || $mode === 'print') {
+            return $this->pdfResponse('overdue', ['rows' => $rows], $filters, $mode === 'print');
         }
 
         return view('admin/reports/overdue', [
@@ -102,6 +97,8 @@ class Reports extends BaseController
             'page_title' => 'Overdue Report',
             'page_sub' => 'Plan holders behind on their contribution, oldest due date first.',
             'active_report' => 'overdue',
+            'filters' => $filters,
+            'branches' => $this->branchOptions(),
             'rows' => $rows,
         ]);
     }
@@ -112,7 +109,7 @@ class Reports extends BaseController
     public function ledger()
     {
         $reportService = new ReportService();
-        $query = trim((string) $this->request->getGet('q'));
+        $query = cs_search_term($this->request->getGet('q'));
         $planHolderId = (int) $this->request->getGet('plan_holder_id');
 
         $matches = $query !== '' ? $reportService->searchPlanHolders($query, $this->reportBranchFilter()) : [];
@@ -134,7 +131,7 @@ class Reports extends BaseController
      */
     public function collections()
     {
-        $filters = $this->reportDateFilters() + ['branch_id' => $this->reportBranchFilter()];
+        $filters = $this->reportDateFilters() + ['branch_id' => $this->reportBranchFilter(), 'search' => cs_search_term($this->request->getGet('search'))];
         $reportService = new ReportService();
         $rows = $reportService->getCollectionsByCollector($filters);
 
@@ -167,7 +164,7 @@ class Reports extends BaseController
      */
     public function commission()
     {
-        $filters = $this->reportDateFilters() + ['branch_id' => $this->reportBranchFilter()];
+        $filters = $this->reportDateFilters() + ['branch_id' => $this->reportBranchFilter(), 'search' => cs_search_term($this->request->getGet('search'))];
         $reportService = new ReportService();
         $rows = $reportService->getCommissionReport($filters);
         $mode = (string) $this->request->getGet('mode');
@@ -188,19 +185,8 @@ class Reports extends BaseController
             );
         }
 
-        if ($mode === 'pdf') {
-            return $this->exportCommissionPdf($rows, $filters);
-        }
-
-        if ($mode === 'print') {
-            $branch = $filters['branch_id'] > 0 ? $reportService->getBranchInfo((int) $filters['branch_id']) : null;
-
-            return view('admin/reports/commission_export', [
-                'rows' => $rows,
-                'filters' => $filters,
-                'branch_name' => (string) ($branch['branch_name'] ?? ''),
-                'auto_print' => true,
-            ]);
+        if ($mode === 'pdf' || $mode === 'print') {
+            return $this->pdfResponse('commission', ['rows' => $rows], $filters, $mode === 'print');
         }
 
         return view('admin/reports/commission', [
@@ -209,6 +195,7 @@ class Reports extends BaseController
             'page_sub' => 'Commission earned per collector - 10% of the amount collected, computed automatically.',
             'active_report' => 'commission',
             'filters' => $filters,
+            'branches' => $this->branchOptions(),
             'rows' => $rows,
         ]);
     }
@@ -225,6 +212,7 @@ class Reports extends BaseController
             'branch_id' => $this->reportBranchFilter(),
             'payment_method' => (string) $this->request->getGet('payment_method'),
             'received_by' => (int) $this->request->getGet('received_by'),
+            'search' => cs_search_term($this->request->getGet('search')),
         ];
 
         $rows = $reportService->getRemittanceReport($filters);
@@ -246,6 +234,18 @@ class Reports extends BaseController
             );
         }
 
+        $mode = (string) $this->request->getGet('mode');
+        if ($mode === 'pdf' || $mode === 'print') {
+            $breakdown = $reportService->getPaymentBreakdown($filters);
+            $totals = [
+                ['label' => 'Cash Total', 'amount' => $breakdown['cash_total']],
+                ['label' => 'GCash Total', 'amount' => $breakdown['gcash_total']],
+                ['label' => 'Total Remittance', 'amount' => $reportService->getTotalRemittance($filters), 'strong' => true],
+            ];
+
+            return $this->pdfResponse('remittance', ['rows' => $rows, 'totals' => $totals], $filters, $mode === 'print');
+        }
+
         return view('admin/reports/remittance', [
             'role_layout' => 'layouts/admin',
             'page_title' => 'Remittance Report',
@@ -254,8 +254,45 @@ class Reports extends BaseController
             'filters' => $filters,
             'rows' => $rows,
             'total_remittance' => $reportService->getTotalRemittance($filters),
-            'branches' => db_connect()->table('branches')->select('branch_id, branch_name')->orderBy('branch_name', 'ASC')->get()->getResultArray(),
+            'branches' => $this->branchOptions(),
         ]);
+    }
+
+    private function branchOptions(): array
+    {
+        return db_connect()->table('branches')->select('branch_id, branch_name')->orderBy('branch_name', 'ASC')->get()->getResultArray();
+    }
+
+    /**
+     * Every System Admin report PDF goes through here so the header, layout and
+     * disposition (inline for Print, attachment for Export PDF) match the Branch
+     * Admin and Staff versions exactly. $filters carries whatever the on-screen
+     * filter form applied (branch, dates, method, ...).
+     */
+    private function pdfResponse(string $type, array $data, array $filters, bool $inline)
+    {
+        $branchId = (int) ($filters['branch_id'] ?? 0);
+        $branch = $branchId > 0 ? (new ReportService())->getBranchInfo($branchId) : null;
+
+        $filterLines = [];
+        if (! empty($filters['payment_method'])) {
+            $filterLines[] = 'Method: ' . strtoupper((string) $filters['payment_method']);
+        }
+        if (! empty($filters['received_by'])) {
+            $user = db_connect()->table('users')->select('first_name, last_name')->where('user_id', (int) $filters['received_by'])->get()->getRowArray();
+            if ($user) {
+                $filterLines[] = 'Recorded by: ' . trim((string) $user['first_name'] . ' ' . (string) $user['last_name']);
+            }
+        }
+
+        $context = [
+            'branch_name'  => (string) ($branch['branch_name'] ?? ''),
+            'date_from'    => $filters['date_from'] ?? null,
+            'date_to'      => $filters['date_to'] ?? null,
+            'filter_lines' => $filterLines,
+        ];
+
+        return (new ReportPdfService())->respond($this->response, $type, $data, $context, $inline);
     }
 
     /**
@@ -284,56 +321,6 @@ class Reports extends BaseController
         ];
     }
 
-    private function exportCommissionPdf(array $rows, array $filters)
-    {
-        $reportService = new ReportService();
-        $branch = $filters['branch_id'] > 0 ? $reportService->getBranchInfo((int) $filters['branch_id']) : null;
-
-        $html = view('admin/reports/commission_export', [
-            'rows' => $rows,
-            'filters' => $filters,
-            'branch_name' => (string) ($branch['branch_name'] ?? ''),
-            'auto_print' => false,
-        ]);
-
-        $options = new Options();
-        $options->set('isRemoteEnabled', true);
-        $options->set('isHtml5ParserEnabled', true);
-
-        $dompdf = new Dompdf($options);
-        $dompdf->loadHtml($html);
-        $dompdf->setPaper('A4', 'portrait');
-        $dompdf->render();
-
-        $filename = 'commission_report_' . date('Ymd_His') . '.pdf';
-
-        return $this->response
-            ->setHeader('Content-Type', 'application/pdf')
-            ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
-            ->setBody($dompdf->output());
-    }
-
-    private function exportOverduePdf(array $rows)
-    {
-        $html = view('admin/reports/overdue_export', ['rows' => $rows, 'auto_print' => false]);
-
-        $options = new Options();
-        $options->set('isRemoteEnabled', true);
-        $options->set('isHtml5ParserEnabled', true);
-
-        $dompdf = new Dompdf($options);
-        $dompdf->loadHtml($html);
-        $dompdf->setPaper('A4', 'landscape');
-        $dompdf->render();
-
-        $filename = 'overdue_report_' . date('Ymd_His') . '.pdf';
-
-        return $this->response
-            ->setHeader('Content-Type', 'application/pdf')
-            ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
-            ->setBody($dompdf->output());
-    }
-
     private function csvResponse(string $baseFilename, array $headers, array $rows, callable $rowMapper)
     {
         $filename = $baseFilename . '_' . date('Ymd_His') . '.csv';
@@ -356,20 +343,32 @@ class Reports extends BaseController
     private function buildBranchSummary(int $branchId, int $roleId): array
     {
         $db = db_connect();
-        $sql = "SELECT b.branch_id, b.branch_name, COUNT(DISTINCT u.user_id) AS staff_count, COUNT(DISTINCT ph.plan_holder_id) AS client_count, COUNT(DISTINCT s.service_id) AS service_count, COALESCE(SUM(CASE WHEN pay.status = 'paid' THEN pay.amount ELSE 0 END), 0) AS revenue
-             FROM branches b
-             LEFT JOIN users u ON u.branch_id = b.branch_id
-             LEFT JOIN plan_holders ph ON ph.branch_id = b.branch_id
-             LEFT JOIN services s ON s.branch_id = b.branch_id
-             LEFT JOIN payments pay ON pay.branch_id = b.branch_id";
+
+        // Each count is its own subquery. Joining users, plan holders, services
+        // and payments in one query multiplies the rows, which inflated the
+        // revenue figure. Revenue comes from MetricsService (paid payments only).
+        $builder = $db->table('branches b')
+            ->select('b.branch_id, b.branch_name'
+                . ', (SELECT COUNT(*) FROM users u WHERE u.branch_id = b.branch_id) AS staff_count'
+                . ', (SELECT COUNT(*) FROM plan_holders ph WHERE ph.branch_id = b.branch_id) AS client_count'
+                . ', (SELECT COUNT(*) FROM services s WHERE s.branch_id = b.branch_id) AS service_count', false)
+            ->orderBy('b.branch_name', 'ASC');
 
         if (in_array($roleId, [2, 3], true) && $branchId > 0) {
-            $sql .= ' WHERE b.branch_id = ' . $db->escape($branchId);
+            $builder->where('b.branch_id', $branchId);
         }
 
-        $sql .= ' GROUP BY b.branch_id, b.branch_name ORDER BY revenue DESC, b.branch_name ASC';
+        $metrics = new \App\Services\MetricsService();
+        $rows    = $builder->get()->getResultArray();
 
-        return $db->query($sql)->getResultArray();
+        foreach ($rows as &$row) {
+            $row['revenue'] = $metrics->collected((int) $row['branch_id']);
+        }
+        unset($row);
+
+        usort($rows, static fn (array $x, array $y): int => [$y['revenue'], $x['branch_name']] <=> [$x['revenue'], $y['branch_name']]);
+
+        return $rows;
     }
 
     private function buildServiceSummary(int $branchId, int $roleId): array

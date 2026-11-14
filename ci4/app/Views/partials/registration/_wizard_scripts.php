@@ -16,6 +16,7 @@ $wizard = $wizard ?? [];
 ?>
 <script src="<?= base_url('assets/js/id-verification-widget.js') ?>"></script>
 <script src="<?= base_url('assets/js/caresync-wizard.js') ?>"></script>
+<script src="<?= base_url('assets/js/data/oriental-mindoro-address.js') ?>"></script>
 <script src="<?= base_url('assets/js/psgc-address.js') ?>"></script>
 <script>
 (function () {
@@ -41,8 +42,6 @@ $wizard = $wizard ?? [];
         <?php endif; ?>
     });
 
-    window.CareSyncPsgc.init({
-        addressApiBase: '<?= base_url('api/address') ?>',
-    });
+    window.CareSyncPsgc.init();
 })();
 </script>

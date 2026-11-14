@@ -4,6 +4,11 @@
 <?php // Flash messages are already surfaced as toasts by layouts/_shell.php - no need to render them again here. ?>
 
 <form class="cs-filters mb-3" method="get" action="<?= base_url('admin/payment-monitoring') ?>">
+    <div class="cs-filters__field cs-filters__field--wide">
+        <label class="form-label" for="search">Search</label>
+        <input id="search" name="search" type="search" class="form-control" maxlength="100"
+               value="<?= esc((string) ($filters['search'] ?? '')) ?>" placeholder="Plan holder, plan number, receipt or reference">
+    </div>
     <div class="cs-filters__field">
         <label class="form-label" for="status">Status</label>
         <select id="status" name="status" class="form-select">
@@ -42,6 +47,9 @@
     </div>
     <div class="cs-filters__actions">
         <button type="submit" class="btn btn-primary">Apply</button>
+        <?php if (array_filter($filters ?? [], static fn ($v) => $v !== '' && $v !== 0 && $v !== null)): ?>
+            <a class="btn btn-ghost" href="<?= base_url('admin/payment-monitoring') ?>">Clear</a>
+        <?php endif; ?>
     </div>
 </form>
 
@@ -56,7 +64,8 @@
         <?php if (empty($rows)): ?>
             <?= view('components/empty_state', [
                 'icon'  => 'ti-receipt',
-                'title' => 'No payment records found for selected filters',
+                'title' => ! empty($filters['search']) ? 'No payments match "' . $filters['search'] . '"' : 'No payment records found for selected filters',
+                'text'  => ! empty($filters['search']) ? 'Check the spelling or try fewer words, then search again - or clear the search.' : '',
             ]) ?>
         <?php else: ?>
             <div class="cs-tablewrap">

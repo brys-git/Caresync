@@ -12,6 +12,7 @@ class NotificationModel extends Model
     protected $useAutoIncrement = true;
     protected $allowedFields    = [
         'user_id',
+        'plan_id',
         'message',
         'notification_type',
         'is_read',

@@ -36,28 +36,38 @@ class ReportService
             ->getResultArray();
     }
 
+    /**
+     * Paid money in the filtered range. Totals on every report come from
+     * MetricsService (status 'paid' only), so they match the dashboards.
+     */
     public function getTotalRemittance(array $filters): float
     {
-        $row = $this->baseQuery($filters)
-            ->select('COALESCE(SUM(p.amount), 0) AS total_remittance', false)
-            ->get()
-            ->getRowArray();
-
-        return (float) ($row['total_remittance'] ?? 0);
+        return $this->metrics()->collected($this->branchOf($filters), (string) $filters['date_from'], (string) $filters['date_to'], $this->metricOpts($filters));
     }
 
     public function getPaymentBreakdown(array $filters): array
     {
-        $row = $this->baseQuery($filters)
-            ->select("COUNT(*) AS total_transactions, COALESCE(SUM(p.amount), 0) AS total_amount, COALESCE(SUM(CASE WHEN p.payment_method = 'cash' THEN p.amount ELSE 0 END), 0) AS cash_total, COALESCE(SUM(CASE WHEN p.payment_method = 'gcash' THEN p.amount ELSE 0 END), 0) AS gcash_total", false)
-            ->get()
-            ->getRowArray();
+        return $this->metrics()->collectedByMethod($this->branchOf($filters), (string) $filters['date_from'], (string) $filters['date_to'], $this->metricOpts($filters));
+    }
 
+    private function metrics(): MetricsService
+    {
+        return new MetricsService();
+    }
+
+    private function branchOf(array $filters): ?int
+    {
+        $id = (int) ($filters['branch_id'] ?? 0);
+
+        return $id > 0 ? $id : null;
+    }
+
+    private function metricOpts(array $filters): array
+    {
         return [
-            'total_transactions' => (int) ($row['total_transactions'] ?? 0),
-            'total_amount' => (float) ($row['total_amount'] ?? 0),
-            'cash_total' => (float) ($row['cash_total'] ?? 0),
-            'gcash_total' => (float) ($row['gcash_total'] ?? 0),
+            'method'      => (string) ($filters['payment_method'] ?? ''),
+            'received_by' => (int) ($filters['received_by'] ?? 0),
+            'search'      => (string) ($filters['search'] ?? ''),
         ];
     }
 
@@ -88,66 +98,34 @@ class ReportService
     public function getMonthlyCollections(array $filters): array
     {
         $year = (int) ($filters['year'] ?? date('Y'));
-        $branchId = (int) ($filters['branch_id'] ?? 0);
 
-        $builder = db_connect()->table('payments p')
-            ->select("DATE_FORMAT(p.payment_date, '%Y-%m') AS month_key, DATE_FORMAT(p.payment_date, '%b %Y') AS month_label, COUNT(*) AS total_transactions, COALESCE(SUM(p.amount), 0) AS total_amount", false)
-            ->where('YEAR(p.payment_date)', $year, false)
-            // Single-quoted PHP string: \" is not an escape sequence here, it
-            // stays as a literal backslash-plus-quote and corrupts the SQL
-            // (MySQL sees a stray backslash where it expects the GROUP BY
-            // expression to just end) - use a real double quote instead.
-            ->groupBy('DATE_FORMAT(p.payment_date, "%Y-%m")', false)
-            ->orderBy('month_key', 'ASC');
-
-        if ($branchId > 0) {
-            $builder->where('p.branch_id', $branchId);
-        }
-
-        return $builder->get()->getResultArray();
+        return $this->metrics()->collectedByMonth($this->branchOf($filters), $year . '-01-01', $year . '-12-31');
     }
 
     public function getMemberStatusSummary(array $filters): array
     {
-        $branchId = (int) ($filters['branch_id'] ?? 0);
-
-        $builder = db_connect()->table('plan_holders ph')
-            ->select("COUNT(*) AS total_members, SUM(CASE WHEN ph.status = 'active' THEN 1 ELSE 0 END) AS active_members, SUM(CASE WHEN ph.status <> 'active' THEN 1 ELSE 0 END) AS inactive_members", false);
-
-        if ($branchId > 0) {
-            $builder->where('ph.branch_id', $branchId);
-        }
-
-        $row = $builder->get()->getRowArray();
+        $m = $this->metrics()->memberCounts($this->branchOf($filters));
 
         return [
-            'total_members' => (int) ($row['total_members'] ?? 0),
-            'active_members' => (int) ($row['active_members'] ?? 0),
-            'inactive_members' => (int) ($row['inactive_members'] ?? 0),
+            'total_members'    => $m['total_members'],
+            'active_members'   => $m['active'],
+            'inactive_members' => $m['inactive_members'],
         ];
     }
 
+    /**
+     * The top of the Overdue report (same rows, same numbers) for the summary page.
+     */
     public function getDelinquentAccounts(array $filters): array
     {
-        $branchId = (int) ($filters['branch_id'] ?? 0);
-        $today = date('Y-m-d');
+        $rows = array_slice($this->getOverdueReport(['branch_id' => $filters['branch_id'] ?? 0]), 0, 25);
 
-        $builder = db_connect()->table('plans pl')
-            ->select('pl.plan_id, pl.remaining_balance, pl.months_paid, pl.status AS plan_status, pl.next_due_date, ph.unique_identifier, u.first_name, u.last_name, b.branch_name, pl.start_date')
-            ->join('plan_holders ph', 'ph.plan_holder_id = pl.plan_holder_id', 'inner')
-            ->join('users u', 'u.user_id = ph.user_id', 'inner')
-            ->join('branches b', 'b.branch_id = ph.branch_id', 'left')
-            ->where('pl.remaining_balance >', 0)
-            ->where('pl.status !=', 'completed')
-            ->where('pl.next_due_date <', $today)
-            ->orderBy('pl.remaining_balance', 'DESC')
-            ->limit(25);
-
-        if ($branchId > 0) {
-            $builder->where('ph.branch_id', $branchId);
+        foreach ($rows as &$row) {
+            $row['plan_status'] = $row['lifecycle'];
         }
+        unset($row);
 
-        return $builder->get()->getResultArray();
+        return $rows;
     }
 
     public function getServiceUsageStatistics(array $filters): array
@@ -172,65 +150,92 @@ class ReportService
 
     public function getPaymentTrends(array $filters): array
     {
-        $year = (int) ($filters['year'] ?? date('Y'));
-        $branchId = (int) ($filters['branch_id'] ?? 0);
+        $year    = (int) ($filters['year'] ?? date('Y'));
+        $metrics = $this->metrics();
+        $branch  = $this->branchOf($filters);
 
-        $builder = db_connect()->table('payments p')
-            ->select("DATE_FORMAT(p.payment_date, '%Y-%m') AS month_key, DATE_FORMAT(p.payment_date, '%b %Y') AS month_label, SUM(CASE WHEN p.payment_method = 'cash' THEN p.amount ELSE 0 END) AS cash_total, SUM(CASE WHEN p.payment_method = 'gcash' THEN p.amount ELSE 0 END) AS gcash_total", false)
-            ->where('YEAR(p.payment_date)', $year, false)
-            ->groupBy('DATE_FORMAT(p.payment_date, "%Y-%m")', false)
-            ->orderBy('month_key', 'ASC');
+        $cash  = array_column($metrics->collectedByMonth($branch, $year . '-01-01', $year . '-12-31', ['method' => 'cash']), null, 'month_key');
+        $gcash = array_column($metrics->collectedByMonth($branch, $year . '-01-01', $year . '-12-31', ['method' => 'gcash']), null, 'month_key');
 
-        if ($branchId > 0) {
-            $builder->where('p.branch_id', $branchId);
+        $keys = array_unique(array_merge(array_keys($cash), array_keys($gcash)));
+        sort($keys);
+
+        $rows = [];
+        foreach ($keys as $key) {
+            $rows[] = [
+                'month_key'   => $key,
+                'month_label' => date('M Y', strtotime($key . '-01')),
+                'cash_total'  => (float) ($cash[$key]['total_amount'] ?? 0),
+                'gcash_total' => (float) ($gcash[$key]['total_amount'] ?? 0),
+            ];
         }
 
-        return $builder->get()->getResultArray();
+        return $rows;
     }
 
-    /**
-     * Panel brief, section 7: "Overdue Report - lists plan holders who are
-     * behind on payments." Same conditions getDelinquentAccounts() already
-     * uses for its capped dashboard widget, but as a real, unlimited,
-     * exportable report.
-     */
     public function getOverdueReport(array $filters): array
     {
         $branchId = (int) ($filters['branch_id'] ?? 0);
         $today = date('Y-m-d');
 
-        $builder = db_connect()->table('plans pl')
-            ->select('pl.plan_id, pl.remaining_balance, pl.months_paid, pl.overdue_months, pl.status AS plan_status, pl.next_due_date, pl.payment_coverage_until, pl.membership_state, ph.plan_holder_id, ph.unique_identifier, u.first_name, u.last_name, u.contact_number, b.branch_name')
+        // Candidate plans only (cheap SQL); the real numbers come from the
+        // one rule, PlanLedgerService, so this report always agrees with the
+        // client details page and the client's own dashboard.
+        $db = db_connect();
+        $builder = $db->table('plans pl')
+            ->select('pl.plan_id, ph.plan_holder_id, ph.unique_identifier, u.first_name, u.last_name, u.contact_number, b.branch_name')
             ->join('plan_holders ph', 'ph.plan_holder_id = pl.plan_holder_id', 'inner')
             ->join('users u', 'u.user_id = ph.user_id', 'inner')
             ->join('branches b', 'b.branch_id = ph.branch_id', 'left')
-            ->where('pl.remaining_balance >', 0)
-            ->where('pl.status !=', 'completed')
-            ->where('pl.next_due_date <', $today)
-            ->orderBy('pl.next_due_date', 'ASC');
+            ->groupStart()
+                ->where('pl.next_due_date <', $today);
+
+        // plans.lifecycle_status comes from migration AddPlanLifecycle; on a
+        // database that has not run it yet, fall back to the due-date test
+        // alone instead of failing the whole page.
+        if ($db->fieldExists('lifecycle_status', 'plans')) {
+            $builder->orWhereIn('pl.lifecycle_status', ['grace', 'lapsed', 'forfeited']);
+        }
+
+        $builder->groupEnd();
 
         if ($branchId > 0) {
             $builder->where('ph.branch_id', $branchId);
         }
 
-        $rows = $builder->get()->getResultArray();
+        cs_apply_search($builder, (string) ($filters['search'] ?? ''), ['u.first_name', 'u.last_name', 'u.contact_number', 'ph.unique_identifier']);
 
-        $overduePolicy = new OverduePolicyService();
+        $ledger = new PlanLedgerService();
+        $rows = [];
 
-        foreach ($rows as &$row) {
-            $dueDate = (string) ($row['next_due_date'] ?? '');
-            $row['days_overdue'] = $dueDate !== '' ? max(0, (int) floor((strtotime($today) - strtotime($dueDate)) / 86400)) : 0;
+        foreach ($builder->get()->getResultArray() as $row) {
+            $s = $ledger->summarize((int) $row['plan_id'], $today);
+            if (! $s || ! in_array($s['lifecycle'], ['grace', 'lapsed', 'forfeited'], true)) {
+                continue;
+            }
 
-            // Panel brief, section 8: the forfeiture countdown is measured
-            // from payment_coverage_until (what OverduePolicyService itself
-            // checks), which is a day or two ahead of next_due_date.
-            $coverageUntil = (string) ($row['payment_coverage_until'] ?? '');
-            $daysPastCoverage = $coverageUntil !== '' ? max(0, (int) floor((strtotime($today) - strtotime($coverageUntil)) / 86400)) : 0;
-            $row['days_until_forfeiture'] = (int) $row['months_paid'] > 0
-                ? $overduePolicy->daysUntilForfeiture($daysPastCoverage)
-                : null;
+            $rows[] = $row + [
+                'remaining_balance'      => ClientPlanSummary::fromLedger($s, $today)['remaining_balance'],
+                'months_paid'            => $s['months_paid'],
+                'overdue_months'         => $s['overdue_count'],
+                'overdue_amount'         => $s['overdue_amount'],
+                'overdue_dues'           => $s['overdue_dues'],
+                'next_due_date'          => $s['oldest_unpaid_due'],
+                'days_overdue'           => $s['days_overdue'],
+                'lifecycle'              => $s['lifecycle'],
+                // Kept under its old key for the CSV/PDF callers: now the
+                // days left in the grace period (null once it has passed).
+                'days_until_forfeiture'  => $s['grace_days_left'],
+                'grace_days_left'        => $s['grace_days_left'],
+                'status_text'            => match ($s['lifecycle']) {
+                    'grace'  => $s['grace_days_left'] . ' day(s) left to pay',
+                    'lapsed' => 'Lapsed - on hold',
+                    default  => 'Forfeited',
+                },
+            ];
         }
-        unset($row);
+
+        usort($rows, static fn (array $a, array $b): int => strcmp((string) $a['next_due_date'], (string) $b['next_due_date']));
 
         return $rows;
     }
@@ -241,7 +246,7 @@ class ReportService
      */
     public function searchPlanHolders(string $query, int $branchId = 0): array
     {
-        $query = trim($query);
+        $query = cs_search_term($query);
         if ($query === '') {
             return [];
         }
@@ -249,12 +254,11 @@ class ReportService
         $builder = db_connect()->table('plan_holders ph')
             ->select('ph.plan_holder_id, ph.unique_identifier, u.first_name, u.last_name, b.branch_name')
             ->join('users u', 'u.user_id = ph.user_id', 'inner')
-            ->join('branches b', 'b.branch_id = ph.branch_id', 'left')
-            ->groupStart()
-                ->like('u.first_name', $query)
-                ->orLike('u.last_name', $query)
-                ->orLike('ph.unique_identifier', $query)
-            ->groupEnd()
+            ->join('branches b', 'b.branch_id = ph.branch_id', 'left');
+
+        cs_apply_search($builder, $query, ['u.first_name', 'u.last_name', 'u.contact_number', 'u.email', 'ph.unique_identifier']);
+
+        $builder
             ->orderBy('u.first_name', 'ASC')
             ->orderBy('u.last_name', 'ASC')
             ->limit(20);
@@ -367,11 +371,32 @@ class ReportService
      */
     public function getCommissionReport(array $filters): array
     {
-        return (new CommissionService())->reportRows(
+        $rows = (new CommissionService())->reportRows(
             (int) ($filters['branch_id'] ?? 0) ?: null,
             (string) ($filters['date_from'] ?? '') ?: null,
             (string) ($filters['date_to'] ?? '') ?: null
         );
+
+        // The commission rows come out of CommissionService already
+        // aggregated, so the collector-name search is applied to them here
+        // (in PHP - no SQL involved): every word must be in the full name.
+        $term = cs_search_term($filters['search'] ?? '');
+        if ($term === '') {
+            return $rows;
+        }
+
+        $words = array_map('mb_strtolower', explode(' ', $term));
+
+        return array_values(array_filter($rows, static function (array $row) use ($words): bool {
+            $name = mb_strtolower(trim((string) ($row['first_name'] ?? '') . ' ' . (string) ($row['last_name'] ?? '')));
+            foreach ($words as $word) {
+                if (! str_contains($name, $word)) {
+                    return false;
+                }
+            }
+
+            return true;
+        }));
     }
 
     private function collectorBaseQuery(array $filters)
@@ -397,13 +422,15 @@ class ReportService
             $builder->where('p.payment_date <=', $dateTo);
         }
 
+        cs_apply_search($builder, (string) ($filters['search'] ?? ''), ['u.first_name', 'u.last_name']);
+
         return $builder;
     }
 
     private function baseQuery(array $filters)
     {
         $builder = db_connect()->table('payments p')
-            ->join('users rb', 'rb.user_id = p.received_by', 'inner')
+            ->join('users rb', 'rb.user_id = p.received_by', 'left')
             ->join('plans pl', 'pl.plan_id = p.plan_id', 'inner')
             ->join('plan_holders ph', 'ph.plan_holder_id = pl.plan_holder_id', 'inner')
             ->join('users cu', 'cu.user_id = ph.user_id', 'inner')
@@ -427,6 +454,11 @@ class ReportService
         if (! empty($filters['received_by'])) {
             $builder->where('p.received_by', (int) $filters['received_by']);
         }
+
+        cs_apply_search($builder, (string) ($filters['search'] ?? ''), [
+            'cu.first_name', 'cu.last_name', 'rb.first_name', 'rb.last_name',
+            'ph.unique_identifier', 'p.reference_number', 'p.official_receipt_number',
+        ]);
 
         return $builder;
     }

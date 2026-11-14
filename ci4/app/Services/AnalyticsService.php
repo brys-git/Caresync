@@ -23,46 +23,16 @@ class AnalyticsService
     {
         $db = db_connect();
 
-        $totalMembers = $db->table('plan_holders')
-            ->countAllResults();
+        $metrics = new MetricsService();
+        $members = $metrics->memberCounts(null);
 
-        $activeMembers = $db->table('plan_holders ph')
-            ->join('plans p', 'p.plan_holder_id = ph.plan_holder_id', 'inner')
-            ->where('p.status', 'active')
-            ->where('ph.status', 'active')
-            ->countAllResults();
+        // Last 12 calendar months of collected (paid) money, zero-filled.
+        $monthlyCollections = array_map(
+            static fn (array $m): array => ['month' => $m['month'], 'amount' => $m['amount']],
+            $metrics->lastMonths(null, 12)
+        );
 
-        $delinquentMembers = $db->table('plans')
-            ->where('status', 'active')
-            ->where('membership_state', 'delinquent')
-            ->countAllResults();
-
-        $suspendedMembers = $db->table('plans')
-            ->where('membership_state', 'suspended')
-            ->countAllResults();
-
-        $monthlyCollections = [];
-        for ($i = 11; $i >= 0; $i--) {
-            $date = date('Y-m-01', strtotime("-$i months"));
-            $nextDate = date('Y-m-01', strtotime("-$i months +1 month"));
-            $amount = $db->table('payments')
-                ->selectSum('amount', 'total')
-                ->where('payment_date >=', $date)
-                ->where('payment_date <', $nextDate)
-                ->where('status', 'paid')
-                ->get()
-                ->getRowArray();
-            $monthlyCollections[] = [
-                'month' => date('M', strtotime($date)),
-                'amount' => (float) ($amount['total'] ?? 0),
-            ];
-        }
-
-        $totalCollections = $db->table('payments')
-            ->selectSum('amount', 'total')
-            ->where('status', 'paid')
-            ->get()
-            ->getRowArray();
+        $totalCollections = $metrics->collected(null);
 
         $branches = $db->table('branches b')
             ->select('b.branch_id, b.branch_name, COUNT(DISTINCT ph.plan_holder_id) as member_count')
@@ -73,28 +43,20 @@ class AnalyticsService
             ->get()
             ->getResultArray();
 
-        $pendingApprovals = $db->table('payments pay')
-            ->join('plans p', 'p.plan_id = pay.plan_id', 'inner')
-            ->join('plan_holders ph', 'ph.plan_holder_id = p.plan_holder_id', 'inner')
-            ->where('pay.status', 'pending')
-            ->where('pay.payment_method', 'gcash')
-            ->where('ph.status', 'inactive')
-            ->countAllResults();
-
-        $pendingServiceRequests = $db->table('service_applications')
-            ->where('status', 'pending')
-            ->countAllResults();
+        $pendingApprovals = $metrics->pendingApprovals(null);
+        $pendingServiceRequests = $metrics->pendingServiceRequests(null);
 
         $totalBranches = $db->table('branches')->countAllResults();
         $totalStaff = $db->table('users')->where('role_id', 3)->countAllResults();
         $totalCollectors = $db->table('users')->where('role_id', 5)->countAllResults();
 
         return [
-            'total_members' => $totalMembers,
-            'active_members' => $activeMembers,
-            'delinquent_members' => $delinquentMembers,
-            'suspended_members' => $suspendedMembers,
-            'total_collections' => (float) ($totalCollections['total'] ?? 0),
+            'total_members' => $members['total_members'],
+            'active_members' => $members['active'],
+            'delinquent_members' => $members['grace'],
+            'suspended_members' => $members['suspended'],
+            'overdue_accounts' => $members['overdue_accounts'],
+            'total_collections' => $totalCollections,
             'monthly_collections' => $monthlyCollections,
             'top_branches' => $branches,
             'pending_approvals' => $pendingApprovals,
@@ -114,54 +76,12 @@ class AnalyticsService
     {
         $db = db_connect();
 
-        $branchMembers = $db->table('plan_holders')
-            ->where('branch_id', $branchId)
-            ->countAllResults();
-
-        $activeBranchMembers = $db->table('plan_holders ph')
-            ->join('plans p', 'p.plan_holder_id = ph.plan_holder_id', 'inner')
-            ->where('ph.branch_id', $branchId)
-            ->where('p.status', 'active')
-            ->where('ph.status', 'active')
-            ->countAllResults();
-
-        $overdueAccounts = $db->table('plans')
-            ->where('membership_state', 'delinquent')
-            ->where('status', 'active')
-            ->countAllResults();
+        $metrics = new MetricsService();
+        $members = $metrics->memberCounts($branchId);
 
         $currentMonth = date('Y-m');
-        $dailyCollections = $db->table('payments')
-            ->select('DATE(payment_date) as date, COUNT(*) as count, SUM(amount) as total')
-            ->where('branch_id', $branchId)
-            ->where('status', 'paid')
-            ->where("DATE_FORMAT(payment_date, '%Y-%m') =", $currentMonth)
-            ->groupBy('DATE(payment_date)')
-            ->orderBy('date', 'ASC')
-            ->get()
-            ->getResultArray();
-
-        $monthlyBranchTotal = $db->table('payments')
-            ->selectSum('amount', 'total')
-            ->where('branch_id', $branchId)
-            ->where('status', 'paid')
-            ->where("DATE_FORMAT(payment_date, '%Y-%m') =", $currentMonth)
-            ->get()
-            ->getRowArray();
-
-        $pendingInitialPayments = $db->table('payments pay')
-            ->join('plans p', 'p.plan_id = pay.plan_id', 'inner')
-            ->join('plan_holders ph', 'ph.plan_holder_id = p.plan_holder_id', 'inner')
-            ->where('pay.status', 'pending')
-            ->where('pay.branch_id', $branchId)
-            ->where('ph.status', 'inactive')
-            ->countAllResults();
-
-        $pendingServiceApps = $db->table('service_applications sa')
-            ->join('plan_holders ph', 'ph.plan_holder_id = sa.plan_holder_id', 'inner')
-            ->where('sa.status', 'pending')
-            ->where('ph.branch_id', $branchId)
-            ->countAllResults();
+        $monthStart   = $currentMonth . '-01';
+        $monthEnd     = date('Y-m-t', strtotime($monthStart));
 
         $ongoingServices = $db->table('service_schedules')
             ->where('branch_id', $branchId)
@@ -175,13 +95,13 @@ class AnalyticsService
             ->countAllResults();
 
         return [
-            'branch_members' => $branchMembers,
-            'active_members' => $activeBranchMembers,
-            'overdue_accounts' => $overdueAccounts,
-            'daily_collections' => $dailyCollections,
-            'monthly_total' => (float) ($monthlyBranchTotal['total'] ?? 0),
-            'pending_initial_payments' => $pendingInitialPayments,
-            'pending_service_requests' => $pendingServiceApps,
+            'branch_members' => $members['total_members'],
+            'active_members' => $members['active'],
+            'overdue_accounts' => $members['overdue_accounts'],
+            'daily_collections' => $metrics->collectedByDay($branchId, $currentMonth),
+            'monthly_total' => $metrics->collected($branchId, $monthStart, $monthEnd),
+            'pending_initial_payments' => $metrics->pendingApprovals($branchId),
+            'pending_service_requests' => $metrics->pendingServiceRequests($branchId),
             'ongoing_services' => $ongoingServices,
             'staff_count' => $staffCount,
         ];
@@ -195,39 +115,21 @@ class AnalyticsService
     {
         $db = db_connect();
 
-        $staffMembers = $db->table('plan_holders')
-            ->where('branch_id', $branchId)
-            ->countAllResults();
+        $metrics = new MetricsService();
+        $today   = date('Y-m-d');
 
-        $assignedServices = $db->table('service_applications')
-            ->where('status', 'approved')
+        $assignedServices = $db->table('service_applications sa')
+            ->join('plan_holders ph', 'ph.plan_holder_id = sa.plan_holder_id', 'inner')
+            ->where('sa.status', 'approved')
+            ->where('ph.branch_id', $branchId)
             ->countAllResults();
-
-        $pendingRequests = $db->table('service_applications')
-            ->where('status', 'pending')
-            ->countAllResults();
-
-        $todayPayments = $db->table('payments')
-            ->where('payment_method', 'cash')
-            ->where('DATE(payment_date)', date('Y-m-d'))
-            ->where('branch_id', $branchId)
-            ->countAllResults();
-
-        $todayTotal = $db->table('payments')
-            ->selectSum('amount', 'total')
-            ->where('payment_method', 'cash')
-            ->where('DATE(payment_date)', date('Y-m-d'))
-            ->where('branch_id', $branchId)
-            ->where('status', 'pending')
-            ->get()
-            ->getRowArray();
 
         return [
-            'staff_members' => $staffMembers,
+            'staff_members' => $metrics->memberCounts($branchId)['total_members'],
             'assigned_services' => $assignedServices,
-            'pending_requests' => $pendingRequests,
-            'cash_payments_today' => $todayPayments,
-            'cash_collected_today' => (float) ($todayTotal['total'] ?? 0),
+            'pending_requests' => $metrics->pendingServiceRequests($branchId),
+            'cash_payments_today' => $metrics->collectedCount($branchId, $today, $today, ['method' => 'cash']),
+            'cash_collected_today' => $metrics->collected($branchId, $today, $today, ['method' => 'cash']),
         ];
     }
 
@@ -248,33 +150,8 @@ class AnalyticsService
         $today = date('Y-m-d');
         $monthStart = date('Y-m-01');
 
-        $totalCollected = $db->table('payments')
-            ->selectSum('amount', 'total')
-            ->where('received_by', $userId)
-            ->where('status', 'paid')
-            ->get()
-            ->getRowArray();
-
-        $monthCollected = $db->table('payments')
-            ->selectSum('amount', 'total')
-            ->where('received_by', $userId)
-            ->where('status', 'paid')
-            ->where('payment_date >=', $monthStart)
-            ->get()
-            ->getRowArray();
-
-        $todayCollected = $db->table('payments')
-            ->selectSum('amount', 'total')
-            ->where('received_by', $userId)
-            ->where('status', 'paid')
-            ->where('DATE(payment_date)', $today)
-            ->get()
-            ->getRowArray();
-
-        $transactionCount = $db->table('payments')
-            ->where('received_by', $userId)
-            ->where('status', 'paid')
-            ->countAllResults();
+        $metrics = new MetricsService();
+        $mine    = ['received_by' => $userId];
 
         $recentPayments = $db->table('payments pay')
             ->select('pay.payment_id, pay.amount, pay.payment_method, pay.payment_date, pay.status, u.first_name, u.last_name')
@@ -287,7 +164,7 @@ class AnalyticsService
             ->get()
             ->getResultArray();
 
-        $monthTotal = (float) ($monthCollected['total'] ?? 0);
+        $monthTotal = $metrics->collected(null, $monthStart, $today, $mine);
 
         // Fix Prompts Task 4: commission is 10% of verified CASH collected
         // by this collector, not every payment method - a client's own
@@ -298,10 +175,10 @@ class AnalyticsService
         $commissionTotals = (new CommissionService())->totals($userId, date('Y-m-01'), date('Y-m-d'));
 
         return [
-            'total_collected' => (float) ($totalCollected['total'] ?? 0),
+            'total_collected' => $metrics->collected(null, null, null, $mine),
             'month_collected' => $monthTotal,
-            'today_collected' => (float) ($todayCollected['total'] ?? 0),
-            'transaction_count' => $transactionCount,
+            'today_collected' => $metrics->collected(null, $today, $today, $mine),
+            'transaction_count' => $metrics->collectedCount(null, null, null, $mine),
             'estimated_commission' => $commissionTotals['commission'],
             'recent_payments' => $recentPayments,
         ];

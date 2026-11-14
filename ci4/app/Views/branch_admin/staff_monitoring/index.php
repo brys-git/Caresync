@@ -10,11 +10,16 @@
 </ul>
 
 <?php if (($active_tab ?? '') === 'staff-list'): ?>
+    <?= view('partials/search_bar', [
+        'action'      => site_url('/branch-admin/staff-monitoring'),
+        'term'        => $search ?? '',
+        'placeholder' => 'Staff name, email, username or mobile number',
+    ]) ?>
     <section class="cs-panel mb-3">
         <div class="cs-panel__body cs-panel__body--flush">
             <?php $rows = $staff ?? []; ?>
             <?php if (empty($rows)): ?>
-                <?= view('components/empty_state', ['icon' => 'ti-users', 'title' => 'No staff found in your branch']) ?>
+                <?= view('components/empty_state', ['icon' => 'ti-users', 'title' => ! empty($search) ? 'No staff match "' . $search . '"' : 'No staff found in your branch', 'text' => ! empty($search) ? 'Check the spelling or try fewer words, then search again - or clear the search.' : '']) ?>
             <?php else: ?>
                 <div class="cs-tablewrap">
                     <table class="cs-table">

@@ -161,11 +161,16 @@
 <?php endif; ?>
 
 <?php if (($active_tab ?? '') === 'requests'): ?>
+    <?= view('partials/search_bar', [
+        'action'      => site_url('/branch-admin/service-package/requests'),
+        'term'        => $search ?? '',
+        'placeholder' => 'Plan holder, plan number, or package / service claimed',
+    ]) ?>
     <section class="cs-panel">
         <div class="cs-panel__body cs-panel__body--flush">
             <?php $rows = $requests ?? []; ?>
             <?php if (empty($rows)): ?>
-                <?= view('components/empty_state', ['icon' => 'ti-clipboard-list', 'title' => 'No claims found']) ?>
+                <?= view('components/empty_state', ['icon' => 'ti-clipboard-list', 'title' => ! empty($search) ? 'No claims match "' . $search . '"' : 'No claims found', 'text' => ! empty($search) ? 'Check the spelling or try fewer words, then search again - or clear the search.' : '']) ?>
             <?php else: ?>
                 <div class="cs-tablewrap">
                     <table class="cs-table">

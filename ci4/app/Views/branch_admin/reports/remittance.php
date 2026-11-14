@@ -5,21 +5,17 @@
 
 <div class="mb-3 text-end no-print">
     <div class="d-flex gap-2 justify-content-end">
+        <a class="btn btn-ghost btn-sm" target="_blank" rel="noopener"
+           href="<?= site_url('/branch-admin/reports/remittance?' . http_build_query(array_merge($filters, ['mode' => 'print']))) ?>">
+            <i class="ti ti-printer me-1"></i> Print
+        </a>
         <form method="post" action="<?= site_url('/branch-admin/reports/remittance/generate') ?>" class="d-inline">
             <?= csrf_field() ?>
             <input type="hidden" name="date_from" value="<?= esc($filters['date_from']) ?>">
             <input type="hidden" name="date_to" value="<?= esc($filters['date_to']) ?>">
             <input type="hidden" name="payment_method" value="<?= esc($filters['payment_method']) ?>">
             <input type="hidden" name="received_by" value="<?= esc((string) $filters['received_by']) ?>">
-            <input type="hidden" name="action" value="print">
-            <button type="submit" class="btn btn-ghost btn-sm">Print</button>
-        </form>
-        <form method="post" action="<?= site_url('/branch-admin/reports/remittance/generate') ?>" class="d-inline">
-            <?= csrf_field() ?>
-            <input type="hidden" name="date_from" value="<?= esc($filters['date_from']) ?>">
-            <input type="hidden" name="date_to" value="<?= esc($filters['date_to']) ?>">
-            <input type="hidden" name="payment_method" value="<?= esc($filters['payment_method']) ?>">
-            <input type="hidden" name="received_by" value="<?= esc((string) $filters['received_by']) ?>">
+            <input type="hidden" name="search" value="<?= esc((string) ($filters['search'] ?? ''), 'attr') ?>">
             <input type="hidden" name="action" value="pdf">
             <button type="submit" class="btn btn-outline-primary btn-sm">Export PDF</button>
         </form>
@@ -29,6 +25,7 @@
             <input type="hidden" name="date_to" value="<?= esc($filters['date_to']) ?>">
             <input type="hidden" name="payment_method" value="<?= esc($filters['payment_method']) ?>">
             <input type="hidden" name="received_by" value="<?= esc((string) $filters['received_by']) ?>">
+            <input type="hidden" name="search" value="<?= esc((string) ($filters['search'] ?? ''), 'attr') ?>">
             <input type="hidden" name="action" value="csv">
             <button type="submit" class="btn btn-outline-primary btn-sm">Export Excel</button>
         </form>
@@ -43,6 +40,11 @@
         <form method="post" action="<?= site_url('/branch-admin/reports/remittance/generate') ?>">
             <?= csrf_field() ?>
             <div class="row g-3 align-items-end">
+                <div class="col-12">
+                    <label class="form-label" for="remit-search">Search</label>
+                    <input id="remit-search" type="search" class="form-control" name="search" maxlength="100"
+                           value="<?= esc((string) ($filters['search'] ?? ''), 'attr') ?>" placeholder="Client, recorded by, receipt or reference">
+                </div>
                 <div class="col-md-3">
                     <label class="form-label">Date From</label>
                     <input type="date" class="form-control" name="date_from" value="<?= esc($filters['date_from']) ?>" required>

@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#1c3a34">
+    <meta name="theme-color" content="#1b2473">
     <title>Change password · CareSync</title>
     <link rel="icon" href="<?= base_url('assets/favicon_io/favicon.ico') ?>">
     <link rel="stylesheet" href="<?= base_url('assets/css/main.css') ?>">
-    <link rel="stylesheet" href="<?= base_url('assets/css/caresync.css') ?>">
+    <link rel="stylesheet" href="<?= cs_asset_url('assets/css/caresync.css') ?>">
 </head>
 <body>
 <main class="signin">
     <aside class="signin__aside">
         <div class="signin__wordmark">
-            <img src="<?= base_url('assets/images/logo-icon.svg') ?>" alt="" width="26">
+            <span class="signin__logo"><img src="<?= cs_asset_url('assets/images/company-logo.png') ?>" alt=""></span>
             <span>CareSync</span>
         </div>
 
@@ -43,7 +43,7 @@
 
     <div class="signin__main">
         <div class="signin__form">
-            <h2 class="signin__title">Change Your Password</h2>
+            <h2 class="signin__title"><?= (int) session('must_change_password') === 1 ? 'Set your new password' : 'Change Your Password' ?></h2>
             <p class="cs-muted mb-4">This account uses a temporary password. Set a new password to continue.</p>
 
             <?php if (session()->getFlashdata('error')): ?>
@@ -63,7 +63,7 @@
             <form method="post" action="<?= base_url('change-password') ?>" data-cs-once>
                 <?= csrf_field() ?>
                 <div class="mb-3">
-                    <label class="form-label" for="current_password">Current Password</label>
+                    <label class="form-label" for="current_password"><?= (int) session('must_change_password') === 1 ? 'Temporary Password' : 'Current Password' ?></label>
                     <input id="current_password" name="current_password" type="password" class="form-control" required>
                 </div>
                 <div class="mb-3">
@@ -80,6 +80,7 @@
     </div>
 </main>
 
+<?= view('partials/confirm_dialog') ?>
 <script src="<?= base_url('assets/js/caresync.js') ?>" defer></script>
 </body>
 </html>

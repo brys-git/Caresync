@@ -42,6 +42,9 @@ class ClientPortal extends BaseController
             $builder->where('pay.branch_id', $branchId);
         }
 
+        $search = cs_search_term($this->request->getGet('search'));
+        cs_apply_search($builder, $search, ['u.first_name', 'u.last_name', 'u.email', 'pay.reference_number']);
+
         $rows = $builder->get()->getResultArray();
 
         // Task 2: surface Government ID verifications that need a human
@@ -59,56 +62,9 @@ class ClientPortal extends BaseController
             'page_title' => 'Registration approvals',
             'page_sub' => 'Pending initial payments requiring verification before full access activation.',
             'rows' => $rows,
+            'search' => $search,
+            'search_action' => base_url($roleId === 1 ? 'admin/registration-approvals' : 'branch-admin/registration-approvals'),
             'can_verify' => $roleId === 2,
-        ]);
-    }
-
-    public function dashboard(): string
-    {
-        $access = $this->resolveAccessState();
-        $user = $access['user'];
-        $planHolder = $access['plan_holder'];
-        $membershipService = new MembershipService();
-        $paymentService = new PaymentService();
-        $latestPlan = $planHolder ? $membershipService->getMembershipSummary((int) $planHolder['plan_holder_id']) : null;
-
-        if (! empty($latestPlan['plan_id'])) {
-            $totalContribution = (float) ($latestPlan['total_plan_amount'] ?? MembershipService::TOTAL_CONTRIBUTION);
-            $paidAmount = $paymentService->getTotalPaidForPlan((int) $latestPlan['plan_id']);
-            $latestPlan['paid_amount'] = $paidAmount;
-            $latestPlan['total_paid'] = $paidAmount;
-            $latestPlan['total_plan_amount'] = $totalContribution;
-            $latestPlan['remaining_balance'] = max(0, round($totalContribution - $paidAmount, 2));
-        }
-
-        $branchName = '';
-        if (! empty($planHolder['branch_id'])) {
-            $branch = db_connect()->table('branches')
-                ->select('branch_name')
-                ->where('branch_id', (int) $planHolder['branch_id'])
-                ->get()
-                ->getRowArray();
-            $branchName = (string) ($branch['branch_name'] ?? '');
-        }
-
-        $membershipSince = '';
-        if (! empty($planHolder['created_at'])) {
-            $membershipSince = date('F Y', strtotime((string) $planHolder['created_at']));
-        } elseif (! empty($user['created_at'])) {
-            $membershipSince = date('F Y', strtotime((string) $user['created_at']));
-        }
-
-        return view('client/dashboard', [
-            'role_layout' => 'layouts/plan_holder',
-            'page_title' => 'Overview',
-            'page_sub' => 'Your membership, payments, and next steps.',
-            'user' => $user,
-            'plan_holder' => $planHolder,
-            'plan' => $latestPlan,
-            'access' => $access,
-            'program' => MembershipService::getProgramInfo(),
-            'branch_name' => $branchName,
-            'membership_since' => $membershipSince,
         ]);
     }
 
@@ -446,7 +402,8 @@ class ClientPortal extends BaseController
             return redirect()->back()->withInput()->with('error', 'Amount must match your monthly fee multiplied by months covered.');
         }
 
-        if ($amount > (float) ($plan['remaining_balance'] ?? 0)) {
+        // Remaining balance from the one shared calculation (plans.remaining_balance is not maintained).
+        if ($amount > (float) ((new \App\Services\ClientPlanSummary())->forPlan((int) $plan['plan_id'])['remaining_balance'] ?? 0)) {
             return redirect()->back()->withInput()->with('error', 'Payment exceeds your remaining balance.');
         }
 
@@ -639,12 +596,9 @@ class ClientPortal extends BaseController
 
         // Check service eligibility based on membership state
         $membershipService = new MembershipService();
-        if (!$membershipService->canAccessServices((int) $planHolder['plan_holder_id'])) {
-            $membership = $membershipService->getMembershipSummary((int) $planHolder['plan_holder_id']);
-            if ($membership && (int) ($membership['overdue_months'] ?? 0) > 2) {
-                return redirect()->back()->with('error', 'Your membership is currently delinquent. Please update your monthly contributions to access funeral services.');
-            }
-            return redirect()->back()->with('error', 'Your membership status does not allow service access at this time.');
+        $serviceAccess = $membershipService->serviceAccess((int) $planHolder['plan_holder_id']);
+        if (! $serviceAccess['allowed']) {
+            return redirect()->back()->with('error', $serviceAccess['reason'] ?: 'Your plan does not allow service requests at this time.');
         }
 
         $service = db_connect()->table('service_list')
@@ -689,12 +643,9 @@ class ClientPortal extends BaseController
 
         // Check service eligibility based on membership state
         $membershipService = new MembershipService();
-        if (!$membershipService->canAccessServices((int) $planHolder['plan_holder_id'])) {
-            $membership = $membershipService->getMembershipSummary((int) $planHolder['plan_holder_id']);
-            if ($membership && (int) ($membership['overdue_months'] ?? 0) > 2) {
-                return redirect()->back()->with('error', 'Your membership is currently delinquent. Please update your monthly contributions to access funeral services.');
-            }
-            return redirect()->back()->with('error', 'Your membership status does not allow service access at this time.');
+        $serviceAccess = $membershipService->serviceAccess((int) $planHolder['plan_holder_id']);
+        if (! $serviceAccess['allowed']) {
+            return redirect()->back()->with('error', $serviceAccess['reason'] ?: 'Your plan does not allow service requests at this time.');
         }
 
         $package = db_connect()->table('packages')

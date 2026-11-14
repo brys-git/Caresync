@@ -6,6 +6,7 @@ use App\Filters\AuthFilter;
 use App\Filters\RoleFilter;
 use App\Filters\AccessStateFilter;
 use App\Filters\CollectorFilter;
+use App\Filters\SecureHeaders;
 use CodeIgniter\Config\Filters as BaseFilters;
 use CodeIgniter\Filters\Cors;
 use CodeIgniter\Filters\CSRF;
@@ -15,7 +16,6 @@ use CodeIgniter\Filters\Honeypot;
 use CodeIgniter\Filters\InvalidChars;
 use CodeIgniter\Filters\PageCache;
 use CodeIgniter\Filters\PerformanceMetrics;
-use CodeIgniter\Filters\SecureHeaders;
 
 class Filters extends BaseFilters
 {
@@ -62,6 +62,7 @@ class Filters extends BaseFilters
             'forcehttps', // Force Global Secure Requests
         ],
         'after' => [
+            'secureheaders', // Security headers, also on the 404 page
             'performance', // Performance Metrics
             'toolbar',     // Debug Toolbar
         ],
@@ -84,7 +85,7 @@ class Filters extends BaseFilters
         ],
         'after' => [
             // 'honeypot',
-            // 'secureheaders',
+            'secureheaders',
         ],
     ];
 

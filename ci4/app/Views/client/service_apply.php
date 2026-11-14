@@ -34,7 +34,7 @@
                     <label class="form-label">Select route</label>
                     <?php foreach ($routes as $i => $route): ?>
                         <div class="form-check border rounded p-2 mb-2">
-                            <input class="form-check-input route-option" type="radio" name="route_id" id="route-<?= (int) $route['route_id'] ?>" value="<?= (int) $route['route_id'] ?>" data-price="<?= (float) $route['price'] ?>" <?= $i === 0 ? 'checked' : '' ?> required>
+                            <input class="form-check-input route-option" type="radio" name="route_id" id="route-<?= (int) $route['route_id'] ?>" value="<?= (int) $route['route_id'] ?>" data-price="<?= (float) $route['price'] ?>" <?= (int) ($selected_route_id ?? 0) === (int) $route['route_id'] || (empty($selected_route_id) && $i === 0) ? 'checked' : '' ?> required>
                             <label class="form-check-label d-flex justify-content-between" for="route-<?= (int) $route['route_id'] ?>">
                                 <span><?= esc((string) $route['route_name']) ?></span>
                                 <?= cs_money($route['price']) ?>
@@ -43,7 +43,7 @@
                     <?php endforeach; ?>
                     <div class="cs-routerow cs-routerow--total">
                         <span>Total amount</span>
-                        <span class="cs-money" id="route-total"><?= esc(number_format((float) ($routes[0]['price'] ?? 0), 2)) ?></span>
+                        <span class="cs-money" id="route-total"><?= esc(number_format((float) (array_values(array_filter($routes, static fn ($r) => (int) $r['route_id'] === (int) ($selected_route_id ?? 0)))[0]['price'] ?? $routes[0]['price'] ?? 0), 2)) ?></span>
                     </div>
                 </div>
             <?php endif; ?>

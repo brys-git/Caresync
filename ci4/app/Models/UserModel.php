@@ -27,9 +27,12 @@ class UserModel extends Model
         'is_plan_holder',
         'is_collector',
         'must_change_password',
+        'temp_password_expires_at',
         'email_verification_token',
         'token_expiry',
         'reset_token',
         'reset_token_expiry',
+        'profile_photo',
+        'password_changed_at',
     ];
 }

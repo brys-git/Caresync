@@ -159,77 +159,37 @@ class QueryHelper
     }
 
     /**
-     * Count pending approvals for a branch
-     * 
-     * @param int $branchId - Branch ID
-     * @return int - Number of pending approvals
+     * Count pending approvals for a branch (the registration approvals queue).
+     * Delegates to MetricsService, the one place aggregate counts live.
      */
     public static function countPendingApprovals(int $branchId): int
     {
-        $db = \Config\Database::connect();
-        
-        return $db->table('plan_holders')
-            ->where('branch_id', $branchId)
-            ->where('status', 'pending')
-            ->countAllResults();
+        return (new \App\Services\MetricsService())->pendingApprovals($branchId);
     }
 
     /**
-     * Get member statistics for a branch
-     * 
-     * @param int $branchId - Branch ID
-     * @return array - Statistics
+     * Member statistics for a branch, from MetricsService::memberCounts().
+     *
+     * @return array{total_active:int,total_pending:int,total_delinquent:int,total_suspended:int}
      */
     public static function getMemberStats(int $branchId): array
     {
-        $db = \Config\Database::connect();
-        
+        $m = (new \App\Services\MetricsService())->memberCounts($branchId);
+
         return [
-            'total_active' => $db->table('plan_holders')
-                ->where('branch_id', $branchId)
-                ->where('status', 'active')
-                ->countAllResults(),
-            
-            'total_pending' => $db->table('plan_holders')
-                ->where('branch_id', $branchId)
-                ->where('status', 'pending')
-                ->countAllResults(),
-            
-            'total_delinquent' => $db->table('plan_holders')
-                ->where('branch_id', $branchId)
-                ->where('status', 'delinquent')
-                ->countAllResults(),
-            
-            'total_suspended' => $db->table('plan_holders')
-                ->where('branch_id', $branchId)
-                ->where('status', 'suspended')
-                ->countAllResults(),
+            'total_active'     => $m['active'],
+            'total_pending'    => $m['pending_members'],
+            'total_delinquent' => $m['grace'],
+            'total_suspended'  => $m['suspended'],
         ];
     }
 
     /**
-     * Get total collection amount for date range
-     * 
-     * @param int $branchId - Branch ID
-     * @param string $startDate - Start date (YYYY-MM-DD)
-     * @param string $endDate - End date (YYYY-MM-DD)
-     * @return float - Total collections
+     * Money collected (paid payments only) in a date range, from
+     * MetricsService::collected().
      */
     public static function getTotalCollections(int $branchId, string $startDate, string $endDate): float
     {
-        $db = \Config\Database::connect();
-        
-        $result = $db->table('payments pay')
-            ->selectSum('pay.amount', 'total')
-            ->join('plans p', 'pay.plan_id = p.plan_id', 'left')
-            ->join('plan_holders ph', 'p.plan_holder_id = ph.plan_holder_id', 'left')
-            ->where('ph.branch_id', $branchId)
-            ->where('pay.status', 'approved')
-            ->where('DATE(pay.payment_date) >=', $startDate)
-            ->where('DATE(pay.payment_date) <=', $endDate)
-            ->get()
-            ->getRowArray();
-        
-        return (float) ($result['total'] ?? 0);
+        return (new \App\Services\MetricsService())->collected($branchId, $startDate, $endDate);
     }
 }

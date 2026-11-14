@@ -9,6 +9,15 @@
     <li class="nav-item"><a class="nav-link <?= ($tab ?? '') === 'approval' ? 'active' : '' ?>" href="<?= site_url('/admin/service-offer?tab=approval') ?>">Approval Queue</a></li>
 </ul>
 
+<?php if (in_array($tab ?? '', ['packages', 'services'], true)): ?>
+    <?= view('partials/search_bar', [
+        'action'      => site_url('/admin/service-offer'),
+        'term'        => $search ?? '',
+        'placeholder' => 'Package or service name, or description',
+        'keep'        => ['tab' => $tab],
+    ]) ?>
+<?php endif; ?>
+
 <?php if (($tab ?? '') === 'packages'): ?>
     <div class="row g-4">
         <div class="col-xl-7">

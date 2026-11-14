@@ -25,7 +25,7 @@ class ClientManagementController extends BaseController
         $db = db_connect();
         $branchId = (int) $this->request->getGet('branch_id');
         $status = strtolower(trim((string) $this->request->getGet('status')));
-        $search = trim((string) $this->request->getGet('search'));
+        $search = cs_search_term($this->request->getGet('search'));
 
         $branches = $db->table('branches')
             ->select('branch_id, branch_name')
@@ -52,14 +52,9 @@ class ClientManagementController extends BaseController
             $builder->where('ph.status', $status);
         }
 
-        if ($search !== '') {
-            $builder->groupStart()
-                ->like('u.first_name', $search)
-                ->orLike('u.last_name', $search)
-                ->orLike('u.email', $search)
-                ->orLike('ph.unique_identifier', $search)
-                ->groupEnd();
-        }
+        cs_apply_search($builder, $search, [
+            'u.first_name', 'u.last_name', 'u.email', 'u.contact_number', 'ph.unique_identifier',
+        ]);
 
         $clients = $builder->get()->getResultArray();
 
@@ -72,30 +67,6 @@ class ClientManagementController extends BaseController
                 'status' => $status,
                 'search' => $search,
             ],
-        ]);
-    }
-
-    public function view(int $id): string
-    {
-        $this->ensureAdminAccess();
-
-        $client = $this->clientService->getClientDetails($id);
-
-        if (! $client) {
-            throw PageNotFoundException::forPageNotFound();
-        }
-
-        $planId = isset($client['plan']['plan_id']) ? (int) $client['plan']['plan_id'] : null;
-        $payments = $this->clientService->getClientPayments($planId);
-        $services = $this->clientService->getClientServices($id);
-
-        return view('admin/client_management/view', [
-            'client' => $client,
-            'payments' => $payments,
-            'services' => $services,
-            'role_layout' => 'layouts/admin',
-            'page_title' => 'Client Details',
-            'page_sub' => 'Plan Holder #' . (string) ($client['plan_holder_id'] ?? $id),
         ]);
     }
 
@@ -138,6 +109,7 @@ class ClientManagementController extends BaseController
             'branches' => $branches,
             'existing_users' => $existingUsers,
             'program' => MembershipService::getProgramInfo(),
+            'plans' => (new \App\Services\PlanBuilderService())->listApprovedActive(),
             'id_types' => (new GovernmentIdVerificationService())->idTypes(),
         ]);
     }
@@ -273,6 +245,10 @@ class ClientManagementController extends BaseController
                 'senior_citizen_id' => trim((string) $this->request->getPost('senior_citizen_id')),
                 'organization_affiliation' => trim((string) $this->request->getPost('organization_affiliation')),
                 'status' => trim((string) $this->request->getPost('status')),
+                'emergency_contact_name' => trim((string) $this->request->getPost('emergency_contact_name')),
+                'emergency_contact_relationship' => trim((string) $this->request->getPost('emergency_contact_relationship')),
+                'emergency_contact_number' => trim((string) $this->request->getPost('emergency_contact_number')),
+                'emergency_contact_address' => trim((string) $this->request->getPost('emergency_contact_address')),
                 'beneficiaries' => $this->request->getPost('beneficiaries') ?? [],
             ]);
         } catch (\Throwable $e) {

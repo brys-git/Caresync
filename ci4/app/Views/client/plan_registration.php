@@ -14,6 +14,7 @@ $this->setData(['wizard' => registration_wizard_config('plan_holder', [
     'branches' => $branches ?? [],
     'hidden_plan_id' => $planId,
     'program' => $program,
+    'plans' => $plans ?? [],
     'plan_holder' => $plan_holder ?? [],
     'user' => $user ?? [],
     'beneficiaries' => $beneficiaries,

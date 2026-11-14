@@ -14,11 +14,7 @@ $routes = $routes ?? [];
 
     <div class="cs-hero mb-3">
         <div class="cs-hero__image">
-            <?php if (! empty($service['image_path'])): ?>
-                <img src="<?= esc(base_url((string) $service['image_path'])) ?>" alt="<?= esc((string) ($service['service_name'] ?? 'Service')) ?>">
-            <?php else: ?>
-                <i class="ti ti-truck" aria-hidden="true"></i>
-            <?php endif; ?>
+            <img src="<?= esc(cs_image_url($service['image_path'] ?? null)) ?>" alt="<?= esc((string) ($service['service_name'] ?? 'Service')) ?>" onerror="this.onerror=null;this.src='<?= esc(base_url('assets/images/no-image.png')) ?>'">
         </div>
         <div class="cs-hero__body">
             <p class="mb-0 cs-muted"><?= esc((string) ($service['description'] ?? 'No description available.')) ?></p>

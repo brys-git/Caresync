@@ -289,18 +289,18 @@ class PaymentService
         // inconsistently.
         $monthsPaid = (new MembershipService())->recalculateMonthsPaid($planId);
 
-        $status = $monthsPaid > 0 ? 'active' : 'inactive';
+        // A forfeited plan stays inactive (PlanLedgerService decided that).
+        $forfeited = (string) ($db->table('plans')->select('lifecycle_status')->where('plan_id', $planId)->get()->getRowArray()['lifecycle_status'] ?? '') === 'forfeited';
+        $status = ($monthsPaid > 0 && ! $forfeited) ? 'active' : 'inactive';
 
         $db->table('plans')
             ->where('plan_id', $planId)
             ->update([
                 'remaining_balance' => number_format($remainingBalance, 2, '.', ''),
                 'status' => $status,
-                // Panel brief, section 9: a payment just came in, so clear
-                // the overdue-notice flag - if they fall behind again, the
-                // daily sweep (OverduePolicyService::notifyOverdueAccounts())
-                // treats it as a fresh cycle and sends a new notice rather
-                // than staying silent because one was sent last time.
+                // A payment just came in: clear the old overdue-notice flag.
+                // (Reminders are now tracked per overdue episode in
+                // plan_notices by PlanLedgerService.)
                 'overdue_notified_at' => null,
             ]);
     }
@@ -323,12 +323,12 @@ class PaymentService
             return 0.0;
         }
 
-        return (float) db_connect()->table('payments')
-            ->select('COALESCE(SUM(amount), 0) AS total_paid', false)
-            ->where('plan_id', $planId)
-            ->whereIn('status', ['paid', 'verified'])
-            ->get()
-            ->getRowArray()['total_paid'] ?? 0;
+        // One answer for every screen: the ledger's total (verified payments of
+        // the current contract plus verified past records; reinstatement fees
+        // are not contributions and are left out). See ClientPlanSummary.
+        $summary = (new PlanLedgerService())->summarize($planId);
+
+        return $summary ? (float) $summary['total_paid'] : 0.0;
     }
 
     /**
@@ -529,6 +529,94 @@ class PaymentService
         $remainingMonths = max(0, $cycleRemainingMonths - $pendingMonths);
 
         return [$cycleTargetMonths, $verifiedMonths, $pendingMonths, $remainingMonths];
+    }
+
+    /**
+     * The month-by-month schedule for the plan's current cycle, the single
+     * source for the Payments page, the Make payment calendar, and the
+     * submit handler: payments always fill the next unpaid months in order,
+     * starting from the plan's first month plus every month already paid or
+     * awaiting verification.
+     *
+     * Amounts are capped at the cycle's ₱14,500 target, so the final month of
+     * a 61-month cycle is charged its ₱100 remainder, not a full ₱240.
+     *
+     * @return array{total_months:int, verified_months:int, pending_months:int, remaining_months:int, monthly_fee:float, target:float, paid_amount:float, remaining_amount:float, payable_amount:float, anchor:string, offset:int}
+     */
+    public function paymentSchedule(array $plan): array
+    {
+        [$totalMonths, $verifiedMonths, $pendingMonths, $remainingMonths] = $this->remainingPayableMonths($plan);
+
+        $monthlyFee = (float) ($plan['monthly_fee'] ?? MembershipService::MONTHLY_FEE);
+        if ($monthlyFee <= 0) {
+            $monthlyFee = MembershipService::MONTHLY_FEE;
+        }
+        $target = (float) (new CycleService())->currentCycle((int) $plan['plan_id'])['target'];
+
+        $paidAmount = min($target, round($verifiedMonths * $monthlyFee, 2));
+        $remainingAmount = max(0.0, round($target - $paidAmount, 2));
+
+        return [
+            'total_months' => $totalMonths,
+            'verified_months' => $verifiedMonths,
+            'pending_months' => $pendingMonths,
+            'remaining_months' => $remainingMonths,
+            'monthly_fee' => $monthlyFee,
+            'target' => $target,
+            'paid_amount' => $paidAmount,
+            'remaining_amount' => $remainingAmount,
+            'payable_amount' => max(0.0, round($remainingAmount - $pendingMonths * $monthlyFee, 2)),
+            'anchor' => self::coverageAnchor($plan),
+            'offset' => $verifiedMonths + $pendingMonths,
+        ];
+    }
+
+    /**
+     * First day of the month the plan's cycle begins covering: the plan's own
+     * start month (activation sets start_date to the approval date). Later
+     * cycles start from the cycle-start marker, which the cycle close stamps.
+     */
+    public static function coverageAnchor(array $plan): string
+    {
+        $cycleNumber = (int) ($plan['current_cycle_number'] ?? 1);
+        $source = $cycleNumber > 1 && ! empty($plan['contribution_cycle_started_at'])
+            ? (string) $plan['contribution_cycle_started_at']
+            : (string) ($plan['start_date'] ?? '');
+
+        $ts = $source !== '' ? strtotime($source) : false;
+
+        return date('Y-m-01', $ts !== false ? $ts : strtotime('today'));
+    }
+
+    /** Month-start date ($anchor is a first-of-month) shifted by $addMonths. */
+    public static function monthStart(string $anchor, int $addMonths): string
+    {
+        return date('Y-m-d', strtotime('+' . $addMonths . ' months', strtotime($anchor)));
+    }
+
+    /** Last day of the month $addMonths after $anchor. */
+    public static function monthEnd(string $anchor, int $addMonths): string
+    {
+        return date('Y-m-t', strtotime('+' . $addMonths . ' months', strtotime($anchor)));
+    }
+
+    /**
+     * Coverage implied by $verifiedMonths paid from $anchor, in order:
+     * covered through the last day of the final paid month, next due the day
+     * after that (the 1st of the next unpaid month).
+     *
+     * @return array{covered_until:string, next_due:string}|null  null when nothing is paid yet
+     */
+    public static function coverageFromMonths(string $anchor, int $verifiedMonths): ?array
+    {
+        if ($verifiedMonths <= 0) {
+            return null;
+        }
+
+        return [
+            'covered_until' => self::monthEnd($anchor, $verifiedMonths - 1),
+            'next_due' => self::monthStart($anchor, $verifiedMonths),
+        ];
     }
 
     private function updateNextDueDate(int $planId, int $monthsCovered): void

@@ -24,6 +24,8 @@
 # If you have trouble with `.`, you could also use `_`.
 # app_baseURL = ''
 # app.forceGlobalSecureRequests = false
+# Philippine time for dates, due dates and "today" (also the default in app/Config/App.php)
+app.appTimezone = 'Asia/Manila'
 # app.CSPEnabled = false
 
 #--------------------------------------------------------------------

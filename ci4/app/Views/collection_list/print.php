@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Collection Route Sheet - CareSync</title>
-    <link rel="stylesheet" href="<?= base_url('assets/css/caresync.css') ?>">
+    <link rel="stylesheet" href="<?= cs_asset_url('assets/css/caresync.css') ?>">
     <style>
         @page { size: A4 portrait; margin: 10mm; }
         * { box-sizing: border-box; }
         body { font-family: var(--cs-sans); font-size: 10pt; color: #111; margin: 0; }
-        h1 { font-size: 14pt; margin: 0 0 2px; }
+        h1 { font-size: 14pt; margin: 0 0 2px; padding-bottom: 4px; border-bottom: 2px solid var(--cs-pine); }
         .cl-meta { font-size: 9pt; color: #444; margin-bottom: 10px; }
         table { width: 100%; border-collapse: collapse; }
         th, td { border: 1px solid #999; padding: 4px 6px; font-size: 9pt; text-align: left; vertical-align: top; }

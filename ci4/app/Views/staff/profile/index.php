@@ -8,7 +8,7 @@
         <section class="cs-panel">
             <div class="cs-panel__head"><h2 class="cs-panel__title">Profile Details</h2></div>
             <div class="cs-panel__body">
-                <form method="post" action="<?= site_url('/staff/profile/update') ?>">
+                <form method="post" action="<?= site_url($update_url ?? '/staff/profile/update') ?>">
                     <?= csrf_field() ?>
                     <div class="row g-3">
                         <div class="col-md-4">

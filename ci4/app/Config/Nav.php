@@ -57,9 +57,10 @@ class Nav extends BaseConfig
                     'title' => 'Setup',
                     'items' => [
                         ['key' => 'branches', 'label' => 'Branches',           'icon' => 'ti-building-community', 'url' => 'admin/branch-management'],
-                        ['key' => 'offers',   'label' => 'Services & packages', 'icon' => 'ti-package',            'url' => 'admin/service-offer'],
+                        ['key' => 'offers',   'label' => 'Packages & services', 'icon' => 'ti-package',            'url' => 'admin/catalog'],
                         ['key' => 'plans',    'label' => 'Plan builder',        'icon' => 'ti-clipboard-plus',     'url' => 'plan-builder'],
                         ['key' => 'users',    'label' => 'User accounts',       'icon' => 'ti-user-plus',          'url' => 'users/create'],
+                        ['key' => 'create-account', 'label' => 'Create Account', 'icon' => 'ti-user-circle',      'url' => 'admin/create-account'],
                     ],
                 ],
             ],
@@ -79,6 +80,7 @@ class Nav extends BaseConfig
                     'title' => 'Members',
                     'items' => [
                         ['key' => 'clients',  'label' => 'Plan holders',     'icon' => 'ti-users',            'url' => 'branch-admin/client-management'],
+                        ['key' => 'legacy',   'label' => 'Existing member records', 'icon' => 'ti-history',   'url' => 'branch-admin/existing-records'],
                         ['key' => 'id-verification', 'label' => 'ID review', 'icon' => 'ti-id-badge-2',       'url' => 'branch-admin/id-verification', 'count' => 'ids_needing_review'],
                         ['key' => 'requests', 'label' => 'Service requests', 'icon' => 'ti-clipboard-list',   'url' => 'branch-admin/service-package/requests', 'count' => 'pending_requests'],
                     ],
@@ -116,7 +118,7 @@ class Nav extends BaseConfig
                         ['key' => 'offers', 'label' => 'Services & packages', 'icon' => 'ti-package',       'url' => 'branch-admin/service-package'],
                         ['key' => 'plans',  'label' => 'Plan builder',        'icon' => 'ti-clipboard-plus', 'url' => 'plan-builder'],
                         ['key' => 'staff',  'label' => 'Staff monitoring',    'icon' => 'ti-id-badge',      'url' => 'branch-admin/staff-monitoring'],
-                        ['key' => 'users',  'label' => 'User accounts',       'icon' => 'ti-user-plus',     'url' => 'users/create'],
+                        ['key' => 'create-account', 'label' => 'Create Account', 'icon' => 'ti-user-circle', 'url' => 'branch-admin/create-account'],
                     ],
                 ],
             ],
@@ -130,6 +132,7 @@ class Nav extends BaseConfig
                     'items' => [
                         ['key' => 'dashboard',    'label' => 'Dashboard',        'icon' => 'ti-layout-dashboard', 'url' => 'dashboard/staff'],
                         ['key' => 'clients',      'label' => 'Plan holders',     'icon' => 'ti-users',            'url' => 'staff/client-management'],
+                        ['key' => 'legacy',       'label' => 'Existing member records', 'icon' => 'ti-history',   'url' => 'staff/existing-records'],
                         ['key' => 'id-verification', 'label' => 'ID review',     'icon' => 'ti-id-badge-2',       'url' => 'staff/id-verification', 'count' => 'ids_needing_review'],
                         ['key' => 'payments',     'label' => 'Payments',         'icon' => 'ti-cash',             'url' => 'staff/payment-management'],
                         ['key' => 'services',     'label' => 'Services',         'icon' => 'ti-clipboard-list',   'url' => 'staff/services', 'count' => 'pending_requests'],
@@ -139,12 +142,14 @@ class Nav extends BaseConfig
                         // link. See the 'capability' doc comment above.
                         ['key' => 'collections',  'label' => 'Collection list',  'icon' => 'ti-map-pin',          'url' => 'collector/collection-list', 'capability' => 'collect'],
                         ['key' => 'commission',   'label' => 'My commission',    'icon' => 'ti-coin',             'url' => 'collector/commission',      'capability' => 'collect'],
+                        ['key' => 'gcash',        'label' => 'My GCash account', 'icon' => 'ti-qrcode',           'url' => 'collector/gcash-account',   'capability' => 'collect'],
                     ],
                 ],
                 [
                     'title' => 'Records',
                     'items' => [
                         ['key' => 'plans',   'label' => 'Plan builder', 'icon' => 'ti-clipboard-plus', 'url' => 'plan-builder'],
+                        ['key' => 'create-account', 'label' => 'Create Account', 'icon' => 'ti-user-circle', 'url' => 'staff/create-account'],
                         ['key' => 'reports', 'label' => 'Reports',      'icon' => 'ti-file-text',      'url' => 'staff/reports'],
                     ],
                 ],
@@ -166,6 +171,7 @@ class Nav extends BaseConfig
                         ['key' => 'dashboard',    'label' => "Today's route",   'icon' => 'ti-route',   'url' => 'dashboard/collector'],
                         ['key' => 'collections',  'label' => 'Collection list', 'icon' => 'ti-map-pin', 'url' => 'collector/collection-list'],
                         ['key' => 'commission',   'label' => 'My commission',   'icon' => 'ti-coin',    'url' => 'collector/commission'],
+                        ['key' => 'gcash',        'label' => 'My GCash account', 'icon' => 'ti-qrcode', 'url' => 'collector/gcash-account'],
                     ],
                 ],
             ],

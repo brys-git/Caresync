@@ -16,16 +16,49 @@ $routes->group('branch-admin', ['filter' => 'auth'], static function (RouteColle
     // Registration & Approvals
     $routes->get('registration-approvals', 'ClientPortal::registrationApprovals', ['filter' => 'role:2']);
 
+    // Existing member records (past plan, payments, history) - role:2
+    $routes->get('existing-records', 'LegacyRecords::index', ['filter' => 'role:2']);
+    $routes->get('existing-records/client/(:num)', 'LegacyRecords::workspace/$1', ['filter' => 'role:2']);
+    $routes->post('existing-records/client/(:num)/plan', 'LegacyRecords::savePlan/$1', ['filter' => 'role:2']);
+    $routes->post('existing-records/client/(:num)/beneficiary', 'LegacyRecords::addBeneficiary/$1', ['filter' => 'role:2']);
+    $routes->post('existing-records/client/(:num)/payments', 'LegacyRecords::addPayments/$1', ['filter' => 'role:2']);
+    $routes->post('existing-records/client/(:num)/payment/(:num)', 'LegacyRecords::updatePayment/$1/$2', ['filter' => 'role:2']);
+    $routes->post('existing-records/client/(:num)/remittance', 'LegacyRecords::addRemittance/$1', ['filter' => 'role:2']);
+    $routes->post('existing-records/client/(:num)/service', 'LegacyRecords::addService/$1', ['filter' => 'role:2']);
+    $routes->post('existing-records/client/(:num)/document', 'LegacyRecords::addDocument/$1', ['filter' => 'role:2']);
+    $routes->post('existing-records/client/(:num)/note', 'LegacyRecords::addNote/$1', ['filter' => 'role:2']);
+    $routes->post('existing-records/delete/(:alpha)/(:num)', 'LegacyRecords::delete/$1/$2', ['filter' => 'role:2']);
+    $routes->get('existing-records/document/(:num)', 'LegacyRecords::document/$1', ['filter' => 'role:2']);
+    $routes->get('existing-records/import', 'LegacyRecords::importForm', ['filter' => 'role:2']);
+    $routes->get('existing-records/import/template', 'LegacyRecords::importTemplate', ['filter' => 'role:2']);
+    $routes->post('existing-records/import/preview', 'LegacyRecords::importPreview', ['filter' => 'role:2']);
+    $routes->post('existing-records/import/commit', 'LegacyRecords::importCommit', ['filter' => 'role:2']);
+    $routes->get('existing-records/import/errors/(:segment)', 'LegacyRecords::importErrors/$1', ['filter' => 'role:2']);
+    $routes->get('existing-records/pending', 'LegacyRecords::pending', ['filter' => 'role:2']);
+    $routes->post('existing-records/verify/(:alpha)/(:num)', 'LegacyRecords::verify/$1/$2', ['filter' => 'role:2']);
+    $routes->post('existing-records/reject/(:alpha)/(:num)', 'LegacyRecords::reject/$1/$2', ['filter' => 'role:2']);
+    $routes->post('existing-records/verify-client/(:num)', 'LegacyRecords::verifyClient/$1', ['filter' => 'role:2']);
+
+    // Create Account (Staff / Client, own branch only)
+    $routes->get('create-account', 'BranchAdmin\AccountController::create', ['filter' => 'role:2']);
+    $routes->post('create-account', 'BranchAdmin\AccountController::store', ['filter' => 'role:2']);
+
+    $routes->post('client-management/resend-login/(:num)', 'AccountLoginDetails::resend/$1', ['filter' => 'role:2']);
+    $routes->post('client-management/reinstate/(:num)', 'PlanReinstatement::record/$1', ['filter' => 'role:2']);
+
     // Client Management
-    $routes->get('client-management', 'BranchAdmin\ClientController::index', ['filter' => 'role:2']);
-    $routes->get('client-management/view/(:num)', 'BranchAdmin\ClientController::view/$1', ['filter' => 'role:2']);
+    $routes->get('client-management','BranchAdmin\ClientController::index', ['filter' => 'role:2']);
+    $routes->get('client-management/view/(:num)', 'ClientDetailController::show/$1', ['filter' => 'role:2']);
+    $routes->get('client-management/statement/(:num)', 'ClientDetailController::statement/$1', ['filter' => 'role:2']);
+    $routes->post('client-management/note/(:num)', 'ClientDetailController::saveNote/$1', ['filter' => 'role:2']);
+    $routes->get('client-management/file/(:num)/(:segment)/(:num)', 'ClientDetailController::file/$1/$2/$3', ['filter' => 'role:2']);
     $routes->get('client-management/edit/(:num)', 'BranchAdmin\ClientController::edit/$1', ['filter' => 'role:2']);
     $routes->post('client-management/update/(:num)', 'BranchAdmin\ClientController::update/$1', ['filter' => 'role:2']);
     $routes->post('client-management/approve/(:num)', 'BranchAdmin\ClientController::approve/$1', ['filter' => 'role:2']);
 
     // Client (Alternative routes)
     $routes->get('client', 'BranchAdmin\ClientController::index', ['filter' => 'role:2']);
-    $routes->get('client/view/(:num)', 'BranchAdmin\ClientController::view/$1', ['filter' => 'role:2']);
+    $routes->get('client/view/(:num)', 'ClientDetailController::show/$1', ['filter' => 'role:2']);
     $routes->get('client/edit/(:num)', 'BranchAdmin\ClientController::edit/$1', ['filter' => 'role:2']);
     $routes->post('client/update/(:num)', 'BranchAdmin\ClientController::update/$1', ['filter' => 'role:2']);
     $routes->get('client/register', 'BranchAdmin\ClientController::create', ['filter' => 'role:2']);

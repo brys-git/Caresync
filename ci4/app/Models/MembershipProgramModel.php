@@ -19,5 +19,11 @@ class MembershipProgramModel extends Model
         'package_id',
         'description',
         'is_active',
+        'approval_status',
+        'submitted_by',
+        'submitted_by_branch_id',
+        'reviewed_by',
+        'reviewed_at',
+        'rejection_reason',
     ];
 }

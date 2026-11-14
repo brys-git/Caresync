@@ -37,6 +37,11 @@ $fact = static function (string $label, string $html): string {
                 <?= view('components/alert', ['type' => 'danger', 'dismissible' => false, 'message' => 'Payment rejected. Please resubmit.']) ?>
             <?php endif; ?>
 
+            <?php // Revealed by the payment-method script below only while GCash is selected. ?>
+            <div id="gcashAccountCard" class="d-none">
+                <?= view('client/_gcash_account', ['gcash_account' => $gcash_account ?? null]) ?>
+            </div>
+
             <form method="post" action="<?= base_url('initial-payment') ?>">
                 <?= csrf_field() ?>
                 <section class="cs-panel">
@@ -99,6 +104,7 @@ $fact = static function (string $label, string $html): string {
         const reference = document.getElementById('reference_number');
         const hintCash = document.getElementById('hint_cash');
         const hintGcash = document.getElementById('hint_gcash');
+        const gcashCard = document.getElementById('gcashAccountCard');
 
         if (!method || !reference) {
             return;
@@ -125,6 +131,9 @@ $fact = static function (string $label, string $html): string {
             }
             hintCash.classList.toggle('d-none', !isCash);
             hintGcash.classList.toggle('d-none', !isGcash);
+            if (gcashCard) {
+                gcashCard.classList.toggle('d-none', !isGcash);
+            }
 
             if (!isCash && !isGcash) {
                 reference.value = '';

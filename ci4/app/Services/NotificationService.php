@@ -21,17 +21,22 @@ class NotificationService
      * @param int $userId
      * @param string $message
      * @param string $type
+     * @param int|null $planId Only meaningful for $type === 'overdue' - lets
+     *                         getNotifications() re-derive the displayed
+     *                         message from this plan's CURRENT row instead
+     *                         of the frozen $message text. See
+     *                         OverduePolicyService::describeOverdue().
      * @return bool Whether the in-app notification was created (email/SMS
      *              outcomes don't affect this - see sendEmail()/sendSms()
      *              in App\Services\SmsService, which degrade silently).
      */
-    public function notify(int $userId, string $message, string $type = 'general', bool $sendEmail = false, bool $sendSms = false): bool
+    public function notify(int $userId, string $message, string $type = 'general', bool $sendEmail = false, bool $sendSms = false, ?int $planId = null): bool
     {
         if ($userId <= 0 || empty($message)) {
             return false;
         }
 
-        $validTypes = ['payment_approved', 'payment_rejected', 'service_approved', 'service_rejected', 'registration_pending', 'service_completed', 'general'];
+        $validTypes = ['payment_approved', 'payment_rejected', 'service_approved', 'service_rejected', 'registration_pending', 'service_completed', 'general', 'overdue'];
 
         if (!in_array($type, $validTypes, true)) {
             $type = 'general';
@@ -42,6 +47,7 @@ class NotificationService
         try {
             $created = (bool) db_connect()->table('notifications')->insert([
                 'user_id' => $userId,
+                'plan_id' => $planId,
                 'message' => $message,
                 'type' => $type,
                 // No 'status' column exists on notifications - unread/read is
@@ -81,6 +87,13 @@ class NotificationService
      */
     private function sendEmail(string $toAddress, string $firstName, string $message): void
     {
+        // Email is not set up (see the EMAIL section of .env): skip quietly.
+        // Without this PHP's mail() waits on a missing local mail server and
+        // stalls every caller (the daily check sends hundreds of these).
+        if (! (new MailService())->isConfigured()) {
+            return;
+        }
+
         try {
             $email = \Config\Services::email();
             $greetingName = $firstName !== '' ? $firstName : 'there';
@@ -127,7 +140,64 @@ class NotificationService
             $builder->where('is_read', 1);
         }
 
-        return $builder->get()->getResultArray();
+        return $this->withLiveOverdueMessages($builder->get()->getResultArray());
+    }
+
+    /**
+     * Overwrites the stored message on any 'overdue'-type row with one
+     * freshly computed from that plan's CURRENT plans.next_due_date, so the
+     * due date / days-overdue / days-left shown here always match the
+     * database right now instead of whatever they were when the daily sweep
+     * (the old overdue sweep, since replaced by PlanLedgerService) first inserted the
+     * row - e.g. manually editing next_due_date for testing, or the plan
+     * holder catching up on payment, is reflected immediately without
+     * needing a new notification to be generated. Forfeiture notifications
+     * are left untouched - they describe a completed past event, not an
+     * ongoing state, so there's nothing to re-derive.
+     */
+    private function withLiveOverdueMessages(array $notifications): array
+    {
+        $planIds = [];
+        foreach ($notifications as $n) {
+            if (($n['type'] ?? '') === 'overdue' && ! empty($n['plan_id'])) {
+                $planIds[] = (int) $n['plan_id'];
+            }
+        }
+
+        if ($planIds === []) {
+            return $notifications;
+        }
+
+        $plans = db_connect()->table('plans')
+            ->select('plan_id, next_due_date')
+            ->whereIn('plan_id', array_unique($planIds))
+            ->get()
+            ->getResultArray();
+
+        $dueDateByPlan = [];
+        foreach ($plans as $plan) {
+            $dueDateByPlan[(int) $plan['plan_id']] = $plan['next_due_date'];
+        }
+
+        $overduePolicy = new OverduePolicyService();
+
+        foreach ($notifications as &$n) {
+            if (($n['type'] ?? '') !== 'overdue' || empty($n['plan_id'])) {
+                continue;
+            }
+
+            $dueDate = $dueDateByPlan[(int) $n['plan_id']] ?? null;
+            if ($dueDate === null) {
+                // Plan no longer exists - keep the frozen snapshot rather
+                // than erroring on strtotime(null).
+                continue;
+            }
+
+            $n['message'] = $overduePolicy->describeOverdue((string) $dueDate)['message'];
+        }
+        unset($n);
+
+        return $notifications;
     }
 
     /**

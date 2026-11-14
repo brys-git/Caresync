@@ -181,11 +181,41 @@ class MembershipService
             return null;
         }
 
-        return $this->planModel
+        $plan = $this->planModel
             ->where('plan_holder_id', $planHolderId)
             ->where('status', 'active')
             ->orderBy('plan_id', 'DESC')
             ->first();
+
+        return $plan ? $this->withLiveFigures($plan) : null;
+    }
+
+    /**
+     * Replaces the stored (and not always current) plan columns months_paid,
+     * remaining_balance, overdue_months and next_due_date on a plan row with the
+     * live numbers from the one shared calculation (ClientPlanSummary), so no
+     * caller reading this row ever shows a stale figure.
+     *
+     * @param array<string,mixed> $plan
+     *
+     * @return array<string,mixed>
+     */
+    private function withLiveFigures(array $plan): array
+    {
+        $summary = (new ClientPlanSummary())->forPlan((int) $plan['plan_id']);
+        if ($summary === null) {
+            return $plan;
+        }
+
+        $plan['months_paid']        = $summary['months_paid'];
+        $plan['total_paid']         = $summary['total_paid'];
+        $plan['remaining_balance']  = $summary['remaining_balance'];
+        $plan['overdue_months']     = $summary['overdue_count'];
+        if ($summary['next_due_date'] !== null) {
+            $plan['next_due_date'] = $summary['next_due_date'];
+        }
+
+        return $plan;
     }
 
     /**
@@ -410,39 +440,13 @@ class MembershipService
     }
 
     /**
-     * Client dashboard rebuild, Phase 0 (months_paid bug fix): the single
-     * source of truth for plans.months_paid. Every call site that used to
-     * write this column directly - an unconditional overwrite in one path
-     * (PaymentTracking::autoApprovePlanHolderFromInitialPayment()), an
-     * unbounded increment in another (applyMembershipCoverage() below) -
-     * now calls this instead, so the number is always exactly what the
-     * verified payment history says and can never drift out of sync (a
-     * client who pays 3 months then 2 months previously ended up with
-     * months_paid = 2, not 5, because the second payment overwrote rather
-     * than added).
-     *
-     * Scoped to payments on/after contribution_cycle_started_at rather
-     * than the plan's entire history, or this would silently undo
-     * OverduePolicyService::applyForfeitures() (the 60-day-grace
-     * forfeiture policy): summing every payment ever would restore months
-     * a forfeiture deliberately reset to 0 the moment any later payment on
-     * that plan gets verified. Falls back to the plan's start_date for a
-     * plan that predates the column (every plan created before this
-     * migration).
-     *
-     * Also scoped to payments.cycle_number = plans.current_cycle_number
-     * (entitlement cycle model): contribution_cycle_started_at alone marks
-     * "count progress from here forward," but doesn't distinguish which
-     * ₱14,500 cycle that progress belongs to. Both filters do different
-     * jobs and are both needed - see CycleService's class doc comment.
-     * Every payment counted here must already have a non-null
-     * cycle_number, which CycleService::afterPaymentVerified() stamps
-     * before ever calling this method for a real (non-backfill) payment.
-     *
-     * 'verified' is included alongside 'paid' only for forward
-     * compatibility with the payments.status enum this app's own dead
-     * UpdatePaymentStatusEnums migration intended to introduce - today the
-     * column only ever actually holds 'paid'/'pending'/'cancelled'.
+     * The single entry point every payment path calls after money changes
+     * (live payments, GCash approval, verified past records). Kept under its
+     * old name so those call sites did not have to change, but the rule now
+     * lives in ONE place: PlanLedgerService decides how many contributions
+     * are fully paid (oldest unpaid first, live + verified past records),
+     * what is overdue and what the plan's status is, and writes the derived
+     * plan columns. Nothing is ever erased.
      */
     public function recalculateMonthsPaid(int $planId): int
     {
@@ -450,37 +454,12 @@ class MembershipService
             return 0;
         }
 
-        $db = db_connect();
+        $summary = (new PlanLedgerService())->sync($planId);
 
-        $plan = $db->table('plans')
-            ->select('start_date, contribution_cycle_started_at, current_cycle_number')
-            ->where('plan_id', $planId)
-            ->get()
-            ->getRowArray();
-
-        if (! $plan) {
-            return 0;
-        }
-
-        $cycleStart = (string) ($plan['contribution_cycle_started_at'] ?? '');
-        if ($cycleStart === '') {
-            $cycleStart = (string) ($plan['start_date'] ?? '1970-01-01');
-        }
-        $cycleNumber = (int) ($plan['current_cycle_number'] ?? 1);
-
-        $monthsPaid = (int) ($db->table('payments')
-            ->selectSum('months_covered')
-            ->where('plan_id', $planId)
-            ->whereIn('status', ['paid', 'verified'])
-            ->where('payment_date >=', $cycleStart)
-            ->where('cycle_number', $cycleNumber)
-            ->get()
-            ->getRowArray()['months_covered'] ?? 0);
-
-        $db->table('plans')->where('plan_id', $planId)->update(['months_paid' => $monthsPaid]);
-
-        return $monthsPaid;
+        return (int) ($summary['months_paid'] ?? 0);
     }
+
+
 
     /**
      * Services & Packages redesign: whether a plan has fully re-paid the
@@ -506,154 +485,61 @@ class MembershipService
     }
 
     /**
-     * Check if a member can access services
-     * 
-     * Service eligibility requires:
-     * - Plan status = active
-     * - Membership state = active (not delinquent or suspended)
-     * - Overdue months <= 2
-     * 
-     * PHASE REQUIREMENT: Enhanced delinquency validation
-     * Service access rules:
-     * - membership_state must NOT be 'delinquent' or 'suspended'
-     * - overdue_months must be <= 2 (grace period allowed)
-     * - 3+ months overdue = automatic delinquency, no service access
-     * 
-     * @param int $planHolderId
-     * @return bool
+     * Whether the plan may request services / claim its package.
+     * Decided by the plan's status (PlanLedgerService, Config\CareSync):
+     * Active and In grace period: yes. Lapsed: only if lapsedCanClaimServices.
+     * Forfeited: never. Use serviceAccess() to also get the reason to show.
      */
     public function canAccessServices(int $planHolderId): bool
     {
+        return $this->serviceAccess($planHolderId)['allowed'];
+    }
+
+    /** @return array{allowed: bool, reason: ?string} */
+    public function serviceAccess(int $planHolderId): array
+    {
         if ($planHolderId <= 0) {
-            return false;
+            return ['allowed' => false, 'reason' => 'No plan holder profile found.'];
         }
 
-        $activePlan = $this->getActivePlan($planHolderId);
-        if (!$activePlan) {
-            return false;
+        $summary = (new PlanLedgerService())->summarizeForPlanHolder($planHolderId);
+        if ($summary === null || $summary['lifecycle'] === PlanLedgerService::NOT_STARTED) {
+            return ['allowed' => false, 'reason' => 'Your plan is not active yet.'];
         }
 
-        $state = strtolower((string) ($activePlan['membership_state'] ?? 'active'));
-        $overdueMonths = (int) ($activePlan['overdue_months'] ?? 0);
-
-        // CORRECTED: Reject if delinquent or suspended
-        if ($state === 'delinquent' || $state === 'suspended') {
-            return false;
-        }
-
-        // CORRECTED: Grace period is 0-2 months, 3+ months = delinquent
-        return $overdueMonths <= 2;
+        return $summary['service_access'];
     }
 
     /**
-     * Update membership states based on payment coverage
-     * 
-     * This method should run daily (via cron or during login).
-     * Checks each active plan and updates membership_state based on delinquency.
-     * 
-     * Rules:
-     * - overdue 0-2 months: active
-     * - overdue 3-5 months: delinquent
-     * - overdue 6+ months: suspended
-     * 
+     * Refreshes every plan's status from PlanLedgerService (the one rule).
+     * Kept for older callers; the daily command calls
+     * PlanLedgerService::runDailyCheck() directly, which also sends reminders.
+     *
      * @return array status counts
      */
     public function updateMembershipStates(): array
     {
         $counts = ['active' => 0, 'delinquent' => 0, 'suspended' => 0, 'updated' => 0];
+        $ledger = new PlanLedgerService();
 
-        $db = db_connect();
-        $today = date('Y-m-d');
-
-        try {
-            $activePlans = $db->table('plans')
-                ->select('plan_id, payment_coverage_until, overdue_months, membership_state')
-                ->where('status', 'active')
-                ->get()
-                ->getResultArray();
-
-            foreach ($activePlans as $plan) {
-                $planId = (int) ($plan['plan_id'] ?? 0);
-                if ($planId <= 0) {
-                    continue;
-                }
-
-                // Entitlement cycle model: a plan that's fully paid its
-                // current ₱14,500 cycle and is only waiting on the plan
-                // holder to claim owes nothing further - it must not be
-                // pushed into delinquent/suspended purely because time has
-                // passed since payment_coverage_until. (They already come
-                // in as membership_state = 'active' from the payment that
-                // completed the cycle - see CycleService::
-                // afterPaymentVerified() - so skipping them here just
-                // leaves that alone rather than needing to restore it.)
-                if ((new CycleService())->currentCycle($planId)['state'] === 'paid_unclaimed') {
-                    continue;
-                }
-
-                $coverageUntil = (string) ($plan['payment_coverage_until'] ?? '');
-                if ($coverageUntil === '') {
-                    continue;
-                }
-
-                // Calculate overdue months
-                $overdueMonths = $this->calculateOverdueMonths($coverageUntil, $today);
-
-                // Determine new state
-                $newState = 'active';
-                if ($overdueMonths >= 6) {
-                    $newState = 'suspended';
-                } elseif ($overdueMonths >= 3) {
-                    $newState = 'delinquent';
-                }
-
-                // Update if state changed or overdue months changed
-                $oldOverdue = (int) ($plan['overdue_months'] ?? 0);
-                $oldState = strtolower((string) ($plan['membership_state'] ?? 'active'));
-
-                if ($newState !== $oldState || $oldOverdue !== $overdueMonths) {
-                    $this->planModel->update($planId, [
-                        'overdue_months' => $overdueMonths,
-                        'membership_state' => $newState,
-                    ]);
-
-                    $counts['updated']++;
-                }
-
-                $counts[$newState]++;
+        foreach (db_connect()->table('plans')->select('plan_id')->get()->getResultArray() as $row) {
+            $s = $ledger->sync((int) $row['plan_id']);
+            if (! $s || $s['lifecycle'] === PlanLedgerService::NOT_STARTED) {
+                continue;
             }
-
-            return $counts;
-        } catch (\Throwable $e) {
-            return $counts;
+            $counts['updated']++;
+            $key = match ($s['lifecycle']) {
+                'grace' => 'delinquent',
+                'lapsed', 'forfeited' => 'suspended',
+                default => 'active',
+            };
+            $counts[$key]++;
         }
+
+        return $counts;
     }
 
-    /**
-     * Calculate months overdue
-     * 
-     * @param string $coverageUntilDate
-     * @param string $currentDate
-     * @return int
-     */
-    private function calculateOverdueMonths(string $coverageUntilDate, string $currentDate): int
-    {
-        try {
-            $coverage = new \DateTime($coverageUntilDate);
-            $today = new \DateTime($currentDate);
 
-            if ($today <= $coverage) {
-                return 0;
-            }
-
-            $interval = $coverage->diff($today);
-            $months = ($interval->y * 12) + $interval->m;
-
-            return max(0, $months);
-        } catch (\Throwable $e) {
-            return 0;
-        }
-    }
 
     /**
      * Get enhanced membership summary for display
@@ -668,11 +554,29 @@ class MembershipService
         }
 
         $activePlan = $this->getActivePlan($planHolderId);
-        if (!$activePlan) {
+        if (! $activePlan) {
+            // A forfeited plan is no longer 'active', but the client must still be told why.
+            $latest = $this->planModel->where('plan_holder_id', $planHolderId)->orderBy('plan_id', 'DESC')->first();
+            if ($latest && ($latest['lifecycle_status'] ?? '') === 'forfeited') {
+                $activePlan = $latest;
+            }
+        }
+        if (! $activePlan) {
             return null;
         }
 
+        // Live numbers from the one rule (PlanLedgerService), so this summary
+        // can never disagree with the client details page or the dashboard.
+        $ledger = (new PlanLedgerService())->summarize((int) $activePlan['plan_id']);
+        $access = $ledger['service_access'] ?? ['allowed' => false, 'reason' => null];
+        $activePlan['months_paid']    = $ledger['months_paid'] ?? $activePlan['months_paid'];
+        $activePlan['overdue_months'] = $ledger['overdue_count'] ?? $activePlan['overdue_months'];
+        $activePlan['next_due_date']  = $ledger['oldest_unpaid_due'] ?? $activePlan['next_due_date'];
+
         return [
+            'ledger' => $ledger,
+            'lifecycle' => (string) ($ledger['lifecycle'] ?? 'active'),
+            'service_block_reason' => $access['reason'],
             'plan_id' => (int) ($activePlan['plan_id'] ?? 0),
             'status' => (string) ($activePlan['status'] ?? 'inactive'),
             'membership_state' => (string) ($activePlan['membership_state'] ?? 'active'),
@@ -685,7 +589,7 @@ class MembershipService
             'overdue_months' => (int) ($activePlan['overdue_months'] ?? 0),
             'package_id' => (int) ($activePlan['package_id'] ?? 0),
             'program_name' => $this->resolvePackageName((int) ($activePlan['package_id'] ?? 0)),
-            'can_access_services' => $this->canAccessServices($planHolderId),
+            'can_access_services' => (bool) $access['allowed'],
             'has_fully_paid_contribution' => $this->hasFullyPaidContribution($activePlan),
         ];
     }

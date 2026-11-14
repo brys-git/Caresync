@@ -8,14 +8,22 @@ use App\Services\MembershipService;
 
 class ClientService
 {
-    public function getClientsByBranch(int $branchId): array
+    /**
+     * @param string $search optional search-box text: name, email, mobile
+     *                       number or plan number (partial, any case)
+     */
+    public function getClientsByBranch(int $branchId, string $search = ''): array
     {
         $db = db_connect();
 
-        $clients = $db->table('plan_holders ph')
+        $builder = $db->table('plan_holders ph')
             ->select('ph.plan_holder_id, ph.user_id, ph.unique_identifier, ph.status AS plan_holder_status, u.first_name, u.last_name, u.email, u.contact_number')
             ->join('users u', 'u.user_id = ph.user_id', 'inner')
-            ->where('ph.branch_id', $branchId)
+            ->where('ph.branch_id', $branchId);
+
+        cs_apply_search($builder, $search, ['u.first_name', 'u.last_name', 'u.email', 'u.contact_number', 'ph.unique_identifier']);
+
+        $clients = $builder
             ->orderBy('u.first_name', 'ASC')
             ->orderBy('u.last_name', 'ASC')
             ->get()
@@ -147,6 +155,17 @@ class ClientService
                 'status' => (string) ($data['status'] ?? 'active'),
             ]);
 
+            // Emergency contact (the edit form always posted it; it was never saved).
+            $emergency = [];
+            foreach (['emergency_contact_name', 'emergency_contact_relationship', 'emergency_contact_number', 'emergency_contact_address'] as $field) {
+                if (array_key_exists($field, $data) && $db->fieldExists($field, 'plan_holders')) {
+                    $emergency[$field] = trim((string) $data[$field]);
+                }
+            }
+            if ($emergency !== []) {
+                $db->table('plan_holders')->where('plan_holder_id', $planHolderId)->update($emergency);
+            }
+
             if (! $updatedPlanHolder) {
                 throw new \RuntimeException('Failed to update plan holder details.');
             }
@@ -180,7 +199,7 @@ class ClientService
             return [];
         }
 
-        return db_connect()->table('payments pay')
+        $live = db_connect()->table('payments pay')
             ->select('pay.payment_date, pay.amount, pay.payment_method, pay.status, rb.first_name AS receiver_first_name, rb.last_name AS receiver_last_name')
             ->join('users rb', 'rb.user_id = pay.received_by', 'left')
             ->where('pay.plan_id', $planId)
@@ -188,6 +207,21 @@ class ClientService
             ->orderBy('pay.payment_id', 'DESC')
             ->get()
             ->getResultArray();
+
+        // Verified past records are part of the member's history too.
+        $past = array_map(static fn (array $r): array => [
+            'payment_date'        => $r['payment_date'],
+            'amount'              => $r['amount'],
+            'payment_method'      => $r['payment_method'],
+            'status'              => 'paid',
+            'receiver_first_name' => 'Recorded by branch',
+            'receiver_last_name'  => '',
+        ], LegacyRecordService::verifiedPaymentsAsRows($planId));
+
+        $all = array_merge($live, $past);
+        usort($all, static fn (array $a, array $b): int => strcmp((string) $b['payment_date'], (string) $a['payment_date']));
+
+        return $all;
     }
 
     public function getClientServices(int $planHolderId): array
@@ -355,7 +389,17 @@ class ClientService
             }
 
             // Create plan only when missing for this plan holder profile.
-            $this->createPlanForPlanHolder($planHolderId);
+            // program_id/package_id/monthly_fee, when present, come from a
+            // plan chosen on the registration wizard's plan-picker step
+            // (PlanHolderRegistrationService::resolveChosenProgram()) - null
+            // when not offered (0 or 1 approved+active plans), which keeps
+            // this call behaving exactly as it always did.
+            $this->createPlanForPlanHolder(
+                $planHolderId,
+                isset($data['program_id']) ? (int) $data['program_id'] : null,
+                isset($data['package_id']) ? (int) $data['package_id'] : null,
+                isset($data['monthly_fee']) ? (float) $data['monthly_fee'] : null
+            );
 
             if ($db->transStatus() === false) {
                 throw new \RuntimeException('Database transaction failed during registration.');
@@ -371,9 +415,13 @@ class ClientService
     }
 
     /**
-     * Create a plan for a registered plan holder
+     * Create a plan for a registered plan holder. $programId/$forcedPackageId/
+     * $forcedMonthlyFee come from a plan chosen on the registration wizard's
+     * plan-picker step - null (the normal case, with 0 or 1 approved+active
+     * plans and no picker shown) falls back to the original Damayan-flag
+     * resolution and MembershipService::MONTHLY_FEE exactly as before.
      */
-    private function createPlanForPlanHolder(int $planHolderId): void
+    private function createPlanForPlanHolder(int $planHolderId, ?int $programId = null, ?int $forcedPackageId = null, ?float $forcedMonthlyFee = null): void
     {
         $db = db_connect();
 
@@ -388,15 +436,16 @@ class ClientService
             return;
         }
 
-        $packageData = $this->resolveMembershipPackage();
+        $packageData = $this->resolveMembershipPackage($forcedPackageId);
         $packageId = (int) $packageData['package_id'];
-        $effectiveMonthlyFee = MembershipService::MONTHLY_FEE;
+        $effectiveMonthlyFee = $forcedMonthlyFee ?? MembershipService::MONTHLY_FEE;
         $initialBalance = $effectiveMonthlyFee * 12;
         $versionId = (int) $packageData['version_id'];
 
         $planData = [
             'plan_holder_id' => $planHolderId,
             'package_id' => $packageId,
+            'program_id' => $programId,
             'monthly_fee' => $effectiveMonthlyFee,
             'start_date' => date('Y-m-d'),
             'status' => 'active',
@@ -411,9 +460,18 @@ class ClientService
         }
     }
 
-    private function resolveMembershipPackage(): array
+    private function resolveMembershipPackage(?int $forcedPackageId = null): array
     {
         $db = db_connect();
+
+        if ($forcedPackageId !== null) {
+            $package = $db->table('packages')->select('package_id')->where('package_id', $forcedPackageId)->get()->getRowArray();
+            if ($package) {
+                return $this->resolvePackageVersion($forcedPackageId);
+            }
+            // Falls through to the default resolution below if the chosen
+            // package somehow no longer exists.
+        }
 
         // Services & Packages redesign: prefer the explicit Damayan
         // entitlement flag over the assumed DEFAULT_PACKAGE_ID=1 - package
@@ -446,7 +504,20 @@ class ClientService
             throw new \RuntimeException('No package is configured yet. Please ask admin to create a package first.');
         }
 
-        $packageId = (int) $package['package_id'];
+        return $this->resolvePackageVersion((int) $package['package_id']);
+    }
+
+    /**
+     * Prefers an active package_versions row for $packageId, falls back to
+     * the newest one, and creates an active version (at MembershipService::
+     * MONTHLY_FEE) if the package has none yet at all. Extracted from
+     * resolveMembershipPackage() so a forced/chosen package_id (a specific
+     * plan picked at registration) can resolve its version the same way
+     * the default-lookup path always did.
+     */
+    private function resolvePackageVersion(int $packageId): array
+    {
+        $db = db_connect();
 
         $version = $db->table('package_versions')
             ->select('version_id')

@@ -11,16 +11,24 @@ use App\Helpers\QueryHelper;
 
 /**
  * ClientProfileController
- * 
+ *
  * Handles client profile management
  * Part of the refactored ClientPortal controller
- * 
+ *
  * Uses centralized validation rules and query helpers
  * to reduce code duplication
  */
 class ClientProfileController extends BaseController
 {
     use ClientPortalTrait;
+
+    private const PHOTO_MAX_BYTES = 5 * 1024 * 1024;
+
+    private const PHOTO_TYPES = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+    ];
 
     /**
      * Display client profile
@@ -32,8 +40,8 @@ class ClientProfileController extends BaseController
         } catch (\RuntimeException $e) {
             return redirect()->to('/signin')->with('error', 'Session expired. Please log in again.');
         }
-        $user = $access['user'];
         $planHolder = $access['plan_holder'];
+        $userRow = (new UserModel())->find((int) $access['user']['user_id']) ?? $access['user'];
 
         // "Edit Profile" used to link to a /client/profile/edit route that
         // never existed, and edit_mode was never set at all - so the edit
@@ -43,15 +51,23 @@ class ClientProfileController extends BaseController
         // 2026-09-09 system scan.
         $editMode = $this->request->getGet('edit') === '1';
 
+        $plan = $planHolder ? $this->latestPlan((int) $planHolder['plan_holder_id']) : null;
+
         return view('client/profile', [
             'role_layout' => 'layouts/plan_holder',
             'page_title' => 'My profile',
-            'page_sub' => 'Login credentials and personal information',
-            'page_actions' => $editMode ? '' : '<a href="' . esc(base_url('client/profile') . '?edit=1', 'attr') . '" class="btn btn-primary"><i class="ti ti-pencil me-1"></i> Edit profile</a><a href="' . esc(base_url('client/profile/change-password'), 'attr') . '" class="btn btn-ghost"><i class="ti ti-key me-1"></i> Change password</a>',
-            'user' => $user,
+            'show_page_head' => false,
+            'user' => $userRow,
             'plan_holder' => $planHolder,
+            'plan' => $plan,
+            'photo_url' => ! empty($userRow['profile_photo'])
+                ? base_url('client/profile/photo') . '?v=' . urlencode((string) $userRow['profile_photo'])
+                : null,
             'access' => $access,
             'edit_mode' => $editMode,
+            'form_errors' => session()->getFlashdata('form_errors') ?? [],
+            'password_open' => (bool) session()->getFlashdata('password_open'),
+            'password_updated' => (bool) session()->getFlashdata('password_updated'),
         ]);
     }
 
@@ -65,11 +81,23 @@ class ClientProfileController extends BaseController
         } catch (\RuntimeException $e) {
             return redirect()->to('/signin')->with('error', 'Session expired. Please log in again.');
         }
-        
+
         $userId = (int) $user['user_id'];
-        
+
         // Use centralized validation rules with email uniqueness check
-        $rules = ValidationRules::getProfileRulesWithEmailUniqueness($userId);
+        $rules = array_merge(ValidationRules::getProfileRulesWithEmailUniqueness($userId), [
+            'place_of_birth' => 'permit_empty|max_length[100]',
+            'height' => 'permit_empty|decimal|greater_than_equal_to[0]|less_than_equal_to[300]',
+            'weight' => 'permit_empty|decimal|greater_than_equal_to[0]|less_than_equal_to[500]',
+            'senior_citizen_id' => 'permit_empty|max_length[50]',
+            'organization_affiliation' => 'permit_empty|max_length[100]',
+            'spouse_name' => 'permit_empty|max_length[100]',
+            'spouse_birthdate' => 'permit_empty|valid_date[Y-m-d]',
+            'spouse_occupation' => 'permit_empty|max_length[100]',
+            'emergency_contact_name' => 'permit_empty|max_length[100]',
+            'emergency_contact_number' => 'permit_empty|max_length[30]',
+            'emergency_contact_address' => 'permit_empty|max_length[150]',
+        ]);
         $messages = ValidationRules::getValidationMessages();
 
         if (! $this->validate($rules, $messages)) {
@@ -102,6 +130,17 @@ class ClientProfileController extends BaseController
                     'address_city' => trim((string) $this->request->getPost('address_city')),
                     'civil_status' => trim((string) $this->request->getPost('civil_status')),
                     'citizenship' => trim((string) $this->request->getPost('citizenship')),
+                    'place_of_birth' => $this->optionalPost('place_of_birth'),
+                    'height' => $this->optionalPost('height'),
+                    'weight' => $this->optionalPost('weight'),
+                    'senior_citizen_id' => $this->optionalPost('senior_citizen_id'),
+                    'organization_affiliation' => $this->optionalPost('organization_affiliation'),
+                    'spouse_name' => $this->optionalPost('spouse_name'),
+                    'spouse_birthdate' => $this->optionalPost('spouse_birthdate'),
+                    'spouse_occupation' => $this->optionalPost('spouse_occupation'),
+                    'emergency_contact_name' => $this->optionalPost('emergency_contact_name'),
+                    'emergency_contact_number' => $this->optionalPost('emergency_contact_number'),
+                    'emergency_contact_address' => $this->optionalPost('emergency_contact_address'),
                 ]);
             }
 
@@ -120,25 +159,12 @@ class ClientProfileController extends BaseController
     }
 
     /**
-     * Display change password form
+     * The old standalone change-password page is gone - its form now lives
+     * inline on My profile, so any old link lands there.
      */
-    public function changePassword(): ResponseInterface|string
+    public function changePassword(): ResponseInterface
     {
-        try {
-            $access = $this->resolveAccessState();
-        } catch (\RuntimeException $e) {
-            return redirect()->to('/signin')->with('error', 'Session expired. Please log in again.');
-        }
-        $user = $access['user'];
-
-        return view('client/profile_change_password', [
-            'role_layout' => 'layouts/plan_holder',
-            'page_title' => 'Change password',
-            'page_sub' => 'Update your login password',
-            'page_actions' => '<a class="btn btn-ghost" href="' . esc(base_url('client/profile'), 'attr') . '"><i class="ti ti-arrow-left me-1"></i> Back to profile</a>',
-            'user' => $user,
-            'access' => $access,
-        ]);
+        return redirect()->to('/client/profile#security');
     }
 
     /**
@@ -178,7 +204,7 @@ class ClientProfileController extends BaseController
         ];
 
         if (! $this->validate($rules, $messages)) {
-            return redirect()->back()->withInput()->with('error', implode(' ', $this->validator->getErrors()));
+            return $this->passwordError($this->validator->getErrors());
         }
 
         $userModel = new UserModel();
@@ -187,22 +213,111 @@ class ClientProfileController extends BaseController
 
         // Verify current password
         if (! password_verify($currentPassword, (string) ($user['password_hash'] ?? ''))) {
-            return redirect()->back()->withInput()->with('error', 'Current password is incorrect.');
+            return $this->passwordError(['current_password' => 'Current password is incorrect.']);
         }
 
         // Check if new password contains username
         if (stripos($newPassword, (string) ($user['username'] ?? '')) !== false) {
-            return redirect()->back()->withInput()->with('error', 'New password cannot contain your username.');
+            return $this->passwordError(['new_password' => 'New password cannot contain your username.']);
         }
 
         try {
             $userModel->update($userId, [
                 'password_hash' => password_hash($newPassword, PASSWORD_BCRYPT),
+                'password_changed_at' => date('Y-m-d H:i:s'),
             ]);
 
-            return redirect()->to('/client/profile')->with('success', 'Password updated successfully.');
+            return redirect()->to('/client/profile#security')->with('password_updated', true);
         } catch (\Throwable $e) {
-            return redirect()->back()->withInput()->with('error', 'Failed to update password. Please try again.');
+            return $this->passwordError(['new_password' => 'Failed to update password. Please try again.']);
         }
+    }
+
+    /**
+     * Profile photo: image only, 5 MB max. Cropped to a square when the GD
+     * extension is available; otherwise kept as uploaded and cropped in the
+     * avatar with CSS.
+     */
+    public function uploadPhoto()
+    {
+        try {
+            $user = $this->currentUser();
+        } catch (\RuntimeException $e) {
+            return redirect()->to('/signin')->with('error', 'Session expired. Please log in again.');
+        }
+
+        $file = $this->request->getFile('photo');
+        if (! $file || $file->getError() === UPLOAD_ERR_NO_FILE) {
+            return redirect()->to('/client/profile')->with('error', 'Choose an image to upload.');
+        }
+        if (! $file->isValid()) {
+            return redirect()->to('/client/profile')->with('error', 'The photo could not be uploaded. Please try again.');
+        }
+        if ($file->getSize() > self::PHOTO_MAX_BYTES) {
+            return redirect()->to('/client/profile')->with('error', 'Photos must be 5 MB or smaller.');
+        }
+        $extension = self::PHOTO_TYPES[(string) $file->getMimeType()] ?? null;
+        if ($extension === null) {
+            return redirect()->to('/client/profile')->with('error', 'Upload a JPG, PNG, or WebP image.');
+        }
+
+        $dir = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'profile_photos';
+        if (! is_dir($dir)) {
+            mkdir($dir, 0775, true);
+        }
+
+        $userId = (int) $user['user_id'];
+        $name = $userId . '_' . bin2hex(random_bytes(8)) . '.' . $extension;
+        $file->move($dir, $name);
+        $path = $dir . DIRECTORY_SEPARATOR . $name;
+
+        if (extension_loaded('gd')) {
+            \Config\Services::image()->withFile($path)->fit(512, 512, 'center')->save($path);
+        }
+
+        $userModel = new UserModel();
+        $previous = (string) ($userModel->find($userId)['profile_photo'] ?? '');
+        $userModel->update($userId, ['profile_photo' => $name]);
+        if ($previous !== '' && is_file($dir . DIRECTORY_SEPARATOR . basename($previous))) {
+            unlink($dir . DIRECTORY_SEPARATOR . basename($previous));
+        }
+
+        return redirect()->to('/client/profile')->with('success', 'Profile photo updated.');
+    }
+
+    /**
+     * Serves the signed-in member's own photo.
+     */
+    public function photo(): ResponseInterface
+    {
+        $user = $this->currentUser();
+        $name = basename((string) ((new UserModel())->find((int) $user['user_id'])['profile_photo'] ?? ''));
+        $full = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'profile_photos' . DIRECTORY_SEPARATOR . $name;
+
+        if ($name === '' || ! is_file($full)) {
+            return $this->response->setStatusCode(404);
+        }
+
+        return $this->response
+            ->setContentType((string) (mime_content_type($full) ?: 'image/jpeg'))
+            ->setHeader('Cache-Control', 'private, max-age=300')
+            ->setBody((string) file_get_contents($full));
+    }
+
+    private function optionalPost(string $key): ?string
+    {
+        $value = trim((string) $this->request->getPost($key));
+
+        return $value === '' ? null : $value;
+    }
+
+    /**
+     * @param array<string,string> $errors
+     */
+    private function passwordError(array $errors)
+    {
+        return redirect()->to('/client/profile#security')
+            ->with('form_errors', $errors)
+            ->with('password_open', true);
     }
 }

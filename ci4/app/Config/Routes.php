@@ -29,13 +29,15 @@ require APPPATH . 'Config/Routes/client.php';
 require APPPATH . 'Config/Routes/collector.php';
 require APPPATH . 'Config/Routes/api.php';
 
+// Unknown URLs: the branded CareSync 404 page (sent through the filters, so it also gets the security headers).
+$routes->set404Override('App\Controllers\ErrorPage::notFound');
+
 // Role-based dashboard redirects
 $routes->group('dashboard', ['filter' => 'auth'], static function (RouteCollection $routes) {
     $routes->get('/', 'Dashboard::index');
     $routes->get('admin', 'Dashboard::admin', ['filter' => 'role:1']);
     $routes->get('branch-admin', 'Dashboard::branchAdmin', ['filter' => 'role:2']);
     $routes->get('staff', 'Dashboard::staff', ['filter' => 'role:3']);
-    $routes->get('plan-holder', 'ClientPortal::dashboard', ['filter' => 'role:4']);
     $routes->get('collector', 'Dashboard::collector', ['filter' => 'role:5']);
 });
 
@@ -62,8 +64,24 @@ $routes->post('payments/verify-initial/(:num)', 'ClientPortal::verifyInitialPaym
 // Staff-created accounts to role_id 4 regardless of what's submitted). Previously
 // unrouted: this screen existed but was unreachable from any page in the app,
 // which also meant the new Collector role had nowhere to actually be assigned.
-$routes->get('users/create', 'Users::create', ['filter' => 'role:1,2,3']);
-$routes->post('users/create', 'Users::store', ['filter' => 'role:1,2,3']);
+// System Admin only. Branch Admin and Staff use their own Create Account
+// pages (branch-admin/create-account, staff/create-account), which are
+// limited to the roles and the branch they are allowed to create.
+$routes->get('users/create', 'Users::create', ['filter' => 'role:1']);
+$routes->post('users/create', 'Users::store', ['filter' => 'role:1']);
+
+// Receipt PDF for one paid payment. Plan holders get their own; Branch Admin and
+// Staff get their branch's; System Admin any. Scoping is in ReceiptPdfService.
+$routes->get('receipt/(:num)', 'ReceiptController::download/$1', ['filter' => 'role:1,2,3,4']);
+
+// Staff/BranchAdmin/Admin notifications bell (topbar.php links here for any
+// non-plan-holder role; plan holders use client/notification instead, routed
+// separately in Routes/client.php). Controllers\Notifications::index() and
+// its view were already fully built and role-aware (resolveLayoutView()
+// picks admin/branch_admin/staff layout by role_id) but this route was never
+// added, so the bell 404'd for every staff/branch admin/admin account.
+$routes->get('notifications', 'Notifications::index', ['filter' => 'role:1,2,3']);
+$routes->post('notifications/read', 'Notifications::markRead', ['filter' => 'role:1,2,3']);
 
 // Fix Prompts Task 5A: the old four-step Packages module (Create Package/
 // Add Item/Set Price Version/Assign to Plan Holder) is replaced by the
@@ -88,10 +106,19 @@ $routes->post('packages/assign-plan', 'Packages::assignToPlan', ['filter' => 'ro
 // edit/toggle are System Admin only; Branch Admin/Staff get read-only
 // index/show - see PlanBuilderService.
 $routes->get('plan-builder', 'PlanBuilder::index', ['filter' => 'role:1,2,3']);
-$routes->get('plan-builder/create', 'PlanBuilder::create', ['filter' => 'role:1']);
-$routes->post('plan-builder/store', 'PlanBuilder::store', ['filter' => 'role:1']);
+// Create is System Admin OR Branch Admin now - a Branch Admin submission
+// goes in pending (invisible at registration) until System Admin approves
+// it below. See PlanBuilderService's docblock.
+$routes->get('plan-builder/create', 'PlanBuilder::create', ['filter' => 'role:1,2']);
+$routes->post('plan-builder/store', 'PlanBuilder::store', ['filter' => 'role:1,2']);
+// AJAX: the create/edit form's package dropdown fetches a package's
+// inclusions to preview (read-only - inclusions are edited on Services &
+// Packages, not here). role:1,2 matches who can reach the create/edit form.
+$routes->get('plan-builder/package-inclusions', 'PlanBuilder::packageInclusions', ['filter' => 'role:1,2']);
 $routes->get('plan-builder/(:num)', 'PlanBuilder::show/$1', ['filter' => 'role:1,2,3']);
 $routes->get('plan-builder/(:num)/edit', 'PlanBuilder::edit/$1', ['filter' => 'role:1']);
 $routes->post('plan-builder/(:num)/update', 'PlanBuilder::update/$1', ['filter' => 'role:1']);
 $routes->post('plan-builder/(:num)/toggle', 'PlanBuilder::toggle/$1', ['filter' => 'role:1']);
 $routes->post('plan-builder/(:num)/delete', 'PlanBuilder::destroy/$1', ['filter' => 'role:1']);
+$routes->post('plan-builder/(:num)/approve', 'PlanBuilder::approve/$1', ['filter' => 'role:1']);
+$routes->post('plan-builder/(:num)/reject', 'PlanBuilder::reject/$1', ['filter' => 'role:1']);

@@ -41,19 +41,27 @@ class ClaimService
      * name and a single "what's being claimed" label that falls back to the
      * individual service name when the claim isn't for a whole package.
      */
-    public function getBranchClaims(int $branchId): array
+    /**
+     * @param string $search optional search-box text: plan holder name, plan
+     *                       number, or the package / service being claimed
+     */
+    public function getBranchClaims(int $branchId, string $search = ''): array
     {
         if ($branchId <= 0) {
             return [];
         }
 
-        $rows = db_connect()->table('service_applications sa')
+        $builder = db_connect()->table('service_applications sa')
             ->select('sa.application_id, sa.plan_holder_id, sa.package_id, sa.service_list_id, sa.status, sa.created_at, ph.unique_identifier, u.first_name, u.last_name, p.package_name, sl.service_name')
             ->join('plan_holders ph', 'ph.plan_holder_id = sa.plan_holder_id', 'inner')
             ->join('users u', 'u.user_id = ph.user_id', 'inner')
             ->join('packages p', 'p.package_id = sa.package_id', 'left')
             ->join('service_list sl', 'sl.service_list_id = sa.service_list_id', 'left')
-            ->where('ph.branch_id', $branchId)
+            ->where('ph.branch_id', $branchId);
+
+        cs_apply_search($builder, $search, ['u.first_name', 'u.last_name', 'ph.unique_identifier', 'p.package_name', 'sl.service_name']);
+
+        $rows = $builder
             ->orderBy('sa.created_at', 'DESC')
             ->orderBy('sa.application_id', 'DESC')
             ->get()

@@ -119,7 +119,7 @@ $logs = $recent_activity ?? [];
                     ['admin/client-management',      'ti-users',             'Plan holders',           0],
                     ['admin/payment-monitoring',     'ti-cash',              'Payment monitoring',     0],
                     ['admin/branch-management',      'ti-building-community','Branches',               0],
-                    ['admin/service-offer',          'ti-package',           'Services & packages',    0],
+                    ['admin/catalog',        'ti-package',           'Packages & services',   0],
                 ];
                 ?>
                 <?php foreach ($links as [$url, $icon, $label, $count]): ?>

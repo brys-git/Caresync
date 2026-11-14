@@ -9,6 +9,25 @@
  * which is how you end up with "P1,234.00" on one page and "₱1,234" on the next.
  */
 
+if (! function_exists('cs_role_url_prefix')) {
+    /**
+     * URL prefix for a layout role key. The role keys (admin, branch_admin,
+     * staff, collector, plan_holder) are not always the URL segments: Branch
+     * Admin is "branch-admin" and a plan holder is "client". Build any
+     * role-area link from this instead of the raw key.
+     */
+    function cs_role_url_prefix(?string $roleKey): string
+    {
+        return match ($roleKey) {
+            'branch_admin' => 'branch-admin',
+            'plan_holder'  => 'client',
+            'staff'        => 'staff',
+            'collector'    => 'collector',
+            default        => 'admin',
+        };
+    }
+}
+
 if (! function_exists('cs_money')) {
     /**
      * Render a peso figure with tabular numerals so columns align.
@@ -26,6 +45,24 @@ if (! function_exists('cs_money')) {
         return '<span class="' . esc($cls, 'attr') . '">'
              . esc(number_format(abs($value), 2))
              . '</span>';
+    }
+}
+
+if (! function_exists('cs_image_url')) {
+    /**
+     * URL for a catalog image (package / service / add-on), or the shared
+     * placeholder when no path is set or the file is not on disk, so a page
+     * never shows a broken image. Paths are stored relative to public/
+     * (e.g. assets/images/Regular_Wood_Casket.jfif), never as absolute paths.
+     */
+    function cs_image_url(?string $path): string
+    {
+        $path = ltrim(trim((string) $path), '/');
+        if ($path !== '' && is_file(FCPATH . str_replace('/', DIRECTORY_SEPARATOR, $path))) {
+            return base_url($path);
+        }
+
+        return base_url('assets/images/no-image.png');
     }
 }
 
@@ -48,7 +85,7 @@ if (! function_exists('cs_status')) {
 
             // waiting on someone
             'pending' => 'pending', 'for_review' => 'pending', 'review' => 'pending', 'unverified' => 'pending',
-            'due' => 'pending', 'processing' => 'pending', 'submitted' => 'pending', 'partial' => 'pending',
+            'due' => 'pending', 'grace' => 'pending', 'pending_verification' => 'pending', 'processing' => 'pending', 'submitted' => 'pending', 'partial' => 'pending',
             'for_approval' => 'pending', 'awaiting_verification' => 'pending',
 
             // needs intervention
@@ -243,7 +280,7 @@ if (! function_exists('registration_wizard_config')) {
      *   (same values as $cs_role/layouts/*.php)
      * @param array<string,mixed> $data page-specific data to fold in:
      *   errors, branches, selected_branch_id, branch_name, existing_users,
-     *   program, plan_holder, user, beneficiaries, id_types,
+     *   program, plans, plan_holder, user, beneficiaries, id_types,
      *   selected_id_type, id_result_field_value, id_initial_status,
      *   hidden_plan_id
      */
@@ -284,6 +321,11 @@ if (! function_exists('registration_wizard_config')) {
             'branch_name' => (string) ($data['branch_name'] ?? ''),
             'existing_users' => $data['existing_users'] ?? [],
             'program' => $data['program'] ?? ['name' => 'Damayan Burial Program', 'monthly_fee' => 240.0],
+            // A plan picker only makes sense once there's an actual choice -
+            // with 0 or 1 approved+active plans, registration keeps working
+            // exactly as before (silently assigned the one default plan).
+            'plans' => $data['plans'] ?? [],
+            'show_plan_select' => count($data['plans'] ?? []) >= 2,
             'plan_holder' => $data['plan_holder'] ?? [],
             'user' => $data['user'] ?? [],
             'beneficiaries' => $data['beneficiaries'] ?? [],
@@ -310,5 +352,162 @@ if (! function_exists('cs_initials')) {
         }
 
         return $out !== '' ? $out : '?';
+    }
+}
+
+if (! function_exists('cs_peso')) {
+    /**
+     * Plain-text peso amount ("₱1,234.00") for contexts that cannot use the
+     * CSS-driven cs_money() span - PDFs, CSV, notification text. Same rounding
+     * (2 decimals, thousands separators) as cs_money() so figures agree.
+     */
+    function cs_peso($amount): string
+    {
+        $value = (float) ($amount ?? 0);
+
+        return ($value < 0 ? '-' : '') . '₱' . number_format(abs($value), 2);
+    }
+}
+
+if (! function_exists('cs_asset_url')) {
+    /**
+     * base_url() for a static asset, with a ?v=<file mtime> cache-buster.
+     * No asset in this app carried any cache-busting before this - editing
+     * a CSS file or swapping an image (like the Kaagapay logo) in place
+     * would silently keep serving whatever a returning browser already had
+     * cached at that exact URL, no matter how the file on disk changed,
+     * until the visitor did a hard refresh. Use this for any asset that
+     * might change after go-live instead of a bare base_url() call.
+     */
+    function cs_asset_url(string $relativePath): string
+    {
+        $fullPath = FCPATH . ltrim($relativePath, '/');
+        $version = is_file($fullPath) ? filemtime($fullPath) : time();
+
+        return base_url($relativePath) . '?v=' . $version;
+    }
+}
+
+if (! function_exists('cs_search_term')) {
+    /**
+     * Clean a search box value: trimmed, whitespace collapsed, control
+     * characters dropped, capped so a pasted essay cannot become a query.
+     */
+    function cs_search_term($raw, int $maxLength = 100): string
+    {
+        $term = preg_replace('/[\x00-\x1F\x7F]+/u', ' ', (string) $raw) ?? '';
+        $term = trim((string) preg_replace('/\s+/u', ' ', $term));
+
+        return mb_substr($term, 0, $maxLength);
+    }
+}
+
+if (! function_exists('cs_apply_search')) {
+    /**
+     * Add a "search box" condition to a query builder.
+     *
+     * The term is split into words and EVERY word must appear in at least one
+     * of $columns (so "juan cruz" finds first_name = Juan, last_name = Cruz,
+     * and "dela cruz 0917" can match across name and mobile). Matching is
+     * partial and case-insensitive. Everything goes through the builder's
+     * like(), which escapes the value and the LIKE wildcards - nothing is
+     * concatenated into SQL by hand.
+     *
+     * @param \CodeIgniter\Database\BaseBuilder $builder
+     * @param string[]                          $columns qualified column names, e.g. 'u.first_name'
+     */
+    function cs_apply_search($builder, string $term, array $columns): void
+    {
+        $term = cs_search_term($term);
+        if ($term === '' || $columns === []) {
+            return;
+        }
+
+        foreach (array_slice(explode(' ', $term), 0, 6) as $word) {
+            // CI4's like() quotes the value but leaves % and _ alone, so a
+            // search for "%" would match every row. Escape them with the
+            // same "!" character the generated ESCAPE clause names.
+            $word = str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $word);
+
+            $builder->groupStart();
+            foreach ($columns as $index => $column) {
+                if ($index === 0) {
+                    $builder->like($column, $word, 'both', true, true);
+                } else {
+                    $builder->orLike($column, $word, 'both', true, true);
+                }
+            }
+            $builder->groupEnd();
+        }
+    }
+}
+
+if (! function_exists('cs_search_sql')) {
+    /**
+     * Same idea as cs_apply_search() for the hand-written SELECTs that use
+     * "?" placeholders instead of the query builder. Returns a string like
+     * " AND (a LIKE ? ESCAPE '!' OR b LIKE ? ESCAPE '!') AND (...)" (empty when
+     * there is no term) and appends the bound values to $params - the search
+     * text itself never enters the SQL string.
+     *
+     * @param string[] $columns trusted, hard-coded column expressions
+     * @param array    $params  bound-parameter list, extended in place
+     */
+    function cs_search_sql(string $term, array $columns, array &$params): string
+    {
+        $term = cs_search_term($term);
+        if ($term === '' || $columns === []) {
+            return '';
+        }
+
+        $sql = '';
+        foreach (array_slice(explode(' ', $term), 0, 6) as $word) {
+            $like = '%' . str_replace(['!', '%', '_'], ['!!', '!%', '!_'], mb_strtolower($word)) . '%';
+            $parts = [];
+            foreach ($columns as $column) {
+                $parts[] = "LOWER({$column}) LIKE ? ESCAPE '!'";
+                $params[] = $like;
+            }
+            $sql .= ' AND (' . implode(' OR ', $parts) . ')';
+        }
+
+        return $sql;
+    }
+}
+
+if (! function_exists('cs_filter_rows')) {
+    /**
+     * Search box for lists a service has already loaded as plain arrays
+     * (small, branch-scoped lists such as staff or packages). Every word of
+     * the term must appear, in any case, in at least one of $keys' values of
+     * the row. Plain PHP string matching - no SQL.
+     *
+     * @param array<int,array<string,mixed>> $rows
+     * @param string[]                       $keys
+     */
+    function cs_filter_rows(array $rows, string $term, array $keys): array
+    {
+        $term = cs_search_term($term);
+        if ($term === '' || $keys === []) {
+            return $rows;
+        }
+
+        $words = array_slice(explode(' ', mb_strtolower($term)), 0, 6);
+
+        return array_values(array_filter($rows, static function (array $row) use ($words, $keys): bool {
+            $haystack = [];
+            foreach ($keys as $key) {
+                $haystack[] = mb_strtolower((string) ($row[$key] ?? ''));
+            }
+            $haystack = implode(' ', $haystack);
+
+            foreach ($words as $word) {
+                if (! str_contains($haystack, $word)) {
+                    return false;
+                }
+            }
+
+            return true;
+        }));
     }
 }

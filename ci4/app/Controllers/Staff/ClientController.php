@@ -22,17 +22,19 @@ class ClientController extends BaseController
     {
         $branchId = (int) session('branch_id');
         $branchIssue = null;
+        $search = cs_search_term($this->request->getGet('search'));
 
         if ($branchId <= 0) {
             $clients = [];
             $branchIssue = 'No branch is assigned to your staff account. Please contact the branch admin.';
         } else {
-            $clients = $this->clientService->getClientsByBranch($branchId);
+            $clients = $this->clientService->getClientsByBranch($branchId, $search);
         }
 
         return view('staff/clients/index', [
             'page_title' => 'Client Management',
             'clients' => $clients,
+            'search' => $search,
             'program' => MembershipService::getProgramInfo(),
             'branch_issue' => $branchIssue,
             'role_layout' => 'layouts/staff',
@@ -126,6 +128,10 @@ class ClientController extends BaseController
                 'senior_citizen_id' => trim((string) $this->request->getPost('senior_citizen_id')),
                 'organization_affiliation' => trim((string) $this->request->getPost('organization_affiliation')),
                 'status' => trim((string) $this->request->getPost('status')),
+                'emergency_contact_name' => trim((string) $this->request->getPost('emergency_contact_name')),
+                'emergency_contact_relationship' => trim((string) $this->request->getPost('emergency_contact_relationship')),
+                'emergency_contact_number' => trim((string) $this->request->getPost('emergency_contact_number')),
+                'emergency_contact_address' => trim((string) $this->request->getPost('emergency_contact_address')),
                 'beneficiaries' => $this->request->getPost('beneficiaries') ?? [],
             ]);
         } catch (\Throwable $e) {
@@ -133,30 +139,6 @@ class ClientController extends BaseController
         }
 
         return redirect()->to('/staff/client/view/' . $id)->with('success', 'Client information updated successfully.');
-    }
-
-    public function view(int $id): string
-    {
-        $client = $this->clientService->getClientDetails($id);
-
-        if (! $client) {
-            throw PageNotFoundException::forPageNotFound();
-        }
-
-        $this->enforceBranchOwnership($client);
-
-        $planId = isset($client['plan']['plan_id']) ? (int) $client['plan']['plan_id'] : null;
-        $payments = $this->clientService->getClientPayments($planId);
-        $services = $this->clientService->getClientServices($id);
-
-        return view('staff/clients/view', [
-            'page_title' => 'Client Details',
-            'page_sub' => 'Plan Holder #' . (string) ($client['plan_holder_id'] ?? $id),
-            'client' => $client,
-            'payments' => $payments,
-            'services' => $services,
-            'role_layout' => 'layouts/staff',
-        ]);
     }
 
     public function create(): string
@@ -188,6 +170,7 @@ class ClientController extends BaseController
             ],
             'branch_name' => (string) ($branch['branch_name'] ?? ''),
             'program' => MembershipService::getProgramInfo(),
+            'plans' => (new \App\Services\PlanBuilderService())->listApprovedActive(),
             'role_layout' => 'layouts/staff',
             'id_types' => (new GovernmentIdVerificationService())->idTypes(),
             'existing_users' => $existingUsers,

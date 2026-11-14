@@ -18,6 +18,16 @@ class PackageModel extends Model
         'is_available',
         'is_damayan_entitlement',
         'image_path',
+        'item_code',
+        'category',
+        'variant',
+        'short_description',
+        'availability_status',
+        'stock_quantity',
+        'created_by',
+        'created_at',
+        'updated_by',
+        'updated_at',
         'status',
     ];
 }

@@ -2,10 +2,11 @@
 
 namespace App\Controllers;
 
-use App\Models\PlanHolderModel;
 use App\Models\UserModel;
+use App\Services\AccountRegistrationService;
 use App\Services\ActivityLogService;
 use App\Services\NotificationService;
+use App\Services\PasswordResetService;
 
 class Auth extends BaseController
 {
@@ -49,6 +50,13 @@ class Auth extends BaseController
             return redirect()->back()->withInput()->with('error', 'Your account is inactive.');
         }
 
+        // Temporary password issued by staff: it only works until it expires.
+        if ((int) ($user['must_change_password'] ?? 0) === 1
+            && ! empty($user['temp_password_expires_at'])
+            && strtotime((string) $user['temp_password_expires_at']) < time()) {
+            return redirect()->back()->withInput()->with('error', 'Your temporary password has expired. Please ask your branch to resend your login details.');
+        }
+
         session()->set([
             'user_id'   => (int) $user['user_id'],
             'role_id'   => (int) $user['role_id'],
@@ -73,125 +81,132 @@ class Auth extends BaseController
 
     public function register()
     {
-        return view('auth/register');
+        return view('auth/register', [
+            'isFirstAccount' => ! (new AccountRegistrationService())->hasAnyAccount(),
+        ]);
     }
 
     public function attemptRegister()
     {
+        $service = new AccountRegistrationService();
+
+        if (! $this->validate($service->rules())) {
+            return redirect()->back()->withInput()->with('error', implode(' ', $this->validator->getErrors()));
+        }
+
+        // Only the fields the form actually has are passed on. A posted
+        // role_id / branch_id is never read: the service decides the role.
+        try {
+            $result = $service->registerPublic([
+                'username'          => $this->request->getPost('username'),
+                'email'             => $this->request->getPost('email'),
+                'first_name'        => $this->request->getPost('first_name'),
+                'last_name'         => $this->request->getPost('last_name'),
+                'contact_number'    => $this->request->getPost('contact_number'),
+                'unique_identifier' => $this->request->getPost('unique_identifier'),
+                'password'          => $this->request->getPost('password'),
+            ]);
+        } catch (\Throwable $e) {
+            return redirect()->back()->withInput()->with('error', $e->getMessage());
+        }
+
+        $newUserId = $result['user_id'];
+        $notificationService = new NotificationService();
+        $activityLogService = new ActivityLogService();
+
+        if ($result['first_admin']) {
+            $activityLogService->log(
+                $newUserId,
+                'created',
+                'user',
+                $newUserId,
+                'First account created as System Admin',
+                null,
+                ['role_id' => AccountRegistrationService::ROLE_ADMIN]
+            );
+
+            return redirect()->to('/login')->with('success', 'Your System Administrator account has been created. Please sign in.');
+        }
+
+        if ($result['linked_existing']) {
+            $notificationService->notify($newUserId, 'Your account has been successfully linked to your membership.', 'registration_pending');
+        } else {
+            $notificationService->notify($newUserId, 'Your account was created. Complete plan holder registration to unlock services and payments.', 'registration_pending');
+        }
+
+        $activityLogService->log(
+            $newUserId,
+            'created',
+            'user',
+            $newUserId,
+            'Registered new client account',
+            null,
+            ['linked_existing_plan_holder' => $result['linked_existing']]
+        );
+
+        return redirect()->to('/login')->with('success', 'Account created successfully. Sign in to continue.');
+    }
+
+    public function forgotPassword()
+    {
+        if (session()->has('user_id')) {
+            return redirect()->to($this->defaultDashboardForRole((int) session('role_id')));
+        }
+
+        return view('auth/forgot_password', ['pageTitle' => 'Forgot password']);
+    }
+
+    public function sendResetLink()
+    {
+        if (! $this->validate(['email' => 'required|valid_email|max_length[100]'])) {
+            return redirect()->back()->withInput()->with('error', 'Please enter a valid email address.');
+        }
+
+        // Same answer whether or not the email is registered, and whether or
+        // not the rate limit was hit (see PasswordResetService::request()).
+        (new PasswordResetService())->request(
+            (string) $this->request->getPost('email'),
+            $this->request->getIPAddress()
+        );
+
+        return redirect()->to('/forgot-password')
+            ->with('success', 'If that email is registered, we sent a reset link. Check your inbox - the link works once and expires in 60 minutes.');
+    }
+
+    public function resetPassword(string $token = '')
+    {
+        $inspection = (new PasswordResetService())->inspect($token);
+
+        return view('auth/reset_password', [
+            'pageTitle' => 'Reset password',
+            'status'    => $inspection['status'],
+            'token'     => $token,
+        ]);
+    }
+
+    public function updateResetPassword(string $token = '')
+    {
+        $service = new PasswordResetService();
+
+        if ($service->inspect($token)['status'] !== 'valid') {
+            return redirect()->to('/reset-password/' . $token);
+        }
+
+        $accountRules = (new AccountRegistrationService())->rules();
         $rules = [
-            'username' => 'required|min_length[4]|max_length[50]|is_unique[users.username]',
-            'email' => 'required|valid_email|max_length[100]|is_unique[users.email]',
-            'first_name' => 'required|max_length[50]',
-            'last_name' => 'required|max_length[50]',
-            'unique_identifier' => 'permit_empty|max_length[100]',
-            'password' => 'required|min_length[8]',
-            'password_confirm' => 'required|matches[password]',
+            'password'         => $accountRules['password'],
+            'password_confirm' => $accountRules['password_confirm'],
         ];
 
         if (! $this->validate($rules)) {
             return redirect()->back()->withInput()->with('error', implode(' ', $this->validator->getErrors()));
         }
 
-        $userModel = new UserModel();
-        $planHolderModel = new PlanHolderModel();
-        $db = db_connect();
-        $db->transBegin();
-
-        try {
-            $firstName = trim((string) $this->request->getPost('first_name'));
-            $lastName = trim((string) $this->request->getPost('last_name'));
-            $uniqueIdentifier = trim((string) $this->request->getPost('unique_identifier'));
-
-            $saved = $userModel->insert([
-                'username' => trim((string) $this->request->getPost('username')),
-                'email' => trim((string) $this->request->getPost('email')),
-                'first_name' => $firstName,
-                'last_name' => $lastName,
-                'contact_number' => trim((string) $this->request->getPost('contact_number')),
-                'password_hash' => password_hash((string) $this->request->getPost('password'), PASSWORD_DEFAULT),
-                'role_id' => 4,
-                'branch_id' => null,
-                'status' => 'active',
-                'account_status' => 'pending',
-                'is_plan_holder' => 0,
-                'must_change_password' => 0,
-            ]);
-
-            if (! $saved) {
-                throw new \RuntimeException('Unable to register right now.');
-            }
-
-            $newUserId = (int) $userModel->getInsertID();
-
-            // Only ever auto-link on an exact unique_identifier match - never
-            // by first_name/last_name alone. Two different people can and do
-            // share a name (found live: a brand-new registrant with no
-            // unique_identifier got silently merged into an unrelated
-            // existing plan_holder record that happened to share a name,
-            // landing them in "awaiting activation" for someone else's
-            // profile instead of their own fresh "Register Now" state - with
-            // no confirmation step, no way to tell it had even happened).
-            // Leaving unique_identifier blank now means "no auto-link,
-            // register fresh" - the only safe default.
-            $existingPlanHolder = null;
-            if ($uniqueIdentifier !== '') {
-                $existingPlanHolder = $db->table('plan_holders ph')
-                    ->select('ph.plan_holder_id, ph.user_id, ph.unique_identifier')
-                    ->where('ph.user_id !=', $newUserId)
-                    ->where('ph.unique_identifier', $uniqueIdentifier)
-                    ->orderBy('ph.plan_holder_id', 'DESC')
-                    ->get()
-                    ->getRowArray();
-            }
-
-            $linkedExisting = false;
-            if ($existingPlanHolder) {
-                $planHolderModel->update((int) $existingPlanHolder['plan_holder_id'], [
-                    'user_id' => $newUserId,
-                    'is_linked_account' => 1,
-                ]);
-
-                $linkedProfile = $planHolderModel->find((int) $existingPlanHolder['plan_holder_id']);
-                $userModel->update($newUserId, [
-                    'is_plan_holder' => 1,
-                    'branch_id' => $linkedProfile['branch_id'] ?? null,
-                    'account_status' => 'verified',
-                ]);
-
-                $linkedExisting = true;
-            }
-
-            if ($db->transStatus() === false) {
-                throw new \RuntimeException('Unable to complete account registration.');
-            }
-
-            $db->transCommit();
-
-            $notificationService = new NotificationService();
-            $activityLogService = new ActivityLogService();
-
-            if ($linkedExisting) {
-                $notificationService->notify($newUserId, 'Your account has been successfully linked to your membership.', 'registration_pending');
-            } else {
-                $notificationService->notify($newUserId, 'Your account was created. Complete plan holder registration to unlock services and payments.', 'registration_pending');
-            }
-
-            $activityLogService->log(
-                $newUserId,
-                'created',
-                'user',
-                $newUserId,
-                'Registered new client account',
-                null,
-                ['linked_existing_plan_holder' => $linkedExisting]
-            );
-
-            return redirect()->to('/login')->with('success', 'Account created successfully. Sign in to continue.');
-        } catch (\Throwable $e) {
-            $db->transRollback();
-
-            return redirect()->back()->withInput()->with('error', $e->getMessage());
+        if (! $service->complete($token, (string) $this->request->getPost('password'))) {
+            return redirect()->to('/reset-password/' . $token);
         }
+
+        return redirect()->to('/login')->with('success', 'Your password has been changed. Sign in with your new password.');
     }
 
     public function changePassword()
@@ -227,15 +242,25 @@ class Auth extends BaseController
             return redirect()->back()->withInput()->with('error', 'Current password is incorrect.');
         }
 
+        $wasTemporary = (int) ($user['must_change_password'] ?? 0) === 1;
+
+        // The new password must actually be new - for a temporary password
+        // this is what stops "change it" from meaning "keep it".
+        if (password_verify((string) $this->request->getPost('new_password'), (string) $user['password_hash'])) {
+            return redirect()->back()->withInput()->with('error', 'Your new password must be different from your current one.');
+        }
+
         $userModel->update($userId, [
             'password_hash' => password_hash((string) $this->request->getPost('new_password'), PASSWORD_DEFAULT),
+            'password_changed_at' => date('Y-m-d H:i:s'),
             'must_change_password' => 0,
+            'temp_password_expires_at' => null,
         ]);
 
         session()->set('must_change_password', 0);
 
         (new NotificationService())->notify($userId, 'Your password was changed successfully.', 'general');
-        (new ActivityLogService())->log($userId, 'updated', 'user', $userId, 'Changed account password');
+        (new ActivityLogService())->log($userId, 'updated', 'user', $userId, $wasTemporary ? 'Changed temporary password at first sign-in' : 'Changed account password');
 
         return redirect()->to($this->defaultDashboardForRole((int) session('role_id')))->with('success', 'Password updated successfully.');
     }

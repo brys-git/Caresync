@@ -39,9 +39,15 @@ class ServiceBalances extends BaseController
             return redirect()->to('/unauthorized');
         }
 
+        // Plan holders only ever see their own balances; the search box is for Branch Admin.
+        $search = $roleId === 2 ? cs_search_term($this->request->getGet('search')) : '';
+        cs_apply_search($builder, $search, ['u.first_name', 'u.last_name', 'ph.unique_identifier', 'sb.service_name', 'sb.package_name', 'sb.beneficiary_name']);
+
         $balances = $builder->get()->getResultArray();
 
         return view('service_balances/index', [
+            'search' => $search,
+            'show_search' => $roleId === 2,
             'role_layout' => $roleId === 2 ? 'layouts/branch_admin' : 'layouts/plan_holder',
             'page_title' => 'Service balances',
             'page_sub' => 'Funeral package balances, tracked separately from membership contributions.',

@@ -246,7 +246,14 @@ window.CareSyncWizard = (function () {
             const branchLabel = branchEl && branchEl.tagName === 'SELECT'
                 ? (branchEl.selectedOptions[0] ? branchEl.selectedOptions[0].text : '')
                 : (branchNameDisplay ? branchNameDisplay.value : '');
+            // Only present when 2+ approved plans exist - see
+            // _step_applicant.php's "Choose a Plan" panel.
+            const checkedPlan = document.querySelector('input[name="program_id"]:checked');
+            const planRow = checkedPlan
+                ? row('Plan', esc(checkedPlan.closest('.cs-plan-option').querySelector('strong').textContent.trim()))
+                : '';
             const applicantHtml = [
+                planRow,
                 row('Name', esc([fieldValue('last_name'), fieldValue('first_name'), fieldValue('middle_name')].filter(Boolean).join(', '))),
                 row('Address', esc([fieldValue('address_no'), fieldValue('address_street'), fieldValue('address_barangay'), fieldValue('address_city')].filter(Boolean).join(', '))),
                 row('Date of Birth', esc(fieldValue('date_of_birth'))),

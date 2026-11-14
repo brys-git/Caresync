@@ -9,12 +9,19 @@
     </a>
 </div>
 
+<?= view('partials/search_bar', [
+    'action'      => base_url('branch-admin/client-management'),
+    'term'        => $search ?? '',
+    'placeholder' => 'Name, email, mobile number, or plan number',
+]) ?>
+
 <section class="cs-panel">
     <div class="cs-panel__body cs-panel__body--flush">
         <?php if (empty($holders)): ?>
             <?= view('components/empty_state', [
                 'icon'  => 'ti-users',
-                'title' => 'No plan holders found for your branch',
+                'title' => ! empty($search) ? 'No plan holders match "' . $search . '"' : 'No plan holders found for your branch',
+                'text'  => ! empty($search) ? 'Check the spelling or try fewer words, then search again - or clear the search to see everyone.' : '',
             ]) ?>
         <?php else: ?>
             <div class="cs-tablewrap">

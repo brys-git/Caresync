@@ -455,6 +455,7 @@ class CollectionListController extends BaseController
             'status' => (string) (service('request')->getGet('status') ?? ''),
             'barangay_code' => (string) (service('request')->getGet('barangay_code') ?? ''),
             'collector_id' => (int) (service('request')->getGet('collector_id') ?? 0),
+            'search' => cs_search_term(service('request')->getGet('search')),
         ];
     }
 
@@ -503,6 +504,10 @@ class CollectionListController extends BaseController
             $params[] = $filters['collector_id'];
             $params[] = $branchId;
         }
+
+        $sql .= cs_search_sql($filters['search'] ?? '', [
+            'u.first_name', 'u.last_name', 'u.contact_number', 'ph.unique_identifier', 'ph.address_barangay', 'ph.address_city',
+        ], $params);
 
         // collection_status is a SELECT-list alias, so it can't be used in
         // WHERE (MySQL resolves aliases after WHERE) - filtering by status

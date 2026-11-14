@@ -22,8 +22,11 @@ class StaffManagementController extends BaseController
             throw PageNotFoundException::forPageNotFound();
         }
 
+        $search = cs_search_term($this->request->getGet('search'));
+
         return view('branch_admin/staff_management/index', [
-            'staff' => $this->staffManagementService->getBranchStaff($branchId),
+            'search' => $search,
+            'staff' => cs_filter_rows($this->staffManagementService->getBranchStaff($branchId), $search, ['first_name', 'last_name', 'email', 'contact_number', 'username']),
             'role_layout' => 'layouts/branch_admin',
             'page_title' => 'Staff Management',
         ]);

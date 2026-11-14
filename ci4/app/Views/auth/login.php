@@ -3,17 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#1c3a34">
+    <meta name="theme-color" content="#1b2473">
     <title>Sign in · CareSync</title>
+    <meta name="description" content="CareSync is the member plan and payment records system of Kaagapay. Staff and plan holders sign in here to view plans and payment history.">
     <link rel="icon" href="<?= base_url('assets/favicon_io/favicon.ico') ?>">
     <link rel="stylesheet" href="<?= base_url('assets/css/main.css') ?>">
-    <link rel="stylesheet" href="<?= base_url('assets/css/caresync.css') ?>">
+    <link rel="stylesheet" href="<?= cs_asset_url('assets/css/caresync.css') ?>">
 </head>
 <body>
 <main class="signin">
     <aside class="signin__aside">
         <div class="signin__wordmark">
-            <img src="<?= base_url('assets/images/logo-icon.svg') ?>" alt="" width="26">
+            <span class="signin__logo"><img src="<?= cs_asset_url('assets/images/company-logo.png') ?>" alt=""></span>
             <span>CareSync</span>
         </div>
 
@@ -92,10 +93,17 @@
                 Buying a plan for the first time?
                 <a href="<?= base_url('register') ?>">Create a plan holder account</a>
             </p>
+
+            <p class="cs-muted signin__small mt-4 mb-0">
+                CareSync is the official records system of Kaagapay.<br>
+                Questions or account problems? Contact
+                <a href="mailto:kaagapay00@gmail.com">kaagapay00@gmail.com</a>.
+            </p>
         </div>
     </div>
 </main>
 
+<?= view('partials/confirm_dialog') ?>
 <script src="<?= base_url('assets/js/caresync.js') ?>" defer></script>
 </body>
 </html>

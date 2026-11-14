@@ -1,14 +1,10 @@
-# Disable directory browsing
-Options -Indexes
-
 # ----------------------------------------------------------------------
 # Rewrite engine
 # ----------------------------------------------------------------------
 
-# Turning on the rewrite engine is necessary for the following rules and features.
-# FollowSymLinks must be enabled for this to work.
+# No "Options" directives here: shared hosts such as InfinityFree reject
+# them in .htaccess and answer every request with a 500 error.
 <IfModule mod_rewrite.c>
-	Options +FollowSymlinks
 	RewriteEngine On
 
 	# If you installed CodeIgniter in a subfolder, you will need to
@@ -44,6 +40,12 @@ Options -Indexes
 	ErrorDocument 404 index.php
 </IfModule>
 
-# Disable server signature start
-ServerSignature Off
-# Disable server signature end
+# Do not advertise the PHP version (ignored by hosts that do not allow it).
+<IfModule mod_headers.c>
+	Header unset X-Powered-By
+</IfModule>
+
+# .jfif files are JPEG; serve them with the right type so every browser shows them.
+<IfModule mod_mime.c>
+	AddType image/jpeg .jfif
+</IfModule>
