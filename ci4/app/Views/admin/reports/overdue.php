@@ -6,7 +6,11 @@
 // Branch Admin is always scoped to their own branch server-side.
 $overdueBase = ($reports_base_path ?? '/admin/reports') . '/overdue';
 $overdueQuery = (! empty($filters['branch_id']) ? '&branch_id=' . (int) $filters['branch_id'] : '')
-    . (! empty($filters['search']) ? '&search=' . urlencode((string) $filters['search']) : '');
+    . (! empty($filters['search']) ? '&search=' . urlencode((string) $filters['search']) : '')
+    // The period travels with Print / Excel / PDF so the export matches the screen.
+    . '&as_of=' . urlencode((string) ($filters['as_of'] ?? date('Y-m-d')))
+    . (! empty($filters['due_from']) ? '&due_from=' . urlencode((string) $filters['due_from']) : '')
+    . (! empty($filters['due_to']) ? '&due_to=' . urlencode((string) $filters['due_to']) : '');
 ?>
 <div class="mb-3 text-end">
     <a class="btn btn-ghost btn-sm" href="<?= site_url($overdueBase . '?mode=print' . $overdueQuery) ?>" target="_blank" rel="noopener">
@@ -29,6 +33,18 @@ $overdueQuery = (! empty($filters['branch_id']) ? '&branch_id=' . (int) $filters
             <label class="form-label">Search</label>
             <input type="search" name="search" class="form-control" maxlength="100" value="<?= esc((string) ($filters['search'] ?? ''), 'attr') ?>" placeholder="Name, mobile number or plan number">
         </div>
+        <div class="cs-filters__field">
+            <label class="form-label" for="as_of">As of</label>
+            <input type="date" id="as_of" name="as_of" class="form-control" max="<?= esc(date('Y-m-d'), 'attr') ?>" value="<?= esc((string) ($filters['as_of'] ?? date('Y-m-d')), 'attr') ?>">
+        </div>
+        <div class="cs-filters__field">
+            <label class="form-label" for="due_from">Due from</label>
+            <input type="date" id="due_from" name="due_from" class="form-control" value="<?= esc((string) ($filters['due_from'] ?? ''), 'attr') ?>">
+        </div>
+        <div class="cs-filters__field">
+            <label class="form-label" for="due_to">Due to</label>
+            <input type="date" id="due_to" name="due_to" class="form-control" value="<?= esc((string) ($filters['due_to'] ?? ''), 'attr') ?>">
+        </div>
         <?php if (! empty($branches)): ?>
         <div class="cs-filters__field">
             <label class="form-label">Branch</label>
@@ -44,11 +60,15 @@ $overdueQuery = (! empty($filters['branch_id']) ? '&branch_id=' . (int) $filters
         <?php endif; ?>
         <div class="cs-filters__actions">
             <button type="submit" class="btn btn-primary">Apply</button>
-            <?php if (! empty($filters['search'])): ?>
-                <a class="btn btn-ghost" href="<?= site_url($overdueBase) ?><?= ! empty($filters['branch_id']) ? '?branch_id=' . (int) $filters['branch_id'] : '' ?>">Clear search</a>
+            <?php if (! empty($filters['search']) || ! empty($filters['due_from']) || ! empty($filters['due_to']) || ($filters['as_of'] ?? date('Y-m-d')) !== date('Y-m-d')): ?>
+                <a class="btn btn-ghost" href="<?= site_url($overdueBase) ?><?= ! empty($filters['branch_id']) ? '?branch_id=' . (int) $filters['branch_id'] : '' ?>">Clear filters</a>
             <?php endif; ?>
         </div>
     </form>
+
+    <?php if (! empty($filters['period_line'])): ?>
+        <p class="cs-muted mb-3"><i class="ti ti-calendar" aria-hidden="true"></i> Showing: <?= esc((string) $filters['period_line']) ?></p>
+    <?php endif; ?>
 
 <section class="cs-panel">
     <div class="cs-panel__body cs-panel__body--flush">

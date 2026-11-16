@@ -26,6 +26,7 @@ class ReportPdfService
         'commission' => ['Commission Report', 'reports/pdf/commission', 'portrait', 'commission_report'],
         'client_statement' => ['Client Statement', 'reports/pdf/client_statement', 'portrait', 'client_statement'],
         'receipt'    => ['Official Receipt', 'reports/pdf/receipt', 'portrait', 'receipt'],
+        'ledger'     => ['Ledger of Plan Holder', 'reports/pdf/ledger', 'portrait', 'ledger'],
     ];
 
     /**

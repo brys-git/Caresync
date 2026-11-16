@@ -16,6 +16,9 @@ $awaitingCertificate = (int) ($application['awaiting_death_certificate'] ?? 0) =
         <h1 id="br-done-title" class="br-title"><?= $isClaim ? 'Claim submitted' : 'Request submitted' ?></h1>
         <p class="br-sub">Thank you. Our staff will review your details and call you to arrange everything.</p>
         <p class="br-muted">Reference <span class="br-mono br-ref"><?= esc($reference) ?></span></p>
+        <?php if (! empty($application['filed_on_behalf'])): ?>
+            <p class="br-muted">Filed for you by your branch<?= ! empty($application['claimant_name']) ? ' (claimed by ' . esc((string) $application['claimant_name']) . ')' : '' ?>.</p>
+        <?php endif; ?>
         <?php if ($awaitingCertificate): ?>
             <p class="br-note">We're still waiting for the death certificate. Staff can help you get it.</p>
         <?php endif; ?>

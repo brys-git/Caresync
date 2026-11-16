@@ -24,6 +24,8 @@ if (! empty($range['from']) || ! empty($range['to'])) {
         <?= view('components/stat_rail', ['stats' => [
             ['label' => 'Collected (verified)', 'value' => $t['collected'] ?? 0, 'money' => true, 'icon' => 'ti-cash'],
             ['label' => 'Commission earned (10%)', 'value' => $t['commission'] ?? 0, 'money' => true, 'tone' => 'money', 'icon' => 'ti-coin'],
+            ['label' => 'Paid to you', 'value' => $paid_in_range ?? 0, 'money' => true, 'tone' => 'ok', 'icon' => 'ti-circle-check'],
+            ['label' => 'Not yet paid', 'value' => max(0, round((float) ($t['commission'] ?? 0) - (float) ($paid_in_range ?? 0), 2)), 'money' => true, 'tone' => 'warn', 'icon' => 'ti-hourglass'],
             ['label' => 'Clients', 'value' => $t['clients'] ?? 0, 'icon' => 'ti-users'],
             [
                 'label' => 'Awaiting verification',
@@ -90,6 +92,49 @@ if (! empty($range['from']) || ! empty($range['to'])) {
                             <th></th>
                         </tr>
                     </tfoot>
+                </table>
+            </div>
+        <?php endif; ?>
+    </div>
+</section>
+
+<section class="cs-panel mb-3">
+    <div class="cs-panel__head">
+        <h2 class="cs-panel__title">Commission payments</h2>
+        <p class="cs-panel__note">Each time your branch paid you commission for a period.</p>
+    </div>
+    <div class="cs-panel__body cs-panel__body--flush">
+        <?php if (empty($payouts)): ?>
+            <?= view('components/empty_state', [
+                'icon'  => 'ti-cash',
+                'title' => 'No commission paid yet',
+                'text'  => 'When your branch pays you, the payment shows up here.',
+            ]) ?>
+        <?php else: ?>
+            <div class="cs-tablewrap">
+                <table class="cs-table">
+                    <thead>
+                        <tr>
+                            <th>Period</th>
+                            <th class="cs-num">Collected</th>
+                            <th class="cs-num">Commission paid</th>
+                            <th>Paid on</th>
+                            <th>Paid by</th>
+                            <th>Reference</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($payouts as $p): ?>
+                            <tr>
+                                <td class="text-nowrap"><?= cs_date($p['period_start']) ?> - <?= cs_date($p['period_end']) ?></td>
+                                <td class="cs-num"><?= cs_money($p['total_collected']) ?></td>
+                                <td class="cs-num"><?= cs_money($p['commission_amount']) ?></td>
+                                <td class="text-nowrap"><?= cs_date($p['paid_at']) ?></td>
+                                <td><?= esc(trim((string) ($p['paid_by_first'] ?? '') . ' ' . (string) ($p['paid_by_last'] ?? '')) ?: '-') ?></td>
+                                <td><?= esc((string) ($p['reference'] ?: '-')) ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
                 </table>
             </div>
         <?php endif; ?>

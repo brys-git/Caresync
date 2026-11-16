@@ -22,10 +22,7 @@ if ($statusKey === 'grace' && $summary['grace_days_left'] !== null) {
     $statusLabel .= ' · ' . (int) $summary['grace_days_left'] . ' days left to pay';
 }
 
-$address = trim(implode(', ', array_filter([
-    (string) ($client['address_no'] ?? ''), (string) ($client['address_street'] ?? ''),
-    (string) ($client['address_barangay'] ?? ''), (string) ($client['address_city'] ?? ''),
-])));
+$address = cs_format_address($client);
 $age = cs_age_from_dob((string) ($client['date_of_birth'] ?? ''));
 
 $tabs = ['overview' => 'Overview', 'payments' => 'Payment history', 'services' => 'Services and claims', 'beneficiaries' => 'Beneficiaries', 'documents' => 'Documents', 'activity' => 'Activity'];
@@ -257,6 +254,7 @@ $qs = static function (array $over) use ($filters): string {
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <span class="small text-muted"><?= (int) $payments['count'] ?> payment<?= $payments['count'] === 1 ? '' : 's' ?><?= $payments['is_filtered'] ? ' (filtered)' : '' ?></span>
                                 <span class="d-flex gap-2">
+                                    <a class="btn btn-ghost btn-sm" href="<?= $urls['ledger'] ?>" target="_blank" rel="noopener"><i class="ti ti-receipt" aria-hidden="true"></i> Print ledger</a>
                                     <a class="btn btn-ghost btn-sm" href="<?= $urls['statement'] . $qs(['tab' => '']) ?>" target="_blank" rel="noopener"><i class="ti ti-printer" aria-hidden="true"></i> Print</a>
                                     <a class="btn btn-ghost btn-sm" href="<?= $urls['statement'] . $qs(['tab' => '', 'download' => 1]) ?>"><i class="ti ti-download" aria-hidden="true"></i> Export PDF</a>
                                 </span>

@@ -43,6 +43,7 @@ $routes->group('staff', ['filter' => 'auth'], static function (RouteCollection $
     $routes->get('client', 'Staff\ClientController::index', ['filter' => 'role:3']);
     $routes->get('client/view/(:num)', 'ClientDetailController::show/$1', ['filter' => 'role:3']);
     $routes->get('client/statement/(:num)', 'ClientDetailController::statement/$1', ['filter' => 'role:3']);
+    $routes->get('client/ledger/(:num)', 'ClientDetailController::ledger/$1', ['filter' => 'role:3']);
     $routes->post('client/note/(:num)', 'ClientDetailController::saveNote/$1', ['filter' => 'role:3']);
     $routes->get('client/file/(:num)/(:segment)/(:num)', 'ClientDetailController::file/$1/$2/$3', ['filter' => 'role:3']);
     $routes->get('client/edit/(:num)', 'Staff\ClientController::edit/$1', ['filter' => 'role:3']);

@@ -171,10 +171,10 @@ class CollectionListController extends BaseController
             return redirect()->back()->withInput()->with('error', implode(' ', $this->validator->getErrors()));
         }
 
-        [, , , $remainingMonths] = (new PaymentService())->remainingPayableMonths($plan);
         $monthsCovered = (int) $this->request->getPost('months_covered');
-        if ($monthsCovered < 1 || $monthsCovered > $remainingMonths) {
-            return redirect()->back()->withInput()->with('error', 'Months covered must be between 1 and ' . $remainingMonths . ' - this plan\'s current cycle cannot accept more than that.');
+        $projection = (new PaymentService())->projectPayment($plan, $monthsCovered);
+        if ($monthsCovered < 1 || $projection['months'] < $monthsCovered) {
+            return redirect()->back()->withInput()->with('error', 'Months covered must be between 1 and ' . $projection['months'] . ' - this plan cannot accept more than that.');
         }
 
         $receiptNumber = trim((string) $this->request->getPost('official_receipt_number'));
@@ -186,9 +186,9 @@ class CollectionListController extends BaseController
             return redirect()->back()->withInput()->with('error', 'This receipt number has already been recorded. Check for a duplicate entry.');
         }
 
-        $monthlyFee = (float) ($plan['monthly_fee'] ?? MembershipService::MONTHLY_FEE);
-        $amount = round($monthlyFee * $monthsCovered, 2);
-        $coverage = (new PaymentService())->projectCoverage($plan, $monthsCovered);
+        // Amount and period from the ledger (next unpaid contributions), not fee x months.
+        $amount = $projection['amount'];
+        $coverage = ['start' => $projection['start'], 'end' => $projection['end']];
 
         $db = db_connect();
         $inserted = $db->table('payments')->insert([
@@ -342,6 +342,8 @@ class CollectionListController extends BaseController
             'pending' => $commissionService->pendingPayments($userId, $range['from'], $range['to']),
             'totals' => $commissionService->totals($userId, $range['from'], $range['to']),
             'range' => $range,
+            'paid_in_range' => (new \App\Services\CommissionPayoutService())->paidWithin($userId, $range['from'], $range['to']),
+            'payouts' => (new \App\Services\CommissionPayoutService())->historyFor($userId),
         ]);
     }
 

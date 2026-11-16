@@ -63,8 +63,10 @@ class Reports extends BaseController
      */
     public function overdue()
     {
-        $filters = ['branch_id' => $this->reportBranchFilter(), 'search' => cs_search_term($this->request->getGet('search'))];
         $reportService = new ReportService();
+        $filters = ['branch_id' => $this->reportBranchFilter(), 'search' => cs_search_term($this->request->getGet('search'))]
+            + $reportService->overduePeriod($this->request->getGet());
+        $filters['period_line'] = $reportService->overduePeriodLine($filters);
         $rows = $reportService->getOverdueReport($filters);
         $mode = (string) $this->request->getGet('mode');
 
@@ -172,7 +174,7 @@ class Reports extends BaseController
         if ($mode === 'csv') {
             return $this->csvResponse(
                 'commission_report',
-                ['Collector', 'Role', 'Transactions', 'Total Collected', 'Commission (10%)', 'Net Remitted'],
+                ['Collector', 'Role', 'Transactions', 'Total Collected', 'Commission (10%)', 'Net Remitted', 'Paid', 'Unpaid'],
                 $rows,
                 static fn (array $row): array => [
                     trim((string) ($row['first_name'] ?? '') . ' ' . (string) ($row['last_name'] ?? '')),
@@ -181,6 +183,8 @@ class Reports extends BaseController
                     number_format((float) ($row['total_collected'] ?? 0), 2, '.', ''),
                     number_format((float) ($row['commission'] ?? 0), 2, '.', ''),
                     number_format((float) ($row['net_remitted'] ?? 0), 2, '.', ''),
+                    number_format((float) ($row['paid'] ?? 0), 2, '.', ''),
+                    number_format((float) ($row['unpaid'] ?? 0), 2, '.', ''),
                 ]
             );
         }
@@ -291,6 +295,9 @@ class Reports extends BaseController
             'date_to'      => $filters['date_to'] ?? null,
             'filter_lines' => $filterLines,
         ];
+        if (! empty($filters['period_line'])) {
+            $context['period_line'] = (string) $filters['period_line'];
+        }
 
         return (new ReportPdfService())->respond($this->response, $type, $data, $context, $inline);
     }

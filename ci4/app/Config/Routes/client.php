@@ -37,6 +37,8 @@ $routes->group('client', ['filter' => 'auth'], static function (RouteCollection 
     // dashboard quick action - now a link on each verified row in Payment
     // History instead).
     $routes->get('payment/download-receipt/(:num)', 'ReceiptController::download/$1', ['filter' => 'role:4']);
+    // The client's own ledger (verified payments) as a PDF.
+    $routes->get('payment/ledger', 'Client\ClientPaymentController::downloadLedger', ['filter' => 'role:4']);
     $routes->post('payment/submit-gcash', 'Client\ClientPaymentController::submitGcashPayment', ['filter' => 'role:4']);
 
     // Service balance continuation

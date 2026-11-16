@@ -12,6 +12,7 @@ use App\Services\CycleService;
 use App\Services\MembershipService;
 use App\Services\NotificationService;
 use App\Services\PaymentService;
+use App\Services\PlanLedgerService;
 
 class PaymentTracking extends BaseController
 {
@@ -173,24 +174,23 @@ class PaymentTracking extends BaseController
             return redirect()->back()->withInput()->with('error', 'Plan not found.');
         }
 
-        $monthlyFee = (float) ($plan['monthly_fee'] ?? 0);
-        $expectedAmount = $this->calculateAmount($monthlyFee, $monthsCovered);
-        if ($expectedAmount <= 0 || abs($expectedAmount - $amount) > 0.01) {
-            return redirect()->back()->withInput()->with('error', 'Amount must match the monthly fee multiplied by months covered.');
+        // Months, period and amount all come from the ledger: the next unpaid
+        // contributions (verified AND pending ones counted), so payments never
+        // overlap or leave a gap, and the last month is its real remainder
+        // rather than fee x months.
+        $projection = (new PaymentService())->projectPayment($plan, $monthsCovered);
+        if ($projection['months'] < $monthsCovered) {
+            return redirect()->back()->withInput()->with('error', $projection['months'] > 0
+                ? 'Months in advance cannot be more than ' . $projection['months'] . ' - that is all this plan has left to pay.'
+                : 'This plan has no months left to pay.');
         }
+        $amount = $projection['amount'];
 
         // Remaining balance from the one shared calculation (plans.remaining_balance is not maintained).
         if ($amount > (float) ((new \App\Services\ClientPlanSummary())->forPlan((int) $plan['plan_id'])['remaining_balance'] ?? 0)) {
             return redirect()->back()->withInput()->with('error', 'Payment exceeds remaining balance.');
         }
 
-        // Never more months than the plan's current cycle has left.
-        [, , , $remainingMonths] = (new PaymentService())->remainingPayableMonths($plan);
-        if ($monthsCovered > $remainingMonths) {
-            return redirect()->back()->withInput()->with('error', $remainingMonths > 0
-                ? 'Months in advance cannot be more than ' . $remainingMonths . ' - that is all this plan has left in its current cycle.'
-                : 'This plan has no months left to pay in its current cycle.');
-        }
 
         $holder = db_connect()->table('plan_holders')
             ->select('branch_id')
@@ -212,7 +212,7 @@ class PaymentTracking extends BaseController
         // received yet - see reviewGcash() for who verifies it.
         $status = $paymentMethod === 'gcash' ? 'pending' : 'paid';
 
-        $coverage = (new PaymentService())->projectCoverage($plan, $monthsCovered);
+        $coverage = ['start' => $projection['start'], 'end' => $projection['end']];
 
         $paymentData = [
             'plan_id' => $planId,
@@ -531,7 +531,7 @@ class PaymentTracking extends BaseController
         $db->transBegin();
 
         try {
-            $packageData = $this->resolvePackageAndVersion();
+            $packageData = $this->resolvePackageAndVersion((float) ($plan['monthly_fee'] ?? 0));
             error_log("AUTO_APPROVE DEBUG: Resolved package: " . json_encode($packageData));
             
             $existingPlan = $planModel
@@ -542,14 +542,16 @@ class PaymentTracking extends BaseController
             error_log("AUTO_APPROVE DEBUG: Existing plan: " . json_encode($existingPlan));
 
             if ($existingPlan) {
-                $today = date('Y-m-d');
-                $coverageUntil = date('Y-m-d', strtotime('+' . max(1, $monthsCovered) . ' months', strtotime($today)));
-                // CORRECTED: next_due_date = payment_coverage_until + 1 day (not +1 month)
-                $nextDue = date('Y-m-d', strtotime('+1 day', strtotime($coverageUntil)));
+                // The plan the client chose keeps its own fee and package: only
+                // fall back to the defaults when the plan truly has none.
+                // Coverage dates are NOT worked out here - PlanLedgerService
+                // does that from the start date and the payments (sync below).
+                $today = $this->activationStartDate($paymentId);
+                $planFee = (float) ($existingPlan['monthly_fee'] ?? 0);
 
                 $updateData = [
-                    'package_id' => $packageData['package_id'],
-                    'monthly_fee' => MembershipService::MONTHLY_FEE,
+                    'package_id' => (int) ($existingPlan['package_id'] ?? 0) > 0 ? (int) $existingPlan['package_id'] : $packageData['package_id'],
+                    'monthly_fee' => $planFee > 0 ? $planFee : MembershipService::MONTHLY_FEE,
                     'start_date' => $today,
                     'status' => 'active',
                     // Phase 0 fix: months_paid is no longer written here -
@@ -562,14 +564,8 @@ class PaymentTracking extends BaseController
 
                 // Only include columns if they exist in the plans table
                 $planFields = $db->getFieldNames('plans');
-                if (in_array('version_id', $planFields, true)) {
+                if (in_array('version_id', $planFields, true) && (int) ($existingPlan['version_id'] ?? 0) <= 0) {
                     $updateData['version_id'] = $packageData['version_id'];
-                }
-                if (in_array('next_due_date', $planFields, true)) {
-                    $updateData['next_due_date'] = $nextDue;
-                }
-                if (in_array('payment_coverage_until', $planFields, true)) {
-                    $updateData['payment_coverage_until'] = $coverageUntil;
                 }
                 if (in_array('overdue_months', $planFields, true)) {
                     $updateData['overdue_months'] = 0;
@@ -587,17 +583,19 @@ class PaymentTracking extends BaseController
                 } else {
                     (new MembershipService())->recalculateMonthsPaid((int) $existingPlan['plan_id']);
                 }
+                (new PlanLedgerService())->sync((int) $existingPlan['plan_id']);
+                $this->alignInitialCoverage($paymentId, $today);
                 error_log("AUTO_APPROVE DEBUG: Updated existing plan");
             } else {
-                $today = date('Y-m-d');
-                $coverageUntil = date('Y-m-d', strtotime('+' . max(1, $monthsCovered) . ' months', strtotime($today)));
-                // CORRECTED: next_due_date = payment_coverage_until + 1 day (not +1 month)
-                $nextDue = date('Y-m-d', strtotime('+1 day', strtotime($coverageUntil)));
+                // No plan on file at all: start from the default program.
+                $today = $this->activationStartDate($paymentId);
+                $defaultProgram = MembershipService::getProgramInfo();
 
                 $insertData = [
                     'plan_holder_id' => $planHolderId,
                     'package_id' => $packageData['package_id'],
-                    'monthly_fee' => MembershipService::MONTHLY_FEE,
+                    'program_id' => (int) ($defaultProgram['id'] ?? 0) ?: null,
+                    'monthly_fee' => (float) ($defaultProgram['monthly_fee'] ?? 0) > 0 ? (float) $defaultProgram['monthly_fee'] : MembershipService::MONTHLY_FEE,
                     'start_date' => $today,
                     'status' => 'active',
                     // Phase 0 fix: months_paid is no longer written here -
@@ -612,12 +610,6 @@ class PaymentTracking extends BaseController
                 }
                 if (in_array('version_id', $planFields, true)) {
                     $insertData['version_id'] = $packageData['version_id'];
-                }
-                if (in_array('next_due_date', $planFields, true)) {
-                    $insertData['next_due_date'] = $nextDue;
-                }
-                if (in_array('payment_coverage_until', $planFields, true)) {
-                    $insertData['payment_coverage_until'] = $coverageUntil;
                 }
                 if (in_array('overdue_months', $planFields, true)) {
                     $insertData['overdue_months'] = 0;
@@ -642,6 +634,8 @@ class PaymentTracking extends BaseController
                 } else {
                     (new MembershipService())->recalculateMonthsPaid($planId);
                 }
+                (new PlanLedgerService())->sync($planId);
+                $this->alignInitialCoverage($paymentId, $today);
             }
 
             // Enforce one active plan
@@ -703,7 +697,49 @@ class PaymentTracking extends BaseController
         return true;
     }
 
-    private function resolvePackageAndVersion(): array
+    /**
+     * The date a plan's contributions start counting from when its first payment
+     * is approved: the day that payment was made (never later than today), so
+     * the money is not dated before the plan it pays for.
+     */
+    /**
+     * The first payment covers the first contributions, which start on the
+     * plan's start date. Its coverage was projected before the plan was
+     * activated, so re-stamp it from the start date (end = the day before the
+     * next due date) to match what the ledger now shows.
+     */
+    private function alignInitialCoverage(int $paymentId, string $startDate): void
+    {
+        if ($paymentId <= 0) {
+            return;
+        }
+
+        $payment = db_connect()->table('payments')->select('months_covered')->where('payment_id', $paymentId)->get()->getRowArray();
+        if (! $payment) {
+            return;
+        }
+
+        $months = max(1, (int) $payment['months_covered']);
+        db_connect()->table('payments')->where('payment_id', $paymentId)->update([
+            'coverage_start' => $startDate,
+            'coverage_end' => PlanLedgerService::addDays(PlanLedgerService::addMonths($startDate, $months), -1),
+        ]);
+    }
+
+    private function activationStartDate(int $paymentId): string
+    {
+        $today = date('Y-m-d');
+        if ($paymentId <= 0) {
+            return $today;
+        }
+
+        $row = db_connect()->table('payments')->select('payment_date')->where('payment_id', $paymentId)->get()->getRowArray();
+        $date = $row ? date('Y-m-d', strtotime((string) $row['payment_date'])) : $today;
+
+        return $date > $today ? $today : $date;
+    }
+
+    private function resolvePackageAndVersion(?float $versionPrice = null): array
     {
         $db = db_connect();
 
@@ -759,7 +795,7 @@ class PaymentTracking extends BaseController
         if (! $version) {
             $db->table('package_versions')->insert([
                 'package_id' => $packageId,
-                'price' => MembershipService::MONTHLY_FEE,
+                'price' => $versionPrice !== null && $versionPrice > 0 ? $versionPrice : MembershipService::MONTHLY_FEE,
                 'effective_date' => date('Y-m-d'),
                 'status' => 'active',
             ]);

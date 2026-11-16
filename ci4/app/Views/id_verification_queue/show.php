@@ -45,7 +45,7 @@
                         <tr><th class="text-muted">Gender</th><td><?= esc((string) ($row['claimed_gender'] ?? '-')) ?></td></tr>
                         <tr><th class="text-muted">Civil Status</th><td><?= esc((string) ($row['civil_status'] ?: '-')) ?></td></tr>
                         <tr><th class="text-muted">Citizenship</th><td><?= esc((string) ($row['citizenship'] ?: '-')) ?></td></tr>
-                        <tr><th class="text-muted">Address</th><td><?= esc(trim((string) ($row['address_no'] . ' ' . $row['address_street'] . ', ' . $row['address_barangay'] . ', ' . $row['address_city']), ' ,')) ?></td></tr>
+                        <tr><th class="text-muted">Address</th><td><?= esc(cs_format_address($row)) ?></td></tr>
                         <tr><th class="text-muted">Email</th><td><?= esc((string) ($row['email'] ?? '-')) ?></td></tr>
                         <tr><th class="text-muted">Contact #</th><td><?= esc((string) ($row['contact_number'] ?? '-')) ?></td></tr>
                     </tbody>

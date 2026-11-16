@@ -29,7 +29,7 @@
                             <tr><th style="width:40%;">Name</th><td><?= esc((string) ($holder['first_name'] . ' ' . $holder['last_name'])) ?></td></tr>
                             <tr><th>Email</th><td><?= esc((string) ($holder['email'] ?? '-')) ?></td></tr>
                             <tr><th>Unique ID</th><td><?= esc((string) ($holder['unique_identifier'] ?: 'Not assigned')) ?></td></tr>
-                            <tr><th>Address</th><td><?= esc(trim((string) (($holder['address_barangay'] ?? '') . ', ' . ($holder['address_city'] ?? '')), ' ,')) ?></td></tr>
+                            <tr><th>Address</th><td><?= esc(cs_format_address($holder)) ?></td></tr>
                             <tr><th>Plan Holder Status</th><td><?= cs_status($holderStatus) ?></td></tr>
                         </tbody>
                     </table>

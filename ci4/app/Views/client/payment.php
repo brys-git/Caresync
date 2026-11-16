@@ -111,6 +111,7 @@ $statusLabels = ['approved' => 'Approved', 'pending' => 'Pending', 'rejected' =>
             <section class="cp-card" aria-labelledby="cp-history-title">
                 <div class="cp-card__head">
                     <h2 id="cp-history-title" class="cp-card__title">Payment history</h2>
+                    <a class="btn btn-ghost btn-sm" href="<?= base_url('client/payment/ledger') ?>"><i class="ti ti-download" aria-hidden="true"></i> Download my ledger (PDF)</a>
                     <?php if ($history !== []): ?>
                         <div class="cp-seg" role="group" aria-label="Filter by status">
                             <button type="button" class="cp-seg__btn" data-filter="all" aria-pressed="true">All</button>

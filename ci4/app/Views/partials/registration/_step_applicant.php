@@ -81,7 +81,13 @@ $isEdit = ($wizard['context'] ?? 'register') === 'edit';
             <div class="row g-3">
                 <div class="col-md-4">
                     <label class="form-label" for="id_control_no">ID Control No.</label>
-                    <input id="id_control_no" name="id_control_no" class="form-control" value="<?= esc(old('id_control_no', (string) ($planHolder['id_control_no'] ?? ''))) ?>">
+                    <?php /* TODO: once Kaagapay gives the official ID control number format, generate it automatically and make it unique. Until then branch staff may type it; it stays blank otherwise. */ ?>
+                    <?php if (($wizard['mode'] ?? 'self') === 'self'): ?>
+                        <?php // A plan holder never sets this: no name, so nothing is posted. ?>
+                        <input id="id_control_no" class="form-control" value="<?= esc((string) ($planHolder['id_control_no'] ?? '')) ?>" placeholder="Assigned by Kaagapay" disabled>
+                    <?php else: ?>
+                        <input id="id_control_no" name="id_control_no" class="form-control" placeholder="Assigned by Kaagapay" value="<?= esc(old('id_control_no', (string) ($planHolder['id_control_no'] ?? ''))) ?>">
+                    <?php endif; ?>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label" for="coordinator">Coordinator</label>
@@ -114,6 +120,23 @@ $isEdit = ($wizard['context'] ?? 'register') === 'edit';
                     <input id="address_street" name="address_street" class="form-control" value="<?= esc(old('address_street', (string) ($planHolder['address_street'] ?? ''))) ?>">
                 </div>
                 <div class="col-md-3">
+                    <label class="form-label" for="barangay_search">Barangay</label>
+                    <div class="psgc-field position-relative">
+                        <input
+                            id="barangay_search"
+                            type="text"
+                            class="form-control"
+                            autocomplete="off"
+                            placeholder="Search barangay..."
+                            value="<?= esc(old('address_barangay', (string) ($planHolder['address_barangay'] ?? ''))) ?>"
+                        >
+                        <input type="hidden" id="address_barangay" name="address_barangay" value="<?= esc(old('address_barangay', (string) ($planHolder['address_barangay'] ?? ''))) ?>">
+                        <input type="hidden" id="barangay_code" name="barangay_code" value="<?= esc(old('barangay_code', (string) ($planHolder['barangay_code'] ?? ''))) ?>">
+                        <div class="psgc-dropdown list-group shadow-sm d-none"></div>
+                    </div>
+                    <small class="text-danger d-none psgc-error" data-field="barangay"></small>
+                </div>
+                <div class="col-md-3">
                     <label class="form-label" for="city_search">Town/City</label>
                     <div class="psgc-field position-relative">
                         <input
@@ -129,24 +152,6 @@ $isEdit = ($wizard['context'] ?? 'register') === 'edit';
                         <div class="psgc-dropdown list-group shadow-sm d-none"></div>
                     </div>
                     <small class="text-danger d-none psgc-error" data-field="city"></small>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label" for="barangay_search">Barangay</label>
-                    <div class="psgc-field position-relative">
-                        <input
-                            id="barangay_search"
-                            type="text"
-                            class="form-control"
-                            autocomplete="off"
-                            placeholder="Select a Town/City first"
-                            value="<?= esc(old('address_barangay', (string) ($planHolder['address_barangay'] ?? ''))) ?>"
-                            disabled
-                        >
-                        <input type="hidden" id="address_barangay" name="address_barangay" value="<?= esc(old('address_barangay', (string) ($planHolder['address_barangay'] ?? ''))) ?>">
-                        <input type="hidden" id="barangay_code" name="barangay_code" value="<?= esc(old('barangay_code', (string) ($planHolder['barangay_code'] ?? ''))) ?>">
-                        <div class="psgc-dropdown list-group shadow-sm d-none"></div>
-                    </div>
-                    <small class="text-danger d-none psgc-error" data-field="barangay"></small>
                 </div>
 
                 <div class="col-md-3">

@@ -173,10 +173,63 @@ class ReportService
         return $rows;
     }
 
+    /**
+     * Cleans the overdue-report period filters: "as of" (default today, never in
+     * the future) and an optional "due from" / "due to" range.
+     *
+     * @return array{as_of:string, due_from:string, due_to:string}
+     */
+    public function overduePeriod(array $input): array
+    {
+        $valid = static function ($v): string {
+            $v = trim((string) $v);
+
+            return preg_match('/^\d{4}-\d{2}-\d{2}$/', $v) && strtotime($v) !== false ? $v : '';
+        };
+
+        $today = date('Y-m-d');
+        $asOf = $valid($input['as_of'] ?? '');
+        if ($asOf === '' || $asOf > $today) {
+            $asOf = $today;
+        }
+
+        $from = $valid($input['due_from'] ?? '');
+        $to = $valid($input['due_to'] ?? '');
+        if ($from !== '' && $to !== '' && $from > $to) {
+            [$from, $to] = [$to, $from];
+        }
+
+        return ['as_of' => $asOf, 'due_from' => $from, 'due_to' => $to];
+    }
+
+    /** The period in words, for report headers and the page. */
+    public function overduePeriodLine(array $filters): string
+    {
+        $asOf = (string) ($filters['as_of'] ?? date('Y-m-d'));
+        $line = 'As of ' . date('j M Y', strtotime($asOf));
+
+        $from = (string) ($filters['due_from'] ?? '');
+        $to = (string) ($filters['due_to'] ?? '');
+        if ($from !== '' && $to !== '') {
+            $line .= ' - due ' . date('j M Y', strtotime($from)) . ' to ' . date('j M Y', strtotime($to));
+        } elseif ($from !== '') {
+            $line .= ' - due from ' . date('j M Y', strtotime($from));
+        } elseif ($to !== '') {
+            $line .= ' - due up to ' . date('j M Y', strtotime($to));
+        }
+
+        return $line;
+    }
+
     public function getOverdueReport(array $filters): array
     {
         $branchId = (int) ($filters['branch_id'] ?? 0);
         $today = date('Y-m-d');
+        $period = $this->overduePeriod($filters);
+        $asOf = $period['as_of'];
+        $dueFrom = $period['due_from'];
+        $dueTo = $period['due_to'];
+        $custom = $asOf !== $today || $dueFrom !== '' || $dueTo !== '';
 
         // Candidate plans only (cheap SQL); the real numbers come from the
         // one rule, PlanLedgerService, so this report always agrees with the
@@ -186,18 +239,25 @@ class ReportService
             ->select('pl.plan_id, ph.plan_holder_id, ph.unique_identifier, u.first_name, u.last_name, u.contact_number, b.branch_name')
             ->join('plan_holders ph', 'ph.plan_holder_id = pl.plan_holder_id', 'inner')
             ->join('users u', 'u.user_id = ph.user_id', 'inner')
-            ->join('branches b', 'b.branch_id = ph.branch_id', 'left')
-            ->groupStart()
+            ->join('branches b', 'b.branch_id = ph.branch_id', 'left');
+
+        if ($custom) {
+            // A past date (or a due range) can include plans that have paid up
+            // since, so look at every plan that had started by then.
+            $builder->where('pl.start_date <=', $asOf);
+        } else {
+            $builder->groupStart()
                 ->where('pl.next_due_date <', $today);
 
-        // plans.lifecycle_status comes from migration AddPlanLifecycle; on a
-        // database that has not run it yet, fall back to the due-date test
-        // alone instead of failing the whole page.
-        if ($db->fieldExists('lifecycle_status', 'plans')) {
-            $builder->orWhereIn('pl.lifecycle_status', ['grace', 'lapsed', 'forfeited']);
-        }
+            // plans.lifecycle_status comes from migration AddPlanLifecycle; on a
+            // database that has not run it yet, fall back to the due-date test
+            // alone instead of failing the whole page.
+            if ($db->fieldExists('lifecycle_status', 'plans')) {
+                $builder->orWhereIn('pl.lifecycle_status', ['grace', 'lapsed', 'forfeited']);
+            }
 
-        $builder->groupEnd();
+            $builder->groupEnd();
+        }
 
         if ($branchId > 0) {
             $builder->where('ph.branch_id', $branchId);
@@ -209,18 +269,43 @@ class ReportService
         $rows = [];
 
         foreach ($builder->get()->getResultArray() as $row) {
-            $s = $ledger->summarize((int) $row['plan_id'], $today);
+            // "As of": the plan as it stood on that date (payments after it do not count yet).
+            $s = $ledger->summarizeAsOf((int) $row['plan_id'], $asOf);
             if (! $s || ! in_array($s['lifecycle'], ['grace', 'lapsed', 'forfeited'], true)) {
                 continue;
             }
 
+            $overdueCount = (int) $s['overdue_count'];
+            $overdueAmount = (float) $s['overdue_amount'];
+            $overdueDues = $s['overdue_dues'];
+            $oldestDue = $s['oldest_unpaid_due'];
+
+            // "Due from / to": only overdue contributions whose due date is in the range.
+            if ($dueFrom !== '' || $dueTo !== '') {
+                $inRange = array_values(array_filter($s['contributions'], static function (array $c) use ($asOf, $dueFrom, $dueTo): bool {
+                    return ! $c['is_paid']
+                        && strcmp($c['due'], $asOf) < 0
+                        && ($dueFrom === '' || strcmp($c['due'], $dueFrom) >= 0)
+                        && ($dueTo === '' || strcmp($c['due'], $dueTo) <= 0);
+                }));
+
+                if ($inRange === []) {
+                    continue;
+                }
+
+                $overdueCount = count($inRange);
+                $overdueAmount = round(array_sum(array_column($inRange, 'remaining')), 2);
+                $overdueDues = array_column($inRange, 'due');
+                $oldestDue = $inRange[0]['due'];
+            }
+
             $rows[] = $row + [
-                'remaining_balance'      => ClientPlanSummary::fromLedger($s, $today)['remaining_balance'],
+                'remaining_balance'      => ClientPlanSummary::fromLedger($s, $asOf)['remaining_balance'],
                 'months_paid'            => $s['months_paid'],
-                'overdue_months'         => $s['overdue_count'],
-                'overdue_amount'         => $s['overdue_amount'],
-                'overdue_dues'           => $s['overdue_dues'],
-                'next_due_date'          => $s['oldest_unpaid_due'],
+                'overdue_months'         => $overdueCount,
+                'overdue_amount'         => $overdueAmount,
+                'overdue_dues'           => $overdueDues,
+                'next_due_date'          => $oldestDue,
                 'days_overdue'           => $s['days_overdue'],
                 'lifecycle'              => $s['lifecycle'],
                 // Kept under its old key for the CSV/PDF callers: now the
@@ -239,7 +324,6 @@ class ReportService
 
         return $rows;
     }
-
     /**
      * Plan-holder search for the Ledger report (by name or unique
      * identifier).
@@ -380,6 +464,14 @@ class ReportService
         // The commission rows come out of CommissionService already
         // aggregated, so the collector-name search is applied to them here
         // (in PHP - no SQL involved): every word must be in the full name.
+        // Earned / Paid / Unpaid per collector for this period.
+        $rows = (new CommissionPayoutService())->annotate(
+            $rows,
+            (string) ($filters['date_from'] ?? '') ?: null,
+            (string) ($filters['date_to'] ?? '') ?: null,
+            (int) ($filters['branch_id'] ?? 0) ?: null
+        );
+
         $term = cs_search_term($filters['search'] ?? '');
         if ($term === '') {
             return $rows;

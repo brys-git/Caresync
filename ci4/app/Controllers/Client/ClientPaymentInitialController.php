@@ -9,6 +9,7 @@ use App\Services\ApprovalService;
 use App\Config\ValidationRules;
 use CodeIgniter\HTTP\ResponseInterface;
 use App\Services\MembershipService;
+use App\Services\PaymentService;
 
 /**
  * ClientPaymentInitialController
@@ -74,8 +75,9 @@ class ClientPaymentInitialController extends BaseController
             return redirect()->to('/client/dashboard')->with('error', 'Your plan holder registration has no plan assigned yet. Please contact your branch for assistance.');
         }
 
-        $program = MembershipService::getProgramInfo();
-        $monthlyFee = (float) ($program['monthly_fee'] ?? ($plan['monthly_fee'] ?? 0));
+        // The plan the client registered on, not the default program.
+        $program = MembershipService::programForPlan($plan);
+        $monthlyFee = (float) ($plan['monthly_fee'] ?? 0) > 0 ? (float) $plan['monthly_fee'] : (float) ($program['monthly_fee'] ?? 0);
         $latestInitialPayment = $this->latestInitialPayment($planHolderId);
 
         // Shown only while the client has GCash selected - same
@@ -164,10 +166,10 @@ class ClientPaymentInitialController extends BaseController
                 return redirect()->back()->with('error', 'Plan information not found.');
             }
 
-            $program = MembershipService::getProgramInfo();
-            $monthlyFee = (float) ($program['monthly_fee'] ?? ($plan['monthly_fee'] ?? 0));
+            // Amount from the ledger: the plan's own next unpaid contributions.
             $monthsCovered = max(1, (int) $this->request->getPost('months_covered'));
-            $amount = $monthlyFee * $monthsCovered;
+            $projection = (new PaymentService())->projectPayment($plan, $monthsCovered);
+            $amount = $projection['amount'];
 
             $db->transStart();
 
@@ -175,6 +177,8 @@ class ClientPaymentInitialController extends BaseController
                 'plan_id' => (int) $plan['plan_id'],
                 'amount' => number_format($amount, 2, '.', ''),
                 'months_covered' => $monthsCovered,
+                'coverage_start' => $projection['start'],
+                'coverage_end' => $projection['end'],
                 'payment_date' => date('Y-m-d'),
                 'payment_method' => $paymentMethod,
                 'reference_number' => null,

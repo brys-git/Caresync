@@ -203,9 +203,11 @@ class ClaimService
         }
 
         $request = db_connect()->table('service_applications sa')
-            ->select('sa.*, ph.branch_id, ph.user_id, u.first_name, u.last_name, p.base_price AS package_price, p.package_name, sl.base_price AS service_price, sl.service_name')
+            ->select('sa.*, ph.branch_id, ph.user_id, u.first_name, u.last_name, p.base_price AS package_price, p.package_name, sl.base_price AS service_price, sl.service_name, fb.first_name AS filer_first, fb.last_name AS filer_last, fr.role_name AS filer_role')
             ->join('plan_holders ph', 'ph.plan_holder_id = sa.plan_holder_id', 'inner')
             ->join('users u', 'u.user_id = ph.user_id', 'inner')
+            ->join('users fb', 'fb.user_id = sa.filed_by_user_id', 'left')
+            ->join('roles fr', 'fr.role_id = fb.role_id', 'left')
             ->join('packages p', 'p.package_id = sa.package_id', 'left')
             ->join('service_list sl', 'sl.service_list_id = sa.service_list_id', 'left')
             ->where('sa.application_id', $applicationId)

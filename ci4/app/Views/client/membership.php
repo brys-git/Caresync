@@ -51,6 +51,10 @@ $value = static function (array $item): string {
         return esc($item['value']);
     }
 
+    if (! empty($item['dash'])) {
+        return '<span class="mp-empty">—</span>';
+    }
+
     return '<span class="mp-empty">' . (! empty($item['pending']) ? 'Pending' : 'Not provided') . '</span>';
 };
 $icon = static function (string $name): string {
@@ -98,9 +102,10 @@ if ($state === 'awaiting_activation') {
     };
 }
 
-$addressLine = implode(', ', array_filter([
-    $p('address_no'), $p('address_street'), $p('address_barangay'), $p('address_city'),
-], static fn ($part) => $part !== null)) ?: null;
+$addressLine = cs_format_address([
+    'address_no' => $p('address_no'), 'address_street' => $p('address_street'),
+    'address_barangay' => $p('address_barangay'), 'address_city' => $p('address_city'),
+]) ?: null;
 
 $dob = $p('date_of_birth');
 $dobText = $dateText($dob);
@@ -140,7 +145,7 @@ $sections = [
     'Application record' => [
         ['label' => 'Date of application', 'value' => $dateText($p('application_date'))],
         ['label' => 'Branch', 'value' => $branchName],
-        ['label' => 'ID control no.', 'value' => $p('id_control_no'), 'pending' => true],
+        ['label' => 'ID control no.', 'value' => $p('id_control_no'), 'dash' => true],
         ['label' => 'Coordinator', 'value' => $p('coordinator'), 'pending' => true],
     ],
 ];

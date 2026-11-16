@@ -347,9 +347,12 @@ class PaymentService
      */
     public function getRemainingBalance(int $planId, ?float $totalPlanAmount = null): float
     {
-        $target = $totalPlanAmount ?? MembershipService::TOTAL_CONTRIBUTION;
+        if ($totalPlanAmount === null) {
+            $plan = db_connect()->table('plans')->where('plan_id', $planId)->get()->getRowArray();
+            $totalPlanAmount = $plan ? PlanLedgerService::targetFor($plan) : MembershipService::TOTAL_CONTRIBUTION;
+        }
 
-        return max(0.0, round($target - $this->getTotalPaidForPlan($planId), 2));
+        return max(0.0, round($totalPlanAmount - $this->getTotalPaidForPlan($planId), 2));
     }
 
     public function getPaymentById(int $paymentId): ?array
@@ -364,22 +367,9 @@ class PaymentService
 
     private function getTotalPlanAmount(array $plan): float
     {
-        $db = db_connect();
-        $columns = array_map(static fn ($field) => $field->name, $db->getFieldData('plans'));
+        $row = db_connect()->table('plans')->where('plan_id', (int) $plan['plan_id'])->get()->getRowArray();
 
-        if (in_array('total_plan_amount', $columns, true)) {
-            $value = (float) ($db->table('plans')
-                ->select('total_plan_amount')
-                ->where('plan_id', (int) $plan['plan_id'])
-                ->get()
-                ->getRowArray()['total_plan_amount'] ?? 0);
-
-            if ($value > 0) {
-                return $value;
-            }
-        }
-
-        return (float) ($plan['monthly_fee'] ?? 0);
+        return PlanLedgerService::targetFor($row ?: $plan);
     }
 
     private function nullable($value): ?string
@@ -442,23 +432,42 @@ class PaymentService
      */
     public function projectCoverage(array $plan, int $monthsCovered): array
     {
-        $baseDate = (string) ($plan['payment_coverage_until'] ?? $plan['start_date'] ?? date('Y-m-d'));
-        if ($baseDate === '' || strtotime($baseDate) === false) {
-            $baseDate = date('Y-m-d');
-        }
+        $p = $this->projectPayment($plan, $monthsCovered);
 
-        // If the plan already has coverage, a new payment picks up the day after
-        // it ends; otherwise it starts from that base date itself.
-        $hasExistingCoverage = ! empty($plan['payment_coverage_until']);
-        $start = $hasExistingCoverage
-            ? date('Y-m-d', strtotime('+1 day', strtotime($baseDate)))
-            : $baseDate;
-
-        $end = date('Y-m-d', strtotime('+' . (max(1, $monthsCovered) - 1) . ' months', strtotime($start)));
-
-        return ['start' => $start, 'end' => $end];
+        return ['start' => $p['start'], 'end' => $p['end']];
     }
 
+    /**
+     * What a payment of $monthsCovered months pays for, from the ledger (the
+     * only source of coverage): the contributions it covers, the period
+     * (start .. day before the next due date) and the exact amount.
+     *
+     * @return array{start:string,end:string,amount:float,months:int}
+     */
+    public function projectPayment(array $plan, int $monthsCovered): array
+    {
+        $monthsCovered = max(1, $monthsCovered);
+        $next = (new PlanLedgerService())->nextContributions((int) $plan['plan_id'], $monthsCovered);
+
+        if ($next !== null && $next['months'] < 1) {
+            $today = date('Y-m-d');
+
+            return ['start' => $today, 'end' => $today, 'amount' => 0.0, 'months' => 0];
+        }
+
+        if ($next === null) {
+            $start = date('Y-m-d');
+
+            return [
+                'start' => $start,
+                'end' => PlanLedgerService::addDays(PlanLedgerService::addMonths($start, $monthsCovered), -1),
+                'amount' => round((float) ($plan['monthly_fee'] ?? 0) * $monthsCovered, 2),
+                'months' => $monthsCovered,
+            ];
+        }
+
+        return ['start' => (string) $next['start'], 'end' => (string) $next['end'], 'amount' => $next['amount'], 'months' => $next['months']];
+    }
     /**
      * Whole months of advance coverage remaining from today. Panel brief,
      * section 3: "Show remaining months left on the plan."
@@ -508,29 +517,25 @@ class PaymentService
     public function remainingPayableMonths(array $plan): array
     {
         $planId = (int) $plan['plan_id'];
-        $cycle = (new CycleService())->currentCycle($planId);
 
-        $monthlyFee = (float) ($plan['monthly_fee'] ?? MembershipService::MONTHLY_FEE);
-        if ($monthlyFee <= 0) {
-            $monthlyFee = MembershipService::MONTHLY_FEE;
-        }
-
-        $cycleTargetMonths = (int) ceil($cycle['target'] / $monthlyFee);
-        $verifiedMonths = $cycle['months_paid'];
+        // One source: PlanLedgerService decides how many contributions the plan
+        // has and how many are paid; pending payments are months already spoken for.
+        $summary = (new PlanLedgerService())->summarize($planId);
+        $totalMonths = (int) ($summary['total_contributions'] ?? 0);
+        $verifiedMonths = (int) ($summary['months_paid'] ?? 0);
 
         $pendingMonths = (int) (db_connect()->table('payments')
             ->selectSum('months_covered')
             ->where('plan_id', $planId)
             ->where('status', 'pending')
+            ->where('payment_type !=', 'reinstatement_fee')
             ->get()
             ->getRowArray()['months_covered'] ?? 0);
 
-        $cycleRemainingMonths = (int) ceil(max(0.0, $cycle['remaining']) / $monthlyFee);
-        $remainingMonths = max(0, $cycleRemainingMonths - $pendingMonths);
+        $remainingMonths = max(0, $totalMonths - $verifiedMonths - $pendingMonths);
 
-        return [$cycleTargetMonths, $verifiedMonths, $pendingMonths, $remainingMonths];
+        return [$totalMonths, $verifiedMonths, $pendingMonths, $remainingMonths];
     }
-
     /**
      * The month-by-month schedule for the plan's current cycle, the single
      * source for the Payments page, the Make payment calendar, and the

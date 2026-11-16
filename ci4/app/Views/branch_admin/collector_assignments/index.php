@@ -29,7 +29,7 @@
                     <label class="form-label" for="scope">Scope</label>
                     <select id="scope" name="scope" class="form-select" onchange="document.getElementById('barangay_code').disabled = this.value === 'branch_wide';">
                         <option value="barangay">One barangay</option>
-                        <option value="branch_wide">Whole branch</option>
+                        <option value="branch_wide">All branches</option>
                     </select>
                 </div>
                 <div class="col-md-4">
@@ -46,7 +46,7 @@
                 </div>
             </form>
             <?php if (empty($barangayOptions)): ?>
-                <p class="cs-muted small mt-2 mb-0">No barangays with active plan holders yet in your branch - "Whole branch" is still available.</p>
+                <p class="cs-muted small mt-2 mb-0">No barangays with active plan holders yet in your branch - "All branches" is still available.</p>
             <?php endif; ?>
         <?php endif; ?>
     </div>
@@ -85,7 +85,7 @@
                                             <?php foreach ($rows as $row): ?>
                                                 <li class="d-flex align-items-center gap-2 mb-1">
                                                     <?php if ($row['barangay_code'] === null): ?>
-                                                        <span><strong>Whole branch</strong></span>
+                                                        <span><strong>All branches</strong></span>
                                                     <?php else: ?>
                                                         <span><?= esc((string) ($barangayNames[$row['barangay_code']] ?? $row['barangay_code'])) ?></span>
                                                     <?php endif; ?>

@@ -34,6 +34,7 @@ $routes->group('admin', ['filter' => 'auth'], static function (RouteCollection $
     $routes->get('client-management', 'Admin\ClientManagementController::index', ['filter' => 'role:1']);
     $routes->get('client-management/view/(:num)', 'ClientDetailController::show/$1', ['filter' => 'role:1']);
     $routes->get('client-management/statement/(:num)', 'ClientDetailController::statement/$1', ['filter' => 'role:1']);
+    $routes->get('client-management/ledger/(:num)', 'ClientDetailController::ledger/$1', ['filter' => 'role:1']);
     $routes->post('client-management/note/(:num)', 'ClientDetailController::saveNote/$1', ['filter' => 'role:1']);
     $routes->get('client-management/file/(:num)/(:segment)/(:num)', 'ClientDetailController::file/$1/$2/$3', ['filter' => 'role:1']);
     $routes->get('client-management/edit/(:num)', 'Admin\ClientManagementController::edit/$1', ['filter' => 'role:1']);

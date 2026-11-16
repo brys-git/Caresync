@@ -92,8 +92,10 @@ class ClientRegistrationController extends BaseController
             'inclusions' => $inclusions,
             'other_packages' => $otherPackages,
             'services' => $services,
-            'monthly_fee' => MembershipService::MONTHLY_FEE,
-            'total_contribution' => MembershipService::TOTAL_CONTRIBUTION,
+            // The default program's own figures (the registration form shows each
+            // plan's own price when there is more than one to choose from).
+            'monthly_fee' => (float) ($program['monthly_fee'] ?? 0) > 0 ? (float) $program['monthly_fee'] : MembershipService::MONTHLY_FEE,
+            'total_contribution' => (float) ($program['plan_price'] ?? 0) > 0 ? (float) $program['plan_price'] : MembershipService::TOTAL_CONTRIBUTION,
         ]);
     }
 

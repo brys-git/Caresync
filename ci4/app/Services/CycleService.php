@@ -93,7 +93,7 @@ class CycleService
         if ($monthlyFee <= 0) {
             $monthlyFee = MembershipService::MONTHLY_FEE;
         }
-        $target = (float) ($plan['total_plan_amount'] ?? MembershipService::TOTAL_CONTRIBUTION);
+        $target = PlanLedgerService::targetFor($plan);
         $monthsPaid = (int) ($plan['months_paid'] ?? 0);
         $amountPaid = $monthsPaid * $monthlyFee;
         $isFullyPaid = $amountPaid >= $target;

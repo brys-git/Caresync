@@ -29,6 +29,10 @@ $claimBasePath = (string) ($claim_base_path ?? '/branch-admin/service-package/re
             <div class="col-md-6"><strong>Type:</strong> <?= esc((string) (($request['service_list_id'] ?? 0) > 0 ? 'Service' : 'Package')) ?></div>
             <div class="col-md-6"><strong>Selected:</strong> <?= esc((string) ($request['service_name'] ?? $request['package_name'] ?? '-')) ?></div>
             <div class="col-md-6"><strong>Price:</strong> <?= cs_money(($request['service_price'] ?? $request['package_price']) ?? 0) ?></div>
+            <?php if (! empty($request['filed_on_behalf'])): ?>
+                <div class="col-md-6"><strong>Filed by:</strong> <?= esc(trim((string) ($request['filer_first'] ?? '') . ' ' . (string) ($request['filer_last'] ?? ''))) ?> (<?= esc((string) ($request['filer_role'] ?: 'Branch Admin')) ?>)</div>
+                <div class="col-md-6"><strong>Claimed by:</strong> <?= esc((string) ($request['claimant_name'] ?? '-')) ?> (<?= esc((string) ($request['claimant_relationship'] ?? '-')) ?>)</div>
+            <?php endif; ?>
         </div>
     </div>
 </section>

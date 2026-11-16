@@ -32,8 +32,13 @@ if (! $isClaim) {
     $noteDue = 'Staff will confirm payment options when they call — nothing is charged now.';
 }
 $today = date('Y-m-d');
+// Optional: a Branch Admin filing on the plan holder's behalf passes form_action
+// and on_behalf = true, which adds the "Who is making the claim" fields.
+$formAction = (string) ($form_action ?? site_url('/client/apply-package/' . (int) ($package['package_id'] ?? 0)));
+$onBehalf = (bool) ($on_behalf ?? false);
+$claimantRelationships = ['Beneficiary', 'Spouse', 'Child', 'Parent', 'Sibling', 'Other relative', 'Friend / other'];
 ?>
-<form id="brForm" method="post" enctype="multipart/form-data" action="<?= site_url('/client/apply-package/' . (int) ($package['package_id'] ?? 0)) ?>" novalidate data-cs-once
+<form id="brForm" method="post" enctype="multipart/form-data" action="<?= $e($formAction) ?>" novalidate data-cs-once
       data-base-due="<?= $e(number_format($dueBase, 2, '.', '')) ?>"
       data-attire-price="<?= $e(number_format((float) $attire_price, 2, '.', '')) ?>"
       data-note-zero="<?= $e($noteZero) ?>"
@@ -108,6 +113,29 @@ $today = date('Y-m-d');
                     </div>
                 </div>
             </section>
+
+            <?php if ($onBehalf): ?>
+            <section class="br-card" aria-labelledby="br-claimant-title">
+                <h2 id="br-claimant-title" class="br-card__title">Who is making the claim</h2>
+                <div class="br-grid">
+                    <div class="br-field">
+                        <label for="claimant_name">Full name of the person claiming <span class="br-req">Required</span></label>
+                        <input id="claimant_name" name="claimant_name" class="br-input" type="text" autocomplete="off" value="<?= old('claimant_name') ?>" aria-describedby="err-claimant_name" required>
+                        <p class="br-error" id="err-claimant_name" <?= $errorFor('claimant_name') === '' ? 'hidden' : '' ?>><?= $e($errorFor('claimant_name')) ?></p>
+                    </div>
+                    <div class="br-field">
+                        <label for="claimant_relationship">Their relationship to the plan holder <span class="br-req">Required</span></label>
+                        <select id="claimant_relationship" name="claimant_relationship" class="br-input" aria-describedby="err-claimant_relationship" required>
+                            <option value="">Select</option>
+                            <?php foreach ($claimantRelationships as $rel): ?>
+                                <option value="<?= $e($rel) ?>" <?= (string) old('claimant_relationship') === $rel ? 'selected' : '' ?>><?= $e($rel) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <p class="br-error" id="err-claimant_relationship" <?= $errorFor('claimant_relationship') === '' ? 'hidden' : '' ?>><?= $e($errorFor('claimant_relationship')) ?></p>
+                    </div>
+                </div>
+            </section>
+            <?php endif; ?>
 
             <section class="br-card" aria-labelledby="br-contact-title">
                 <h2 id="br-contact-title" class="br-card__title">Contact person</h2>

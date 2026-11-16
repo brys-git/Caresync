@@ -65,12 +65,42 @@ class MembershipService
         return self::PROGRAM_NAME;
     }
 
+    /**
+     * The program a plan was registered on (name, monthly fee, price, term),
+     * falling back to the default program only when the plan has none.
+     *
+     * @param array<string,mixed> $plan a plans row
+     *
+     * @return array<string,mixed>
+     */
+    public static function programForPlan(array $plan): array
+    {
+        $programId = (int) ($plan['program_id'] ?? 0);
+        $db = db_connect();
+
+        if ($programId > 0 && $db->tableExists('membership_programs')) {
+            $program = $db->table('membership_programs')->where('program_id', $programId)->get()->getRowArray();
+            if ($program) {
+                return [
+                    'id' => (int) $program['program_id'],
+                    'name' => (string) ($program['program_name'] ?? self::PROGRAM_NAME),
+                    'monthly_fee' => (float) ($program['monthly_fee'] ?? self::MONTHLY_FEE),
+                    'plan_price' => (float) ($program['plan_price'] ?? 0),
+                    'term_months' => (int) ($program['term_months'] ?? 0),
+                    'package_id' => (int) ($program['package_id'] ?? self::DEFAULT_PACKAGE_ID),
+                ];
+            }
+        }
+
+        return self::getProgramInfo();
+    }
+
     public static function getProgramInfo(): array
     {
         $db = db_connect();
         if ($db->tableExists('membership_programs')) {
             $program = $db->table('membership_programs')
-                ->select('program_id, program_name, monthly_fee')
+                ->select('program_id, program_name, monthly_fee, plan_price')
                 ->where('is_active', 1)
                 ->orderBy('program_id', 'ASC')
                 ->get()
@@ -81,6 +111,7 @@ class MembershipService
                     'id' => (int) ($program['program_id'] ?? 0),
                     'name' => (string) ($program['program_name'] ?? self::PROGRAM_NAME),
                     'monthly_fee' => (float) ($program['monthly_fee'] ?? self::MONTHLY_FEE),
+                    'plan_price' => (float) ($program['plan_price'] ?? 0),
                     'package_id' => self::DEFAULT_PACKAGE_ID,
                 ];
             }
@@ -207,6 +238,7 @@ class MembershipService
             return $plan;
         }
 
+        $plan['total_plan_amount']  = PlanLedgerService::targetFor($plan);
         $plan['months_paid']        = $summary['months_paid'];
         $plan['total_paid']         = $summary['total_paid'];
         $plan['remaining_balance']  = $summary['remaining_balance'];
@@ -475,7 +507,7 @@ class MembershipService
     {
         $monthsPaid = (int) ($plan['months_paid'] ?? 0);
         $monthlyFee = (float) ($plan['monthly_fee'] ?? self::MONTHLY_FEE);
-        $target = (float) ($plan['total_plan_amount'] ?? self::TOTAL_CONTRIBUTION);
+        $target = PlanLedgerService::targetFor($plan);
 
         if ($monthlyFee <= 0) {
             $monthlyFee = self::MONTHLY_FEE;
@@ -581,7 +613,7 @@ class MembershipService
             'status' => (string) ($activePlan['status'] ?? 'inactive'),
             'membership_state' => (string) ($activePlan['membership_state'] ?? 'active'),
             'monthly_fee' => (float) ($activePlan['monthly_fee'] ?? 0),
-            'total_plan_amount' => (float) ($activePlan['total_plan_amount'] ?? self::TOTAL_CONTRIBUTION),
+            'total_plan_amount' => PlanLedgerService::targetFor($activePlan),
             'months_paid' => (int) ($activePlan['months_paid'] ?? 0),
             'start_date' => (string) ($activePlan['start_date'] ?? ''),
             'next_due_date' => (string) ($activePlan['next_due_date'] ?? ''),

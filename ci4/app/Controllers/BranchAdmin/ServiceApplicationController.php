@@ -28,6 +28,7 @@ class ServiceApplicationController extends BaseController
             'search' => $search,
             'requests' => $this->claimService->getBranchClaims($branchId, $search),
             'role_layout' => 'layouts/branch_admin',
+            'page_actions' => '<a class="btn btn-primary btn-sm" href="' . esc(base_url('branch-admin/service-package/file-claim'), 'attr') . '"><i class="ti ti-file-plus" aria-hidden="true"></i> File a claim for a plan holder</a>',
         ]);
     }
 

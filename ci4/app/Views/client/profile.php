@@ -29,10 +29,7 @@ $statusTone = match ($membershipState) {
     'suspended' => 'bad',
     default => 'warn',
 };
-$address = implode(', ', array_filter([
-    trim((string) ($plan_holder['address_barangay'] ?? '')),
-    trim((string) ($plan_holder['address_city'] ?? '')),
-], static fn ($part) => $part !== ''));
+$address = cs_format_address($plan_holder ?? []);
 $passwordChanged = $fmtDate($user['password_changed_at'] ?? null);
 $passwordError = static fn (string $key): string => (string) (($form_errors[$key] ?? '') ?: '');
 $firstError = null;

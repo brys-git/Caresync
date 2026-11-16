@@ -9,6 +9,28 @@
  * which is how you end up with "P1,234.00" on one page and "₱1,234" on the next.
  */
 
+if (! function_exists('cs_format_address')) {
+    /**
+     * One address line, always in the same order: "No. Street, Barangay, Town/City".
+     * Empty parts are skipped and there are never double commas. Works with any row
+     * that has address_no, address_street, address_barangay and address_city.
+     *
+     * @param array<string,mixed> $row
+     */
+    function cs_format_address(array $row): string
+    {
+        $clean = static fn ($v): string => trim((string) ($v ?? ''), " ,\t\r\n");
+
+        $street = trim($clean($row['address_no'] ?? '') . ' ' . $clean($row['address_street'] ?? ''));
+
+        return implode(', ', array_filter([
+            $street,
+            $clean($row['address_barangay'] ?? ''),
+            $clean($row['address_city'] ?? ''),
+        ], static fn (string $part): bool => $part !== ''));
+    }
+}
+
 if (! function_exists('cs_role_url_prefix')) {
     /**
      * URL prefix for a layout role key. The role keys (admin, branch_admin,

@@ -29,12 +29,7 @@
                         <?php foreach ($registrations as $registration): ?>
                             <?php
                             $status = (string) ($registration['status'] ?? 'pending');
-                            $fullAddress = trim(
-                                (string) ($registration['address_no'] ?? '')
-                                . ' ' . (string) ($registration['address_street'] ?? '')
-                                . ', ' . (string) ($registration['address_barangay'] ?? '')
-                                . ', ' . (string) ($registration['address_city'] ?? '')
-                            );
+                            $fullAddress = cs_format_address($registration);
                             $reviewerName = trim((string) ($registration['reviewer_first_name'] ?? '') . ' ' . (string) ($registration['reviewer_last_name'] ?? ''));
                             ?>
                             <tr>

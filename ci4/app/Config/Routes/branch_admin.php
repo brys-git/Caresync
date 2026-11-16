@@ -50,6 +50,7 @@ $routes->group('branch-admin', ['filter' => 'auth'], static function (RouteColle
     $routes->get('client-management','BranchAdmin\ClientController::index', ['filter' => 'role:2']);
     $routes->get('client-management/view/(:num)', 'ClientDetailController::show/$1', ['filter' => 'role:2']);
     $routes->get('client-management/statement/(:num)', 'ClientDetailController::statement/$1', ['filter' => 'role:2']);
+    $routes->get('client-management/ledger/(:num)', 'ClientDetailController::ledger/$1', ['filter' => 'role:2']);
     $routes->post('client-management/note/(:num)', 'ClientDetailController::saveNote/$1', ['filter' => 'role:2']);
     $routes->get('client-management/file/(:num)/(:segment)/(:num)', 'ClientDetailController::file/$1/$2/$3', ['filter' => 'role:2']);
     $routes->get('client-management/edit/(:num)', 'BranchAdmin\ClientController::edit/$1', ['filter' => 'role:2']);
@@ -115,6 +116,10 @@ $routes->group('branch-admin', ['filter' => 'auth'], static function (RouteColle
     $routes->get('service-package/requests', 'BranchAdmin\ServiceApplicationController::index', ['filter' => 'role:2']);
     $routes->get('service-package/requests/(:num)', 'BranchAdmin\ServiceApplicationController::show/$1', ['filter' => 'role:2']);
     $routes->get('service-package/requests/document/(:num)', 'BranchAdmin\ServiceApplicationController::downloadDocument/$1', ['filter' => 'role:2']);
+    // File a casket claim FOR a plan holder of this branch.
+    $routes->get('service-package/file-claim', 'BranchAdmin\ClaimController::pick', ['filter' => 'role:2']);
+    $routes->get('service-package/file-claim/(:num)', 'BranchAdmin\ClaimController::form/$1', ['filter' => 'role:2']);
+    $routes->post('service-package/file-claim/(:num)', 'BranchAdmin\ClaimController::store/$1', ['filter' => 'role:2']);
     $routes->post('service-package/requests/approve/(:num)', 'BranchAdmin\ServiceApplicationController::approve/$1', ['filter' => 'role:2']);
     $routes->post('service-package/requests/reject/(:num)', 'BranchAdmin\ServiceApplicationController::reject/$1', ['filter' => 'role:2']);
 
@@ -174,6 +179,7 @@ $routes->group('branch-admin', ['filter' => 'auth'], static function (RouteColle
     $routes->post('reports/remittance/generate', 'BranchAdmin\ReportController::generate', ['filter' => 'role:2']);
     $routes->get('reports/overdue', 'BranchAdmin\ReportController::overdue', ['filter' => 'role:2']);
     $routes->get('reports/commission', 'BranchAdmin\ReportController::commission', ['filter' => 'role:2']);
+    $routes->post('reports/commission/pay', 'BranchAdmin\ReportController::payCommission', ['filter' => 'role:2']);
     $routes->get('analytics', 'Analytics::branchAdmin', ['filter' => 'role:2']);
 
     // Profile Management

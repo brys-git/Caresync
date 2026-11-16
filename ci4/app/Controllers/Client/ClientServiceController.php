@@ -4,6 +4,7 @@ namespace App\Controllers\Client;
 
 use App\Controllers\BaseController;
 use CodeIgniter\HTTP\ResponseInterface;
+use App\Services\ClaimSubmissionService;
 use App\Services\CycleService;
 use App\Services\MembershipService;
 use App\Services\NotificationService;
@@ -31,7 +32,7 @@ class ClientServiceController extends BaseController
      * flow, per the brief's own worked example (₱20,000 + ₱1,500 =
      * ₱21,500).
      */
-    private const BURIAL_ATTIRE_PRICE = 1500.0;
+    private const BURIAL_ATTIRE_PRICE = ClaimSubmissionService::BURIAL_ATTIRE_PRICE;
 
     private const MIN_MONTHS_PAID = 2;
 
@@ -405,7 +406,7 @@ class ClientServiceController extends BaseController
             'existing_claim' => $isEntitlement && $planHolderId > 0 ? $this->openClaim($planHolderId, $planId) : null,
             'plan_name' => (new MembershipService())->resolvePackageName((int) ($activePlan['package_id'] ?? 0)),
             'member_name' => trim(implode(' ', array_filter([$user['first_name'] ?? '', $user['middle_name'] ?? '', $user['last_name'] ?? '']))),
-            'member_address' => trim(implode(', ', array_filter([$planHolder['address_no'] ?? '', $planHolder['address_street'] ?? '', $planHolder['address_barangay'] ?? '', $planHolder['address_city'] ?? '']))),
+            'member_address' => cs_format_address($planHolder),
             'beneficiary_prefill' => $firstBeneficiary
                 ? trim(implode(' ', array_filter([$firstBeneficiary['first_name'], $firstBeneficiary['middle_name'], $firstBeneficiary['last_name'], $firstBeneficiary['name_extension']])))
                 : '',
@@ -422,25 +423,8 @@ class ClientServiceController extends BaseController
      */
     private function openClaim(int $planHolderId, int $planId): ?array
     {
-        $cycleNumber = $planId > 0 ? (new CycleService())->currentCycle($planId)['cycle_number'] : 0;
-
-        return db_connect()->table('service_applications sa')
-            ->select('sa.application_id, sa.status, sa.created_at, sa.awaiting_death_certificate, p.package_name')
-            ->join('packages p', 'p.package_id = sa.package_id', 'inner')
-            ->where('sa.plan_holder_id', $planHolderId)
-            ->where('p.is_damayan_entitlement', 1)
-            ->groupStart()
-                ->where('sa.status', 'pending')
-                ->orGroupStart()
-                    ->where('sa.status', 'approved')
-                    ->where('sa.cycle_number', $cycleNumber)
-                ->groupEnd()
-            ->groupEnd()
-            ->orderBy('sa.application_id', 'DESC')
-            ->get(1)
-            ->getRowArray() ?: null;
+        return (new ClaimSubmissionService())->openClaim($planHolderId, $planId);
     }
-
     /**
      * Confirmation screen after a claim or package request is submitted.
      */
@@ -455,7 +439,7 @@ class ClientServiceController extends BaseController
         $planHolderId = (int) ($access['plan_holder']['plan_holder_id'] ?? 0);
         $application = $planHolderId > 0
             ? db_connect()->table('service_applications sa')
-                ->select('sa.application_id, sa.status, sa.created_at, sa.application_amount, sa.awaiting_death_certificate, p.package_name, p.is_damayan_entitlement')
+                ->select('sa.application_id, sa.status, sa.created_at, sa.application_amount, sa.awaiting_death_certificate, sa.filed_on_behalf, sa.claimant_name, p.package_name, p.is_damayan_entitlement')
                 ->join('packages p', 'p.package_id = sa.package_id', 'left')
                 ->where('sa.application_id', $applicationId)
                 ->where('sa.plan_holder_id', $planHolderId)
@@ -669,200 +653,31 @@ class ClientServiceController extends BaseController
             return redirect()->back()->with('error', 'Selected package is unavailable.');
         }
 
-        $isEntitlement = (int) ($package['is_damayan_entitlement'] ?? 0) === 1;
+        // Everything below - the eligibility re-check, validation, uploads and the
+        // database writes - lives in ClaimSubmissionService so the Branch Admin
+        // filing on a plan holder's behalf follows exactly the same rules.
+        $result = (new ClaimSubmissionService())->submit(
+            (int) $planHolder['plan_holder_id'],
+            $packageId,
+            $this->request->getPost(),
+            $this->request->getFiles() ?? [],
+            (int) $user['user_id']
+        );
 
-        // Re-verify server-side, never trust the CLAIM button's visibility
-        // client-side alone - reads from the exact same shared method the
-        // frontend disabled state uses (entitlementClaimStatus()), so the
-        // two can never disagree.
-        [$canApply, $membership, $eligPlanId] = $this->resolveEligibility($access);
-        if ($isEntitlement) {
-            $claimStatus = $this->entitlementClaimStatus($canApply, $membership, $eligPlanId);
-            if (! $claimStatus['eligible']) {
-                return redirect()->back()->with('error', (string) $claimStatus['reason']);
-            }
+        if ($result['ok']) {
+            return redirect()->to('/client/apply-package/submitted/' . $result['application_id']);
         }
 
-        if ($isEntitlement && $this->openClaim((int) $planHolder['plan_holder_id'], $eligPlanId) !== null) {
+        if (! empty($result['errors'])) {
+            return redirect()->back()->withInput()->with('form_errors', $result['errors']);
+        }
+
+        if (! empty($result['redirect_open_claim'])) {
             return redirect()->to('/client/apply-package/' . $packageId)->with('error', 'You already have a claim in progress for this entitlement.');
         }
 
-        $input = [
-            'deceased_name' => trim((string) $this->request->getPost('deceased_name')),
-            'deceased_date_of_death' => trim((string) $this->request->getPost('deceased_date_of_death')),
-            'deceased_address' => trim((string) $this->request->getPost('deceased_address')),
-            'relationship_to_deceased' => trim((string) $this->request->getPost('relationship_to_deceased')),
-            'beneficiary_name' => trim((string) $this->request->getPost('beneficiary_name')),
-            'beneficiary_contact' => trim((string) $this->request->getPost('beneficiary_contact')),
-        ];
-
-        $errors = [];
-        if ($input['deceased_name'] === '') {
-            $errors['deceased_name'] = 'Enter the full name of the deceased.';
-        } elseif (mb_strlen($input['deceased_name']) > 150) {
-            $errors['deceased_name'] = 'Keep the name under 150 characters.';
-        }
-        if ($input['deceased_date_of_death'] !== '') {
-            $dateOfDeath = strtotime($input['deceased_date_of_death']);
-            if ($dateOfDeath === false) {
-                $errors['deceased_date_of_death'] = 'Enter a valid date.';
-            } elseif (date('Y-m-d', $dateOfDeath) > date('Y-m-d')) {
-                $errors['deceased_date_of_death'] = 'The date of death can’t be in the future.';
-            }
-        }
-        if (mb_strlen($input['deceased_address']) > 255) {
-            $errors['deceased_address'] = 'Keep the address under 255 characters.';
-        }
-        if ($input['beneficiary_name'] === '') {
-            $errors['beneficiary_name'] = 'Enter the name of the contact person.';
-        } elseif (mb_strlen($input['beneficiary_name']) > 150) {
-            $errors['beneficiary_name'] = 'Keep the name under 150 characters.';
-        }
-        if (! preg_match('/^09\d{9}$/', (string) preg_replace('/[\s-]/', '', $input['beneficiary_contact']))) {
-            $errors['beneficiary_contact'] = 'Enter an 11-digit mobile number that starts with 09.';
-        } else {
-            $input['beneficiary_contact'] = preg_replace('/[\s-]/', '', $input['beneficiary_contact']);
-        }
-
-        $uploads = $this->request->getFiles('documents') ?? [];
-        $deathCertificate = $this->acceptedUpload($uploads['death_certificate'] ?? null);
-        $beneficiaryId = $this->acceptedUpload($uploads['beneficiary_id'] ?? null);
-        $otherDocuments = [];
-        foreach (is_array($uploads['other'] ?? null) ? $uploads['other'] : [] as $file) {
-            if (! $this->hasUpload($file)) {
-                continue;
-            }
-            $accepted = $this->acceptedUpload($file);
-            if ($accepted === null) {
-                $errors['documents_other'] = 'Other documents must be images or PDFs up to 5 MB each.';
-                break;
-            }
-            $otherDocuments[] = $accepted;
-        }
-
-        if ($beneficiaryId === null) {
-            $errors['documents_beneficiary_id'] = $this->hasUpload($uploads['beneficiary_id'] ?? null)
-                ? 'The ID must be an image or PDF up to 5 MB.'
-                : 'Upload a valid ID of the beneficiary.';
-        }
-        if ($this->hasUpload($uploads['death_certificate'] ?? null) && $deathCertificate === null) {
-            $errors['documents_death_certificate'] = 'The death certificate must be an image or PDF up to 5 MB.';
-        }
-
-        if ($errors !== []) {
-            return redirect()->back()->withInput()->with('form_errors', $errors);
-        }
-
-        $burialAttireSelected = $this->request->getPost('burial_attire') ? true : false;
-        $burialAttirePrice = $burialAttireSelected ? self::BURIAL_ATTIRE_PRICE : null;
-
-        $basePrice = (float) $package['base_price'];
-        $damayanBenefitApplied = null;
-        if ($isEntitlement) {
-            // Fully covered - the whole casket price is the benefit itself.
-            $damayanBenefitApplied = $basePrice;
-            $applicationAmount = $burialAttireSelected ? self::BURIAL_ATTIRE_PRICE : 0.0;
-        } else {
-            $damayanBenefitApplied = 0.0;
-            if (! empty($membership) && (! empty($membership['can_access_services']))) {
-                $damayanBenefitApplied = min($basePrice, MembershipService::TOTAL_CONTRIBUTION);
-            }
-            $applicationAmount = $basePrice - $damayanBenefitApplied + ($burialAttireSelected ? self::BURIAL_ATTIRE_PRICE : 0.0);
-        }
-
-        $db = db_connect();
-        $db->transBegin();
-
-        try {
-            $insert = [
-                'plan_holder_id' => (int) $planHolder['plan_holder_id'],
-                'package_id' => (int) $packageId,
-                'status' => 'pending',
-                'deceased_name' => $input['deceased_name'],
-                'deceased_date_of_death' => $input['deceased_date_of_death'] !== '' ? $input['deceased_date_of_death'] : null,
-                'deceased_address' => $input['deceased_address'] ?: null,
-                'relationship_to_deceased' => $input['relationship_to_deceased'] ?: null,
-                'beneficiary_name' => $input['beneficiary_name'],
-                'beneficiary_contact' => $input['beneficiary_contact'],
-                'application_notes' => trim((string) $this->request->getPost('application_notes')) ?: null,
-                'burial_attire_selected' => $burialAttireSelected ? 1 : 0,
-                'burial_attire_price' => $burialAttirePrice,
-                'damayan_benefit_applied' => $damayanBenefitApplied,
-                'application_amount' => $applicationAmount,
-                'awaiting_death_certificate' => $deathCertificate === null ? 1 : 0,
-            ];
-
-            $db->table('service_applications')->insert($insert);
-            $applicationId = (int) $db->insertID();
-
-            $targetDir = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'service_applications' . DIRECTORY_SEPARATOR . $applicationId;
-            if (! is_dir($targetDir)) {
-                mkdir($targetDir, 0755, true);
-            }
-
-            $documentsToStore = [];
-            if ($deathCertificate !== null) {
-                $documentsToStore[] = ['death_certificate', $deathCertificate];
-            }
-            $documentsToStore[] = ['beneficiary_id', $beneficiaryId];
-            foreach ($otherDocuments as $file) {
-                $documentsToStore[] = ['other', $file];
-            }
-
-            $docModel = new \App\Models\ServiceApplicationDocumentModel();
-            foreach ($documentsToStore as [$documentType, $file]) {
-                $newName = $file->getRandomName();
-                if ($file->move($targetDir, $newName)) {
-                    $docModel->insert([
-                        'application_id' => $applicationId,
-                        'document_type' => $documentType,
-                        'filename' => $newName,
-                        'original_name' => $file->getClientName(),
-                        'mime_type' => $file->getClientMimeType(),
-                        'path' => str_replace('\\', '/', str_replace(WRITEPATH, '', $targetDir . DIRECTORY_SEPARATOR . $newName)),
-                        'uploaded_by' => (int) $user['user_id'],
-                    ]);
-                }
-            }
-
-            (new NotificationService())->notify(
-                (int) $user['user_id'],
-                ($isEntitlement ? 'Your claim for ' : 'Your application for ') . (string) $package['package_name'] . ' has been submitted.',
-                'registration_pending'
-            );
-
-            if ($db->transStatus() === false) {
-                throw new \RuntimeException('Failed to submit application.');
-            }
-
-            $db->transCommit();
-
-            return redirect()->to('/client/apply-package/submitted/' . $applicationId);
-        } catch (\Throwable $e) {
-            $db->transRollback();
-            return redirect()->back()->withInput()->with('error', $e->getMessage());
-        }
+        return redirect()->back()->withInput()->with('error', (string) ($result['error'] ?? 'Unable to submit right now.'));
     }
-
-    private function hasUpload(mixed $file): bool
-    {
-        return $file instanceof \CodeIgniter\HTTP\Files\UploadedFile && $file->getError() !== UPLOAD_ERR_NO_FILE;
-    }
-
-    private function acceptedUpload(mixed $file): ?\CodeIgniter\HTTP\Files\UploadedFile
-    {
-        if (! $file instanceof \CodeIgniter\HTTP\Files\UploadedFile || ! $file->isValid() || $file->hasMoved()) {
-            return null;
-        }
-
-        $allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
-        if ($file->getSize() > 5 * 1024 * 1024 || ! in_array($file->getMimeType(), $allowed, true)) {
-            return null;
-        }
-
-        return $file;
-    }
-
     /**
      * Shared can_apply + membership summary resolution (same rule used
      * throughout this controller: active/good-standing plan with at least
@@ -874,23 +689,8 @@ class ClientServiceController extends BaseController
      */
     private function resolveEligibility(array $access): array
     {
-        $planHolderId = (int) ($access['plan_holder']['plan_holder_id'] ?? 0);
-        $activePlan = $planHolderId > 0 ? $this->activePlan($planHolderId) : null;
-        $monthsPaid = (int) ($activePlan['months_paid'] ?? 0);
-        $planId = (int) ($activePlan['plan_id'] ?? 0);
-
-        $membership = $planHolderId > 0 ? (new MembershipService())->getMembershipSummary($planHolderId) : null;
-
-        if (is_array($membership) && $membership !== []) {
-            $monthsPaid = (int) ($membership['months_paid'] ?? $monthsPaid);
-            $canApply = (! empty($membership['can_access_services'])) && $monthsPaid >= 2;
-        } else {
-            $canApply = (($access['state'] ?? 'unregistered') === 'active') && $monthsPaid >= 2;
-        }
-
-        return [$canApply, $membership, $planId];
+        return (new ClaimSubmissionService())->eligibility((int) ($access['plan_holder']['plan_holder_id'] ?? 0));
     }
-
     /**
      * The ONE shared CLAIM-eligibility check. services(), packageDetails()
      * and applyPackageForm() (frontend display / form gate) and
@@ -910,45 +710,8 @@ class ClientServiceController extends BaseController
      */
     private function entitlementClaimStatus(bool $canApply, ?array $membership, int $planId): array
     {
-        if (! $canApply) {
-            // canApply's own formula is (can_access_services && monthsPaid
-            // >= 2), so if it's false but access is fine, months < 2 must
-            // be why - gives the specific message the spec asks for
-            // instead of the generic membership-guard fallback.
-            $monthsPaid = (int) ($membership['months_paid'] ?? 0);
-            $canAccessServices = is_array($membership) && ! empty($membership['can_access_services']);
-
-            if ($canAccessServices && $monthsPaid < 2) {
-                return [
-                    'eligible' => false,
-                    'reason' => "You need at least 2 paid months to claim your entitled package or avail services. You have paid {$monthsPaid} month(s).",
-                ];
-            }
-
-            if (is_array($membership) && ! empty($membership['service_block_reason'])) {
-                return ['eligible' => false, 'reason' => (string) $membership['service_block_reason']];
-            }
-
-            return ['eligible' => false, 'reason' => 'Become an active, eligible Plan Holder to claim this entitlement.'];
-        }
-
-        if ($planId <= 0) {
-            return ['eligible' => false, 'reason' => 'Become an active, eligible Plan Holder to claim this entitlement.'];
-        }
-
-        $cycle = (new CycleService())->currentCycle($planId);
-        if ($cycle['entitlement_claimed']) {
-            $remaining = number_format((float) $cycle['remaining'], 2);
-
-            return [
-                'eligible' => false,
-                'reason' => "You've already claimed your entitled package for this cycle. You have ₱{$remaining} remaining on your current ₱14,500 contribution. Once it's fully paid, a new cycle begins and you can claim again after 2 months.",
-            ];
-        }
-
-        return ['eligible' => true, 'reason' => null];
+        return (new ClaimSubmissionService())->entitlementClaimStatus($canApply, $membership, $planId);
     }
-
     /**
      * @param array<int, int> $serviceListIds
      * @return array<int, array>

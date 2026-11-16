@@ -254,6 +254,97 @@ class PlanLedgerService
         return \CodeIgniter\I18n\Time::now(config('App')->appTimezone)->format('Y-m-d');
     }
 
+    /**
+     * The contract total for a plan: the price of the membership program it was
+     * registered on (membership_programs.plan_price), so a PHP 20,000 plan is
+     * PHP 20,000. Falls back to the standard 14,500 only when the plan has no
+     * program (or the program has no price).
+     *
+     * @param array<string,mixed> $plan a plans row (program_id is what matters)
+     */
+    public static function targetFor(array $plan): float
+    {
+        static $prices = [];
+
+        $programId = (int) ($plan['program_id'] ?? 0);
+        if ($programId > 0) {
+            if (! array_key_exists($programId, $prices)) {
+                $row = db_connect()->table('membership_programs')->select('plan_price')->where('program_id', $programId)->get()->getRowArray();
+                $prices[$programId] = $row ? (float) $row['plan_price'] : 0.0;
+            }
+            if ($prices[$programId] > 0) {
+                return $prices[$programId];
+            }
+        }
+
+        $explicit = (float) ($plan['total_plan_amount'] ?? 0);
+
+        return $explicit > 0 ? $explicit : MembershipService::TOTAL_CONTRIBUTION;
+    }
+
+    /**
+     * The next unpaid contributions for a plan: which contribution numbers and
+     * due dates a payment of $months would pay, and how much money that is.
+     * Verified AND pending payments are counted as already spoken for, so two
+     * payments recorded before the first is verified never overlap, and a
+     * rejected one leaves no hole (it simply stops being counted).
+     *
+     * Coverage end = (start + months) - 1 day, i.e. the day before the next due
+     * date (Oct 16 for one month -> Nov 15). The amount is the real remaining
+     * amount of those contributions (the last one can be smaller, e.g. 100 on a
+     * 14,500 / 240 plan), never fee x months.
+     *
+     * @return array{months:int, start:?string, end:?string, amount:float, items:list<array{number:int,due:string,amount:float}>}|null
+     *         null when the plan does not exist. months is how many were found (<= $months).
+     */
+    public function nextContributions(int $planId, int $months): ?array
+    {
+        $db = db_connect();
+        $plan = $db->table('plans')->where('plan_id', $planId)->get()->getRowArray();
+        if (! $plan) {
+            return null;
+        }
+
+        $anchor = $this->anchorFor($plan);
+        $money = $this->paymentsFor($plan, $anchor);
+
+        $pending = $db->table('payments')
+            ->select('payment_date, amount')
+            ->where('plan_id', $planId)
+            ->where('status', 'pending')
+            ->where('payment_type !=', 'reinstatement_fee')
+            ->where('deleted_at IS NULL', null, false)
+            ->get()
+            ->getResultArray();
+        foreach ($pending as $r) {
+            $money[] = ['date' => (string) $r['payment_date'], 'amount' => (float) $r['amount']];
+        }
+
+        $s = self::compute($this->planInput($plan, $anchor), $money, $this->today(), ['target' => self::targetFor($plan)]);
+
+        $items = [];
+        $amount = 0.0;
+        foreach ($s['contributions'] as $c) {
+            if (count($items) >= max(0, $months)) {
+                break;
+            }
+            if ($c['remaining'] > 0.004) {
+                $items[] = ['number' => (int) $c['number'], 'due' => (string) $c['due'], 'amount' => (float) $c['remaining']];
+                $amount += (float) $c['remaining'];
+            }
+        }
+
+        $start = $items !== [] ? $items[0]['due'] : null;
+
+        return [
+            'months' => count($items),
+            'start'  => $start,
+            'end'    => $start !== null ? self::addDays(self::addMonths($start, count($items)), -1) : null,
+            'amount' => round($amount, 2),
+            'items'  => $items,
+        ];
+    }
+
     /** Cycle anchor: the cycle-start marker when there is one, else the membership start date. */
     private function anchorFor(array $plan): string
     {
@@ -264,8 +355,10 @@ class PlanLedgerService
     }
 
     /**
-     * Verified money for the plan's current cycle - same filters the old
-     * months-paid count used (current cycle, on/after the cycle start).
+     * Verified money for the plan's current cycle. The cycle number is what
+     * separates one cycle's money from the next, so a payment dated before the
+     * plan's start date (an advance or past payment, or one made before the
+     * plan was activated) still counts; a date filter would silently drop it.
      *
      * @return list<array{date:string, amount:float}>
      */
@@ -279,7 +372,6 @@ class PlanLedgerService
             ->where('plan_id', (int) $plan['plan_id'])
             ->whereIn('status', ['paid', 'verified'])
             ->where('payment_type !=', 'reinstatement_fee')
-            ->where('payment_date >=', $anchor)
             ->where('cycle_number', $cycle)
             ->get()
             ->getResultArray();
@@ -292,7 +384,6 @@ class PlanLedgerService
                 ->where('plan_id', (int) $plan['plan_id'])
                 ->where('record_status', 'verified')
                 ->where('cycle_number', $cycle)
-                ->where('payment_date >=', $anchor)
                 ->get()
                 ->getResultArray();
 
@@ -348,7 +439,7 @@ class PlanLedgerService
         $payments = $this->paymentsFor($plan, $anchor);
 
         if (! $this->isManaged($plan, $payments)) {
-            $summary = self::compute($this->planInput($plan, $anchor), [], $today);
+            $summary = self::compute($this->planInput($plan, $anchor), [], $today, ['target' => self::targetFor($plan)]);
             $summary['lifecycle'] = self::NOT_STARTED;
             $summary['overdue_count'] = 0;
             $summary['overdue_amount'] = 0.0;
@@ -362,7 +453,47 @@ class PlanLedgerService
             return $summary;
         }
 
-        $summary = self::compute($this->planInput($plan, $anchor), $payments, $today);
+        $summary = self::compute($this->planInput($plan, $anchor), $payments, $today, ['target' => self::targetFor($plan)]);
+        $summary['plan_id'] = $planId;
+
+        return $summary;
+    }
+
+    /**
+     * What the plan looked like on a past date: only money paid on or before
+     * $asOf counts, and "today" is $asOf. Read only. The stored hold/forfeit
+     * markers are ignored for a past date (they describe today, not then).
+     * For today's date this is exactly summarize().
+     *
+     * @return array<string,mixed>|null
+     */
+    public function summarizeAsOf(int $planId, string $asOf): ?array
+    {
+        if ($asOf >= $this->today()) {
+            return $this->summarize($planId);
+        }
+
+        $plan = db_connect()->table('plans')->where('plan_id', $planId)->get()->getRowArray();
+        if (! $plan) {
+            return null;
+        }
+
+        $anchor = $this->anchorFor($plan);
+        $payments = array_values(array_filter(
+            $this->paymentsFor($plan, $anchor),
+            static fn (array $p): bool => strcmp(date('Y-m-d', strtotime((string) $p['date'])), $asOf) <= 0
+        ));
+
+        if (! $this->isManaged($plan, $payments) || strcmp($asOf, $anchor) < 0) {
+            return null;
+        }
+
+        $input = $this->planInput($plan, $anchor);
+        $input['lapsed_at'] = null;
+        $input['stored_lifecycle'] = null;
+        $input['fee_paid_since'] = 0.0;
+
+        $summary = self::compute($input, $payments, $asOf, ['target' => self::targetFor($plan)]);
         $summary['plan_id'] = $planId;
 
         return $summary;
@@ -432,7 +563,7 @@ class PlanLedgerService
             $input['fee_paid_since'] = 0.0;
         }
 
-        $s = self::compute($input, $payments, $today);
+        $s = self::compute($input, $payments, $today, ['target' => self::targetFor($plan)]);
         $s['plan_id'] = $planId;
 
         $update = [

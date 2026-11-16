@@ -166,9 +166,10 @@ class ClientPortal extends BaseController
             $existingPlan = $this->latestPlan((int) $holder['plan_holder_id']);
 
             if ($existingPlan) {
+                // Keep the plan the client registered on (its own fee and package).
                 $planModel->update((int) $existingPlan['plan_id'], [
-                    'package_id' => $packageData['package_id'],
-                    'monthly_fee' => MembershipService::MONTHLY_FEE,
+                    'package_id' => (int) ($existingPlan['package_id'] ?? 0) > 0 ? (int) $existingPlan['package_id'] : $packageData['package_id'],
+                    'monthly_fee' => (float) ($existingPlan['monthly_fee'] ?? 0) > 0 ? (float) $existingPlan['monthly_fee'] : MembershipService::MONTHLY_FEE,
                     'start_date' => date('Y-m-d'),
                     'status' => 'active',
                     'remaining_balance' => 0,
@@ -803,7 +804,7 @@ class ClientPortal extends BaseController
                 $planHolderId = (int) $existing['plan_holder_id'];
                 $planHolderModel->update($planHolderId, [
                     'branch_id' => $branchId,
-                    'id_control_no' => trim((string) $this->request->getPost('id_control_no')),
+                    // id_control_no is assigned by Kaagapay staff; a plan holder's posted value is ignored.
                     'coordinator' => trim((string) $this->request->getPost('coordinator')),
                     'application_date' => $this->nullablePost('application_date'),
                     'address_no' => trim((string) $this->request->getPost('address_no')),
@@ -831,7 +832,6 @@ class ClientPortal extends BaseController
                 $planHolderId = (int) $planHolderModel->insert([
                     'user_id' => (int) $user['user_id'],
                     'branch_id' => $branchId,
-                    'id_control_no' => trim((string) $this->request->getPost('id_control_no')),
                     'coordinator' => trim((string) $this->request->getPost('coordinator')),
                     'application_date' => $this->nullablePost('application_date'),
                     'address_no' => trim((string) $this->request->getPost('address_no')),
@@ -902,15 +902,27 @@ class ClientPortal extends BaseController
             $plan = $this->latestPlan($planHolderId);
 
             if (! $plan) {
+                // The plan picked on the registration form (approved and active),
+                // else the default program.
+                $chosenProgramId = (int) $this->request->getPost('program_id');
+                $chosen = $chosenProgramId > 0
+                    ? db_connect()->table('membership_programs')->where('program_id', $chosenProgramId)->where('approval_status', 'approved')->where('is_active', 1)->get()->getRowArray()
+                    : null;
+                $programInfo = $chosen
+                    ? ['id' => (int) $chosen['program_id'], 'monthly_fee' => (float) $chosen['monthly_fee'], 'package_id' => (int) ($chosen['package_id'] ?? 0)]
+                    : MembershipService::getProgramInfo();
+                $planFee = (float) ($programInfo['monthly_fee'] ?? 0) > 0 ? (float) $programInfo['monthly_fee'] : MembershipService::MONTHLY_FEE;
+
                 $planId = (int) (new PlanModel())->insert([
                     'plan_holder_id' => $planHolderId,
-                    'package_id' => $packageData['package_id'],
-                    'monthly_fee' => MembershipService::MONTHLY_FEE,
+                    'package_id' => (int) ($programInfo['package_id'] ?? 0) > 0 && $chosen ? (int) $programInfo['package_id'] : $packageData['package_id'],
+                    'program_id' => (int) ($programInfo['id'] ?? 0) ?: null,
+                    'monthly_fee' => $planFee,
                     'passbook_fee' => 50,
                     'start_date' => date('Y-m-d'),
                     'status' => 'inactive',
                     'months_paid' => 0,
-                    'remaining_balance' => MembershipService::MONTHLY_FEE * 12,
+                    'remaining_balance' => $planFee * 12,
                     'version_id' => $packageData['version_id'],
                 ], true);
 
@@ -1086,7 +1098,7 @@ class ClientPortal extends BaseController
 
         (new PaymentModel())->insert([
             'plan_id' => (int) $plan['plan_id'],
-            'amount' => MembershipService::MONTHLY_FEE,
+            'amount' => (float) ($plan['monthly_fee'] ?? 0) > 0 ? (float) $plan['monthly_fee'] : MembershipService::MONTHLY_FEE,
             'payment_date' => date('Y-m-d'),
             'payment_method' => $method,
             'reference_number' => $referenceNumber === '' ? null : $referenceNumber,
@@ -1210,7 +1222,7 @@ class ClientPortal extends BaseController
         return (new MembershipService())->getActivePlan($planHolderId);
     }
 
-    private function resolvePackageAndVersion(): array
+    private function resolvePackageAndVersion(?float $versionPrice = null): array
     {
         $db = db_connect();
 
@@ -1266,7 +1278,7 @@ class ClientPortal extends BaseController
         if (! $version) {
             $db->table('package_versions')->insert([
                 'package_id' => $packageId,
-                'price' => MembershipService::MONTHLY_FEE,
+                'price' => $versionPrice !== null && $versionPrice > 0 ? $versionPrice : MembershipService::MONTHLY_FEE,
                 'effective_date' => date('Y-m-d'),
                 'status' => 'active',
             ]);

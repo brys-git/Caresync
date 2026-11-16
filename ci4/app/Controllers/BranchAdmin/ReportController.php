@@ -57,7 +57,9 @@ class ReportController extends BaseController
             throw PageNotFoundException::forPageNotFound();
         }
 
-        $filters = ['branch_id' => $branchId, 'search' => cs_search_term($this->request->getGet('search'))];
+        $filters = ['branch_id' => $branchId, 'search' => cs_search_term($this->request->getGet('search'))]
+            + $this->reportService->overduePeriod($this->request->getGet());
+        $filters['period_line'] = $this->reportService->overduePeriodLine($filters);
         $rows = $this->reportService->getOverdueReport($filters);
         $mode = (string) $this->request->getGet('mode');
 
@@ -76,7 +78,7 @@ class ReportController extends BaseController
         }
 
         if ($mode === 'pdf' || $mode === 'print') {
-            return $this->pdfResponse('overdue', ['rows' => $rows], $branchId, [], $mode === 'print');
+            return $this->pdfResponse('overdue', ['rows' => $rows], $branchId, ['period_line' => $filters['period_line']], $mode === 'print');
         }
 
         return view('admin/reports/overdue', [
@@ -113,13 +115,15 @@ class ReportController extends BaseController
         $mode = (string) $this->request->getGet('mode');
 
         if ($mode === 'csv') {
-            return $this->simpleCsv('commission_report', ['Collector', 'Role', 'Transactions', 'Total Collected', 'Commission (10%)', 'Net Remitted'], $rows, static fn (array $row): array => [
+            return $this->simpleCsv('commission_report', ['Collector', 'Role', 'Transactions', 'Total Collected', 'Commission (10%)', 'Net Remitted', 'Paid', 'Unpaid'], $rows, static fn (array $row): array => [
                 trim((string) ($row['first_name'] ?? '') . ' ' . (string) ($row['last_name'] ?? '')),
                 (string) ($row['role_name'] ?? ''),
                 (string) ($row['transaction_count'] ?? 0),
                 number_format((float) ($row['total_collected'] ?? 0), 2, '.', ''),
                 number_format((float) ($row['commission'] ?? 0), 2, '.', ''),
                 number_format((float) ($row['net_remitted'] ?? 0), 2, '.', ''),
+                number_format((float) ($row['paid'] ?? 0), 2, '.', ''),
+                number_format((float) ($row['unpaid'] ?? 0), 2, '.', ''),
             ]);
         }
 
@@ -136,7 +140,39 @@ class ReportController extends BaseController
             'active_report' => 'commission',
             'filters' => $filters,
             'rows' => $rows,
+            'can_pay_commission' => true,
         ]);
+    }
+
+    /** "Mark as paid": records that the collector's commission for the period was handed over. */
+    public function payCommission()
+    {
+        $this->ensureBranchAdminAccess();
+
+        $branchId = (int) session('branch_id');
+        if ($branchId <= 0) {
+            throw PageNotFoundException::forPageNotFound();
+        }
+
+        $from = trim((string) $this->request->getPost('date_from'));
+        $to = trim((string) $this->request->getPost('date_to'));
+
+        $result = (new \App\Services\CommissionPayoutService())->record(
+            (int) $this->request->getPost('collector_id'),
+            $branchId,
+            $from,
+            $to,
+            (int) session('user_id'),
+            trim((string) $this->request->getPost('reference')),
+            trim((string) $this->request->getPost('notes'))
+        );
+
+        if ($result['ok']) {
+            (new \App\Services\ActivityLogService())->log((int) session('user_id'), 'created', 'commission_payout', (int) $this->request->getPost('collector_id'), $result['message']);
+        }
+
+        return redirect()->to('/branch-admin/reports/commission?date_from=' . urlencode($from) . '&date_to=' . urlencode($to))
+            ->with($result['ok'] ? 'success' : 'error', $result['message']);
     }
 
     public function generate()

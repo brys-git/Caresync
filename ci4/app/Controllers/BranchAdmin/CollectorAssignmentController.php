@@ -35,7 +35,7 @@ class CollectorAssignmentController extends BaseController
         return view('branch_admin/collector_assignments/index', [
             'role_layout' => 'layouts/branch_admin',
             'page_title' => 'Collector Assignments',
-            'page_sub' => 'Assign a barangay (or the whole branch) to each collector - Collection List and GCash approval both depend on this.',
+            'page_sub' => 'Assign a barangay (or all branches) to each collector - Collection List and GCash approval both depend on this.',
             'collectors' => $this->service->branchCollectorCandidates($branchId),
             'assignments_by_user' => $this->service->assignmentsByUser($branchId),
             'barangay_options' => $this->branchBarangayOptions($branchId),
@@ -76,7 +76,7 @@ class CollectorAssignmentController extends BaseController
         if ($scope === 'branch_wide') {
             $barangayCode = null;
         } elseif ($barangayCode === '') {
-            return redirect()->back()->with('error', 'Choose a barangay, or assign the whole branch instead.');
+            return redirect()->back()->with('error', 'Choose a barangay, or assign All branches instead.');
         }
 
         $db = db_connect();

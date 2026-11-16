@@ -343,10 +343,17 @@ class ClientPaymentController extends BaseController
             return redirect()->to('/client/payment/make')->withInput()->with('error', "You can pay for at most {$remainingMonths} more month(s) on this plan.");
         }
 
-        $coverageStart = PaymentService::monthStart($schedule['anchor'], $schedule['offset']);
-        $coverageEnd = PaymentService::monthEnd($coverageStart, $monthsCovered - 1);
+        // The months this payment covers come from the ledger (the next unpaid
+        // contributions, pending ones counted), the same as for staff-recorded payments.
+        $projection = (new PaymentService())->projectPayment($plan, $monthsCovered);
+        if ($projection['months'] < $monthsCovered) {
+            return redirect()->to('/client/payment/make')->withInput()->with('error', "You can pay for at most {$projection['months']} more month(s) on this plan.");
+        }
+        $coverageStart = $projection['start'];
+        $coverageEnd = $projection['end'];
+        $lastDue = \App\Services\PlanLedgerService::addMonths($coverageStart, $monthsCovered - 1);
         if (substr($coverageStart, 0, 7) !== (string) $this->request->getPost('covers_from')
-            || substr($coverageEnd, 0, 7) !== (string) $this->request->getPost('covers_to')) {
+            || substr($lastDue, 0, 7) !== (string) $this->request->getPost('covers_to')) {
             return redirect()->to('/client/payment/make')->withInput()->with('error', 'Your payment schedule changed while you were filling this in. Please review the months and try again.');
         }
 
@@ -359,7 +366,7 @@ class ClientPaymentController extends BaseController
             return redirect()->to('/client/payment/make')->withInput()->with('error', 'Duplicate reference number detected. Please verify your reference number.');
         }
 
-        $amount = round(min($monthsCovered * $schedule['monthly_fee'], $schedule['payable_amount']), 2);
+        $amount = $projection['amount'];
 
         $payload = [
             'plan_id' => (int) $plan['plan_id'],
@@ -386,6 +393,29 @@ class ClientPaymentController extends BaseController
         }
 
         return redirect()->to('/client/payment')->with('success', 'GCash payment submitted. Waiting for branch admin verification.');
+    }
+
+    /** The logged-in client's own ledger as a PDF - never anyone else's. */
+    public function downloadLedger()
+    {
+        try {
+            $access = $this->resolveAccessState();
+        } catch (\RuntimeException $e) {
+            return redirect()->to('/signin')->with('error', 'Session expired. Please log in again.');
+        }
+
+        $planHolder = $access['plan_holder'] ?? null;
+        if (! $planHolder) {
+            return redirect()->to('/client/payment')->with('error', 'No plan holder profile found.');
+        }
+
+        $service = new \App\Services\LedgerPdfService();
+        $data    = $service->build((int) $planHolder['plan_holder_id']);
+        if ($data === null) {
+            return redirect()->to('/client/payment')->with('error', 'Your ledger is not available yet.');
+        }
+
+        return $service->respond($this->response, $data, false);
     }
 
     /**
@@ -421,10 +451,13 @@ class ClientPaymentController extends BaseController
 
         $monthsCovered = max(1, (int) $this->request->getPost('months_covered'));
         $amount = (float) $this->request->getPost('amount');
-        $monthlyFee = (float) ($plan['monthly_fee'] ?? 0);
-        $expectedAmount = round($monthlyFee * $monthsCovered, 2);
+        $projection = (new PaymentService())->projectPayment($plan, $monthsCovered);
+        if ($projection['months'] < $monthsCovered) {
+            return redirect()->back()->withInput()->with('error', 'You can pay for at most ' . $projection['months'] . ' more month(s) on this plan.');
+        }
+        $expectedAmount = $projection['amount'];
         if ($expectedAmount <= 0 || abs($expectedAmount - $amount) > 0.01) {
-            return redirect()->back()->withInput()->with('error', 'Amount must match your monthly fee multiplied by months covered.');
+            return redirect()->back()->withInput()->with('error', 'Amount must match what your plan needs for those months (' . cs_peso($expectedAmount) . ').');
         }
 
         // Remaining balance from the one shared calculation (plans.remaining_balance is not maintained).
@@ -441,7 +474,7 @@ class ClientPaymentController extends BaseController
             return redirect()->back()->withInput()->with('error', 'Duplicate reference number detected. Please verify your reference number.');
         }
 
-        $coverage = (new PaymentService())->projectCoverage($plan, $monthsCovered);
+        $coverage = ['start' => $projection['start'], 'end' => $projection['end']];
 
         $payload = [
             'plan_id' => (int) $plan['plan_id'],

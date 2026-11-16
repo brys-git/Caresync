@@ -154,7 +154,7 @@ class ClientDetailService
         $names = [];
         foreach ($rows as $r) {
             $name = trim($r['first_name'] . ' ' . $r['last_name']);
-            $names[$name] = $r['barangay_code'] === null ? $name . ' (whole branch)' : $name;
+            $names[$name] = $r['barangay_code'] === null ? $name . ' (All branches)' : $name;
         }
 
         return array_values($names);

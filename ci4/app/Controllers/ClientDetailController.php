@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Services\ActivityLogService;
 use App\Services\ClientDetailService;
+use App\Services\LedgerPdfService;
 use App\Services\LegacyRecordService;
 use App\Services\ReportPdfService;
 use CodeIgniter\Exceptions\PageNotFoundException;
@@ -56,6 +57,7 @@ class ClientDetailController extends BaseController
             'reinstate' => site_url($cfg['reinstate'] . $id),
             'note'      => site_url($cfg['note'] . $id),
             'statement' => site_url($cfg['statement'] . $id),
+            'ledger'    => site_url(str_replace('statement/', 'ledger/', $cfg['statement']) . $id),
             'self'      => site_url($cfg['view'] . $id),
             'file'      => site_url($cfg['file'] . $id . '/'),
         ]);
@@ -104,6 +106,21 @@ class ClientDetailController extends BaseController
             ],
             ! $this->request->getGet('download')
         );
+    }
+
+    /** Ledger PDF (verified payments only), for Branch Admin / Staff of this client's branch and System Admin. */
+    public function ledger(int $id): ResponseInterface
+    {
+        $client = $this->clientOr404($id);
+        $data   = (new LedgerPdfService())->build((int) $client['plan_holder_id']);
+
+        if ($data === null) {
+            throw PageNotFoundException::forPageNotFound();
+        }
+
+        (new ActivityLogService())->log((int) session('user_id'), 'viewed', 'plan_holder', (int) $id, 'Printed ledger');
+
+        return (new LedgerPdfService())->respond($this->response, $data, ! $this->request->getGet('download'));
     }
 
     /** Saves the internal note (plan_holders.remarks - staff-only, never shown to the client). */
@@ -286,6 +303,9 @@ class ClientDetailController extends BaseController
         }
         if ($cfg['past'] !== null) {
             $actions[] = ['label' => 'Add past records', 'icon' => 'ti-history', 'href' => site_url($cfg['past'] . (int) $client['user_id']), 'class' => 'btn-ghost'];
+        }
+        if ((int) session('role_id') === 2) {
+            $actions[] = ['label' => 'File casket claim', 'icon' => 'ti-file-plus', 'href' => site_url('branch-admin/service-package/file-claim/' . $id), 'class' => 'btn-ghost'];
         }
         $actions[] = ['label' => 'Edit details', 'icon' => 'ti-pencil', 'href' => site_url($cfg['edit'] . $id), 'class' => 'btn-ghost'];
         $actions[] = ['label' => 'Resend login details', 'icon' => 'ti-key', 'post' => site_url($cfg['resend'] . $id), 'confirm' => "Issue a new temporary password? The client's current password will stop working.", 'class' => 'btn-ghost'];

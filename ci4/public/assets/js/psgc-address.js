@@ -33,6 +33,8 @@ window.CareSyncPsgc = (function () {
         const barangayDropdown = barangaySearch.closest('.psgc-field').querySelector('.psgc-dropdown');
         const barangayError = document.querySelector('.psgc-error[data-field="barangay"]');
 
+        // Every barangay with its town/city, so the Barangay box can be searched
+        // on its own (before any Town/City is chosen).
         let barangayOptions = [];
         let lastSelectedCityName = addressCityInput.value || '';
         let lastSelectedBarangayName = addressBarangayInput.value || '';
@@ -55,7 +57,7 @@ window.CareSyncPsgc = (function () {
                 const item = document.createElement('button');
                 item.type = 'button';
                 item.className = 'list-group-item list-group-item-action py-2';
-                item.textContent = rowData.name;
+                item.textContent = rowData.label || rowData.name;
                 item.addEventListener('click', function () {
                     onPick(rowData);
                 });
@@ -118,6 +120,13 @@ window.CareSyncPsgc = (function () {
             });
         });
 
+        const allBarangays = [];
+        address.cities.forEach(function (city) {
+            city.barangays.forEach(function (barangay) {
+                allBarangays.push({ code: barangay.code, name: barangay.name, cityCode: city.code, label: barangay.name + ', ' + city.name });
+            });
+        });
+
         function searchCities(query) {
             const needle = normalize(query);
             const results = needle === ''
@@ -145,7 +154,6 @@ window.CareSyncPsgc = (function () {
         function resetBarangay() {
             barangaySearch.value = '';
             barangaySearch.placeholder = 'Search barangay...';
-            barangaySearch.disabled = true;
             addressBarangayInput.value = '';
             barangayCodeInput.value = '';
             lastSelectedBarangayName = '';
@@ -158,6 +166,8 @@ window.CareSyncPsgc = (function () {
             if (citySearch.value !== lastSelectedCityName) {
                 addressCityInput.value = '';
                 cityCodeInput.value = '';
+                // No town/city chosen any more: the Barangay box searches everywhere again.
+                barangayOptions = [];
             }
             searchCities(citySearch.value.trim());
         });
@@ -171,7 +181,6 @@ window.CareSyncPsgc = (function () {
             barangayOptions = city
                 ? city.barangays.map(function (b) { return { code: b.code, name: b.name }; })
                 : [];
-            barangaySearch.disabled = false;
             barangaySearch.placeholder = 'Search barangay...';
             hideDropdown(barangayDropdown);
 
@@ -188,9 +197,16 @@ window.CareSyncPsgc = (function () {
 
         function filterBarangays(query) {
             const needle = query.trim().toLowerCase();
+            // With a Town/City chosen, search its barangays; otherwise search all of them.
+            const pool = barangayOptions.length > 0 ? barangayOptions : allBarangays;
             const results = needle === ''
-                ? barangayOptions
-                : barangayOptions.filter(function (b) { return b.name.toLowerCase().indexOf(needle) !== -1; });
+                ? (barangayOptions.length > 0 ? pool : [])
+                : pool.filter(function (b) { return b.name.toLowerCase().indexOf(needle) !== -1; }).slice(0, 40);
+
+            if (needle === '' && results.length === 0) {
+                renderEmpty(barangayDropdown, 'Type a barangay name to search all towns/cities.');
+                return;
+            }
 
             if (results.length === 0) {
                 renderEmpty(barangayDropdown, 'No matching barangay found.');
@@ -200,6 +216,16 @@ window.CareSyncPsgc = (function () {
         }
 
         function selectBarangay(rowData) {
+            // Picked without a Town/City (or from another one): fill the Town/City in too.
+            if (rowData.cityCode && cityCodeInput.value !== rowData.cityCode && citiesByCode[rowData.cityCode]) {
+                const city = citiesByCode[rowData.cityCode];
+                citySearch.value = city.name;
+                addressCityInput.value = city.name;
+                cityCodeInput.value = city.code;
+                lastSelectedCityName = city.name;
+                clearFieldError(cityError);
+                barangayOptions = city.barangays.map(function (b) { return { code: b.code, name: b.name }; });
+            }
             barangaySearch.value = rowData.name;
             addressBarangayInput.value = rowData.name;
             barangayCodeInput.value = rowData.code;
@@ -217,9 +243,7 @@ window.CareSyncPsgc = (function () {
         });
 
         barangaySearch.addEventListener('focus', function () {
-            if (!barangaySearch.disabled) {
-                filterBarangays(barangaySearch.value);
-            }
+            filterBarangays(barangaySearch.value);
         });
 
         document.addEventListener('click', function (event) {
@@ -241,11 +265,7 @@ window.CareSyncPsgc = (function () {
                 cityCodeInput.value = savedCity.code;
                 barangaySearch.value = lastSelectedBarangayName;
                 loadBarangays(savedCity.code, savedBarangayCode || null);
-            } else {
-                barangaySearch.placeholder = 'Select a Town/City first';
             }
-        } else {
-            barangaySearch.placeholder = 'Select a Town/City first';
         }
 
         return { selectCity: selectCity, selectBarangay: selectBarangay };
