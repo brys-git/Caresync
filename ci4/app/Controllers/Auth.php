@@ -28,6 +28,12 @@ class Auth extends BaseController
             return redirect()->back()->withInput()->with('error', 'Username/email and password are required.');
         }
 
+        // Limit sign-in attempts: 5 per minute for each username/email + IP address.
+        $throttler = \Config\Services::throttler();
+        if (! $throttler->check('login_' . md5(strtolower($identifier) . '|' . $this->request->getIPAddress()), 5, MINUTE)) {
+            return redirect()->back()->withInput()->with('error', 'Too many sign-in attempts. Please wait a minute and try again.');
+        }
+
         $userModel = new UserModel();
         // Joins branches/roles so the topbar's name/branch chip (CareSync UI)
         // has what it needs without a second query - left join on branches
@@ -56,6 +62,9 @@ class Auth extends BaseController
             && strtotime((string) $user['temp_password_expires_at']) < time()) {
             return redirect()->back()->withInput()->with('error', 'Your temporary password has expired. Please ask your branch to resend your login details.');
         }
+
+        // New session id after a successful sign-in (prevents session fixation).
+        session()->regenerate(true);
 
         session()->set([
             'user_id'   => (int) $user['user_id'],

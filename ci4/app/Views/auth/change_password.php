@@ -44,7 +44,11 @@
     <div class="signin__main">
         <div class="signin__form">
             <h2 class="signin__title"><?= (int) session('must_change_password') === 1 ? 'Set your new password' : 'Change Your Password' ?></h2>
-            <p class="cs-muted mb-4">This account uses a temporary password. Set a new password to continue.</p>
+            <p class="cs-muted mb-4">
+                <?= (int) session('must_change_password') === 1
+                    ? 'This account uses a temporary password. Set a new password to continue.'
+                    : 'Enter your current password, then choose a new one (at least 8 characters).' ?>
+            </p>
 
             <?php if (session()->getFlashdata('error')): ?>
                 <div class="alert alert-danger" role="alert">

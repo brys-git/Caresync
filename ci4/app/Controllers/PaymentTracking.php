@@ -146,8 +146,8 @@ class PaymentTracking extends BaseController
         $rules = [
             'plan_id' => 'required|is_natural_no_zero',
             'amount' => 'required|decimal',
-            // Panel brief, section 3: advance payment must support 1-59 months.
-            'months_covered' => 'required|is_natural_no_zero|less_than_equal_to[59]',
+            // The upper limit is the plan's remaining months, checked below.
+            'months_covered' => 'required|is_natural_no_zero',
             'payment_date' => 'required|valid_date[Y-m-d]',
             // Panel brief, section 3: support both cash and GCash here, not just cash.
             'payment_method' => 'required|in_list[cash,gcash]',
@@ -182,6 +182,14 @@ class PaymentTracking extends BaseController
         // Remaining balance from the one shared calculation (plans.remaining_balance is not maintained).
         if ($amount > (float) ((new \App\Services\ClientPlanSummary())->forPlan((int) $plan['plan_id'])['remaining_balance'] ?? 0)) {
             return redirect()->back()->withInput()->with('error', 'Payment exceeds remaining balance.');
+        }
+
+        // Never more months than the plan's current cycle has left.
+        [, , , $remainingMonths] = (new PaymentService())->remainingPayableMonths($plan);
+        if ($monthsCovered > $remainingMonths) {
+            return redirect()->back()->withInput()->with('error', $remainingMonths > 0
+                ? 'Months in advance cannot be more than ' . $remainingMonths . ' - that is all this plan has left in its current cycle.'
+                : 'This plan has no months left to pay in its current cycle.');
         }
 
         $holder = db_connect()->table('plan_holders')
@@ -777,18 +785,43 @@ class PaymentTracking extends BaseController
     {
         $plans = (new MembershipService())->getBranchPlans($branchId);
 
-        return array_values(array_filter($plans, static function (array $plan): bool {
+        return $this->withRemainingMonths(array_values(array_filter($plans, static function (array $plan): bool {
             return (string) ($plan['plan_status'] ?? '') === 'active';
-        }));
+        })));
+    }
+
+    /**
+     * Adds remaining_months (how many more months this plan's current cycle can
+     * take) to each plan option, so the Months in Advance list stops there.
+     *
+     * @param list<array<string,mixed>> $plans
+     *
+     * @return list<array<string,mixed>>
+     */
+    private function withRemainingMonths(array $plans): array
+    {
+        $payments = new PaymentService();
+
+        foreach ($plans as &$plan) {
+            try {
+                [, , , $remaining] = $payments->remainingPayableMonths(['plan_id' => $plan['plan_id'], 'monthly_fee' => $plan['monthly_fee'] ?? 0]);
+            } catch (\Throwable $e) {
+                $remaining = 0;
+            }
+            $plan['remaining_months'] = max(0, (int) $remaining);
+        }
+        unset($plan);
+
+        return $plans;
     }
 
     private function branchInitialPlanOptions(int $branchId): array
     {
         $plans = (new MembershipService())->getBranchPlans($branchId);
 
-        return array_values(array_filter($plans, static function (array $plan): bool {
+        return $this->withRemainingMonths(array_values(array_filter($plans, static function (array $plan): bool {
             return (string) ($plan['plan_status'] ?? '') === 'inactive';
-        }));
+        })));
     }
 
     private function searchTerm(): string

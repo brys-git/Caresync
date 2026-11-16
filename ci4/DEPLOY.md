@@ -73,3 +73,38 @@ see error details.
   allow it, the line is ignored.
 - On a host where you *can* point the web root at `public/`, do that and the
   root `.htaccess` is simply not used.
+
+## Before going live
+
+Do these in order. Do not skip step 1: while the live site is in development
+mode it shows the debug toolbar and error details to everyone.
+
+1. **Production mode.** In the server's `.env`, set `CI_ENVIRONMENT = production`.
+2. **New database password.** Change the MySQL password in the InfinityFree
+   control panel, then put the new password in the server's `.env`
+   (`database.default.password`). Never reuse a password that was ever written
+   in a file you shared or emailed.
+3. **Upload the right folder.** Upload the **contents** of `ci4/` into `htdocs/`,
+   not the `ci4` folder itself. Do not upload `.env` from your computer; create
+   the server's own `.env` there.
+   Use `.env.production.example` as the template for that file.
+4. **Update the database (migrations).** InfinityFree has no command line, so:
+   add `app.migrateKey = 'a-long-random-value'` (16+ characters) to the server's
+   `.env`, open `https://your-domain/migrate/a-long-random-value` once, wait for
+   "Database is up to date", then **delete that line from `.env`**. Back up the
+   database in phpMyAdmin first. Without the key the address simply shows the 404 page.
+5. **Clear old sessions.** Empty `writable/session/` on the server (keep
+   `index.html`) so nobody keeps a session from the development site.
+6. **Test.**
+   - Log in with each role (System Admin, Branch Admin, Staff, Plan Holder, Collector).
+   - Save one form (for example a client note).
+   - Enter a wrong password 6 times in a row. The 6th try must say
+     "Too many sign-in attempts" and be blocked for a minute.
+   - View the source of the login page: it must contain no `debugbar`,
+     `DEBUG-VIEW` or `kint` text.
+
+### What not to share
+When you zip the project for someone, leave out `.env`, `env`,
+`INFINITYFREE_ENV.txt`, `vendor/`, `composer.phar`, and the contents of
+`writable/session`, `writable/logs`, `writable/debugbar`, `writable/cache` and
+`writable/uploads` (these hold sessions, logs and customers' ID photos).

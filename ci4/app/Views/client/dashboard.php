@@ -146,9 +146,10 @@ $progress = ! empty($summary) ? (float) $summary['progress_pct'] : ($planAmount 
             <div class="cs-panel__head"><h2 class="cs-panel__title">Need assistance?</h2></div>
             <div class="cs-panel__body">
                 <p class="mb-2"><strong>Branch:</strong> <?= esc($branch_name !== '' ? $branch_name : 'Kaagapay Branch') ?></p>
-                <p class="mb-2"><strong>Hotline:</strong> 0912-345-6789</p>
-                <p class="mb-2"><strong>Email:</strong> support@kaagapay.local</p>
-                <p class="mb-0"><strong>Office hours:</strong> Mon-Sat, 8:00 AM - 5:00 PM</p>
+                <?php $contact = config('CareSync'); ?>
+                <p class="mb-2"><strong>Hotline:</strong> <?= esc($contact->supportHotline) ?></p>
+                <p class="mb-2"><strong>Email:</strong> <a href="mailto:<?= esc($contact->supportEmail, 'attr') ?>"><?= esc($contact->supportEmail) ?></a></p>
+                <p class="mb-0"><strong>Office hours:</strong> <?= esc($contact->officeHours) ?></p>
             </div>
         </section>
     </div>

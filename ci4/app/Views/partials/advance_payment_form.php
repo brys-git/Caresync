@@ -28,7 +28,7 @@ $prefix = (string) ($ap_prefix ?? 'ap');
                     <select id="<?= $prefix ?>_plan_id" name="plan_id" class="form-select ap-plan-select" required>
                         <option value="">Select plan holder</option>
                         <?php foreach (($ap_plan_options ?? []) as $plan): ?>
-                            <option value="<?= (int) $plan['plan_id'] ?>" data-monthly-fee="<?= esc((string) $plan['monthly_fee']) ?>">
+                            <option value="<?= (int) $plan['plan_id'] ?>" data-monthly-fee="<?= esc((string) $plan['monthly_fee']) ?>" data-remaining-months="<?= (int) ($plan['remaining_months'] ?? 0) ?>">
                                 <?= esc((string) ($plan['first_name'] . ' ' . $plan['last_name'])) ?> (<?= esc((string) ($plan['unique_identifier'] ?: 'No ID')) ?>)
                             </option>
                         <?php endforeach; ?>
@@ -47,10 +47,12 @@ $prefix = (string) ($ap_prefix ?? 'ap');
                 <div class="col-md-3">
                     <label class="form-label" for="<?= $prefix ?>_months_covered">Months in Advance</label>
                     <select id="<?= $prefix ?>_months_covered" name="months_covered" class="form-select ap-months-select" required>
-                        <?php for ($m = 1; $m <= 59; $m++): ?>
+                        <?php $maxMonths = max(array_merge([1], array_map(static fn (array $p): int => (int) ($p['remaining_months'] ?? 0), $ap_plan_options ?? []))); ?>
+                        <?php for ($m = 1; $m <= $maxMonths; $m++): ?>
                             <option value="<?= $m ?>"><?= $m ?> Month<?= $m === 1 ? '' : 's' ?></option>
                         <?php endfor; ?>
                     </select>
+                    <div class="form-text ap-months-note">Choose a plan holder to see how many months are left.</div>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label" for="<?= $prefix ?>_amount">Amount (auto-computed)</label>
@@ -73,14 +75,34 @@ $prefix = (string) ($ap_prefix ?? 'ap');
         const amount = scope.querySelector('.ap-amount-input');
         const months = scope.querySelector('.ap-months-select');
         if (!plan || !amount) { return; }
+        const note = scope.querySelector('.ap-months-note');
+        // Months in Advance only goes up to what the chosen plan holder has left.
+        function syncMonths() {
+            if (!months) { return; }
+            const selected = plan.options[plan.selectedIndex];
+            if (!selected || !selected.value) { return; }
+            const left = Number(selected.getAttribute('data-remaining-months') || 0);
+            const keep = Number(months.value || 1);
+            months.innerHTML = '';
+            for (let m = 1; m <= left; m++) {
+                const opt = document.createElement('option');
+                opt.value = String(m);
+                opt.textContent = m + (m === 1 ? ' Month' : ' Months');
+                months.appendChild(opt);
+            }
+            months.disabled = left < 1;
+            if (left > 0) { months.value = String(Math.min(keep, left)); }
+            if (note) { note.textContent = left > 0 ? left + ' month(s) left in this plan\'s current cycle.' : 'No months left to pay in this plan\'s current cycle.'; }
+        }
         function updateAmount() {
             const selected = plan.options[plan.selectedIndex];
             const fee = selected ? Number(selected.getAttribute('data-monthly-fee') || 0) : 0;
             const monthsValue = months ? Number(months.value || 1) : 1;
             amount.value = fee > 0 ? (fee * monthsValue).toFixed(2) : '';
         }
-        plan.addEventListener('change', updateAmount);
+        plan.addEventListener('change', function () { syncMonths(); updateAmount(); });
         if (months) { months.addEventListener('change', updateAmount); }
+        syncMonths();
         updateAmount();
     })();
 </script>

@@ -32,6 +32,9 @@ require APPPATH . 'Config/Routes/api.php';
 // Unknown URLs: the branded CareSync 404 page (sent through the filters, so it also gets the security headers).
 $routes->set404Override('App\Controllers\ErrorPage::notFound');
 
+// One-time database update for hosts without a command line. Inert (404) unless .env has app.migrateKey.
+$routes->get('migrate/(:segment)', 'MigrateOnce::run/$1');
+
 // Role-based dashboard redirects
 $routes->group('dashboard', ['filter' => 'auth'], static function (RouteCollection $routes) {
     $routes->get('/', 'Dashboard::index');

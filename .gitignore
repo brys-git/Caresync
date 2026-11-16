@@ -27,3 +27,14 @@ Thumbs.db
 
 # Local DB dumps / scratch scripts (not part of the app)
 *.sql
+
+# Secrets and server-specific files - never share these (also leave them out of any zip)
+ci4/.env
+ci4/env
+ci4/INFINITYFREE_ENV.txt
+
+# Runtime data (keep each folder's index.html)
+ci4/writable/debugbar/*
+!ci4/writable/debugbar/index.html
+ci4/writable/uploads/government_ids/*
+!ci4/writable/uploads/government_ids/index.html

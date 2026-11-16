@@ -26,6 +26,11 @@ class CareSync extends BaseConfig
      */
     public int $gracePeriodDays = 60;
 
+    /** Contact details shown to plan holders (Need assistance? box on the dashboard). */
+    public string $supportHotline = 'Smart 0962-571-9780 / Globe 0997-512-7828';
+    public string $supportEmail   = 'kaagapay00@gmail.com';
+    public string $officeHours    = 'Mon-Sat, 8:00 AM - 5:00 PM';
+
     /**
      * Where the grace period starts counting.
      * 'first_missed_due_date' = the due date of the oldest unpaid contribution
