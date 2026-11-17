@@ -7,7 +7,9 @@ $selectedBranch = (int) ($filters['branch_id'] ?? 0);
 $selectedStatus = (string) ($filters['status'] ?? '');
 $search         = (string) ($filters['search'] ?? '');
 $clients        = $clients ?? [];
-$hasFilters     = $selectedBranch > 0 || $selectedStatus !== '' || $search !== '';
+$openClaim      = ! empty($filters['open_claim']);
+$claims         = $claims ?? [];
+$hasFilters     = $selectedBranch > 0 || $selectedStatus !== '' || $search !== '' || $openClaim;
 ?>
 
 <form class="cs-filters" method="get" action="<?= base_url('admin/client-management') ?>">
@@ -40,6 +42,14 @@ $hasFilters     = $selectedBranch > 0 || $selectedStatus !== '' || $search !== '
         </select>
     </div>
 
+    <div class="cs-filters__field">
+        <label class="form-label d-block" for="f-claim">Claims</label>
+        <div class="form-check mt-2">
+            <input class="form-check-input" type="checkbox" id="f-claim" name="open_claim" value="1" <?= $openClaim ? 'checked' : '' ?>>
+            <label class="form-check-label" for="f-claim">Has open claim</label>
+        </div>
+    </div>
+
     <div class="cs-filters__actions">
         <button class="btn btn-primary" type="submit">
             <i class="ti ti-filter" aria-hidden="true"></i> Apply
@@ -57,6 +67,9 @@ $hasFilters     = $selectedBranch > 0 || $selectedStatus !== '' || $search !== '
                 <?= esc(number_format(count($clients))) ?>
                 <?= count($clients) === 1 ? 'plan holder' : 'plan holders' ?>
             </h2>
+            <?php if ($openClaim): ?>
+                <p class="cs-panel__note">Plan holders with a claim waiting for review or still being carried out. The branches handle the claims; this list is for monitoring.</p>
+            <?php endif; ?>
             <?php if ($hasFilters): ?>
                 <p class="cs-panel__note">Filtered view. Clear the filters to see everyone.</p>
             <?php endif; ?>
@@ -95,6 +108,7 @@ $hasFilters     = $selectedBranch > 0 || $selectedStatus !== '' || $search !== '
                         <tr>
                             <th>Plan holder</th>
                             <th>Branch</th>
+                            <?php if ($openClaim): ?><th>Open claim</th><?php endif; ?>
                             <th>Package</th>
                             <th>Plan</th>
                             <th>Account</th>
@@ -123,6 +137,16 @@ $hasFilters     = $selectedBranch > 0 || $selectedStatus !== '' || $search !== '
                                     </div>
                                 </td>
                                 <td><?= esc((string) ($client['branch_name'] ?? '—')) ?></td>
+                                <?php if ($openClaim): ?>
+                                    <?php $claim = $claims[$id] ?? null; ?>
+                                    <td>
+                                        <?php if ($claim): ?>
+                                            <a href="<?= base_url('admin/client-management/view/' . $id . '?tab=services') ?>"><?= cs_status((string) $claim['status']) ?></a>
+                                            <?php if ((int) $claim['count'] > 1): ?><span class="cs-table__sub">+<?= (int) $claim['count'] - 1 ?> more</span><?php endif; ?>
+                                            <div class="cs-table__sub">Filed <?= cs_date($claim['since']) ?></div>
+                                        <?php else: ?>—<?php endif; ?>
+                                    </td>
+                                <?php endif; ?>
                                 <td><?= esc((string) ($client['package_name'] ?? '—')) ?></td>
                                 <td><?= cs_status((string) ($client['plan_status'] ?? 'inactive')) ?></td>
                                 <td><?= cs_status((string) ($client['plan_holder_status'] ?? 'inactive')) ?></td>

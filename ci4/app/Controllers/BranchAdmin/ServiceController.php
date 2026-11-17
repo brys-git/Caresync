@@ -51,6 +51,7 @@ class ServiceController extends BaseController
             'page_title' => 'Service / Package Management',
             'active_tab' => 'ongoing',
             'ongoing_services' => $ongoingServices,
+            'ongoing_count' => $branchId > 0 ? (new \App\Services\MetricsService())->ongoingServices($branchId) : 0,
             'staff' => $staff,
             'role_layout' => 'layouts/branch_admin',
         ]);

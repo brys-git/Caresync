@@ -56,16 +56,47 @@ class ClientManagementController extends BaseController
             'u.first_name', 'u.last_name', 'u.email', 'u.contact_number', 'ph.unique_identifier',
         ]);
 
+        // "Has open claim": plan holders with a claim waiting for review or still being
+        // carried out. Read-only for the System Admin - the branches handle the claims.
+        $openClaim = (string) $this->request->getGet('open_claim') === '1';
+        $metrics = new \App\Services\MetricsService();
+        if ($openClaim) {
+            $inClaims = $metrics->openClaimsQuery($branchId > 0 ? $branchId : null)->select('ph.plan_holder_id')->getCompiledSelect();
+            $builder->where('ph.plan_holder_id IN (' . $inClaims . ')', null, false);
+        }
+
         $clients = $builder->get()->getResultArray();
+
+        $claims = [];
+        if ($openClaim && $clients !== []) {
+            $rows = $metrics->openClaimsQuery()
+                ->select('sa.plan_holder_id, sa.application_id, sa.status AS app_status, s.status AS service_status, sa.created_at', false)
+                ->whereIn('sa.plan_holder_id', array_map(static fn (array $c): int => (int) $c['plan_holder_id'], $clients))
+                ->orderBy('sa.application_id', 'DESC')
+                ->get()
+                ->getResultArray();
+
+            foreach ($rows as $row) {
+                $holderId = (int) $row['plan_holder_id'];
+                $claims[$holderId]['count'] = ($claims[$holderId]['count'] ?? 0) + 1;
+                // Newest claim first: that one gives the status shown in the list.
+                $claims[$holderId]['status'] ??= (string) $row['app_status'] === 'pending'
+                    ? 'pending'
+                    : ((string) ($row['service_status'] ?? '') === 'ongoing' ? 'ongoing' : 'approved');
+                $claims[$holderId]['since'] ??= (string) $row['created_at'];
+            }
+        }
 
         return view('admin/client_management/index', [
             'role_layout' => 'layouts/admin',
             'clients' => $clients,
             'branches' => $branches,
+            'claims' => $claims,
             'filters' => [
                 'branch_id' => $branchId,
                 'status' => $status,
                 'search' => $search,
+                'open_claim' => $openClaim,
             ],
         ]);
     }

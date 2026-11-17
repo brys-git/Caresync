@@ -60,7 +60,8 @@ $routes->group('admin', ['filter' => 'auth'], static function (RouteCollection $
     $routes->get('reports/collections', 'Reports::collections', ['filter' => 'role:1']);
     $routes->get('reports/commission', 'Reports::commission', ['filter' => 'role:1']);
     $routes->get('reports/remittance', 'Reports::remittance', ['filter' => 'role:1']);
-    $routes->get('analytics', 'Analytics::admin', ['filter' => 'role:1']);
+    // The old Analytics page is part of the Dashboard now; old links and bookmarks still work.
+    $routes->get('analytics', static fn () => redirect()->to('/dashboard/admin', 301), ['filter' => 'role:1']);
 
     // One-time credentials files from bulk client imports (System Admin only)
     $routes->get('imports/credentials', 'Admin\ImportCredentialsController::index', ['filter' => 'role:1']);

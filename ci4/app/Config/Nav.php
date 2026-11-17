@@ -36,7 +36,6 @@ class Nav extends BaseConfig
                     'title' => 'Overview',
                     'items' => [
                         ['key' => 'dashboard', 'label' => 'Dashboard',  'icon' => 'ti-layout-dashboard', 'url' => 'dashboard/admin'],
-                        ['key' => 'analytics', 'label' => 'Analytics',  'icon' => 'ti-chart-histogram',  'url' => 'admin/analytics'],
                     ],
                 ],
                 [
@@ -73,7 +72,6 @@ class Nav extends BaseConfig
                     'title' => 'Overview',
                     'items' => [
                         ['key' => 'dashboard', 'label' => 'Dashboard', 'icon' => 'ti-layout-dashboard', 'url' => 'dashboard/branch-admin'],
-                        ['key' => 'analytics', 'label' => 'Analytics', 'icon' => 'ti-chart-histogram',  'url' => 'branch-admin/analytics'],
                     ],
                 ],
                 [

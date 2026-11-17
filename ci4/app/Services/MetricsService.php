@@ -305,6 +305,60 @@ class MetricsService
         return (int) $builder->countAllResults();
     }
 
+    /**
+     * Applications / claims that are still open: waiting for review, or approved
+     * but the service is not completed or cancelled yet. One place for the rule so the
+     * dashboard count and the "Has open claim" list always agree.
+     */
+    public function openClaimsQuery(?int $branchId = null): BaseBuilder
+    {
+        $builder = db_connect()->table('service_applications sa')
+            ->join('plan_holders ph', 'ph.plan_holder_id = sa.plan_holder_id', 'inner')
+            ->join('service_balances sb', 'sb.application_id = sa.application_id', 'left')
+            ->join('services s', 's.service_id = sb.service_id', 'left')
+            ->groupStart()
+                ->where('sa.status', 'pending')
+                ->orGroupStart()
+                    ->where('sa.status', 'approved')
+                    ->groupStart()
+                        ->where('s.service_id', null)
+                        ->orGroupStart()
+                            ->whereIn('s.status', ['pending', 'ongoing'])
+                            ->where('s.deleted_at', null)
+                        ->groupEnd()
+                    ->groupEnd()
+                ->groupEnd()
+            ->groupEnd();
+
+        if ($branchId !== null && $branchId > 0) {
+            $builder->where('ph.branch_id', $branchId);
+        }
+
+        return $builder;
+    }
+
+    /** Plan holders with at least one open claim. */
+    public function openClaimPlanHolders(?int $branchId = null): int
+    {
+        $row = $this->openClaimsQuery($branchId)->select('COUNT(DISTINCT ph.plan_holder_id) AS n', false)->get()->getRowArray();
+
+        return (int) ($row['n'] ?? 0);
+    }
+
+    /**
+     * Services of a branch that are not finished yet (status pending or ongoing).
+     * THE rule behind "Ongoing services": the Branch Admin dashboard number and the
+     * Ongoing Services page both use it.
+     */
+    public function ongoingServices(int $branchId): int
+    {
+        return (int) db_connect()->table('services')
+            ->where('branch_id', $branchId)
+            ->whereIn('status', ['pending', 'ongoing'])
+            ->where('deleted_at', null)
+            ->countAllResults();
+    }
+
     /** Service requests (applications) waiting for review. */
     public function pendingServiceRequests(?int $branchId = null): int
     {

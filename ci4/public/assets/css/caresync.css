@@ -1340,3 +1340,81 @@ body.cs-nav-collapsed .cs-brand { justify-content: center; }
 .cs-confirm__title { font-size: 1.0625rem; font-weight: 600; margin: 0 0 .375rem; }
 .cs-confirm__message { margin: 0 0 1.25rem; color: var(--cs-ink-2); font-size: .9375rem; }
 .cs-confirm__actions { display: flex; justify-content: flex-end; gap: .5rem; }
+
+/* --------------------------------------------------------------------------
+   Dashboard charts (components/bar_chart.php, components/hbar_chart.php) -
+   plain HTML/CSS, no chart library
+   -------------------------------------------------------------------------- */
+.cs-chart { margin: 0; padding: 1rem 1.125rem 0; }
+.cs-chart__top { font-size: .8125rem; margin-bottom: .5rem; }
+.cs-chart__cols {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 11rem;
+  border-bottom: 1px solid var(--cs-line);
+}
+.cs-chart__col {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: stretch;
+  text-align: center;
+  position: relative;
+}
+.cs-chart__bar {
+  display: block;
+  width: 100%;
+  background: var(--cs-pine);
+  border-radius: 3px 3px 0 0;
+  min-height: 2px;
+}
+.cs-chart__col:hover .cs-chart__bar { background: var(--cs-pine-600); }
+.cs-chart__val {
+  font-size: .625rem;
+  color: var(--cs-ink-3);
+  line-height: 1.2;
+  height: 1rem;
+  overflow: hidden;
+  white-space: nowrap;
+  margin-bottom: 2px;
+}
+.cs-chart__lbl {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  font-size: .6875rem;
+  color: var(--cs-ink-3);
+}
+.cs-chart__cols { margin-bottom: 1.5rem; }
+.cs-chart__details { padding: .25rem 0 .75rem; font-size: .8125rem; }
+.cs-chart__details summary { cursor: pointer; color: var(--cs-pine); }
+@media (max-width: 575.98px) {
+  .cs-chart__val { display: none; }
+  .cs-chart__cols { gap: 2px; height: 9rem; }
+  .cs-chart__lbl { font-size: .5625rem; }
+}
+
+.cs-hbars { list-style: none; margin: 0; padding: 1rem 1.125rem; display: grid; gap: .625rem; }
+.cs-hbars__row {
+  display: grid;
+  grid-template-columns: minmax(6rem, 38%) 1fr 3rem;
+  align-items: center;
+  gap: .625rem;
+  font-size: .8125rem;
+}
+.cs-hbars__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--cs-ink-2); }
+.cs-hbars__track { display: block; height: .75rem; background: var(--cs-rail); border-radius: 999px; overflow: hidden; }
+.cs-hbars__bar { display: block; height: 100%; background: var(--cs-pine); border-radius: 999px; }
+.cs-hbars__val { text-align: right; font-weight: 600; }
+@media (max-width: 575.98px) {
+  .cs-hbars__row { grid-template-columns: 1fr 3rem; row-gap: .25rem; }
+  .cs-hbars__label { grid-column: 1 / -1; white-space: normal; }
+  .cs-hbars__track { grid-column: 1; }
+  .cs-hbars__val { grid-column: 2; }
+}
+.cs-chart__updated { margin: 0; padding: 0 0 .75rem; font-size: .75rem; color: var(--cs-ink-3); }

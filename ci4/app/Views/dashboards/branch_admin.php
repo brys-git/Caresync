@@ -3,25 +3,67 @@
 <?= $this->section('content') ?>
 <p class="cs-muted mb-3">Welcome back, <?= esc($operator_name) ?> — <?= esc($branch_name) ?>. Last updated <?= esc($current_time) ?>.</p>
 
+<?php
+$an         = $analytics ?? [];
+$mem        = $an['members'] ?? [];
+$overdue    = (int) ($an['overdue_accounts'] ?? 0);
+$pendingSrv = (int) ($an['pending_service_requests'] ?? 0);
+$pendingPay = (int) ($an['pending_payments'] ?? 0);
+$unassigned = (int) ($unassigned_services ?? 0);
+
+// What the branch should act on now; a line with nothing to do is hidden.
+$attention = [
+    ['branch-admin/registration-approvals',            'ti-user-check',         'Registrations waiting for approval',    (int) ($pending_approvals ?? 0)],
+    ['branch-admin/payment-tracking?status=pending',   'ti-cash',               'Payments waiting to be verified',       $pendingPay],
+    ['branch-admin/service-package/requests',          'ti-clipboard-list',     'Claims and service requests to review', $pendingSrv],
+    ['branch-admin/reports/overdue',                   'ti-alert-triangle',     'Accounts with overdue contributions',   $overdue],
+    ['branch-admin/service-package/ongoing',           'ti-calendar-event',     'Service events today without a crew',   $unassigned],
+];
+$attention = array_values(array_filter($attention, static fn (array $row): bool => $row[3] > 0));
+
+// Daily collections this month, every day of the month (days with no payment are empty bars).
+$byDay = [];
+foreach (($an['daily_collections'] ?? []) as $row) {
+    $byDay[(string) $row['date']] = (float) $row['total'];
+}
+$dayItems = [];
+$daysInMonth = (int) date('t');
+for ($d = 1; $d <= $daysInMonth; $d++) {
+    $date = date('Y-m-') . str_pad((string) $d, 2, '0', STR_PAD_LEFT);
+    $dayItems[] = [
+        'label' => ($d === 1 || $d % 5 === 0) ? (string) $d : '',
+        'full'  => date('M j, Y', strtotime($date)),
+        'value' => $byDay[$date] ?? 0.0,
+    ];
+}
+?>
+
 <?= view('components/stat_rail', ['stats' => [
     [
-        'label' => 'Active members',
+        'label' => 'Plan holders',
         'icon'  => 'ti-users',
-        'value' => $member_stats['total_active'] ?? 0,
-        'tone'  => 'ok',
+        'value' => $an['branch_members'] ?? 0,
+        'meta'  => number_format((float) ($mem['active'] ?? 0)) . ' active · ' . number_format((float) ($mem['grace'] ?? 0)) . ' delinquent · ' . number_format((float) ($mem['suspended'] ?? 0)) . ' suspended',
     ],
     [
-        'label' => 'Pending registrations',
-        'icon'  => 'ti-user-plus',
-        'value' => $pending_approvals ?? 0,
-        'tone'  => ((int) ($pending_approvals ?? 0) > 0) ? 'warn' : '',
-    ],
-    [
-        'label' => 'Collections this month',
+        'label' => 'Collected this month',
         'icon'  => 'ti-cash',
         'value' => $collections_this_month ?? 0,
         'money' => true,
         'tone'  => 'money',
+    ],
+    [
+        'label' => 'Awaiting approval',
+        'icon'  => 'ti-user-plus',
+        'value' => $pending_approvals ?? 0,
+        'tone'  => ((int) ($pending_approvals ?? 0) > 0) ? 'warn' : '',
+        'meta'  => ((int) ($pending_approvals ?? 0) > 0) ? 'Registrations to review' : 'Nothing waiting',
+    ],
+    [
+        'label' => 'Open service requests',
+        'icon'  => 'ti-clipboard-list',
+        'value' => $pendingSrv,
+        'tone'  => $pendingSrv > 0 ? 'warn' : '',
     ],
     [
         'label' => 'Ongoing services',
@@ -34,29 +76,35 @@
     <div class="col-lg-8">
         <section class="cs-panel mb-3">
             <div class="cs-panel__head">
-                <h2 class="cs-panel__title">Operational alert feed</h2>
+                <h2 class="cs-panel__title">Needs attention</h2>
             </div>
             <div class="cs-panel__body cs-panel__body--flush">
-                <?php
-                $alertTones = ['danger' => 'stop', 'warning' => 'pending', 'info' => 'info', 'secondary' => 'idle'];
-                ?>
-                <?php if (! empty($payment_alerts)): ?>
-                    <?php foreach ($payment_alerts as $alert): ?>
-                        <div class="cs-linkrow">
-                            <span class="cs-status cs-status--<?= esc($alertTones[$alert['type']] ?? 'idle') ?>">&nbsp;</span>
-                            <strong><?= esc($alert['title']) ?>:</strong> <?= esc($alert['detail']) ?>
-                        </div>
-                    <?php endforeach ?>
+                <?php if ($attention === []): ?>
+                    <p class="cs-muted mb-0 p-3"><i class="ti ti-circle-check" aria-hidden="true"></i> Nothing needs attention right now.</p>
                 <?php else: ?>
-                    <?= view('components/empty_state', [
-                        'icon'  => 'ti-circle-check',
-                        'title' => 'No critical operational flags',
-                        'text'  => 'Branch workflows are stable.',
-                    ]) ?>
-                <?php endif ?>
+                    <?php foreach ($attention as [$url, $icon, $label, $count]): ?>
+                        <a class="cs-linkrow" href="<?= esc(base_url($url), 'attr') ?>">
+                            <i class="ti <?= esc($icon, 'attr') ?> cs-muted" aria-hidden="true"></i>
+                            <span><?= esc($label) ?></span>
+                            <span class="cs-status cs-status--pending ms-auto"><?= esc(number_format($count)) ?></span>
+                        </a>
+                    <?php endforeach; ?>
+                <?php endif; ?>
             </div>
         </section>
 
+        <section class="cs-panel mb-3">
+            <div class="cs-panel__head">
+                <div>
+                    <h2 class="cs-panel__title">Daily collections this month</h2>
+                    <p class="cs-panel__note">Verified payments in your branch, day by day.</p>
+                </div>
+                <a class="btn btn-ghost btn-sm" href="<?= base_url('branch-admin/reports/remittance') ?>">Report <i class="ti ti-arrow-narrow-right" aria-hidden="true"></i></a>
+            </div>
+            <div class="cs-panel__body cs-panel__body--flush">
+                <?= view('components/bar_chart', ['title' => 'Daily collections this month', 'items' => $dayItems, 'money' => true, 'unit' => 'Day', 'empty' => 'No collections recorded yet this month', 'updated' => $an['charts_updated_at'] ?? null]) ?>
+            </div>
+        </section>
         <section class="cs-panel mb-3">
             <div class="cs-panel__head">
                 <h2 class="cs-panel__title">Today's service agenda</h2>
@@ -173,6 +221,10 @@
                 <div class="d-flex justify-content-between align-items-baseline mb-2">
                     <span class="cs-muted">Upcoming events</span>
                     <strong class="cs-num"><?= esc(number_format((int) $upcoming_services)) ?></strong>
+                </div>
+                <div class="d-flex justify-content-between align-items-baseline mb-2">
+                    <span class="cs-muted">Active staff</span>
+                    <strong class="cs-num"><?= esc(number_format((int) ($an['staff_count'] ?? 0))) ?></strong>
                 </div>
                 <div class="d-flex justify-content-between align-items-baseline">
                     <span class="cs-muted">Delinquent members</span>

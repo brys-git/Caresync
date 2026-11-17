@@ -78,7 +78,8 @@ $routes->group('staff', ['filter' => 'auth'], static function (RouteCollection $
 
     // Reports & Analytics
     $routes->get('reports', 'Staff\ReportsController::index', ['filter' => 'role:3']);
-    $routes->get('analytics', 'Analytics::staff', ['filter' => 'role:3']);
+    // The old Analytics page is part of the Dashboard now; old links and bookmarks still work.
+    $routes->get('analytics', static fn () => redirect()->to('/dashboard/staff', 301), ['filter' => 'role:3']);
 
     // Profile Management
     $routes->get('profile', 'Staff\ProfileController::index', ['filter' => 'role:3']);

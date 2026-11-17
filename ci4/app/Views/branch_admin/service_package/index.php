@@ -220,6 +220,7 @@
     <section class="cs-panel">
         <div class="cs-panel__body cs-panel__body--flush">
             <?php $rows = $ongoing_services ?? []; ?>
+            <p class="cs-panel__note px-3 pt-3"><?= (int) ($ongoing_count ?? 0) ?> not finished yet (pending or ongoing) - the same number shown on the dashboard.</p>
             <?php if (empty($rows)): ?>
                 <?= view('components/empty_state', ['icon' => 'ti-truck', 'title' => 'No ongoing services found']) ?>
             <?php else: ?>

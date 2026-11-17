@@ -157,39 +157,4 @@ class QueryHelper
         
         return (bool) $result;
     }
-
-    /**
-     * Count pending approvals for a branch (the registration approvals queue).
-     * Delegates to MetricsService, the one place aggregate counts live.
-     */
-    public static function countPendingApprovals(int $branchId): int
-    {
-        return (new \App\Services\MetricsService())->pendingApprovals($branchId);
-    }
-
-    /**
-     * Member statistics for a branch, from MetricsService::memberCounts().
-     *
-     * @return array{total_active:int,total_pending:int,total_delinquent:int,total_suspended:int}
-     */
-    public static function getMemberStats(int $branchId): array
-    {
-        $m = (new \App\Services\MetricsService())->memberCounts($branchId);
-
-        return [
-            'total_active'     => $m['active'],
-            'total_pending'    => $m['pending_members'],
-            'total_delinquent' => $m['grace'],
-            'total_suspended'  => $m['suspended'],
-        ];
-    }
-
-    /**
-     * Money collected (paid payments only) in a date range, from
-     * MetricsService::collected().
-     */
-    public static function getTotalCollections(int $branchId, string $startDate, string $endDate): float
-    {
-        return (new \App\Services\MetricsService())->collected($branchId, $startDate, $endDate);
-    }
 }

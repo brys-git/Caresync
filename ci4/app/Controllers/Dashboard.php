@@ -54,18 +54,27 @@ class Dashboard extends BaseController
         $operatorName = trim((string) session()->get('first_name') . ' ' . (string) session()->get('last_name'));
         $operatorName = $operatorName !== '' ? $operatorName : 'Branch Admin';
 
-        $memberStats = QueryHelper::getMemberStats($branchId);
-        $serviceRequestCounts = $this->getServiceRequestCounts($branchId);
-        $collectionsThisMonth = QueryHelper::getTotalCollections($branchId, date('Y-m-01'), date('Y-m-t'));
+        // Every branch figure is loaded ONCE here (members, collections, pending work,
+        // service requests by status) and reused below - nothing is queried twice.
+        $analytics = (new AnalyticsService())->getBranchAnalytics($branchId);
+        $members = $analytics['members'];
+        $memberStats = [
+            'total_active'     => $members['active'],
+            'total_pending'    => $members['pending_members'],
+            'total_delinquent' => $members['grace'],
+            'total_suspended'  => $members['suspended'],
+        ];
+        $serviceRequestCounts = $analytics['service_request_counts'];
+        $collectionsThisMonth = $analytics['monthly_total'];
         $todayOperations = $this->getTodayServiceCalendar($branchId);
         $upcomingServices = $this->countUpcomingServices($branchId);
-        $ongoingServices = $this->countServiceCalendarEvents($branchId, ['scheduled', 'in-progress']);
+        $ongoingServices = (new \App\Services\MetricsService())->ongoingServices($branchId);
         $staffOnDuty = $this->countStaffOnDuty($branchId);
-        $pendingApprovals = QueryHelper::countPendingApprovals($branchId);
+        $pendingApprovals = $analytics['pending_initial_payments'];
         $recentPayments = array_slice((new PaymentService())->getBranchMonitoringPayments($branchId), 0, 8);
-        $paymentAlerts = $this->getPaymentAlerts($branchId, $memberStats, $serviceRequestCounts);
+        $unassignedServices = $this->countUnassignedServicesToday($branchId);
         $activityLogs = $this->getRecentBranchActivity($branchId, 8);
-        $paymentAnalytics = $this->getPaymentAnalytics($branchId, 6);
+        $paymentAnalytics = $this->getPaymentAnalytics($branchId, 6, (float) $analytics['monthly_total']);
 
         return view('dashboards/branch_admin', [
             'role_layout' => $this->resolveLayoutView(),
@@ -84,7 +93,8 @@ class Dashboard extends BaseController
             'ongoing_services' => $ongoingServices,
             'staff_on_duty' => $staffOnDuty,
             'recent_payments' => $recentPayments,
-            'payment_alerts' => $paymentAlerts,
+            'analytics' => $analytics,
+            'unassigned_services' => $unassignedServices,
             'activity_logs' => $activityLogs,
             'payment_analytics' => $paymentAnalytics,
         ]);
@@ -149,28 +159,6 @@ class Dashboard extends BaseController
         return (int) session()->get('branch_id');
     }
 
-    private function getServiceRequestCounts(int $branchId): array
-    {
-        if ($branchId <= 0) {
-            return [];
-        }
-
-        $rows = db_connect()->table('service_applications sa')
-            ->select('sa.status, COUNT(sa.application_id) AS total')
-            ->join('plan_holders ph', 'ph.plan_holder_id = sa.plan_holder_id', 'inner')
-            ->where('ph.branch_id', $branchId)
-            ->groupBy('sa.status')
-            ->get()
-            ->getResultArray();
-
-        $counts = [];
-        foreach ($rows as $row) {
-            $counts[$row['status']] = (int) $row['total'];
-        }
-
-        return $counts;
-    }
-
     private function getTodayServiceCalendar(int $branchId): array
     {
         if ($branchId <= 0 || ! $this->serviceCalendarExists()) {
@@ -205,18 +193,6 @@ class Dashboard extends BaseController
             ->countAllResults();
     }
 
-    private function countServiceCalendarEvents(int $branchId, array $statuses): int
-    {
-        if ($branchId <= 0 || empty($statuses) || ! $this->serviceCalendarExists()) {
-            return 0;
-        }
-
-        return (int) db_connect()->table('service_calendar')
-            ->where('branch_id', $branchId)
-            ->whereIn('status', $statuses)
-            ->countAllResults();
-    }
-
     private function serviceCalendarExists(): bool
     {
         return db_connect()->tableExists('service_calendar');
@@ -240,65 +216,23 @@ class Dashboard extends BaseController
             ->countAllResults();
     }
 
-    private function getPaymentAlerts(int $branchId, array $memberStats, array $serviceRequestCounts): array
+    /** Scheduled service events today that have no crew assigned yet. */
+    private function countUnassignedServicesToday(int $branchId): int
     {
-        if ($branchId <= 0) {
-            return [];
+        if ($branchId <= 0 || ! $this->serviceCalendarExists()) {
+            return 0;
         }
 
-        $db = db_connect();
-        $pendingPayments = (new \App\Services\MetricsService())->pendingPayments($branchId);
-
-        $unassignedServices = 0;
-        if ($this->serviceCalendarExists()) {
-            $unassignedServices = (int) $db->table('service_calendar')
-                ->where('branch_id', $branchId)
-                ->where('event_date', date('Y-m-d'))
-                ->where('status', 'scheduled')
-                ->groupStart()
-                    ->where('assigned_staff_ids', null)
-                    ->orWhere('assigned_staff_ids', '[]')
-                ->groupEnd()
-                ->countAllResults();
-        }
-
-        $alerts = [];
-
-        if ($pendingPayments > 0) {
-            $alerts[] = [
-                'type' => 'danger',
-                'title' => 'Payments Awaiting Verification',
-                'detail' => sprintf('%d cash / digital payments are pending branch verification.', $pendingPayments),
-            ];
-        }
-
-        if (($serviceRequestCounts['pending'] ?? 0) > 0) {
-            $alerts[] = [
-                'type' => 'warning',
-                'title' => 'Service Application Reviews',
-                'detail' => sprintf('%d service applications are pending review.', $serviceRequestCounts['pending']),
-            ];
-        }
-
-        if ($unassignedServices > 0) {
-            $alerts[] = [
-                'type' => 'info',
-                'title' => 'Unassigned Service Events',
-                'detail' => sprintf('%d scheduled events are missing crew assignments.', $unassignedServices),
-            ];
-        }
-
-        if (($memberStats['total_delinquent'] ?? 0) > 0) {
-            $alerts[] = [
-                'type' => 'secondary',
-                'title' => 'Delinquent Accounts',
-                'detail' => sprintf('%d members are delinquent and require collection follow-up.', $memberStats['total_delinquent']),
-            ];
-        }
-
-        return $alerts;
+        return (int) db_connect()->table('service_calendar')
+            ->where('branch_id', $branchId)
+            ->where('event_date', date('Y-m-d'))
+            ->where('status', 'scheduled')
+            ->groupStart()
+                ->where('assigned_staff_ids', null)
+                ->orWhere('assigned_staff_ids', '[]')
+            ->groupEnd()
+            ->countAllResults();
     }
-
     private function getRecentBranchActivity(int $branchId, int $limit = 8): array
     {
         if ($branchId <= 0) {
@@ -315,7 +249,7 @@ class Dashboard extends BaseController
             ->getResultArray();
     }
 
-    private function getPaymentAnalytics(int $branchId, int $months = 6): array
+    private function getPaymentAnalytics(int $branchId, int $months = 6, ?float $monthTotal = null): array
     {
         if ($branchId <= 0) {
             return [
@@ -356,7 +290,7 @@ class Dashboard extends BaseController
 
         $methodBreakdown = [];
         // Share of THIS month's collections (the method rows are this month only).
-        $monthlyTotal = $metrics->collected($branchId, $monthStart, date('Y-m-t'));
+        $monthlyTotal = $monthTotal ?? $metrics->collected($branchId, $monthStart, date('Y-m-t'));
         foreach ($methodRows as $row) {
             $methodBreakdown[] = [
                 'method' => $row['payment_method'] ?: 'Other',

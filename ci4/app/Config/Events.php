@@ -24,6 +24,12 @@ use App\Services\MembershipService;
  *      Events::on('create', [$myInstance, 'myMethod']);
  */
 
+// Dashboard cache: any write to payments / plan holders / branches empties it (see
+// AnalyticsService::noteWrite). One hook for every code path, model or not.
+Events::on('DBQuery', static function (\CodeIgniter\Database\Query $query): void {
+    \App\Services\AnalyticsService::noteWrite($query->getOriginalQuery());
+});
+
 Events::on('pre_system', static function (): void {
     if (ENVIRONMENT !== 'testing') {
         if (ini_get('zlib.output_compression')) {

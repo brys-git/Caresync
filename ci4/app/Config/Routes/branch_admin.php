@@ -180,7 +180,8 @@ $routes->group('branch-admin', ['filter' => 'auth'], static function (RouteColle
     $routes->get('reports/overdue', 'BranchAdmin\ReportController::overdue', ['filter' => 'role:2']);
     $routes->get('reports/commission', 'BranchAdmin\ReportController::commission', ['filter' => 'role:2']);
     $routes->post('reports/commission/pay', 'BranchAdmin\ReportController::payCommission', ['filter' => 'role:2']);
-    $routes->get('analytics', 'Analytics::branchAdmin', ['filter' => 'role:2']);
+    // The old Analytics page is part of the Dashboard now; old links and bookmarks still work.
+    $routes->get('analytics', static fn () => redirect()->to('/dashboard/branch-admin', 301), ['filter' => 'role:2']);
 
     // Profile Management
     $routes->get('profile', 'BranchAdmin\ProfileController::index', ['filter' => 'role:2']);
