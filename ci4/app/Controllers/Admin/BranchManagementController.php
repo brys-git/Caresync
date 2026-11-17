@@ -158,7 +158,9 @@ class BranchManagementController extends BaseController
         ];
         $db->table('branches')->insert($row);
         $branchId = (int) $db->insertID();
-        $this->recordManagerChange($branchId, (int) $input['manager_user_id'], $adminId);
+        if ($manager !== null) {
+            $this->recordManagerChange($branchId, (int) $manager['user_id'], $adminId);
+        }
         $db->transComplete();
 
         if (! $db->transStatus()) {
@@ -206,8 +208,15 @@ class BranchManagementController extends BaseController
 
         $db->transStart();
         $db->table('branches')->where('branch_id', $id)->update($row);
-        if ((int) ($before['manager_user_id'] ?? 0) !== (int) $input['manager_user_id']) {
-            $this->recordManagerChange($id, (int) $input['manager_user_id'], $adminId);
+        $oldManagerId = (int) ($before['manager_user_id'] ?? 0);
+        $newManagerId = $manager !== null ? (int) $manager['user_id'] : 0;
+        if ($oldManagerId !== $newManagerId) {
+            if ($newManagerId > 0) {
+                $this->recordManagerChange($id, $newManagerId, $adminId);
+            } else {
+                // Manager cleared: close the open stint, do not open a new one.
+                $this->closeManagerHistory($id);
+            }
         }
         $db->transComplete();
 
@@ -299,7 +308,6 @@ class BranchManagementController extends BaseController
         $required = [
             'branch_name' => 'Branch name', 'address_street' => 'House/Building No. and Street', 'address_barangay' => 'Barangay',
             'address_city' => 'City/Municipality', 'address_province' => 'Province', 'contact_number' => 'Branch contact number',
-            'manager_user_id' => 'Assigned branch manager',
         ];
         foreach ($required as $key => $label) {
             if ($input[$key] === '') {
@@ -336,8 +344,10 @@ class BranchManagementController extends BaseController
             $errors['email'] = 'Enter a valid email address.';
         }
 
-        if (! isset($errors['manager_user_id']) && $this->managerRecord((int) $input['manager_user_id']) === null) {
-            $errors['manager_user_id'] = 'Choose an existing active Branch Admin or Staff account.';
+        // The manager is optional (a brand-new system has no Branch Admin yet).
+        // When one is chosen, it must be a real, active Branch Admin or Staff account.
+        if ((int) $input['manager_user_id'] > 0 && $this->managerRecord((int) $input['manager_user_id']) === null) {
+            $errors['manager_user_id'] = 'Choose an existing active Branch Admin or Staff account, or leave it as "No manager yet".';
         }
 
         foreach (['branch_name' => 100, 'address_street' => 100, 'address_barangay' => 100, 'address_city' => 100, 'address_province' => 100,
@@ -404,7 +414,8 @@ class BranchManagementController extends BaseController
             'contact_number'         => $input['contact_number'],
             'email'                  => $input['email'] !== '' ? $input['email'] : null,
             'operating_hours'        => $input['operating_hours'] !== '' ? $input['operating_hours'] : null,
-            'manager_user_id'        => (int) $input['manager_user_id'],
+            // NULL (not 0) when the branch has no manager yet.
+            'manager_user_id'        => $manager !== null ? (int) $manager['user_id'] : null,
             'manager_position'       => $input['manager_position'] !== '' ? $input['manager_position'] : null,
             'manager_contact_number' => $input['manager_contact_number'] !== '' ? $input['manager_contact_number'] : null,
             // Older screens still read the manager's name from the branch row.
@@ -425,6 +436,18 @@ class BranchManagementController extends BaseController
         $db->table('branch_manager_history')->insert([
             'branch_id' => $branchId, 'manager_user_id' => $managerUserId, 'assigned_at' => $now, 'assigned_by' => $adminId,
         ]);
+
+        // A Branch Admin who manages a branch belongs to it. Staff accounts are never moved automatically.
+        $db->table('users')->where('user_id', $managerUserId)->where('role_id', 2)->update(['branch_id' => $branchId]);
+    }
+
+    /** Ends the current manager's stint (the history row stays; nothing is deleted). */
+    private function closeManagerHistory(int $branchId): void
+    {
+        db_connect()->table('branch_manager_history')
+            ->where('branch_id', $branchId)
+            ->where('ended_at', null)
+            ->update(['ended_at' => date('Y-m-d H:i:s')]);
     }
 
     /** KKM-<city letters>-<next 3-digit number>, unique. */

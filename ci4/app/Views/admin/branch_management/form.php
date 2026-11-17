@@ -107,10 +107,10 @@ $action   = $isEdit ? site_url('/admin/branch-management/update/' . (int) $branc
         <div class="cs-panel__body">
             <div class="row g-3">
                 <div class="col-md-12">
-                    <label class="form-label" for="managerSearch">Assigned Branch Manager *</label>
+                    <label class="form-label" for="managerSearch">Assigned Branch Manager</label>
                     <input type="search" id="managerSearch" class="form-control mb-2" placeholder="Type to search existing Branch Admin / Staff accounts" autocomplete="off">
                     <select id="manager_user_id" name="manager_user_id" class="form-select<?= $invalid('manager_user_id') ?>" size="1">
-                        <option value="">Select an existing account</option>
+                        <option value="0" <?= in_array((string) $val('manager_user_id'), ['', '0'], true) ? 'selected' : '' ?>>— No manager yet —</option>
                         <?php foreach ($managers as $m): ?>
                             <option value="<?= (int) $m['user_id'] ?>"
                                     data-position="<?= esc($m['role_name'] === 'Branch Admin' ? 'Branch Manager' : 'Staff') ?>"
@@ -122,6 +122,7 @@ $action   = $isEdit ? site_url('/admin/branch-management/update/' . (int) $branc
                     </select>
                     <?= $err('manager_user_id') ?>
                     <div class="form-text">Managers are picked from existing accounts, so no personal details are entered again. Changing the manager later keeps the previous manager's records and history.</div>
+                    <div class="form-text">You can save the branch first, create the Branch Admin account with this branch, then come back here to assign them.</div>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label" for="manager_position">Manager Position</label>
@@ -165,7 +166,7 @@ $action   = $isEdit ? site_url('/admin/branch-management/update/' . (int) $branc
     search.addEventListener('input', function () {
         var q = search.value.toLowerCase();
         Array.prototype.forEach.call(select.options, function (o) {
-            o.hidden = o.value !== '' && q !== '' && o.text.toLowerCase().indexOf(q) === -1;
+            o.hidden = o.value !== '0' && q !== '' && o.text.toLowerCase().indexOf(q) === -1;
         });
         select.size = q ? Math.min(6, Math.max(2, Array.prototype.filter.call(select.options, function (o) { return !o.hidden; }).length)) : 1;
     });
@@ -173,7 +174,7 @@ $action   = $isEdit ? site_url('/admin/branch-management/update/' . (int) $branc
     // Auto-fill position and work number from the chosen account (only when still blank).
     select.addEventListener('change', function () {
         var o = select.options[select.selectedIndex];
-        if (!o || !o.value) { return; }
+        if (!o || !o.value || o.value === '0') { return; }
         if (!position.value) { position.value = o.getAttribute('data-position') || ''; }
         if (!contact.value) { contact.value = o.getAttribute('data-contact') || ''; }
         select.size = 1;

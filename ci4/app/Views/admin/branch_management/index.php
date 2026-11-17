@@ -55,7 +55,8 @@
                                         <div class="cs-muted small"><?= ($b['branch_type'] ?? '') === 'main' ? 'Main Office' : 'Branch Office' ?></div>
                                     </td>
                                     <td><?= esc(implode(', ', array_filter([$b['address_street'] ?? '', $b['address_barangay'] ?? '', $b['address_city'] ?? '', $b['address_province'] ?? '']))) ?></td>
-                                    <td><?= esc(trim(($b['mgr_first'] ?? $b['manager_first_name'] ?? '') . ' ' . ($b['mgr_last'] ?? $b['manager_last_name'] ?? '')) ?: '-') ?></td>
+                                    <?php $managerName = trim((string) ($b['mgr_first'] ?? $b['manager_first_name'] ?? '') . ' ' . (string) ($b['mgr_last'] ?? $b['manager_last_name'] ?? '')); ?>
+                                    <td><?= $managerName !== '' ? esc($managerName) : '<span class="text-muted">No manager yet</span>' ?></td>
                                     <td><?= esc($b['contact_number'] ?? '-') ?></td>
                                     <td><?= (int) ($b['client_count'] ?? 0) ?></td>
                                     <td><?= cs_status($isActive ? 'active' : 'inactive') ?></td>

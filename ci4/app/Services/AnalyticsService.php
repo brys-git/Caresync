@@ -47,6 +47,7 @@ class AnalyticsService
         $pendingServiceRequests = $metrics->pendingServiceRequests(null);
 
         $totalBranches = $db->table('branches')->countAllResults();
+        $branchesWithoutManager = $db->table('branches')->where('manager_user_id', null)->where('status', 'active')->countAllResults();
         $totalStaff = $db->table('users')->where('role_id', 3)->countAllResults();
         $totalCollectors = $db->table('users')->where('role_id', 5)->countAllResults();
 
@@ -62,6 +63,7 @@ class AnalyticsService
             'pending_approvals' => $pendingApprovals,
             'pending_service_requests' => $pendingServiceRequests,
             'total_branches' => $totalBranches,
+            'branches_without_manager' => $branchesWithoutManager,
             'total_staff' => $totalStaff,
             'total_collectors' => $totalCollectors,
         ];

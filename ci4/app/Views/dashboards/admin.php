@@ -4,7 +4,15 @@
 <?php
 $a    = $analytics ?? [];
 $logs = $recent_activity ?? [];
+$noManager = (int) ($a['branches_without_manager'] ?? 0);
 ?>
+
+<?php if ($noManager > 0): ?>
+    <div class="alert alert-warning" role="alert">
+        <?= $noManager ?> branch<?= $noManager === 1 ? ' has' : 'es have' ?> no manager yet.
+        <a href="<?= esc(base_url('admin/branch-management?tab=branches'), 'attr') ?>">Open the branch list</a>
+    </div>
+<?php endif; ?>
 
 <?= view('components/stat_rail', ['stats' => [
     [
