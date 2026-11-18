@@ -56,4 +56,45 @@ class CareSync extends BaseConfig
      * package. A Forfeited plan never can. Confirm with Kaagapay contract.
      */
     public bool $lapsedCanClaimServices = false;
+
+    /* ------------------------------------------------------------------
+     * Claim / avail rules (ClaimAvailService reads these - nothing else
+     * hard-codes them). Kaagapay can change any number here, or in .env
+     * (e.g. caresync.availDownPaymentRate = 0.20), without touching code.
+     * The down-payment rate and the term are copied onto each avail when it
+     * is approved, so a later change never alters an existing avail.
+     * The 30% down payment and the 6/12/24-month terms are Kaagapay's
+     * proposal and still need to be confirmed.
+     * ------------------------------------------------------------------ */
+
+    /** Verified monthly contributions needed in the current cycle before a claim or an avail. */
+    public int $claimMinMonthsPaid = 2;
+
+    /** Share of the package price paid as the down payment when an avail is approved (0.30 = 30%). */
+    public float $availDownPaymentRate = 0.30;
+
+    /**
+     * Days after approval the down payment may be paid. If it is not verified in
+     * time the avail is cancelled ("cancelled - no down payment") and its package
+     * amount leaves the balance.
+     */
+    public int $availDownPaymentDays = 30;
+
+    /** Longest instalment term in months a Branch Admin may choose. */
+    public int $availMaxTermMonths = 24;
+
+    /** Terms a Branch Admin may choose from (only those up to availMaxTermMonths are offered). */
+    public array $availTermOptions = [6, 12, 24];
+
+    /** The terms actually offered: the options that do not exceed availMaxTermMonths. @return list<int> */
+    public function availTerms(): array
+    {
+        $terms = array_values(array_filter(
+            array_map('intval', $this->availTermOptions),
+            fn (int $t): bool => $t > 0 && $t <= $this->availMaxTermMonths
+        ));
+        sort($terms);
+
+        return $terms;
+    }
 }
