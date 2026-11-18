@@ -26,7 +26,9 @@ class AccountLoginDetails extends BaseController
         $role    = (int) session('role_id');
 
         if (! is_array($details)) {
-            return redirect()->to(site_url(self::AREA_PREFIX[$role] . '/create-account'))
+            $back = $role === 1 ? 'admin/users' : self::AREA_PREFIX[$role] . '/create-account';
+
+            return redirect()->to(site_url($back))
                 ->with('error', 'Those login details are no longer available. Use "Resend login details" on the client profile to issue new ones.');
         }
 

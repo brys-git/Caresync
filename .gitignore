@@ -30,8 +30,15 @@ Thumbs.db
 
 # Secrets and server-specific files - never share these (also leave them out of any zip)
 ci4/.env
+ci4/.env.*
+!ci4/.env.production.example
 ci4/env
 ci4/INFINITYFREE_ENV.txt
+
+# Temporary-password files from imports (delete them after use) and zips of the project
+ci4/writable/imports/*
+!ci4/writable/imports/index.html
+*.zip
 
 # Runtime data (keep each folder's index.html)
 ci4/writable/debugbar/*

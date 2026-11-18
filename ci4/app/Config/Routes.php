@@ -63,15 +63,11 @@ $routes->post('plan-holders/approvals/reject/(:num)', 'PlanHolders::reject/$1', 
 // during the 2026-09-09 system scan.
 $routes->post('payments/verify-initial/(:num)', 'ClientPortal::verifyInitialPayment/$1', ['filter' => 'role:2']);
 
-// User account creation (Admin: 1, BranchAdmin: 2, Staff: 3 — Users::store forces
-// Staff-created accounts to role_id 4 regardless of what's submitted). Previously
-// unrouted: this screen existed but was unreachable from any page in the app,
-// which also meant the new Collector role had nowhere to actually be assigned.
-// System Admin only. Branch Admin and Staff use their own Create Account
-// pages (branch-admin/create-account, staff/create-account), which are
-// limited to the roles and the branch they are allowed to create.
-$routes->get('users/create', 'Users::create', ['filter' => 'role:1']);
-$routes->post('users/create', 'Users::store', ['filter' => 'role:1']);
+// The old "User accounts" page is now Users > Add user (admin/users/create). Old links and
+// bookmarks still work: this redirect is a closure and does not use any controller.
+// Branch Admin and Staff create accounts from their own pages
+// (branch-admin/create-account, staff/create-account).
+$routes->get('users/create', static fn () => redirect()->to('/admin/users/create', 301), ['filter' => 'role:1']);
 
 // Receipt PDF for one paid payment. Plan holders get their own; Branch Admin and
 // Staff get their branch's; System Admin any. Scoping is in ReceiptPdfService.

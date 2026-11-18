@@ -103,8 +103,18 @@ mode it shows the debug toolbar and error details to everyone.
    - View the source of the login page: it must contain no `debugbar`,
      `DEBUG-VIEW` or `kint` text.
 
+7. **Delete used credential files.** Importing existing members writes a file of
+   temporary passwords to `writable/imports/` (for example
+   `faustino_aclan_credentials_*.csv`). Once the passwords have been handed out,
+   open `https://your-domain/admin/imports/credentials` (System Admin) and press **Delete**, or delete the file
+   from `writable/imports/` in the InfinityFree file manager. Do not leave these
+   files on the server, do not download them to a shared computer, and never put
+   them in a zip or in Git.
+
 ### What not to share
 When you zip the project for someone, leave out `.env`, `env`,
 `INFINITYFREE_ENV.txt`, `vendor/`, `composer.phar`, and the contents of
 `writable/session`, `writable/logs`, `writable/debugbar`, `writable/cache` and
-`writable/uploads` (these hold sessions, logs and customers' ID photos).
+`writable/uploads` and `writable/imports` (these hold sessions, logs, customers' ID photos
+and temporary passwords). `tools/make-share-zip.ps1` builds a clean zip for you:
+`powershell -ExecutionPolicy Bypass -File tools\make-share-zip.ps1`.

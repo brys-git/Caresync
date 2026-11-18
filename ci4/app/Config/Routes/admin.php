@@ -42,9 +42,18 @@ $routes->group('admin', ['filter' => 'auth'], static function (RouteCollection $
     $routes->get('client/register', 'Admin\ClientManagementController::create', ['filter' => 'role:1']);
     $routes->post('client/store', 'Admin\ClientManagementController::store', ['filter' => 'role:1']);
 
-    // Create Account (Branch Admin / Staff / Client)
-    $routes->get('create-account', 'Admin\AccountController::create', ['filter' => 'role:1']);
-    $routes->post('create-account', 'Admin\AccountController::store', ['filter' => 'role:1']);
+    // Users: one list of every account (System Admin)
+    $routes->get('users', 'Admin\UsersController::index', ['filter' => 'role:1']);
+    $routes->get('users/create', 'Admin\UsersController::create', ['filter' => 'role:1']);
+    $routes->post('users/create', 'Admin\UsersController::store', ['filter' => 'role:1']);
+    $routes->get('users/(:num)', 'Admin\UsersController::show/$1', ['filter' => 'role:1']);
+    $routes->get('users/(:num)/edit', 'Admin\UsersController::edit/$1', ['filter' => 'role:1']);
+    $routes->post('users/(:num)/edit', 'Admin\UsersController::update/$1', ['filter' => 'role:1']);
+    $routes->post('users/(:num)/toggle-status', 'Admin\UsersController::toggleStatus/$1', ['filter' => 'role:1']);
+    $routes->post('users/(:num)/reset-password', 'Admin\UsersController::resetPassword/$1', ['filter' => 'role:1']);
+
+    // The old Create Account page is now Users > Add user; old links and bookmarks still work.
+    $routes->get('create-account', static fn () => redirect()->to('/admin/users/create', 301), ['filter' => 'role:1']);
 
     $routes->post('client-management/resend-login/(:num)', 'AccountLoginDetails::resend/$1', ['filter' => 'role:1']);
     $routes->post('client-management/reinstate/(:num)', 'PlanReinstatement::record/$1', ['filter' => 'role:1']);

@@ -16,13 +16,22 @@ class AccountRegistrationService
     public const ROLE_BRANCH_ADMIN = 2;
     public const ROLE_STAFF       = 3;
     public const ROLE_CLIENT      = 4;
+    public const ROLE_COLLECTOR   = 5;
 
-    /** Roles a System Admin may create from the Create Account page. */
+    /**
+     * Roles a System Admin may create. Creating another System Admin is allowed,
+     * but createByAdmin() then insists on the 'adminPasswordConfirmed' option.
+     */
     public const ADMIN_CREATABLE_ROLES = [
         self::ROLE_BRANCH_ADMIN => 'Branch Admin',
         self::ROLE_STAFF        => 'Staff',
+        self::ROLE_COLLECTOR    => 'Collector',
         self::ROLE_CLIENT       => 'Client (Plan Holder)',
+        self::ROLE_ADMIN        => 'System Admin',
     ];
+
+    /** Roles whose government ID must be verified when the account is created. */
+    public const ID_REQUIRED_ROLES = [self::ROLE_ADMIN, self::ROLE_BRANCH_ADMIN, self::ROLE_STAFF, self::ROLE_COLLECTOR];
 
     /** Roles a Branch Admin may create (own branch only). */
     public const BRANCH_ADMIN_CREATABLE_ROLES = [
@@ -52,7 +61,7 @@ class AccountRegistrationService
     }
 
     /** Roles that belong to a branch and so require one. */
-    public const BRANCH_ROLES = [self::ROLE_BRANCH_ADMIN, self::ROLE_STAFF];
+    public const BRANCH_ROLES = [self::ROLE_BRANCH_ADMIN, self::ROLE_STAFF, self::ROLE_COLLECTOR];
 
     private const FIRST_ACCOUNT_LOCK = 'caresync_first_account';
 
@@ -69,6 +78,7 @@ class AccountRegistrationService
             'username'          => 'required|min_length[4]|max_length[50]|is_unique[users.username]',
             'email'             => 'required|valid_email|max_length[100]|is_unique[users.email]',
             'first_name'        => 'required|max_length[50]',
+            'middle_name'       => 'permit_empty|max_length[50]',
             'last_name'         => 'required|max_length[50]',
             'unique_identifier' => 'permit_empty|max_length[100]',
             'contact_number'    => 'permit_empty|max_length[20]',
@@ -160,6 +170,8 @@ class AccountRegistrationService
     ): array {
         $clientGetsBranch = (bool) ($options['clientGetsBranch'] ?? false);
         $temporary        = (bool) ($options['temporaryPassword'] ?? false);
+        $isCollector      = (bool) ($options['isCollector'] ?? false);
+        $mustChange       = (bool) ($options['mustChangePassword'] ?? false);
 
         // Creator limits, enforced here whatever the form or controller sent.
         // Branch Admin / Staff: only the roles they are allowed to create, and
@@ -184,6 +196,12 @@ class AccountRegistrationService
             throw new \InvalidArgumentException('That role cannot be created here.');
         }
 
+        // A new System Admin is the most powerful account there is: the creating
+        // admin must have re-entered their own password (checked by the caller).
+        if ($roleId === self::ROLE_ADMIN && empty($options['adminPasswordConfirmed'])) {
+            throw new \InvalidArgumentException('Enter your own password to create another System Admin.');
+        }
+
         $branchRole = in_array($roleId, self::BRANCH_ROLES, true);
 
         if ($branchRole && ($branchId === null || $branchId <= 0)) {
@@ -193,6 +211,13 @@ class AccountRegistrationService
         $keepBranch = $branchRole || ($clientGetsBranch && $roleId === self::ROLE_CLIENT);
 
         $extra = [];
+        // "Can collect payments" only means something for Staff.
+        if ($roleId === self::ROLE_STAFF && $isCollector) {
+            $extra['is_collector'] = 1;
+        }
+        if (! $temporary && $mustChange) {
+            $extra['must_change_password'] = 1;
+        }
         if ($temporary) {
             $loginDetails = new LoginDetailsService();
             $input['password'] = $loginDetails->generatePassword();
@@ -244,6 +269,7 @@ class AccountRegistrationService
             'username'             => trim((string) ($input['username'] ?? '')),
             'email'                => trim((string) ($input['email'] ?? '')),
             'first_name'           => trim((string) ($input['first_name'] ?? '')),
+            'middle_name'          => trim((string) ($input['middle_name'] ?? '')) ?: null,
             'last_name'            => trim((string) ($input['last_name'] ?? '')),
             'contact_number'       => trim((string) ($input['contact_number'] ?? '')),
             'password_hash'        => password_hash((string) ($input['password'] ?? ''), PASSWORD_DEFAULT),

@@ -23,7 +23,7 @@ $routes->group('api', static function (RouteCollection $routes) {
     $routes->group('id-verification', ['filter' => 'auth'], static function (RouteCollection $routes) {
         $routes->get('types', 'Api\IdVerificationController::idTypes');
         $routes->post('verify', 'Api\IdVerificationController::verify');
-        // For Users::create() (Admin/Branch Admin/Staff creating someone
+        // For Users > Add user (System Admin creating someone
         // else's account) - role-checked inside the controller itself.
         $routes->post('verify-pending', 'Api\IdVerificationController::verifyPending');
     });
