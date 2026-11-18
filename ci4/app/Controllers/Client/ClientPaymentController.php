@@ -228,6 +228,9 @@ class ClientPaymentController extends BaseController
             return redirect()->to('/client/payment')->with('error', 'No active plan found for payment submission.');
         }
 
+        $claimAvail = new \App\Services\ClaimAvailService();
+        $entry      = $claimAvail->recordingEntry((int) $plan['plan_id']);
+
         $schedule = (new PaymentService())->paymentSchedule($plan);
 
         // The GCash account of the collector assigned to this client's
@@ -248,6 +251,20 @@ class ClientPaymentController extends BaseController
                 'year' => (int) date('Y', $monthStart),
                 'short' => date('M', $monthStart),
             ];
+        }
+
+        if ($entry['amount_mode']) {
+            // This client also owes a package amount: enter an AMOUNT, with a preview of where it goes.
+            return view('client/payment_make_amount', [
+                'role_layout'  => 'layouts/plan_holder',
+                'page_title'   => 'Make payment',
+                'show_page_head' => false,
+                'plan'         => $plan,
+                'balances'     => $claimAvail->balances((int) $plan['plan_id']),
+                'has_down_due' => $entry['down_avail'] !== null,
+                'down_left'    => $entry['down_left'],
+                'gcash'        => $this->gcashDisplay($gcashAccount),
+            ]);
         }
 
         return view('client/payment_make', [
@@ -310,6 +327,11 @@ class ClientPaymentController extends BaseController
         $plan = $this->latestPlan((int) $planHolder['plan_holder_id']);
         if (! $plan) {
             return redirect()->to('/client/payment')->with('error', 'No active plan found for payment submission.');
+        }
+
+        $claimAvail = new \App\Services\ClaimAvailService();
+        if ($claimAvail->recordingEntry((int) $plan['plan_id'])['amount_mode']) {
+            return $this->submitAmountPayment($plan, $planHolder, $claimAvail);
         }
 
         $schedule = (new PaymentService())->paymentSchedule($plan);
@@ -393,6 +415,62 @@ class ClientPaymentController extends BaseController
         }
 
         return redirect()->to('/client/payment')->with('success', 'GCash payment submitted. Waiting for branch admin verification.');
+    }
+
+    /**
+     * GCash payment from a client who also owes a package amount. The amount is what they typed; the
+     * server decides where it goes (ClaimAvailService, oldest due first; a down payment only to the
+     * down payment) and the payment waits for verification like any client payment.
+     */
+    private function submitAmountPayment(array $plan, array $planHolder, \App\Services\ClaimAvailService $claimAvail)
+    {
+        $rules = [
+            'amount' => 'required|decimal',
+            'reference_number' => 'required|regex_match[/^\d{13}$/]',
+        ];
+        $messages = ['reference_number' => ['regex_match' => 'Enter a valid 13-digit GCash reference number.']];
+        if (! $this->validate($rules, $messages)) {
+            return redirect()->to('/client/payment/make')->withInput()->with('error', implode(' ', $this->validator->getErrors()));
+        }
+
+        $planId = (int) $plan['plan_id'];
+        $kind   = (string) $this->request->getPost('payment_kind') === 'down_payment' ? 'down_payment' : 'regular';
+        $prep   = $claimAvail->prepareAmountPayment($planId, (float) $this->request->getPost('amount'), date('Y-m-d'), $kind);
+        if (! $prep['ok']) {
+            return redirect()->to('/client/payment/make')->withInput()->with('error', (string) ($prep['error'] ?? 'Check the amount.'));
+        }
+
+        $reference = trim((string) $this->request->getPost('reference_number'));
+        if ((new PaymentModel())->where('reference_number', $reference)->first()) {
+            return redirect()->to('/client/payment/make')->withInput()->with('error', 'Duplicate reference number detected. Please verify your reference number.');
+        }
+
+        $payload = [
+            'plan_id' => $planId,
+            'amount' => $prep['amount'],
+            'months_covered' => (int) $prep['months_covered'],
+            'payment_type' => $prep['payment_type'],
+            'avail_id' => $prep['avail_id'],
+            'payment_date' => date('Y-m-d'),
+            'payment_method' => 'gcash',
+            'reference_number' => $reference,
+            'received_by' => null,
+            'branch_id' => (int) ($planHolder['branch_id'] ?? 0),
+            'status' => 'pending',
+            'coverage_start' => $prep['coverage_start'],
+            'coverage_end' => $prep['coverage_end'],
+            'remarks' => 'Submitted by client, awaiting branch verification',
+        ];
+
+        $paymentModel = new PaymentModel();
+        $paymentId = (int) $paymentModel->insert($payload, true);
+        if ($paymentId > 0) {
+            $paymentModel->update($paymentId, [
+                'official_receipt_number' => (new PaymentService())->generateReceiptNumber($paymentId, $payload['payment_date']),
+            ]);
+        }
+
+        return redirect()->to('/client/payment')->with('success', 'GCash payment submitted (' . $prep['text'] . '). Waiting for verification.');
     }
 
     /** The logged-in client's own ledger as a PDF - never anyone else's. */

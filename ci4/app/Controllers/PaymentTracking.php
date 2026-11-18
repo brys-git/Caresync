@@ -148,7 +148,8 @@ class PaymentTracking extends BaseController
             'plan_id' => 'required|is_natural_no_zero',
             'amount' => 'required|decimal',
             // The upper limit is the plan's remaining months, checked below.
-            'months_covered' => 'required|is_natural_no_zero',
+            // Required for a normal plan; a client who also owes a package amount enters an AMOUNT instead.
+            'months_covered' => 'permit_empty|is_natural',
             'payment_date' => 'required|valid_date[Y-m-d]',
             // Panel brief, section 3: support both cash and GCash here, not just cash.
             'payment_method' => 'required|in_list[cash,gcash]',
@@ -178,17 +179,42 @@ class PaymentTracking extends BaseController
         // contributions (verified AND pending ones counted), so payments never
         // overlap or leave a gap, and the last month is its real remainder
         // rather than fee x months.
-        $projection = (new PaymentService())->projectPayment($plan, $monthsCovered);
-        if ($projection['months'] < $monthsCovered) {
-            return redirect()->back()->withInput()->with('error', $projection['months'] > 0
-                ? 'Months in advance cannot be more than ' . $projection['months'] . ' - that is all this plan has left to pay.'
-                : 'This plan has no months left to pay.');
-        }
-        $amount = $projection['amount'];
+        $claimAvail     = new \App\Services\ClaimAvailService();
+        $paymentType    = 'monthly_contribution';
+        $availId        = null;
+        $allocationText = '';
 
-        // Remaining balance from the one shared calculation (plans.remaining_balance is not maintained).
-        if ($amount > (float) ((new \App\Services\ClientPlanSummary())->forPlan((int) $plan['plan_id'])['remaining_balance'] ?? 0)) {
-            return redirect()->back()->withInput()->with('error', 'Payment exceeds remaining balance.');
+        if ($claimAvail->recordingEntry($planId)['amount_mode']) {
+            // This client also owes a package amount: the entry is an AMOUNT, and it is split
+            // between the plan and the package (oldest due first). A package down payment is
+            // chosen explicitly and goes only to the down payment.
+            $kind = (string) $this->request->getPost('payment_kind') === 'down_payment' ? 'down_payment' : 'regular';
+            $prep = $claimAvail->prepareAmountPayment($planId, (float) $this->request->getPost('amount'), (string) $this->request->getPost('payment_date'), $kind);
+            if (! $prep['ok']) {
+                return redirect()->back()->withInput()->with('error', (string) ($prep['error'] ?? 'Check the amount.'));
+            }
+            $amount         = $prep['amount'];
+            $monthsCovered  = (int) $prep['months_covered'];
+            $paymentType    = (string) $prep['payment_type'];
+            $availId        = $prep['avail_id'];
+            $allocationText = (string) $prep['text'];
+            $projection     = ['start' => $prep['coverage_start'], 'end' => $prep['coverage_end']];
+        } else {
+            if ((int) $this->request->getPost('months_covered') < 1) {
+                return redirect()->back()->withInput()->with('error', 'Choose how many months this payment covers.');
+            }
+            $projection = (new PaymentService())->projectPayment($plan, $monthsCovered);
+            if ($projection['months'] < $monthsCovered) {
+                return redirect()->back()->withInput()->with('error', $projection['months'] > 0
+                    ? 'Months in advance cannot be more than ' . $projection['months'] . ' - that is all this plan has left to pay.'
+                    : 'This plan has no months left to pay.');
+            }
+            $amount = $projection['amount'];
+
+            // Remaining balance from the one shared calculation (plans.remaining_balance is not maintained).
+            if ($amount > (float) ((new \App\Services\ClientPlanSummary())->forPlan((int) $plan['plan_id'])['remaining_balance'] ?? 0)) {
+                return redirect()->back()->withInput()->with('error', 'Payment exceeds remaining balance.');
+            }
         }
 
 
@@ -218,6 +244,8 @@ class PaymentTracking extends BaseController
             'plan_id' => $planId,
             'amount' => $amount,
             'months_covered' => $monthsCovered,
+            'payment_type' => $paymentType,
+            'avail_id' => $availId,
             'payment_date' => (string) $this->request->getPost('payment_date'),
             'payment_method' => $paymentMethod,
             'reference_number' => $referenceNumber !== '' ? $referenceNumber : null,
@@ -261,7 +289,7 @@ class PaymentTracking extends BaseController
         $userId = (int) (db_connect()->table('plan_holders')->select('user_id')->where('plan_holder_id', (int) $plan['plan_holder_id'])->get()->getRowArray()['user_id'] ?? 0);
         if ($userId > 0) {
             if ($status === 'paid') {
-                $notificationService->notify($userId, $this->paymentApprovedMessage($monthsCovered, $plan), 'payment_approved');
+                $notificationService->notify($userId, $allocationText !== '' ? 'Your payment was recorded and confirmed: ' . $allocationText : $this->paymentApprovedMessage($monthsCovered, $plan), 'payment_approved');
             } else {
                 $notificationService->notify($userId, 'Your ' . strtoupper($paymentMethod) . ' payment was recorded and is pending branch verification.', 'payment_pending');
             }
@@ -849,6 +877,11 @@ class PaymentTracking extends BaseController
                 $remaining = 0;
             }
             $plan['remaining_months'] = max(0, (int) $remaining);
+            // A client who also owes a package amount is entered by AMOUNT (with a preview).
+            $entry = (new \App\Services\ClaimAvailService())->recordingEntry((int) $plan['plan_id']);
+            $plan['amount_mode']   = $entry['amount_mode'];
+            $plan['has_down_due']  = $entry['down_avail'] !== null;
+            $plan['down_left']     = $entry['down_left'];
         }
         unset($plan);
 

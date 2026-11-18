@@ -30,5 +30,7 @@ class PaymentModel extends Model
         'discount_reason',
         'coverage_start',
         'coverage_end',
+        'payment_type',
+        'avail_id',
     ];
 }

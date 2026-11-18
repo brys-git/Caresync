@@ -114,6 +114,8 @@ $routes->post('plan-builder/store', 'PlanBuilder::store', ['filter' => 'role:1,2
 // inclusions to preview (read-only - inclusions are edited on Services &
 // Packages, not here). role:1,2 matches who can reach the create/edit form.
 $routes->get('plan-builder/package-inclusions', 'PlanBuilder::packageInclusions', ['filter' => 'role:1,2']);
+// Where a payment will go (plan months / package instalments): preview on the recording screens.
+$routes->get('payments/allocation-preview', 'PaymentPreview::allocation', ['filter' => 'auth']);
 $routes->get('plan-builder/(:num)', 'PlanBuilder::show/$1', ['filter' => 'role:1,2,3']);
 $routes->get('plan-builder/(:num)/edit', 'PlanBuilder::edit/$1', ['filter' => 'role:1']);
 $routes->post('plan-builder/(:num)/update', 'PlanBuilder::update/$1', ['filter' => 'role:1']);

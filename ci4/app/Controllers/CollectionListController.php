@@ -126,8 +126,12 @@ class CollectionListController extends BaseController
         }
 
         [, , , $remainingMonths] = (new PaymentService())->remainingPayableMonths($plan);
+        $entry = (new \App\Services\ClaimAvailService())->recordingEntry($planId);
 
         return view('collection_list/record_payment', [
+            'amount_mode' => $entry['amount_mode'],
+            'has_down_due' => $entry['down_avail'] !== null,
+            'down_left' => $entry['down_left'],
             'role_layout' => $this->collectorLayout(),
             'page_title' => 'Record Payment',
             'page_sub' => 'Cash collected in the field - a branch admin still verifies it before it counts.',
@@ -164,17 +168,36 @@ class CollectionListController extends BaseController
         }
 
         $rules = [
-            'months_covered' => 'required|is_natural_no_zero',
+            // Required for a normal plan; a client who also owes a package amount enters an AMOUNT.
+            'months_covered' => 'permit_empty|is_natural',
             'official_receipt_number' => 'required|max_length[100]',
         ];
         if (! $this->validate($rules)) {
             return redirect()->back()->withInput()->with('error', implode(' ', $this->validator->getErrors()));
         }
 
-        $monthsCovered = (int) $this->request->getPost('months_covered');
-        $projection = (new PaymentService())->projectPayment($plan, $monthsCovered);
-        if ($monthsCovered < 1 || $projection['months'] < $monthsCovered) {
-            return redirect()->back()->withInput()->with('error', 'Months covered must be between 1 and ' . $projection['months'] . ' - this plan cannot accept more than that.');
+        $claimAvail     = new \App\Services\ClaimAvailService();
+        $paymentType    = 'monthly_contribution';
+        $availId        = null;
+        $allocationText = '';
+
+        if ($claimAvail->recordingEntry($planId)['amount_mode']) {
+            $kind = (string) $this->request->getPost('payment_kind') === 'down_payment' ? 'down_payment' : 'regular';
+            $prep = $claimAvail->prepareAmountPayment($planId, (float) $this->request->getPost('amount'), date('Y-m-d'), $kind);
+            if (! $prep['ok']) {
+                return redirect()->back()->withInput()->with('error', (string) ($prep['error'] ?? 'Check the amount.'));
+            }
+            $monthsCovered  = (int) $prep['months_covered'];
+            $paymentType    = (string) $prep['payment_type'];
+            $availId        = $prep['avail_id'];
+            $allocationText = (string) $prep['text'];
+            $projection     = ['amount' => $prep['amount'], 'start' => $prep['coverage_start'], 'end' => $prep['coverage_end']];
+        } else {
+            $monthsCovered = (int) $this->request->getPost('months_covered');
+            $projection = (new PaymentService())->projectPayment($plan, $monthsCovered);
+            if ($monthsCovered < 1 || $projection['months'] < $monthsCovered) {
+                return redirect()->back()->withInput()->with('error', 'Months covered must be between 1 and ' . $projection['months'] . ' - this plan cannot accept more than that.');
+            }
         }
 
         $receiptNumber = trim((string) $this->request->getPost('official_receipt_number'));
@@ -195,6 +218,8 @@ class CollectionListController extends BaseController
             'plan_id' => $planId,
             'amount' => $amount,
             'months_covered' => $monthsCovered,
+            'payment_type' => $paymentType,
+            'avail_id' => $availId,
             'payment_date' => date('Y-m-d'),
             'payment_method' => 'cash',
             'official_receipt_number' => $receiptNumber,
@@ -219,7 +244,7 @@ class CollectionListController extends BaseController
         $commissionText = '₱' . number_format($projectedCommission, 2);
 
         return redirect()->to(base_url('collector/collection-list'))
-            ->with('success', 'Payment recorded for ' . $plan['client_name'] . '. It now shows as Awaiting Verification. Your ' . $commissionText . ' commission will count once your branch admin verifies it.');
+            ->with('success', 'Payment recorded for ' . $plan['client_name'] . ($allocationText !== '' ? ' (' . $allocationText . ')' : '') . '. It now shows as Awaiting Verification. Your ' . $commissionText . ' commission will count once your branch admin verifies it.');
     }
 
     /**

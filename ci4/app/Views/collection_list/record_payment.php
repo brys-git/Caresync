@@ -27,12 +27,30 @@
             </div>
         </div>
 
-        <?php if ($remaining_months <= 0): ?>
+        <?php $amountMode = ! empty($amount_mode); ?>
+        <?php if ($remaining_months <= 0 && ! $amountMode): ?>
             <div class="alert alert-info mb-0">This plan's current cycle is already fully covered. Nothing more to collect right now.</div>
         <?php else: ?>
             <form method="post" action="<?= base_url('collector/collection-list/record-payment/' . (int) $plan['plan_id']) ?>" id="recordPaymentForm" data-cs-once>
                 <?= csrf_field() ?>
                 <div class="row g-3">
+                    <?php if ($amountMode): ?>
+                    <div class="col-md-4">
+                        <label class="form-label" for="payment_kind">This payment is for</label>
+                        <select id="payment_kind" name="payment_kind" class="form-select">
+                            <option value="regular">Plan and package instalments</option>
+                            <?php if (! empty($has_down_due)): ?><option value="down_payment">Package down payment (<?= cs_money($down_left ?? 0) ?> due)</option><?php endif; ?>
+                        </select>
+                        <div class="form-text">This client also has a package amount to pay.</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="amount">Amount received</label>
+                        <input id="amount" name="amount" type="number" step="0.01" min="0.01" class="form-control" required value="<?= esc((string) old('amount', '')) ?>">
+                        <input type="hidden" id="months_covered" value="0">
+                        <strong id="totalAmountDisplay" class="d-none"></strong>
+                    </div>
+                    <div class="col-12"><div class="alert alert-info mb-0 d-none" id="allocationPreview" role="status"></div></div>
+                    <?php else: ?>
                     <div class="col-md-4">
                         <label class="form-label" for="months_covered">Months Covered</label>
                         <select id="months_covered" name="months_covered" class="form-select" required>
@@ -47,6 +65,7 @@
                         <strong id="totalAmountDisplay" class="fs-5"></strong>
                         <div class="form-text">Your commission when verified: <strong id="commissionEstimate" class="cs-money--brass"></strong> (estimate)</div>
                     </div>
+                    <?php endif; ?>
                     <div class="col-md-4">
                         <label class="form-label d-block">Payment Method</label>
                         <strong>Cash</strong>
@@ -102,7 +121,8 @@
     </div>
 </section>
 
-<?php if ($remaining_months > 0): ?>
+<?php if ($remaining_months > 0 || ! empty($amount_mode)): ?>
+<script src="<?= base_url('assets/js/allocation-preview.js') ?>"></script>
 <script>
     (function () {
         const monthlyFee = Number('<?= esc((string) ($plan['monthly_fee'] ?? 0)) ?>');
@@ -123,7 +143,24 @@
             return '₱' + value.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
+        // A client who also owes a package amount: the amount is typed, with a preview of where it goes.
+        const amountInput = document.getElementById('amount');
+        const kindSelect = document.getElementById('payment_kind');
+        const previewBox = document.getElementById('allocationPreview');
+        const amountMode = !!amountInput;
+        if (amountMode && window.csAllocationPreview) {
+            csAllocationPreview({
+                url: '<?= base_url('payments/allocation-preview') ?>',
+                plan: function () { return '<?= (int) $plan['plan_id'] ?>'; },
+                amount: amountInput, date: null,
+                kind: function () { return kindSelect ? kindSelect.value : 'regular'; },
+                out: previewBox,
+            });
+            if (kindSelect) { kindSelect.addEventListener('change', function () { amountInput.dispatchEvent(new Event('input')); }); }
+        }
+
         function currentTotal() {
+            if (amountMode) { return Number(amountInput.value || 0); }
             const months = Number(monthsSelect.value || 1);
             return monthlyFee * months;
         }
@@ -133,7 +170,7 @@
             commissionDisplay.textContent = formatMoney(currentTotal() * commissionRate);
         }
 
-        monthsSelect.addEventListener('change', updateTotal);
+        if (!amountMode) { monthsSelect.addEventListener('change', updateTotal); }
         updateTotal();
 
         openModalBtn.addEventListener('click', function () {
@@ -141,7 +178,8 @@
                 return;
             }
 
-            confirmMonths.textContent = monthsSelect.value + ' month(s)';
+            if (amountMode && !amountInput.reportValidity()) { return; }
+            confirmMonths.textContent = amountMode ? (previewBox.textContent || 'by amount') : (monthsSelect.value + ' month(s)');
             confirmTotal.textContent = formatMoney(currentTotal());
             confirmReceipt.textContent = receiptInput.value.trim();
             confirmCheck.checked = false;

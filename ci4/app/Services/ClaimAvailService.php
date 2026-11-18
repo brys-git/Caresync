@@ -981,6 +981,74 @@ class ClaimAvailService
         ]);
     }
     /* ======================================================================
+     * Recording screens (staff, branch admin, collector, client GCash)
+     * ==================================================================== */
+
+    /**
+     * How a payment for this plan is entered. A client with a package amount to pay is asked for an
+     * AMOUNT (with a preview of where it goes); a client without one keeps the months-based entry.
+     *
+     * @return array{amount_mode:bool, down_avail:?array<string,mixed>, down_left:float}
+     */
+    public function recordingEntry(int $planId): array
+    {
+        $none = ['amount_mode' => false, 'down_avail' => null, 'down_left' => 0.0];
+        if (! $this->hasPackageItems($planId)) {
+            return $none;
+        }
+
+        $avail = db_connect()->table('package_avails')->where('plan_id', $planId)->where('status', 'awaiting_down_payment')->orderBy('avail_id')->get(1)->getRowArray();
+        $left  = $avail ? max(0.0, round((float) $avail['down_payment_amount'] - $this->downPaymentPaid((int) $avail['avail_id']), 2)) : 0.0;
+
+        return ['amount_mode' => true, 'down_avail' => $avail ?: null, 'down_left' => $left];
+    }
+
+    /**
+     * Everything a recording screen needs to save a payment entered as an amount: where it goes,
+     * the payment type, the months it covers and the coverage period. The server always computes
+     * this itself; the preview on the screen is only a convenience.
+     *
+     * @param string $kind 'regular' (plan contributions + instalments, oldest first) or 'down_payment'
+     *
+     * @return array{ok:bool, error?:string, payment_type?:string, avail_id?:?int, amount?:float, months_covered?:int, coverage_start?:?string, coverage_end?:?string, text?:string, excess?:float}
+     */
+    public function prepareAmountPayment(int $planId, float $amount, string $paymentDate, string $kind = 'regular'): array
+    {
+        $entry = $this->recordingEntry($planId);
+        if (! $entry['amount_mode']) {
+            return ['ok' => false, 'error' => 'This plan has no package amount to pay.'];
+        }
+
+        if ($kind === 'down_payment') {
+            if ($entry['down_avail'] === null) {
+                return ['ok' => false, 'error' => 'There is no package down payment waiting on this plan.'];
+            }
+            $prev = $this->previewAllocation($planId, $amount, $paymentDate, 'avail_down_payment', (int) $entry['down_avail']['avail_id']);
+            if (! $prev['ok']) {
+                return ['ok' => false, 'error' => (string) ($prev['error'] ?? 'Check the amount.')];
+            }
+
+            return ['ok' => true, 'payment_type' => 'avail_down_payment', 'avail_id' => (int) $entry['down_avail']['avail_id'], 'amount' => round($amount, 2), 'months_covered' => 0, 'coverage_start' => null, 'coverage_end' => null, 'text' => $prev['text'], 'excess' => 0.0];
+        }
+
+        $prev = $this->previewAllocation($planId, $amount, $paymentDate);
+        if (! $prev['ok']) {
+            return ['ok' => false, 'error' => (string) ($prev['error'] ?? 'Check the amount.')];
+        }
+        if ($prev['excess'] > 0.004) {
+            return ['ok' => false, 'error' => 'That is ' . $this->money($prev['excess']) . ' more than this plan and its package can take. Lower the amount.'];
+        }
+
+        $due = array_values(array_map(static fn (array $sl): string => (string) $sl['due'], array_filter($prev['slices'], static fn (array $sl): bool => $sl['kind'] === 'plan')));
+        sort($due);
+
+        return [
+            'ok' => true, 'payment_type' => 'monthly_contribution', 'avail_id' => null, 'amount' => round($amount, 2),
+            'months_covered' => count($due), 'coverage_start' => $due[0] ?? null, 'coverage_end' => $due === [] ? null : PlanLedgerService::addDays(PlanLedgerService::addMonths((string) end($due), 1), -1),
+            'text' => $prev['text'], 'excess' => 0.0,
+        ];
+    }
+    /* ======================================================================
      * Small helpers
      * ==================================================================== */
 
