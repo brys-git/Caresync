@@ -17,8 +17,7 @@ use App\Services\NotificationService;
  *
  * Services & Packages redesign: the Regular Wood Casket package
  * (packages.is_damayan_entitlement = 1) is the standard Damayan Plan
- * Holder entitlement - it shows CLAIM (free, once the ₱14,500 contribution
- * target is fully paid) instead of AVAILABLE. Everything else in this
+ * Holder entitlement - it shows CLAIM (free) instead of AVAILABLE. Everything else in this
  * controller (browsing, details, apply forms, submission, document
  * uploads) is the same architecture used before the redesign, just
  * extended with the entitlement/benefit-preview data the new views need.
@@ -273,9 +272,9 @@ class ClientServiceController extends BaseController
                 'locked_reason' => $claimStatus['reason'],
             ];
         } elseif ($canApply) {
-            // Panel damayan credit: exactly TOTAL_CONTRIBUTION, capped so it
-            // can never exceed the package price itself.
-            $benefitCredit = min((float) $package['base_price'], MembershipService::TOTAL_CONTRIBUTION);
+            // Credit = the price of the client's OWN plan, capped so it can never
+            // exceed the package price itself.
+            $benefitCredit = min((float) $package['base_price'], $this->planTarget($planId));
         }
 
         return view('client/package_details', [
@@ -389,7 +388,7 @@ class ClientServiceController extends BaseController
             : null;
 
         $benefitCredit = (! $isEntitlement && $canApply)
-            ? min((float) $package['base_price'], MembershipService::TOTAL_CONTRIBUTION)
+            ? min((float) $package['base_price'], $this->planTarget((int) ($activePlan['plan_id'] ?? 0)))
             : 0.0;
 
         return view('client/package_apply', [
@@ -698,7 +697,7 @@ class ClientServiceController extends BaseController
      * this, so they can never disagree.
      *
      * Replaces the old ($canApply && hasFullyPaidContribution()) gate,
-     * which wrongly required the ENTIRE ₱14,500 cycle paid off just to
+     * which wrongly required the ENTIRE plan price paid off just to
      * claim the entitled package. Correct rule: 2+ verified months in the
      * current cycle - same threshold as availing anything else - and not
      * already claimed in this cycle. "Claimed but still paying it off" is
@@ -708,6 +707,14 @@ class ClientServiceController extends BaseController
      *
      * @return array{eligible: bool, reason: ?string}
      */
+    /** The contract total of one plan (its own price - PlanLedgerService::targetFor()). */
+    private function planTarget(int $planId): float
+    {
+        $plan = $planId > 0 ? db_connect()->table('plans')->where('plan_id', $planId)->get()->getRowArray() : null;
+
+        return \App\Services\PlanLedgerService::targetFor($plan ?: []);
+    }
+
     private function entitlementClaimStatus(bool $canApply, ?array $membership, int $planId): array
     {
         return (new ClaimSubmissionService())->entitlementClaimStatus($canApply, $membership, $planId);

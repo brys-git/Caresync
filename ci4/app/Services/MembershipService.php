@@ -495,11 +495,9 @@ class MembershipService
 
     /**
      * Services & Packages redesign: whether a plan has fully re-paid the
-     * standard ₱14,500 contribution target for its current cycle - the
-     * gate for claiming the Regular Wood Casket (Damayan) entitlement
-     * again. `total_plan_amount` isn't an actual plans column today, so
-     * this always falls back to TOTAL_CONTRIBUTION, same as
-     * getMembershipSummary() already does elsewhere.
+     * contribution target for its current cycle (the price of ITS OWN plan,
+     * PlanLedgerService::targetFor()) - the gate for claiming the plan's package
+     * again.
      *
      * @param array $plan A plan row (as returned by PlanModel/getActivePlan)
      */

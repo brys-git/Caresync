@@ -4,7 +4,7 @@
 <?php
 $program = $program ?? ['name' => 'Damayan Burial Program'];
 $monthlyFee = (float) ($monthly_fee ?? 240.0);
-$totalContribution = (float) ($total_contribution ?? 14500.0);
+$totalContribution = (float) ($total_contribution ?? \App\Services\PlanLedgerService::targetFor([]));
 $entitlementPackage = $entitlement_package ?? null;
 $otherPackages = $other_packages ?? [];
 $services = $services ?? [];

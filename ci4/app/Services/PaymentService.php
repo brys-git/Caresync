@@ -79,62 +79,6 @@ class PaymentService
             ->getResultArray();
     }
 
-    public function getBranchPlans(int $branchId): array
-    {
-        $db = db_connect();
-        $columns = array_map(static fn ($field) => $field->name, $db->getFieldData('plans'));
-        $hasTotalPlanAmount = in_array('total_plan_amount', $columns, true);
-
-        $rows = $db->table('plans p')
-            ->select('p.plan_id, p.monthly_fee, p.months_paid, p.remaining_balance, p.status AS plan_status, ph.plan_holder_id, ph.branch_id, u.first_name, u.last_name')
-            ->join('plan_holders ph', 'ph.plan_holder_id = p.plan_holder_id', 'inner')
-            ->join('users u', 'u.user_id = ph.user_id', 'inner')
-            ->where('ph.branch_id', $branchId)
-            ->orderBy('u.first_name', 'ASC')
-            ->orderBy('u.last_name', 'ASC')
-            ->get()
-            ->getResultArray();
-
-        foreach ($rows as &$row) {
-            $planId = (int) ($row['plan_id'] ?? 0);
-            $monthlyFee = (float) ($row['monthly_fee'] ?? 0);
-            $monthsPaid = (int) ($row['months_paid'] ?? 0);
-            $remaining = (float) ($row['remaining_balance'] ?? 0);
-
-            $totalAmount = $monthlyFee;
-            if ($hasTotalPlanAmount && $planId > 0) {
-                $rawTotal = (float) ($db->table('plans')
-                    ->select('total_plan_amount')
-                    ->where('plan_id', $planId)
-                    ->get()
-                    ->getRowArray()['total_plan_amount'] ?? 0);
-
-                if ($rawTotal > 0) {
-                    $totalAmount = $rawTotal;
-                }
-            }
-
-            if ($totalAmount < $remaining) {
-                $totalAmount = $remaining;
-            }
-
-            $paidAmount = max(0, round($totalAmount - $remaining, 2));
-            if ($monthlyFee > 0 && $monthsPaid > 0 && $paidAmount <= 0) {
-                $paidAmount = round($monthlyFee * $monthsPaid, 2);
-                if ($totalAmount < $paidAmount) {
-                    $totalAmount = $paidAmount;
-                }
-            }
-
-            $row['client_name'] = trim(((string) ($row['first_name'] ?? '')) . ' ' . ((string) ($row['last_name'] ?? '')));
-            $row['total_amount'] = $totalAmount;
-            $row['paid_amount'] = $paidAmount;
-        }
-        unset($row);
-
-        return $rows;
-    }
-
     public function getPaymentHistory(int $planId): array
     {
         return db_connect()->table('payments pay')
@@ -349,7 +293,7 @@ class PaymentService
     {
         if ($totalPlanAmount === null) {
             $plan = db_connect()->table('plans')->where('plan_id', $planId)->get()->getRowArray();
-            $totalPlanAmount = $plan ? PlanLedgerService::targetFor($plan) : MembershipService::TOTAL_CONTRIBUTION;
+            $totalPlanAmount = PlanLedgerService::targetFor($plan ?: []);
         }
 
         return max(0.0, round($totalPlanAmount - $this->getTotalPaidForPlan($planId), 2));
@@ -543,8 +487,8 @@ class PaymentService
      * starting from the plan's first month plus every month already paid or
      * awaiting verification.
      *
-     * Amounts are capped at the cycle's ₱14,500 target, so the final month of
-     * a 61-month cycle is charged its ₱100 remainder, not a full ₱240.
+     * Amounts are capped at the cycle's plan-price target, so the final month of
+     * a cycle is charged only what is left (e.g. ₱100 on a ₱14,500 / ₱240 plan), not a full month.
      *
      * @return array{total_months:int, verified_months:int, pending_months:int, remaining_months:int, monthly_fee:float, target:float, paid_amount:float, remaining_amount:float, payable_amount:float, anchor:string, offset:int}
      */

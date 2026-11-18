@@ -281,7 +281,7 @@ class ClaimService
      * resetContributionCycleIfEntitlementClaim(), which zeroed
      * months_paid the instant ANY entitlement claim was approved - even
      * one approved before the plan holder had finished paying off the
-     * current ₱14,500 cycle, silently destroying that progress). Every
+     * current plan-price cycle, silently destroying that progress). Every
      * approved claim - entitlement or not - is stamped with the cycle it
      * was approved in, for a consistent audit trail alongside
      * payments.cycle_number. Only an entitlement-package (Regular Wood

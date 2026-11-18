@@ -54,7 +54,7 @@ class PlanLedgerService
         $reinstateFee = (float) ($opts['fee'] ?? $config->reinstatementFee);
         $forfeitAfter = array_key_exists('forfeit_after', $opts) ? $opts['forfeit_after'] : $config->forfeitAfterLapseDays;
         $lapsedClaims = (bool) ($opts['lapsed_can_claim'] ?? $config->lapsedCanClaimServices);
-        $target       = (float) ($opts['target'] ?? MembershipService::TOTAL_CONTRIBUTION);
+        $target       = (float) ($opts['target'] ?? self::targetFor($plan));
 
         $monthlyFee = (float) $plan['monthly_fee'];
         if ($monthlyFee <= 0) {
@@ -257,8 +257,10 @@ class PlanLedgerService
     /**
      * The contract total for a plan: the price of the membership program it was
      * registered on (membership_programs.plan_price), so a PHP 20,000 plan is
-     * PHP 20,000. Falls back to the standard 14,500 only when the plan has no
-     * program (or the program has no price).
+     * PHP 20,000. THE one place a contract total comes from: nothing else may use
+     * MembershipService::TOTAL_CONTRIBUTION as a total. The standard 14,500 is only
+     * the last-resort fallback here, when the plan has no program price and no
+     * stored amount (an empty array, e.g. a client with no plan yet, gets it too).
      *
      * @param array<string,mixed> $plan a plans row (program_id is what matters)
      */

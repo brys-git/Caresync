@@ -9,7 +9,10 @@ $membership_since = (string) ($membership_since ?? '');
 $branch_name = (string) ($branch_name ?? '');
 $statusLabel = (string) ($access['badge_label'] ?? 'Unregistered');
 $monthlyFee = (float) ($plan['monthly_fee'] ?? ($program['monthly_fee'] ?? 240));
-$planAmount = (float) ($plan['total_plan_amount'] ?? \App\Services\MembershipService::TOTAL_CONTRIBUTION);
+// The plan's own price (set from PlanLedgerService::targetFor(plan row)); the 14,500 fallback only when there is truly no plan.
+$planAmount = ! empty($plan['plan_id'])
+    ? (float) ($plan['total_plan_amount'] ?? \App\Services\PlanLedgerService::targetFor($plan))
+    : \App\Services\PlanLedgerService::targetFor([]);
 $paidAmount = 0.0;
 if (! empty($plan['plan_id'])) {
     $paidAmount = (float) ($plan['paid_amount'] ?? $plan['total_paid'] ?? 0);

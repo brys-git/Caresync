@@ -280,7 +280,7 @@ class ClaimSubmissionService
             $damayanBenefitApplied = 0.0;
             if (! empty($membership) && (! empty($membership['can_access_services']))) {
                 $planRow = $db->table('plans')->where('plan_id', $planId)->get()->getRowArray();
-                $damayanBenefitApplied = min($basePrice, $planRow ? PlanLedgerService::targetFor($planRow) : MembershipService::TOTAL_CONTRIBUTION);
+                $damayanBenefitApplied = min($basePrice, PlanLedgerService::targetFor($planRow ?: []));
             }
             $applicationAmount = $basePrice - $damayanBenefitApplied + ($burialAttireSelected ? self::BURIAL_ATTIRE_PRICE : 0.0);
         }

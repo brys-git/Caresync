@@ -95,7 +95,7 @@ class ClientRegistrationController extends BaseController
             // The default program's own figures (the registration form shows each
             // plan's own price when there is more than one to choose from).
             'monthly_fee' => (float) ($program['monthly_fee'] ?? 0) > 0 ? (float) $program['monthly_fee'] : MembershipService::MONTHLY_FEE,
-            'total_contribution' => (float) ($program['plan_price'] ?? 0) > 0 ? (float) $program['plan_price'] : MembershipService::TOTAL_CONTRIBUTION,
+            'total_contribution' => \App\Services\PlanLedgerService::targetFor(['program_id' => (int) ($program['id'] ?? 0)]),
         ]);
     }
 

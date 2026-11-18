@@ -7,15 +7,16 @@ use App\Models\PlanModel;
 /**
  * CareSync entitlement cycle model.
  *
- * A "cycle" is one ₱14,500 (MembershipService::TOTAL_CONTRIBUTION) window
- * of contributions toward the Regular Wood Casket (Damayan) entitlement.
+ * A "cycle" is one plan-price window (the price of the client's own plan,
+ * PlanLedgerService::targetFor(): PHP 14,500 on the Damayan Burial Program,
+ * PHP 20,000 on a PHP 20,000 plan) of contributions toward the plan's package.
  * plans.current_cycle_number identifies which window a plan is currently
  * in; payments.cycle_number and service_applications.cycle_number record
  * which cycle a specific payment or claim belongs/belonged to.
  *
  * A cycle only advances (closeCycleIfSettled()) once BOTH of these are
  * true, whichever happens last:
- *   (a) the cycle's ₱14,500 target is fully paid, and
+ *   (a) the cycle's plan-price target is fully paid, and
  *   (b) the entitlement package has been claimed (approved) in this cycle
  *
  * This replaces the old behaviour where approving a claim zeroed
@@ -25,10 +26,10 @@ use App\Models\PlanModel;
  * paying off the current cycle. Two states fall out of the two conditions
  * above not being met at the same time:
  *
- *   'claimed_owing'  - claimed early, ₱14,500 not yet fully paid. Keeps
+ *   'claimed_owing'  - claimed early, plan price not yet fully paid. Keeps
  *                       paying down the same cycle; CLAIM stays disabled
  *                       (already claimed this cycle).
- *   'paid_unclaimed' - ₱14,500 fully paid, no claim made yet. Owes
+ *   'paid_unclaimed' - plan price fully paid, no claim made yet. Owes
  *                       nothing further, CLAIM stays enabled indefinitely
  *                       until used. Nothing is overdue on a fully paid
  *                       plan: PlanLedgerService (the one overdue rule)
@@ -42,7 +43,7 @@ use App\Models\PlanModel;
  * months_paid and bumps this marker exactly as it always has, but never
  * touches current_cycle_number, so a plan holder who already claimed in
  * cycle 3 and then gets forfeited stays in cycle 3, still marked claimed,
- * and has to earn back to ₱14,500 within cycle 3 before it closes. Nothing
+ * and has to earn back to the plan price within cycle 3 before it closes. Nothing
  * claws back an already-issued casket.
  */
 class CycleService
@@ -57,7 +58,7 @@ class CycleService
     }
 
     /**
-     * The plan's current cycle: how much of the ₱14,500 target has been
+     * The plan's current cycle: how much of the plan-price target has been
      * paid, whether the entitlement has been claimed in this cycle, and
      * the resulting state. months_paid/amount_paid come straight from
      * plans.months_paid, which MembershipService::recalculateMonthsPaid()
@@ -67,13 +68,15 @@ class CycleService
      */
     public function currentCycle(int $planId): array
     {
+        // Used only when there is no plan row at all (planId <= 0 or not found).
+        // Every real plan goes through targetFor($plan) below.
         $default = [
             'plan_id' => $planId,
             'cycle_number' => 1,
             'amount_paid' => 0.0,
             'months_paid' => 0,
-            'target' => MembershipService::TOTAL_CONTRIBUTION,
-            'remaining' => MembershipService::TOTAL_CONTRIBUTION,
+            'target' => PlanLedgerService::targetFor([]),
+            'remaining' => PlanLedgerService::targetFor([]),
             'entitlement_claimed' => false,
             'is_fully_paid' => false,
             'state' => 'paying',

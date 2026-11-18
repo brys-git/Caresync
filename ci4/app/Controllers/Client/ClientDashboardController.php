@@ -33,7 +33,8 @@ class ClientDashboardController extends BaseController
         $latestPlan = $planHolder ? $membershipService->getMembershipSummary((int) $planHolder['plan_holder_id']) : null;
 
         if (! empty($latestPlan['plan_id'])) {
-            $totalContribution = (float) ($latestPlan['total_plan_amount'] ?? MembershipService::TOTAL_CONTRIBUTION);
+            // total_plan_amount was set by getMembershipSummary() from PlanLedgerService::targetFor(the plan row).
+            $totalContribution = (float) $latestPlan['total_plan_amount'];
             $paidAmount = $paymentService->getTotalPaidForPlan((int) $latestPlan['plan_id']);
             $latestPlan['paid_amount'] = $paidAmount;
             $latestPlan['total_paid'] = $paidAmount;

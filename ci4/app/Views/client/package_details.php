@@ -75,7 +75,7 @@ $eligibleToClaim = $isEntitlement && (bool) ($entitlement['eligible'] ?? false);
                     <div class="cs-routerow cs-routerow--total"><span>Amount due</span><?= cs_money(max(0, $basePrice - $benefitCredit)) ?></div>
                     <p class="cs-muted small mt-2 mb-3">As a Damayan Plan Holder, your remaining unpaid contribution is waived against this package - it is not added on top of the amount due above.</p>
                 <?php else: ?>
-                    <p class="cs-muted small mb-3">Full package price applies. Damayan Plan Holders in good standing receive a <?= cs_money(14500) ?> benefit credit toward this package.</p>
+                    <p class="cs-muted small mb-3">Full package price applies. Damayan Plan Holders in good standing receive a benefit credit equal to the price of their own plan toward this package.</p>
                 <?php endif; ?>
 
                 <?php if ($canApply): ?>
