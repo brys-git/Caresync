@@ -77,6 +77,7 @@ class CycleService
             'months_paid' => 0,
             'target' => PlanLedgerService::targetFor([]),
             'remaining' => PlanLedgerService::targetFor([]),
+            'package_remaining' => 0.0,
             'entitlement_claimed' => false,
             'is_fully_paid' => false,
             'state' => 'paying',
@@ -101,16 +102,14 @@ class CycleService
         $amountPaid = $monthsPaid * $monthlyFee;
         $isFullyPaid = $amountPaid >= $target;
 
-        $entitlementClaimed = db_connect()->table('service_applications sa')
-            ->join('packages p', 'p.package_id = sa.package_id', 'inner')
-            ->where('sa.plan_holder_id', (int) $plan['plan_holder_id'])
-            ->where('sa.cycle_number', $cycleNumber)
-            ->where('p.is_damayan_entitlement', 1)
-            ->where('sa.status', 'approved')
-            ->countAllResults() > 0;
+        // Claim of the plan's own package, or an avail (ClaimAvailService owns that rule).
+        $claimAvail = new ClaimAvailService();
+        $entitlementClaimed = $claimAvail->entitlementUsedInCycle((int) $plan['plan_holder_id'], $cycleNumber);
+        // What is still owed on avails: the cycle only closes when this is paid too.
+        $packageRemaining = $entitlementClaimed ? $claimAvail->packageOutstanding($planId) : 0.0;
 
         $state = 'paying';
-        if ($entitlementClaimed && ! $isFullyPaid) {
+        if ($entitlementClaimed && (! $isFullyPaid || $packageRemaining > 0.004)) {
             $state = 'claimed_owing';
         } elseif ($isFullyPaid && ! $entitlementClaimed) {
             $state = 'paid_unclaimed';
@@ -127,6 +126,7 @@ class CycleService
             'months_paid' => $monthsPaid,
             'target' => $target,
             'remaining' => max(0.0, $target - $amountPaid),
+            'package_remaining' => $packageRemaining,
             'entitlement_claimed' => $entitlementClaimed,
             'is_fully_paid' => $isFullyPaid,
             'state' => $state,
@@ -145,7 +145,9 @@ class CycleService
         }
 
         $cycle = $this->currentCycle($planId);
-        if (! $cycle['is_fully_paid'] || ! $cycle['entitlement_claimed']) {
+        // Closes only when the plan is fully paid, the entitlement was used (claim or avail) AND
+        // nothing is still owed on an avail.
+        if (! $cycle['is_fully_paid'] || ! $cycle['entitlement_claimed'] || ($cycle['package_remaining'] ?? 0.0) > 0.004) {
             return;
         }
 
