@@ -97,6 +97,46 @@ class ClaimService
      * @return array{ok: bool, message: string}
      */
     /**
+     * A note on a request, for the Branch Admin to see (Staff cannot decide an avail, so they leave
+     * a note instead). Internal: never shown to the client.
+     *
+     * @return array{ok: bool, message: string}
+     */
+    public function addNote(int $applicationId, int $branchId, int $userId, string $note): array
+    {
+        $note = trim($note);
+        if (mb_strlen($note) < 3) {
+            return ['ok' => false, 'message' => 'Write the note first.'];
+        }
+        if (mb_strlen($note) > 1000) {
+            return ['ok' => false, 'message' => 'Keep the note under 1,000 characters.'];
+        }
+        if ($this->findClaimForBranch($applicationId, $branchId) === null) {
+            return ['ok' => false, 'message' => 'Claim not found.'];
+        }
+
+        db_connect()->table('service_application_notes')->insert(['application_id' => $applicationId, 'user_id' => $userId, 'note' => $note]);
+
+        return ['ok' => true, 'message' => 'Note added for the Branch Admin.'];
+    }
+
+    /** @return list<array<string,mixed>> */
+    public function notesFor(int $applicationId): array
+    {
+        if (! db_connect()->tableExists('service_application_notes')) {
+            return [];
+        }
+
+        return db_connect()->table('service_application_notes n')
+            ->select('n.note, n.created_at, u.first_name, u.last_name, r.role_name')
+            ->join('users u', 'u.user_id = n.user_id', 'left')
+            ->join('roles r', 'r.role_id = u.role_id', 'left')
+            ->where('n.application_id', $applicationId)
+            ->orderBy('n.note_id', 'DESC')
+            ->get()->getResultArray();
+    }
+
+    /**
      * Approves a pending request. The rules (claim vs avail, who may approve what, the quote,
      * the down payment, the link to its service) live in ClaimAvailService; this stays as the
      * branch-scoped entry point the two controllers call.

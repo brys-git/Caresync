@@ -80,6 +80,12 @@ class CareSync extends BaseConfig
      */
     public int $availDownPaymentDays = 30;
 
+    /**
+     * Smallest amount worth financing. When what is left after the down payment is below this (for
+     * example a PHP 1,500 add-on), it is paid in full up front instead of in instalments.
+     */
+    public float $availMinFinancedAmount = 5000.0;
+
     /** Longest instalment term in months a Branch Admin may choose. */
     public int $availMaxTermMonths = 24;
 

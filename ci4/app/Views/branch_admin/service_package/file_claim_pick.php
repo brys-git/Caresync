@@ -1,7 +1,7 @@
 <?= $this->extend($role_layout) ?>
 
 <?= $this->section('content') ?>
-<?= view('partials/search_bar', ['action' => base_url('branch-admin/service-package/file-claim'), 'term' => $search, 'placeholder' => 'Name, mobile number or plan number']) ?>
+<?= view('partials/search_bar', ['action' => base_url($file_claim_path), 'term' => $search, 'placeholder' => 'Name, mobile number or plan number']) ?>
 
 <section class="cs-panel">
     <div class="cs-panel__body cs-panel__body--flush">
@@ -17,7 +17,7 @@
                                 <td><?= esc(trim($h['first_name'] . ' ' . $h['last_name'])) ?></td>
                                 <td><?= esc((string) ($h['unique_identifier'] ?: '-')) ?></td>
                                 <td><?= esc((string) ($h['contact_number'] ?: '-')) ?></td>
-                                <td class="cs-table__actions"><a class="btn btn-sm btn-primary" href="<?= base_url('branch-admin/service-package/file-claim/' . (int) $h['plan_holder_id']) ?>">File claim</a></td>
+                                <td class="cs-table__actions"><a class="btn btn-sm btn-primary" href="<?= base_url($file_claim_path . '/' . (int) $h['plan_holder_id']) ?>">File claim</a></td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>

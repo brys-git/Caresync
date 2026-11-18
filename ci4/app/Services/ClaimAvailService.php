@@ -51,6 +51,20 @@ class ClaimAvailService
      */
     public const AVAIL_USES_PLAN_ENTITLEMENT = true;
 
+    /**
+     * RULE (not yet confirmed by Kaagapay - change it here only): how single services and paid
+     * add-ons are paid. Until Kaagapay answers, they are treated as an AVAIL:
+     *   - a single service on its own (e.g. Balik Probinsya) = an avail of that service's price;
+     *   - add-ons on a CLAIM (e.g. Burial Attire) = their total is added to the balance as a package
+     *     amount, with the same down payment and instalment rules;
+     *   - add-ons on an AVAIL = added to the avail's package price.
+     * They need the Branch Admin (money terms) and the same 2-month rule. A small amount (below
+     * Config\CareSync::availMinFinancedAmount once the down payment is taken) is paid in full up
+     * front instead of in instalments. Set to false and services / add-ons owe nothing (the old,
+     * incorrect behaviour) - not recommended.
+     */
+    public const PRICED_EXTRAS_ARE_PACKAGE_AMOUNTS = true;
+
     /** Label stored in service_applications.rule_version / service_balances.rule_version for new records. */
     public const RULE_VERSION = 'v2';
 
@@ -208,7 +222,7 @@ class ClaimAvailService
                LEFT JOIN packages p ON p.package_id = sa.package_id
                $availJoin
               WHERE sa.plan_holder_id = ? AND sa.cycle_number = ? AND sa.status = 'approved'
-                AND (sa.request_type = 'claim' $availCheck
+                AND ((sa.request_type = 'claim' AND (" . ($this->tableReady('package_avails') ? "pa.avail_id IS NULL OR pa.status <> 'cancelled'" : '1=1') . ")) $availCheck
                      OR (sa.request_type IS NULL AND p.is_damayan_entitlement = 1))
               LIMIT 1",
             [$planHolderId, $cycleNumber]
@@ -232,7 +246,7 @@ class ClaimAvailService
         $availOk    = $this->tableReady('package_avails') ? "AND (pa.avail_id IS NULL OR pa.status <> 'cancelled')" : '';
 
         return $db->query(
-            "SELECT sa.application_id, sa.status, sa.request_type, sa.created_at, sa.package_id, s.status AS service_status
+            "SELECT sa.application_id, sa.status, sa.request_type, sa.created_at, sa.package_id, sa.awaiting_death_certificate, s.status AS service_status
                FROM service_applications sa
                LEFT JOIN service_balances sb ON sb.application_id = sa.application_id
                $availJoin
@@ -331,40 +345,111 @@ class ClaimAvailService
      * ==================================================================== */
 
     /**
-     * What a claim or avail of this package amounts to.
+     * What a request is worth, whatever it is: a package, a single service (with its route price),
+     * and any add-ons. Pure pricing - nothing is saved.
+     *
+     * @param array{package_id?:int, service_list_id?:int, route_id?:int, attire?:bool} $item
+     *
+     * @return array{type:string, kind:string, name:string, item_price:float, addons_total:float, addons_label:string, charge:float, free:bool, package_id:int, service_list_id:int}|null
+     */
+    public function priceItem(int $planHolderId, array $item): ?array
+    {
+        $db       = db_connect();
+        $plan     = $this->planFor($planHolderId);
+        $packageId = (int) ($item['package_id'] ?? 0);
+        $serviceId = (int) ($item['service_list_id'] ?? 0);
+        $attire   = ! empty($item['attire']) ? (float) ClaimSubmissionService::BURIAL_ATTIRE_PRICE : 0.0;
+        $charged  = self::PRICED_EXTRAS_ARE_PACKAGE_AMOUNTS;
+
+        if ($packageId > 0) {
+            $pkg = $db->table('packages')->select('package_id, package_name, base_price')->where('package_id', $packageId)->get(1)->getRowArray();
+            if ($pkg === null) {
+                return null;
+            }
+            $price = round((float) $pkg['base_price'], 2);
+            $type  = $plan === null ? self::TYPE_CLAIM : $this->requestType($plan, $packageId);
+            $addons = $charged ? $attire : 0.0;
+
+            return $type === self::TYPE_CLAIM
+                ? ['type' => self::TYPE_CLAIM, 'kind' => 'addons', 'name' => (string) $pkg['package_name'], 'item_price' => $price, 'addons_total' => $addons, 'addons_label' => $addons > 0 ? 'Burial Attire Package' : '', 'charge' => $addons, 'free' => true, 'package_id' => $packageId, 'service_list_id' => 0]
+                : ['type' => self::TYPE_AVAIL, 'kind' => 'package', 'name' => (string) $pkg['package_name'], 'item_price' => $price, 'addons_total' => $addons, 'addons_label' => $addons > 0 ? 'Burial Attire Package' : '', 'charge' => round($price + $addons, 2), 'free' => false, 'package_id' => $packageId, 'service_list_id' => 0];
+        }
+
+        if ($serviceId > 0) {
+            $svc = $db->table('service_list')->select('service_list_id, service_name, base_price')->where('service_list_id', $serviceId)->get(1)->getRowArray();
+            if ($svc === null) {
+                return null;
+            }
+            $price = round((float) $svc['base_price'], 2);
+            if ((int) ($item['route_id'] ?? 0) > 0) {
+                $route = $db->table('service_routes')->select('price')->where('route_id', (int) $item['route_id'])->where('service_list_id', $serviceId)->get(1)->getRowArray();
+                $price = $route ? round((float) $route['price'], 2) : $price;
+            }
+
+            return ['type' => 'service', 'kind' => 'service', 'name' => (string) $svc['service_name'], 'item_price' => $price, 'addons_total' => 0.0, 'addons_label' => '', 'charge' => $charged ? $price : 0.0, 'free' => false, 'package_id' => 0, 'service_list_id' => $serviceId];
+        }
+
+        return null;
+    }
+
+    /** The item an application row asks for. @return array{package_id:int, service_list_id:int, route_id:int, attire:bool} */
+    public function itemFromApplication(array $app): array
+    {
+        return ['package_id' => (int) ($app['package_id'] ?? 0), 'service_list_id' => (int) ($app['service_list_id'] ?? 0), 'route_id' => (int) ($app['selected_route_id'] ?? 0), 'attire' => ! empty($app['burial_attire_selected'])];
+    }
+
+    /**
+     * What a claim or avail of this package amounts to (kept for callers that only know a package).
+     *
+     * @return array<string,mixed>
+     */
+    public function quote(int $planHolderId, int $packageId, ?int $termMonths = null, bool $waive = false): array
+    {
+        return $this->quoteItem($planHolderId, ['package_id' => $packageId], $termMonths, $waive);
+    }
+
+    /**
+     * The exact quote for a request: what is free, what is added to the balance, the down payment,
+     * and the instalments. One function for the forms, the approval screen and the saved avail.
      *
      * @param int|null $termMonths  the term the Branch Admin chose (null = not chosen yet: no instalments)
      * @param bool     $waive       down payment waived by the Branch Admin
      *
      * @return array<string,mixed>
      */
-    public function quote(int $planHolderId, int $packageId, ?int $termMonths = null, bool $waive = false): array
+    public function quoteItem(int $planHolderId, array $item, ?int $termMonths = null, bool $waive = false): array
     {
-        $plan    = $this->planFor($planHolderId);
-        $package = db_connect()->table('packages')->select('package_id, package_name, base_price')->where('package_id', $packageId)->get(1)->getRowArray();
-        if ($plan === null || $package === null) {
-            return ['ok' => false, 'error' => 'Plan or package not found.'];
+        $plan   = $this->planFor($planHolderId);
+        $priced = $this->priceItem($planHolderId, $item);
+        if ($plan === null || $priced === null) {
+            return ['ok' => false, 'error' => 'Plan or item not found.'];
         }
 
         $planId   = (int) $plan['plan_id'];
-        $type     = $this->requestType($plan, $packageId);
         $balances = $this->balances($planId);
-        $price    = round((float) $package['base_price'], 2);
+        $charge   = $priced['charge'];
+        $min      = (float) $this->config->availMinFinancedAmount;
 
         $quote = [
             'ok'                    => true,
-            'type'                  => $type,
+            'type'                  => $priced['type'],
+            'kind'                  => $priced['kind'],
+            'free'                  => $priced['free'],
             'plan_id'               => $planId,
-            'package'               => ['package_id' => (int) $package['package_id'], 'name' => (string) $package['package_name'], 'price' => $price],
+            'package'               => ['package_id' => $priced['package_id'], 'name' => $priced['name'], 'price' => $charge, 'item_price' => $priced['item_price']],
+            'addons_total'          => $priced['addons_total'],
+            'addons_label'          => $priced['addons_label'],
             'plan_balance'          => $balances['plan_balance'],
             'plan_monthly'          => $balances['plan_monthly'],
-            // A claim releases the plan's own package free; an avail adds the package price.
-            'package_amount_added'  => $type === self::TYPE_AVAIL ? $price : 0.0,
-            'total_balance_after'   => round($balances['total_balance'] + ($type === self::TYPE_AVAIL ? $price : 0.0), 2),
+            // A claim releases the plan's own package free; anything else adds its price to the balance.
+            'package_amount_added'  => $charge,
+            'total_balance_after'   => round($balances['total_balance'] + $charge, 2),
             'down_payment_rate'     => 0.0,
             'down_payment_amount'   => 0.0,
             'down_payment_days'     => (int) $this->config->availDownPaymentDays,
             'waived'                => false,
+            'upfront'               => false,
+            'min_financed'          => $min,
             'financed_amount'       => 0.0,
             'term_months'           => null,
             'terms_offered'         => $this->config->availTerms(),
@@ -373,22 +458,41 @@ class ClaimAvailService
             'monthly_total_due'     => $balances['plan_monthly'],
         ];
 
-        if ($type === self::TYPE_CLAIM) {
+        if ($charge <= 0.004) {
             return $quote;
         }
 
-        $rate     = (float) $this->config->availDownPaymentRate;
-        $downCents = $waive ? 0 : (int) round($price * $rate * 100);
-        $financed  = round($price - $downCents / 100, 2);
+        $rate      = (float) $this->config->availDownPaymentRate;
+        $downCents = $waive ? 0 : (int) round($charge * $rate * 100);
+        $financed  = round($charge - $downCents / 100, 2);
+
+        // A small amount is paid in full up front: no instalments.
+        if (! $waive && $financed < $min) {
+            $quote['upfront']             = true;
+            $quote['down_payment_rate']   = 1.0;
+            $quote['down_payment_amount'] = $charge;
+            $quote['financed_amount']     = 0.0;
+            $quote['terms_offered']       = [];
+            $quote['term_months']         = 0;
+            $quote['monthly_instalment']  = 0.0;
+
+            return $quote;
+        }
 
         $quote['down_payment_rate']   = $rate;
         $quote['down_payment_amount'] = round($downCents / 100, 2);
         $quote['waived']              = $waive;
         $quote['financed_amount']     = $financed;
 
+        // A waived small amount is one instalment (nothing is taken up front).
+        if ($waive && $financed < $min) {
+            $quote['terms_offered'] = [1];
+            $termMonths             = 1;
+        }
+
         if ($termMonths !== null) {
-            if (! in_array($termMonths, $this->config->availTerms(), true)) {
-                return ['ok' => false, 'error' => 'Choose a term of ' . implode(', ', $this->config->availTerms()) . ' months.'] + $quote;
+            if (! in_array($termMonths, $quote['terms_offered'], true)) {
+                return ['ok' => false, 'error' => 'Choose a term of ' . implode(', ', $quote['terms_offered']) . ' months.'] + $quote;
             }
             $schedule                    = self::instalmentSchedule($financed, $termMonths, date('Y-m-d'));
             $quote['term_months']        = $termMonths;
@@ -399,7 +503,6 @@ class ClaimAvailService
 
         return $quote;
     }
-
     /**
      * Guard used before an avail record is written (second line of defence besides the NOT NULL
      * columns): the rate must be above 0 unless the down payment is waived, and the term must be
@@ -407,15 +510,18 @@ class ClaimAvailService
      *
      * @throws \InvalidArgumentException
      */
-    public function assertAvailTerms(float $rate, bool $waived, int $termMonths): void
+    public function assertAvailTerms(float $rate, bool $waived, int $termMonths, bool $upfront = false): void
     {
+        if ($upfront) {
+            return;   // paid in full up front: no term, and the "rate" is 100%
+        }
         if (! $waived && $rate <= 0) {
             throw new \InvalidArgumentException('The down-payment rate must be above 0 unless the down payment is waived.');
         }
         if ($rate < 0 || $rate > 1) {
             throw new \InvalidArgumentException('The down-payment rate must be between 0 and 1.');
         }
-        if (! in_array($termMonths, $this->config->availTerms(), true)) {
+        if (! ($waived && $termMonths === 1) && ! in_array($termMonths, $this->config->availTerms(), true)) {
             throw new \InvalidArgumentException('The term must be one of ' . implode(', ', $this->config->availTerms()) . ' months.');
         }
     }
@@ -952,7 +1058,9 @@ class ClaimAvailService
 
         // An avail whose instalments are all paid is settled.
         foreach ($state as $aid => $st) {
-            if ($st['inst'] !== [] && array_sum(array_map(static fn (array $i): int => $i['paid'] >= $i['amount'] - 0.004 ? 0 : 1, $st['inst'])) === 0) {
+            $downPaid = $db->table('package_avails')->where('avail_id', $aid)->whereIn('down_payment_status', ['paid', 'waived'])->countAllResults() > 0;
+            $noInstalmentsNeeded = $st['inst'] === [] && $downPaid && (float) $st['avail']['financed_amount'] <= 0.004;
+            if ($noInstalmentsNeeded || ($st['inst'] !== [] && array_sum(array_map(static fn (array $i): int => $i['paid'] >= $i['amount'] - 0.004 ? 0 : 1, $st['inst'])) === 0)) {
                 $db->table('package_avails')->where('avail_id', $aid)->update(['status' => 'settled']);
             }
         }
@@ -1108,7 +1216,7 @@ class ClaimAvailService
     /**
      * Approves a pending request.
      *
-     * @param array{term?:int|string, waive?:bool, reason?:string} $options only used for an avail
+     * @param array{term?:int|string, waive?:bool, reason?:string} $options only used when the request adds an amount to the balance
      *
      * @return array{ok:bool, message:string, type?:string}
      */
@@ -1133,14 +1241,14 @@ class ClaimAvailService
             return ['ok' => false, 'message' => 'This plan holder has no active plan.'];
         }
 
-        $type = $this->typeOfApplication($app, $plan);
-
-        if ($type === 'service') {
-            return $this->approveSingleService($app, $plan, $actorUserId);
+        $priced = $this->priceItem($planHolderId, $this->itemFromApplication($app));
+        if ($priced === null) {
+            return ['ok' => false, 'message' => 'The requested package or service was not found.'];
         }
 
-        if ($type === self::TYPE_AVAIL && $actorRole !== self::ROLE_BRANCH_ADMIN) {
-            return ['ok' => false, 'message' => 'Only a Branch Admin can approve an avail: it sets the down payment, the term and any waiver.'];
+        // Anything that adds an amount to the balance sets money terms: Branch Admin only.
+        if ($priced['charge'] > 0.004 && $actorRole !== self::ROLE_BRANCH_ADMIN) {
+            return ['ok' => false, 'message' => 'Only a Branch Admin can approve this: it adds an amount to the client\'s balance, so it sets the down payment, the term and any waiver.'];
         }
 
         $el = $this->eligibility($planHolderId, (int) $app['package_id'], $applicationId);
@@ -1148,135 +1256,126 @@ class ClaimAvailService
             return ['ok' => false, 'message' => (string) $el['message']];
         }
 
-        return $type === self::TYPE_CLAIM
-            ? $this->approveClaim($app, $plan, $actorUserId)
-            : $this->approveAvail($app, $plan, $actorUserId, $options);
-    }
-
-    /** A claim of the plan's own package: released free; the plan balance stays. */
-    private function approveClaim(array $app, array $plan, int $actorUserId): array
-    {
-        $db = db_connect();
-        $db->transStart();
-        $serviceId = $this->createService($app, (float) $app['package_price'], 'Created from approved claim.');
-        $db->table('service_applications')->where('application_id', (int) $app['application_id'])->update([
-            'status' => 'approved', 'request_type' => self::TYPE_CLAIM, 'rule_version' => self::RULE_VERSION,
-            'cycle_number' => (int) ($plan['current_cycle_number'] ?? 1), 'service_id' => $serviceId,
-            'decided_by' => $actorUserId, 'decided_at' => date('Y-m-d H:i:s'), 'rejection_reason' => null,
-        ]);
-        $db->transComplete();
-        if (! $db->transStatus()) {
-            return ['ok' => false, 'message' => 'Failed to approve the claim.'];
-        }
-
-        $package = db_connect()->table('packages')->select('is_damayan_entitlement')->where('package_id', (int) $app['package_id'])->get(1)->getRowArray();
-        if ($package && (int) $package['is_damayan_entitlement'] === 1) {
-            $db->table('plans')->where('plan_id', (int) $plan['plan_id'])->update(['last_damayan_claim_at' => date('Y-m-d H:i:s')]);
-        }
-        (new CycleService())->closeCycleIfSettled((int) $plan['plan_id']);
-
-        $notify = new NotificationService();
-        $notify->notify((int) $app['client_user_id'], 'Your claim for ' . $app['package_name'] . ' has been approved. Your plan balance stays and you keep paying your monthly contribution.', 'service_approved', false, false, (int) $plan['plan_id']);
-        (new ActivityLogService())->log($actorUserId, 'approved', 'service_application', (int) $app['application_id'], 'Approved claim #' . (int) $app['application_id'] . ' (' . $app['package_name'] . ')');
-
-        return ['ok' => true, 'type' => self::TYPE_CLAIM, 'message' => 'Claim approved and moved to services.'];
+        return $this->approveRequest($app, $plan, $actorUserId, $options, $priced);
     }
 
     /**
-     * An avail: the Branch Admin picks the term (only the offered ones) and may waive the down
-     * payment with a written reason. The rate and term used are stored on the avail.
+     * Saves the approval: the service row, the application, and - when something is added to the
+     * balance (an avail, a service, or add-ons on a claim) - the avail record with its terms. The
+     * rate, term and amounts used are stored on it.
      */
-    private function approveAvail(array $app, array $plan, int $actorUserId, array $options): array
+    private function approveRequest(array $app, array $plan, int $actorUserId, array $options, array $priced): array
     {
-        $term   = (int) ($options['term'] ?? 0);
-        $waive  = ! empty($options['waive']);
-        $reason = trim((string) ($options['reason'] ?? ''));
+        $isClaim = $priced['type'] === self::TYPE_CLAIM;
+        $charge  = $priced['charge'];
+        $db      = db_connect();
+        $now     = date('Y-m-d H:i:s');
+        $notify  = new NotificationService();
+        $money   = fn (float $v): string => $this->money($v);
+        $what    = $priced['name'];
 
-        if (! in_array($term, $this->config->availTerms(), true)) {
-            return ['ok' => false, 'message' => 'Choose a term of ' . implode(', ', $this->config->availTerms()) . ' months.'];
-        }
-        if ($waive && mb_strlen($reason) < self::WAIVER_REASON_MIN) {
-            return ['ok' => false, 'message' => 'A waiver needs a reason of at least ' . self::WAIVER_REASON_MIN . ' characters.'];
+        $quote = null;
+        $waive = false;
+        $reason = '';
+        $term = 0;
+        if ($charge > 0.004) {
+            $waive  = ! empty($options['waive']);
+            $reason = trim((string) ($options['reason'] ?? ''));
+            $term   = (int) ($options['term'] ?? 0);
+
+            if ($waive && mb_strlen($reason) < self::WAIVER_REASON_MIN) {
+                return ['ok' => false, 'message' => 'A waiver needs a reason of at least ' . self::WAIVER_REASON_MIN . ' characters.'];
+            }
+            $probe = $this->quoteItem((int) $app['plan_holder_id'], $this->itemFromApplication($app), null, $waive);
+            if (empty($probe['ok'])) {
+                return ['ok' => false, 'message' => (string) ($probe['error'] ?? 'Could not price this request.')];
+            }
+            if ($probe['upfront']) {
+                $term = 0;                                // paid in full up front: nothing to choose
+            } elseif ($waive && $probe['terms_offered'] === [1]) {
+                $term = 1;                                // waived small amount: one instalment
+            } elseif (! in_array($term, $probe['terms_offered'], true)) {
+                return ['ok' => false, 'message' => 'Choose a term of ' . implode(', ', $probe['terms_offered']) . ' months.'];
+            }
+
+            $quote = $this->quoteItem((int) $app['plan_holder_id'], $this->itemFromApplication($app), $term ?: null, $waive);
+            if (empty($quote['ok'])) {
+                return ['ok' => false, 'message' => (string) ($quote['error'] ?? 'Could not price this request.')];
+            }
+            try {
+                $this->assertAvailTerms((float) $quote['down_payment_rate'], $waive, $term, (bool) $quote['upfront']);
+            } catch (\InvalidArgumentException $e) {
+                return ['ok' => false, 'message' => $e->getMessage()];
+            }
+            if (! $waive && $quote['down_payment_amount'] <= 0) {
+                return ['ok' => false, 'message' => 'The down payment would be 0. Check the down-payment rate, or waive it with a reason.'];
+            }
         }
 
-        $quote = $this->quote((int) $app['plan_holder_id'], (int) $app['package_id'], $term, $waive);
-        if (empty($quote['ok'])) {
-            return ['ok' => false, 'message' => (string) ($quote['error'] ?? 'Could not price this avail.')];
-        }
-        try {
-            $this->assertAvailTerms((float) $quote['down_payment_rate'], $waive, $term);
-        } catch (\InvalidArgumentException $e) {
-            return ['ok' => false, 'message' => $e->getMessage()];
-        }
-        if (! $waive && $quote['down_payment_amount'] <= 0) {
-            return ['ok' => false, 'message' => 'The down payment would be 0. Check the down-payment rate, or waive it with a reason.'];
-        }
-
-        $db    = db_connect();
-        $now   = date('Y-m-d H:i:s');
         $dueBy = date('Y-m-d', strtotime('+' . (int) $this->config->availDownPaymentDays . ' days'));
+        $availId = 0;
 
         $db->transStart();
-        $serviceId = $this->createService($app, (float) $quote['package']['price'], 'Created from approved avail.');
+        $serviceId = $this->createService($app, $priced['item_price'] + $priced['addons_total'], $isClaim ? 'Created from approved claim.' : 'Created from approved request.');
         $db->table('service_applications')->where('application_id', (int) $app['application_id'])->update([
-            'status' => 'approved', 'request_type' => self::TYPE_AVAIL, 'rule_version' => self::RULE_VERSION,
+            'status' => 'approved', 'request_type' => $isClaim ? self::TYPE_CLAIM : self::TYPE_AVAIL, 'rule_version' => self::RULE_VERSION,
             'cycle_number' => (int) ($plan['current_cycle_number'] ?? 1), 'service_id' => $serviceId,
             'decided_by' => $actorUserId, 'decided_at' => $now, 'rejection_reason' => null,
         ]);
-        $db->table('package_avails')->insert([
-            'application_id' => (int) $app['application_id'], 'plan_holder_id' => (int) $app['plan_holder_id'], 'plan_id' => (int) $plan['plan_id'],
-            'package_id' => (int) $app['package_id'], 'branch_id' => (int) $app['branch_id'], 'service_id' => $serviceId,
-            'cycle_number' => (int) ($plan['current_cycle_number'] ?? 1), 'package_price' => $quote['package']['price'],
-            'down_payment_rate' => $quote['down_payment_rate'], 'down_payment_amount' => $quote['down_payment_amount'],
-            'down_payment_status' => $waive ? 'waived' : 'due', 'down_payment_due_by' => $waive ? null : $dueBy,
-            'waived_by' => $waive ? $actorUserId : null, 'waived_at' => $waive ? $now : null, 'waiver_reason' => $waive ? $reason : null,
-            'financed_amount' => $quote['financed_amount'], 'term_months' => $term, 'monthly_instalment' => $quote['monthly_instalment'],
-            'status' => $waive ? 'active' : 'awaiting_down_payment', 'approved_by' => $actorUserId, 'approved_at' => $now,
-        ]);
-        $availId = (int) $db->insertID();
-        if ($waive) {
-            $availRow = $db->table('package_avails')->where('avail_id', $availId)->get(1)->getRowArray();
-            $this->writeSchedule($availRow, date('Y-m-d'), $this->planDueDay($plan));
+        if ($quote !== null) {
+            $db->table('package_avails')->insert([
+                'application_id' => (int) $app['application_id'], 'plan_holder_id' => (int) $app['plan_holder_id'], 'plan_id' => (int) $plan['plan_id'],
+                'package_id' => $priced['package_id'] > 0 ? $priced['package_id'] : null, 'service_list_id' => $priced['service_list_id'] > 0 ? $priced['service_list_id'] : null,
+                'kind' => $priced['kind'], 'addons_amount' => $priced['addons_total'], 'addons_label' => $priced['addons_label'] !== '' ? $priced['addons_label'] : null,
+                'branch_id' => (int) $app['branch_id'], 'service_id' => $serviceId, 'cycle_number' => (int) ($plan['current_cycle_number'] ?? 1),
+                'package_price' => $charge, 'down_payment_rate' => $quote['down_payment_rate'], 'down_payment_amount' => $quote['down_payment_amount'],
+                'down_payment_status' => $waive ? 'waived' : 'due', 'down_payment_due_by' => $waive ? null : $dueBy,
+                'waived_by' => $waive ? $actorUserId : null, 'waived_at' => $waive ? $now : null, 'waiver_reason' => $waive ? $reason : null,
+                'financed_amount' => $quote['financed_amount'], 'term_months' => $term, 'monthly_instalment' => (float) ($quote['monthly_instalment'] ?? 0),
+                'status' => $waive ? 'active' : 'awaiting_down_payment', 'approved_by' => $actorUserId, 'approved_at' => $now,
+            ]);
+            $availId = (int) $db->insertID();
+            if ($waive) {
+                $this->writeSchedule($db->table('package_avails')->where('avail_id', $availId)->get(1)->getRowArray(), date('Y-m-d'), $this->planDueDay($plan));
+            }
         }
-        $db->transComplete();
-        if (! $db->transStatus()) {
-            return ['ok' => false, 'message' => 'Failed to approve the avail.'];
-        }
-
-        $notify = new NotificationService();
-        $money  = fn (float $v): string => $this->money($v);
-        if ($waive) {
-            $msg = 'Your request for ' . $app['package_name'] . ' was approved with no down payment. You pay ' . $money((float) $quote['monthly_instalment']) . ' a month for ' . $term . ' months, on top of your plan contribution.';
-        } else {
-            $msg = 'Your request for ' . $app['package_name'] . ' was approved. Pay the down payment of ' . $money((float) $quote['down_payment_amount']) . ' by ' . date('F j, Y', strtotime($dueBy))
-                . ' or the request is cancelled. Your service can start once it is verified. After that you pay ' . $money((float) $quote['monthly_instalment']) . ' a month for ' . $term . ' months.';
-        }
-        $notify->notify((int) $app['client_user_id'], $msg, 'service_approved', false, false, (int) $plan['plan_id']);
-        (new ActivityLogService())->log(
-            $actorUserId, 'approved', 'package_avail', $availId,
-            'Approved avail #' . $availId . ' of ' . $app['package_name'] . ' (' . $term . ' months, down payment ' . ($waive ? 'waived: ' . $reason : $money((float) $quote['down_payment_amount'])) . ')'
-        );
-
-        return ['ok' => true, 'type' => self::TYPE_AVAIL, 'message' => 'Avail approved. ' . ($waive ? 'The down payment was waived.' : 'The down payment of ' . $money((float) $quote['down_payment_amount']) . ' is due by ' . date('M j, Y', strtotime($dueBy)) . '.')];
-    }
-
-    /** A single service (not a package): no claim/avail rules, approved as before without any balance record. */
-    private function approveSingleService(array $app, array $plan, int $actorUserId): array
-    {
-        $db = db_connect();
-        $db->transStart();
-        $serviceId = $this->createService($app, (float) ($app['service_price'] ?? 0), 'Created from approved request.');
-        $db->table('service_applications')->where('application_id', (int) $app['application_id'])->update([
-            'status' => 'approved', 'rule_version' => self::RULE_VERSION, 'cycle_number' => (int) ($plan['current_cycle_number'] ?? 1),
-            'service_id' => $serviceId, 'decided_by' => $actorUserId, 'decided_at' => date('Y-m-d H:i:s'), 'rejection_reason' => null,
-        ]);
         $db->transComplete();
         if (! $db->transStatus()) {
             return ['ok' => false, 'message' => 'Failed to approve the request.'];
         }
-        (new NotificationService())->notify((int) $app['client_user_id'], 'Your request for ' . ($app['service_name'] ?? 'the service') . ' has been approved.', 'service_approved', false, false, (int) $plan['plan_id']);
 
-        return ['ok' => true, 'type' => 'service', 'message' => 'Request approved and moved to services.'];
+        if ($isClaim) {
+            $pkg = $db->table('packages')->select('is_damayan_entitlement')->where('package_id', $priced['package_id'])->get(1)->getRowArray();
+            if ($pkg && (int) $pkg['is_damayan_entitlement'] === 1) {
+                $db->table('plans')->where('plan_id', (int) $plan['plan_id'])->update(['last_damayan_claim_at' => $now]);
+            }
+            (new CycleService())->closeCycleIfSettled((int) $plan['plan_id']);
+        }
+
+        // ---- tell the client
+        $extra = $priced['addons_label'] !== '' ? ' (including ' . $priced['addons_label'] . ' ' . $money($priced['addons_total']) . ')' : '';
+        if ($quote === null) {
+            $msg = 'Your claim for ' . $what . ' has been approved. Your plan balance stays and you keep paying your monthly contribution.';
+        } elseif ($waive) {
+            $msg = 'Your request for ' . $what . $extra . ' was approved with no down payment. You pay ' . $money((float) $quote['monthly_instalment']) . ' a month for ' . $term . ' month' . ($term === 1 ? '' : 's') . ', on top of your plan contribution.';
+        } elseif ($quote['upfront']) {
+            $msg = 'Your ' . ($isClaim ? 'claim' : 'request') . ' for ' . $what . ' was approved. The ' . $money($charge) . ($isClaim ? ' for your add-on' : '') . ' is paid in full by ' . date('F j, Y', strtotime($dueBy)) . ' or the request is cancelled. Your service can start once it is verified.';
+        } else {
+            $msg = 'Your request for ' . $what . $extra . ' was approved. Pay the down payment of ' . $money((float) $quote['down_payment_amount']) . ' by ' . date('F j, Y', strtotime($dueBy))
+                . ' or the request is cancelled. Your service can start once it is verified. After that you pay ' . $money((float) $quote['monthly_instalment']) . ' a month for ' . $term . ' months.';
+        }
+        $notify->notify((int) $app['client_user_id'], $msg, 'service_approved', false, false, (int) $plan['plan_id']);
+
+        $logId = $availId > 0 ? $availId : (int) $app['application_id'];
+        (new ActivityLogService())->log(
+            $actorUserId, 'approved', $availId > 0 ? 'package_avail' : 'service_application', $logId,
+            'Approved ' . ($availId > 0 ? 'avail #' . $availId : 'claim #' . (int) $app['application_id']) . ' of ' . $what
+                . ($quote !== null ? ' (' . ($quote['upfront'] ? 'paid in full up front' : $term . ' months') . ', down payment ' . ($waive ? 'waived: ' . $reason : $money((float) $quote['down_payment_amount'])) . ')' : '')
+        );
+
+        return ['ok' => true, 'type' => $priced['type'], 'message' => $quote === null
+            ? 'Claim approved and moved to services.'
+            : 'Approved. ' . ($waive ? 'The down payment was waived.' : 'The ' . ($quote['upfront'] ? 'payment' : 'down payment') . ' of ' . $money((float) $quote['down_payment_amount']) . ' is due by ' . date('M j, Y', strtotime($dueBy)) . '.')];
     }
 
     private function createService(array $app, float $price, string $note): int
@@ -1291,7 +1390,6 @@ class ClaimAvailService
 
         return (int) $db->insertID();
     }
-
     /**
      * Rejects a pending request. A reason is required, saved and sent to the client. An avail can
      * only be rejected by a Branch Admin (like approving it).
@@ -1317,9 +1415,10 @@ class ClaimAvailService
             return ['ok' => false, 'message' => 'You are not allowed to reject this.'];
         }
 
-        $plan = $this->planFor((int) $app['plan_holder_id']);
-        if ($this->typeOfApplication($app, $plan) === self::TYPE_AVAIL && $actorRole !== self::ROLE_BRANCH_ADMIN) {
-            return ['ok' => false, 'message' => 'Only a Branch Admin can decide on an avail.'];
+        $plan   = $this->planFor((int) $app['plan_holder_id']);
+        $priced = $plan ? $this->priceItem((int) $app['plan_holder_id'], $this->itemFromApplication($app)) : null;
+        if (($priced['charge'] ?? 0) > 0.004 && $actorRole !== self::ROLE_BRANCH_ADMIN) {
+            return ['ok' => false, 'message' => 'Only a Branch Admin can decide on a request that adds an amount to the balance (an avail, a service, or paid add-ons). Add a note for the Branch Admin instead.'];
         }
 
         db_connect()->table('service_applications')->where('application_id', $applicationId)->update([
@@ -1353,16 +1452,27 @@ class ClaimAvailService
         $type = $this->typeOfApplication($app, $plan);
         $info = ['type' => $type, 'plan' => $plan, 'eligibility' => null, 'quotes' => [], 'terms' => $this->config->availTerms(), 'avail' => null, 'balances' => $plan ? $this->balances((int) $plan['plan_id']) : null, 'down_payment_days' => (int) $this->config->availDownPaymentDays, 'waiver_min' => self::WAIVER_REASON_MIN];
 
-        if ($app['status'] === 'pending' && $plan !== null && $type !== 'service') {
+        $info['priced'] = $plan !== null ? $this->priceItem((int) $app['plan_holder_id'], $this->itemFromApplication($app)) : null;
+        $money = $info['priced'] !== null && $info['priced']['charge'] > 0.004;
+        if ($app['status'] === 'pending' && $plan !== null && $info['priced'] !== null) {
             $info['eligibility'] = $this->eligibility((int) $app['plan_holder_id'], (int) $app['package_id'], $applicationId);
-            if ($type === self::TYPE_AVAIL) {
-                foreach ($this->config->availTerms() as $term) {
-                    $info['quotes'][$term] = ['normal' => $this->quote((int) $app['plan_holder_id'], (int) $app['package_id'], $term, false), 'waived' => $this->quote((int) $app['plan_holder_id'], (int) $app['package_id'], $term, true)];
+            if ($money) {
+                $item  = $this->itemFromApplication($app);
+                $probe = $this->quoteItem((int) $app['plan_holder_id'], $item, null, false);
+                $info['upfront'] = ! empty($probe['upfront']);
+                $terms = $info['upfront'] ? [0] : $this->config->availTerms();
+                $info['terms'] = $info['upfront'] ? [] : $terms;
+                foreach ($terms as $term) {
+                    $info['quotes'][$term] = ['normal' => $this->quoteItem((int) $app['plan_holder_id'], $item, $term ?: null, false), 'waived' => $this->quoteItem((int) $app['plan_holder_id'], $item, null, true)];
+                    if (($info['quotes'][$term]['waived']['terms_offered'] ?? []) === [1]) {
+                        $info['quotes'][$term]['waived'] = $this->quoteItem((int) $app['plan_holder_id'], $item, 1, true);
+                    } elseif ($term > 0) {
+                        $info['quotes'][$term]['waived'] = $this->quoteItem((int) $app['plan_holder_id'], $item, $term, true);
+                    }
                 }
                 $info['down_due_by'] = date('Y-m-d', strtotime('+' . (int) $this->config->availDownPaymentDays . ' days'));
             }
         }
-
         if ($this->tableReady('package_avails')) {
             $info['avail'] = db_connect()->table('package_avails pa')
                 ->select('pa.*, ab.first_name AS approver_first, ab.last_name AS approver_last, wb.first_name AS waiver_first, wb.last_name AS waiver_last')
@@ -1441,6 +1551,139 @@ class ClaimAvailService
                 . $this->money((float) $a['monthly_instalment']) . ' is due ' . ($a['first_due_date'] ? date('F j, Y', strtotime((string) $a['first_due_date'])) : 'next month') . '.',
             'payment_approved', false, false, (int) $a['plan_id']
         );
+    }
+    /* ======================================================================
+     * For the client forms and the "My claims" page
+     * ==================================================================== */
+
+    /**
+     * Everything a claim / avail / service form shows before it is submitted: the exact quote
+     * (without and with the burial attire add-on) in a flat shape, and whether the client may apply.
+     * The same numbers are used when the request is approved.
+     *
+     * @param array{package_id?:int, service_list_id?:int, route_id?:int} $item
+     *
+     * @return array{eligibility:array<string,mixed>, plain:array<string,mixed>, attire:array<string,mixed>}
+     */
+    public function formQuote(int $planHolderId, array $item): array
+    {
+        $this->expireDownPayments($planHolderId);
+        $out = ['eligibility' => $this->eligibility($planHolderId, (int) ($item['package_id'] ?? 0)), 'plain' => [], 'attire' => []];
+
+        foreach (['plain' => false, 'attire' => true] as $key => $attire) {
+            $variant = ['attire' => $attire] + $item;
+            $probe   = $this->quoteItem($planHolderId, $variant, null, false);
+            if (empty($probe['ok'])) {
+                continue;
+            }
+
+            $terms = [];
+            if ($probe['package_amount_added'] > 0 && ! $probe['upfront']) {
+                foreach ($this->config->availTerms() as $t) {
+                    $q = $this->quoteItem($planHolderId, $variant, $t, false);
+                    if (! empty($q['ok']) && $q['schedule'] !== []) {
+                        $terms[] = ['term' => $t, 'monthly' => $q['monthly_instalment'], 'last' => end($q['schedule'])['amount'], 'monthly_total' => $q['monthly_total_due']];
+                    }
+                }
+            }
+            $out[$key] = [
+                'name' => $probe['package']['name'], 'type' => $probe['type'], 'free' => $probe['free'], 'item_price' => $probe['package']['item_price'],
+                'addons_total' => $probe['addons_total'], 'addons_label' => $probe['addons_label'], 'added' => $probe['package_amount_added'],
+                'down' => $probe['down_payment_amount'], 'rate' => $probe['down_payment_rate'], 'upfront' => $probe['upfront'], 'financed' => $probe['financed_amount'],
+                'terms' => $terms, 'plan_balance' => $probe['plan_balance'], 'plan_monthly' => $probe['plan_monthly'], 'total_after' => $probe['total_balance_after'],
+                'down_days' => $probe['down_payment_days'],
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * Every request of one plan holder for the My claims page, newest first: type (Claim / Avail /
+     * Service), what was asked for, add-ons, status, rejection reason, the terms and waiver, who
+     * filed it, and what is still owed on it.
+     *
+     * @return list<array<string,mixed>>
+     */
+    public function myRequests(int $planHolderId): array
+    {
+        $this->expireDownPayments($planHolderId);
+        $db = db_connect();
+        $hasAvails = $this->tableReady('package_avails');
+        $linkSvc   = $this->columnReady('service_applications', 'service_id') ? 'sa.service_id, ' : '';
+
+        $rows = $db->query(
+            "SELECT sa.*, p.package_name, p.is_damayan_entitlement, sl.service_name, r.route_name,
+                    fu.first_name AS filer_first, fu.last_name AS filer_last, fr.role_name AS filer_role,
+                    s.status AS service_status,
+                    sb.remaining_balance AS legacy_remaining, sb.status AS legacy_status
+               FROM service_applications sa
+               LEFT JOIN packages p ON p.package_id = sa.package_id
+               LEFT JOIN service_list sl ON sl.service_list_id = sa.service_list_id
+               LEFT JOIN service_routes r ON r.route_id = sa.selected_route_id
+               LEFT JOIN users fu ON fu.user_id = sa.filed_by_user_id
+               LEFT JOIN roles fr ON fr.role_id = fu.role_id
+               LEFT JOIN service_balances sb ON sb.application_id = sa.application_id
+               LEFT JOIN services s ON s.service_id = COALESCE({$linkSvc}sb.service_id) AND s.deleted_at IS NULL
+              WHERE sa.plan_holder_id = ?
+              ORDER BY sa.application_id DESC",
+            [$planHolderId]
+        )->getResultArray();
+
+        $avails = [];
+        if ($hasAvails && $rows !== []) {
+            $ids = array_map(static fn (array $r): int => (int) $r['application_id'], $rows);
+            foreach ($db->table('package_avails pa')
+                ->select('pa.*, wb.first_name AS waiver_first, wb.last_name AS waiver_last, sv.status AS avail_service_status')
+                ->join('users wb', 'wb.user_id = pa.waived_by', 'left')
+                ->join('services sv', 'sv.service_id = pa.service_id', 'left')
+                ->whereIn('pa.application_id', $ids)->get()->getResultArray() as $a) {
+                $a['down_paid'] = $this->downPaymentPaid((int) $a['avail_id']);
+                $avails[(int) $a['application_id']] = $a;
+            }
+        }
+
+        foreach ($rows as &$row) {
+            $av = $avails[(int) $row['application_id']] ?? null;
+            $row['avail'] = $av;
+
+            if ((int) ($row['package_id'] ?? 0) <= 0) {
+                $row['type_label'] = 'Service';
+            } elseif (! empty($row['request_type'])) {
+                $row['type_label'] = $row['request_type'] === self::TYPE_AVAIL ? 'Avail' : 'Claim';
+            } else {
+                $row['type_label'] = (int) ($row['is_damayan_entitlement'] ?? 0) === 1 ? 'Claim' : 'Avail';
+            }
+            $row['what'] = (string) ($row['package_name'] ?? $row['service_name'] ?? '-') . ($row['route_name'] ? ' - ' . $row['route_name'] : '');
+            $row['addons'] = ! empty($row['burial_attire_selected']) ? [['label' => 'Burial Attire Package', 'price' => (float) ($row['burial_attire_price'] ?? ClaimSubmissionService::BURIAL_ATTIRE_PRICE)]] : [];
+            $row['old_rule'] = ($row['rule_version'] ?? 'legacy') === 'legacy' && (string) $row['status'] === 'approved';
+
+            // One plain status for the client.
+            $svcStatus = (string) ($av['avail_service_status'] ?? $row['service_status'] ?? '');
+            if ($row['status'] === 'pending') {
+                $row['status_label'] = 'Pending';
+            } elseif ($row['status'] === 'rejected') {
+                $row['status_label'] = 'Rejected';
+            } elseif ($av !== null && $av['status'] === 'cancelled') {
+                $row['status_label'] = 'Cancelled - no down payment';
+            } elseif ($svcStatus === 'ongoing') {
+                $row['status_label'] = 'Ongoing';
+            } elseif ($svcStatus === 'completed') {
+                $row['status_label'] = 'Completed';
+            } elseif ($svcStatus === 'cancelled') {
+                $row['status_label'] = 'Cancelled';
+            } elseif ($av !== null && $av['status'] === 'awaiting_down_payment') {
+                $row['status_label'] = 'Approved - waiting for the down payment';
+            } else {
+                $row['status_label'] = 'Approved';
+            }
+
+            $row['amount_added'] = $av !== null ? (float) $av['package_price'] : ($row['old_rule'] ? (float) ($row['legacy_remaining'] ?? 0) : 0.0);
+            $row['down_left'] = $av !== null && $av['status'] === 'awaiting_down_payment' ? max(0.0, round((float) $av['down_payment_amount'] - (float) $av['down_paid'], 2)) : 0.0;
+        }
+        unset($row);
+
+        return $rows;
     }
     /* ======================================================================
      * Small helpers

@@ -121,6 +121,7 @@ $routes->group('branch-admin', ['filter' => 'auth'], static function (RouteColle
     $routes->get('service-package/file-claim/(:num)', 'BranchAdmin\ClaimController::form/$1', ['filter' => 'role:2']);
     $routes->post('service-package/file-claim/(:num)', 'BranchAdmin\ClaimController::store/$1', ['filter' => 'role:2']);
     $routes->post('service-package/requests/approve/(:num)', 'BranchAdmin\ServiceApplicationController::approve/$1', ['filter' => 'role:2']);
+    $routes->post('service-package/requests/note/(:num)', 'BranchAdmin\ServiceApplicationController::addNote/$1', ['filter' => 'role:2']);
     $routes->post('service-package/requests/reject/(:num)', 'BranchAdmin\ServiceApplicationController::reject/$1', ['filter' => 'role:2']);
 
     // Ongoing Services & Scheduling

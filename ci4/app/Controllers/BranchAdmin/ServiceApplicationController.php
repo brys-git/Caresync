@@ -57,6 +57,15 @@ class ServiceApplicationController extends BaseController
         return redirect()->to('/branch-admin/service-package/requests')->with('success', $result['message']);
     }
 
+    public function addNote(int $id)
+    {
+        $this->ensureBranchAdminAccess();
+
+        $result = $this->claimService->addNote($id, (int) session('branch_id'), (int) session('user_id'), (string) $this->request->getPost('note'));
+
+        return redirect()->to('/branch-admin/service-package/requests/' . $id)->with($result['ok'] ? 'success' : 'error', $result['message']);
+    }
+
     public function reject(int $id)
     {
         $this->ensureBranchAdminAccess();
@@ -94,6 +103,7 @@ class ServiceApplicationController extends BaseController
             'request' => $request,
             'documents' => $this->claimService->getClaimDocuments($id),
             'claim_info' => (new ClaimAvailService())->decisionInfo($id, $branchId),
+            'notes' => $this->claimService->notesFor($id),
             'viewer_role' => 2,
         ]);
     }

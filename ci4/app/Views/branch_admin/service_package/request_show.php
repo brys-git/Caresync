@@ -48,14 +48,20 @@ $status     = (string) ($request['status'] ?? '');
 $money      = static fn ($v): string => '₱' . number_format((float) $v, 2);
 $person     = static fn ($f, $l): string => trim((string) $f . ' ' . (string) $l);
 ?>
-<?php if ($info !== null && $kind !== 'service'): ?>
+<?php $priced = $info['priced'] ?? null; $owes = $priced !== null && (float) $priced['charge'] > 0.004; ?>
+<?php if ($info !== null): ?>
 <section class="cs-panel mb-3">
     <div class="cs-panel__head">
-        <h2 class="cs-panel__title"><?= $kind === 'avail' ? 'Avail of another package' : 'Claim of the plan\'s own package' ?></h2>
+        <h2 class="cs-panel__title"><?= $kind === 'service' ? 'Single service request' : ($kind === 'avail' ? 'Avail of another package' : 'Claim of the plan\'s own package') ?></h2>
         <p class="cs-panel__note">
-            <?= $kind === 'avail'
-                ? 'The package price is added to the client\'s balance. A down payment is paid first, then fixed monthly instalments, on top of the plan contribution.'
-                : 'The package is released at no extra charge. The remaining plan balance stays and the client keeps paying the monthly contribution.' ?>
+            <?php if ($kind === 'service'): ?>
+                A single service is treated as an avail of its price (until Kaagapay confirms): <?= $money($priced['charge'] ?? 0) ?> is added to the client's balance, with a down payment and monthly instalments.
+            <?php elseif ($kind === 'avail'): ?>
+                The package price<?= ($priced['addons_total'] ?? 0) > 0 ? ' and the add-ons' : '' ?> is added to the client's balance. A down payment is paid first, then fixed monthly instalments, on top of the plan contribution.
+            <?php else: ?>
+                The package is released at no extra charge. The remaining plan balance stays and the client keeps paying the monthly contribution.
+                <?php if ($owes): ?><strong>The add-on (<?= esc((string) $priced['addons_label']) ?> <?= $money($priced['addons_total']) ?>) is added to the balance</strong> with the same down payment and instalment rules.<?php endif; ?>
+            <?php endif; ?>
         </p>
     </div>
     <div class="cs-panel__body">
@@ -151,15 +157,15 @@ $person     = static fn ($f, $l): string => trim((string) $f . ' ' . (string) $l
             <div class="cs-panel__head"><h2 class="cs-panel__title">Actions</h2></div>
             <div class="cs-panel__body">
                 <?php if (($request['status'] ?? '') === 'pending'): ?>
-                    <?php $isAvail = ($info['type'] ?? '') === 'avail'; $canApprove = $elig === null || ! empty($elig['allowed']); ?>
+                    <?php $isAvail = $owes; $canApprove = $elig === null || ! empty($elig['allowed']); $upfront = ! empty($info['upfront']); ?>
 
                     <?php if ($isAvail && $viewerRole !== 2): ?>
-                        <div class="alert alert-info">Only a Branch Admin can approve or reject an avail, because it sets the down payment, the term and any waiver. You can see the terms below.</div>
+                        <div class="alert alert-info">Only a Branch Admin can approve or reject this, because it adds an amount to the balance and sets the down payment, the term and any waiver. You can see the terms below and leave a note for the Branch Admin.</div>
                     <?php endif; ?>
 
                     <?php if ($isAvail && ! empty($info['quotes'])): ?>
+                        <?php $terms = $info['terms']; ?>
                         <?php
-                        $terms   = $info['terms'];
                         $dueBy   = $info['down_due_by'] ?? null;
                         $quotes  = [];
                         foreach ($info['quotes'] as $t => $pair) {
@@ -177,7 +183,12 @@ $person     = static fn ($f, $l): string => trim((string) $f . ' ' . (string) $l
                         <form action="<?= site_url($claimBasePath . '/approve/' . (int) $request['application_id']) ?>" method="post" id="approveAvailForm"
                               <?php if ($viewerRole === 2): ?>data-cs-confirm="Approve this avail with the terms shown? The client is told the down payment and its deadline." data-cs-confirm-title="Approve avail" data-cs-confirm-ok="Approve"<?php endif; ?>>
                             <?= csrf_field() ?>
+                            <?php if ($upfront): ?>
+                                <input type="hidden" name="term" value="0">
+                                <div class="alert alert-info">This amount is small, so it is paid <strong>in full up front</strong> (no instalments). There is no term to choose.</div>
+                            <?php else: ?>
                             <h3 class="h6">Choose the term</h3>
+                            <?php endif; ?>
                             <?php foreach ($terms as $i => $t): ?>
                                 <div class="form-check">
                                     <input class="form-check-input" type="radio" name="term" id="term<?= (int) $t ?>" value="<?= (int) $t ?>" <?= $i === 1 || count($terms) === 1 ? 'checked' : '' ?> <?= $viewerRole !== 2 ? 'disabled' : '' ?>>
@@ -218,15 +229,15 @@ $person     = static fn ($f, $l): string => trim((string) $f . ' ' . (string) $l
                             var dueBy = <?= json_encode($dueBy ? date('F j, Y', strtotime($dueBy)) : '') ?>;
                             var fmt = function (v) { return '₱' + Number(v).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
                             var waive = document.getElementById('waiveDown'), wrap = document.getElementById('waiverWrap'), reason = document.getElementById('waiver_reason');
-                            function term() { var r = document.querySelector('input[name="term"]:checked'); return r ? r.value : null; }
+                            function term() { var r = document.querySelector('input[name="term"]:checked'); return r ? r.value : (Q['0'] ? '0' : null); }
                             function draw() {
                                 var t = term(); if (!t || !Q[t]) { return; }
                                 var w = waive.checked, q = Q[t][w ? 'waived' : 'normal'];
                                 document.getElementById('qPrice').textContent = fmt(q.price);
                                 document.getElementById('qDown').textContent = w ? 'Waived' : fmt(q.down);
-                                document.getElementById('qRate').textContent = w ? '' : '(' + (q.rate * 100).toFixed(0) + '%)';
+                                document.getElementById('qRate').textContent = w ? '' : (q.rate >= 1 ? '(in full)' : '(' + (q.rate * 100).toFixed(0) + '%)');
                                 document.getElementById('qFinanced').textContent = fmt(q.financed);
-                                document.getElementById('qMonthly').textContent = fmt(q.monthly) + ' × ' + t;
+                                document.getElementById('qMonthly').textContent = q.monthly > 0 ? fmt(q.monthly) + ' × ' + t : 'None (paid in full)';
                                 document.getElementById('qLast').textContent = fmt(q.last);
                                 document.getElementById('qMonthlyTotal').textContent = fmt(q.monthly_total);
                                 document.getElementById('qTotal').textContent = fmt(q.total_after);
@@ -264,6 +275,25 @@ $person     = static fn ($f, $l): string => trim((string) $f . ' ' . (string) $l
                 <?php else: ?>
                     <div class="text-muted">This claim is <?= esc(ucfirst((string) ($request['status'] ?? 'unknown'))) ?>.</div>
                 <?php endif; ?>
+            </div>
+        </section>
+
+        <section class="cs-panel mt-3">
+            <div class="cs-panel__head"><h2 class="cs-panel__title">Notes for the Branch Admin</h2><p class="cs-panel__note">Internal. The client does not see these.</p></div>
+            <div class="cs-panel__body">
+                <?php foreach (($notes ?? []) as $n): ?>
+                    <div class="border-bottom py-2">
+                        <div><?= nl2br(esc((string) $n['note'])) ?></div>
+                        <div class="cs-table__sub"><?= esc(trim((string) $n['first_name'] . ' ' . (string) $n['last_name'])) ?> (<?= esc((string) ($n['role_name'] ?? '')) ?>) · <?= esc(cs_date($n['created_at'], true)) ?></div>
+                    </div>
+                <?php endforeach; ?>
+                <?php if (empty($notes)): ?><p class="cs-muted">No notes yet.</p><?php endif; ?>
+                <form action="<?= site_url($claimBasePath . '/note/' . (int) $request['application_id']) ?>" method="post" class="mt-3">
+                    <?= csrf_field() ?>
+                    <label class="form-label" for="note">Add a note</label>
+                    <textarea id="note" name="note" class="form-control" rows="2" maxlength="1000" required></textarea>
+                    <button type="submit" class="btn btn-outline-primary btn-sm mt-2">Save note</button>
+                </form>
             </div>
         </section>
     </div>

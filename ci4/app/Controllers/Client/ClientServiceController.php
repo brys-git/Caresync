@@ -332,7 +332,31 @@ class ClientServiceController extends BaseController
             'routes' => $routes,
             'selected_route_id' => (int) $this->request->getGet('route'),
             'can_apply' => $canApply,
+            'service_quotes' => $this->serviceQuotes((int) ($access['plan_holder']['plan_holder_id'] ?? 0), $serviceListId, $routes),
         ]);
+    }
+
+    /**
+     * The exact quote for a single service, one per route (or one for the service itself), and whether the
+     * client may apply - from ClaimAvailService, the same numbers the approval uses.
+     *
+     * @return array{eligibility:array<string,mixed>, by_route:array<int,array<string,mixed>>}
+     */
+    private function serviceQuotes(int $planHolderId, int $serviceListId, array $routes): array
+    {
+        $out = ['eligibility' => ['allowed' => false, 'message' => 'You need an active plan to request this service.'], 'by_route' => []];
+        if ($planHolderId <= 0) {
+            return $out;
+        }
+        $claimAvail = new \App\Services\ClaimAvailService();
+        $out['eligibility'] = $claimAvail->eligibility($planHolderId, 0);
+        $options = $routes === [] ? [0] : array_map(static fn (array $r): int => (int) $r['route_id'], $routes);
+        foreach ($options as $rid) {
+            $q = $claimAvail->formQuote($planHolderId, ['service_list_id' => $serviceListId, 'route_id' => $rid]);
+            $out['by_route'][$rid] = $q['plain'];
+        }
+
+        return $out;
     }
 
     /**
@@ -359,15 +383,14 @@ class ClientServiceController extends BaseController
         [$canApply, $membership, $planId] = $this->resolveEligibility($access);
         $isEntitlement = (int) ($package['is_damayan_entitlement'] ?? 0) === 1;
 
-        $eligibility = ['eligible' => $canApply, 'reason' => null];
-        if ($isEntitlement) {
-            $eligibility = $this->entitlementClaimStatus($canApply, $membership, $planId);
-        } elseif (! $canApply) {
-            $eligibility = ['eligible' => false, 'reason' => 'You need an active plan with at least 2 paid months to avail packages.'];
-        }
-
         $planHolder = $access['plan_holder'] ?? [];
         $planHolderId = (int) ($planHolder['plan_holder_id'] ?? 0);
+
+        // The same rules and the same numbers the approval will use (ClaimAvailService).
+        $claimAvail = new \App\Services\ClaimAvailService();
+        $formQuote  = $planHolderId > 0 ? $claimAvail->formQuote($planHolderId, ['package_id' => $packageId]) : ['eligibility' => ['allowed' => false, 'message' => 'You need an active plan with at least 2 paid months to claim or avail packages.', 'code' => 'no_plan'], 'plain' => [], 'attire' => []];
+        $el         = $formQuote['eligibility'];
+        $eligibility = ['eligible' => $el['allowed'], 'reason' => $el['message']];
         $activePlan = $planHolderId > 0 ? $this->activePlan($planHolderId) : null;
         $user = $access['user'] ?? [];
         $firstBeneficiary = $planHolderId > 0
@@ -387,9 +410,6 @@ class ClientServiceController extends BaseController
                 ->getRowArray()
             : null;
 
-        $benefitCredit = (! $isEntitlement && $canApply)
-            ? min((float) $package['base_price'], $this->planTarget((int) ($activePlan['plan_id'] ?? 0)))
-            : 0.0;
 
         return view('client/package_apply', [
             'role_layout' => 'layouts/plan_holder',
@@ -398,11 +418,11 @@ class ClientServiceController extends BaseController
             'access' => $access,
             'package' => $package,
             'is_entitlement' => $isEntitlement,
-            'benefit_credit' => $benefitCredit,
             'can_apply' => $canApply,
             'attire_price' => self::BURIAL_ATTIRE_PRICE,
             'eligibility' => $eligibility,
-            'existing_claim' => $isEntitlement && $planHolderId > 0 ? $this->openClaim($planHolderId, $planId) : null,
+            'form_quote' => $formQuote,
+            'existing_claim' => $planHolderId > 0 && ($el['code'] ?? '') === 'open_request' ? $claimAvail->openRequest($planHolderId) : null,
             'plan_name' => (new MembershipService())->resolvePackageName((int) ($activePlan['package_id'] ?? 0)),
             'member_name' => trim(implode(' ', array_filter([$user['first_name'] ?? '', $user['middle_name'] ?? '', $user['last_name'] ?? '']))),
             'member_address' => cs_format_address($planHolder),
@@ -484,22 +504,18 @@ class ClientServiceController extends BaseController
         }
 
         $planHolderId = (int) ($access['plan_holder']['plan_holder_id'] ?? 0);
-        $activePlan = $planHolderId > 0 ? $this->activePlan($planHolderId) : null;
-        $monthsPaid = (int) ($activePlan['months_paid'] ?? 0);
-        if ($monthsPaid < 2) {
-            return redirect()->back()->with('error', 'You must complete at least 2 months of payments before requesting services.');
-        }
 
         $planHolder = $access['plan_holder'];
         if (! $planHolder) {
             return redirect()->to('/plan-info')->with('error', 'No plan holder profile found. Please complete registration first.');
         }
 
-        // Check service eligibility based on membership state
-        $membershipService = new MembershipService();
-        $serviceAccess = $membershipService->serviceAccess((int) $planHolder['plan_holder_id']);
-        if (! $serviceAccess['allowed']) {
-            return redirect()->back()->with('error', $serviceAccess['reason'] ?: 'Your plan does not allow service requests at this time.');
+        // A single service is treated as an avail of its price (ClaimAvailService): same 2-month rule,
+        // no unsettled balance, one open request at a time.
+        $claimAvail = new \App\Services\ClaimAvailService();
+        $el = $claimAvail->eligibility($planHolderId, 0);
+        if (! $el['allowed']) {
+            return redirect()->back()->withInput()->with('error', (string) $el['message']);
         }
 
         $service = db_connect()->table('service_list')
@@ -547,7 +563,9 @@ class ClientServiceController extends BaseController
                 'beneficiary_contact' => trim((string) $this->request->getPost('beneficiary_contact')) ?: null,
                 'application_notes' => trim((string) $this->request->getPost('application_notes')) ?: null,
                 'selected_route_id' => $routeId > 0 ? $routeId : null,
-                'application_amount' => $applicationAmount,
+                'application_amount' => (float) ($claimAvail->priceItem($planHolderId, ['service_list_id' => $serviceListId, 'route_id' => $routeId])['charge'] ?? $applicationAmount),
+                'request_type' => 'avail',
+                'rule_version' => \App\Services\ClaimAvailService::RULE_VERSION,
             ];
 
             $db->table('service_applications')->insert($insert);

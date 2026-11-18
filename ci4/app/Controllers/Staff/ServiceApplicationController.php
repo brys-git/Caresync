@@ -42,6 +42,7 @@ class ServiceApplicationController extends BaseController
             'requests' => $branchId > 0 ? $this->claimService->getBranchClaims($branchId, cs_search_term($this->request->getGet('search'))) : [],
             'branch_issue' => $branchIssue,
             'role_layout' => 'layouts/staff',
+            'page_actions' => '<a class="btn btn-primary btn-sm" href="' . esc(base_url('staff/services/file-claim'), 'attr') . '"><i class="ti ti-file-plus" aria-hidden="true"></i> File a claim for a plan holder</a>',
         ]);
     }
 
@@ -64,6 +65,7 @@ class ServiceApplicationController extends BaseController
             'request' => $request,
             'documents' => $this->claimService->getClaimDocuments($id),
             'claim_info' => (new \App\Services\ClaimAvailService())->decisionInfo($id, $branchId),
+            'notes' => $this->claimService->notesFor($id),
             'viewer_role' => 3,
         ]);
     }
@@ -83,6 +85,15 @@ class ServiceApplicationController extends BaseController
         }
 
         return redirect()->to(self::BASE_PATH)->with('success', $result['message']);
+    }
+
+    public function addNote(int $id)
+    {
+        $this->ensureStaffAccess();
+
+        $result = $this->claimService->addNote($id, (int) session('branch_id'), (int) session('user_id'), (string) $this->request->getPost('note'));
+
+        return redirect()->to('/staff/services/requests/' . $id)->with($result['ok'] ? 'success' : 'error', $result['message']);
     }
 
     public function reject(int $id)

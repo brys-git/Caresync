@@ -47,6 +47,9 @@ $routes->group('client', ['filter' => 'auth'], static function (RouteCollection 
     $routes->post('service-balances/acknowledge/(:num)', 'ServiceBalances::acknowledge/$1', ['filter' => 'role:4']);
     $routes->post('service-balances/pay/(:num)', 'ServiceBalances::pay/$1', ['filter' => 'role:4']);
 
+    // My claims: every claim, avail and service request with its status, terms and balance
+    $routes->get('claims', 'Client\ClientClaimsController::index', ['filter' => 'role:4']);
+
     // Service Management
     $routes->get('service', 'Client\ClientServiceController::services', ['filter' => 'role:4']);
     $routes->get('service/(:num)', 'Client\ClientServiceController::serviceDetails/$1', ['filter' => 'role:4']);

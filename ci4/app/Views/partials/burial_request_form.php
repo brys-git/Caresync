@@ -4,16 +4,19 @@
  * "Avail Package". $mode is 'claim' or 'avail' and only changes the package
  * card, the cost summary rows, the amount-due display and the submit label.
  *
- * Expects: $mode, $package, $base_price, $benefit_credit, $attire_price,
- * $plan_name, $member_name, $member_address, $beneficiary_prefill,
- * $branch_name, $branch_phone, $form_errors.
+ * Expects: $mode, $package, $base_price, $attire_price, $form_quote (ClaimAvailService::formQuote -
+ * the exact quote the approval will use), $plan_name, $member_name, $member_address,
+ * $beneficiary_prefill, $branch_name, $branch_phone, $form_errors.
+ * There is no "benefit credit": a claim releases the plan's own package free; anything else is
+ * added to the balance (down payment, then instalments) - the summary shows exactly that.
  */
 $e = static fn ($v): string => esc((string) ($v ?? ''));
 $money = static fn (float $v): string => '₱' . number_format($v, 2);
 $isClaim = $mode === 'claim';
 $attireOn = (bool) old('burial_attire');
-$dueBase = $isClaim ? 0.0 : max(0.0, (float) $base_price - (float) $benefit_credit);
-$dueNow = $dueBase + ($attireOn ? (float) $attire_price : 0.0);
+$fq = is_array($form_quote ?? null) ? $form_quote : ['plain' => [], 'attire' => [], 'eligibility' => ['allowed' => true]];
+$quoteNow = ($attireOn ? $fq['attire'] : $fq['plain']) ?: $fq['plain'];
+$blocked = isset($fq['eligibility']['allowed']) && ! $fq['eligibility']['allowed'];
 $errorFor = static fn (string $key): string => (string) ($form_errors[$key] ?? '');
 $description = trim((string) ($package['description'] ?? ''));
 if ($description === '') {
@@ -24,13 +27,6 @@ $currentRelationship = (string) old('relationship_to_deceased', '');
 if ($currentRelationship !== '' && ! in_array($currentRelationship, $relationships, true)) {
     array_unshift($relationships, $currentRelationship);
 }
-$noteZero = $isClaim
-    ? 'You pay nothing for the casket. Staff will confirm the details when they call.'
-    : 'Staff will confirm the details when they call.';
-$noteDue = 'Only the add-on is charged. Staff will confirm payment options when they call — nothing is charged now.';
-if (! $isClaim) {
-    $noteDue = 'Staff will confirm payment options when they call — nothing is charged now.';
-}
 $today = date('Y-m-d');
 // Optional: a Branch Admin filing on the plan holder's behalf passes form_action
 // and on_behalf = true, which adds the "Who is making the claim" fields.
@@ -38,11 +34,14 @@ $formAction = (string) ($form_action ?? site_url('/client/apply-package/' . (int
 $onBehalf = (bool) ($on_behalf ?? false);
 $claimantRelationships = ['Beneficiary', 'Spouse', 'Child', 'Parent', 'Sibling', 'Other relative', 'Friend / other'];
 ?>
+<?php if ($blocked): ?>
+    <section class="br-notice" role="alert">
+        <h2 class="br-notice__title">This can't be submitted right now</h2>
+        <p class="br-body"><?= $e($fq['eligibility']['message'] ?? 'Your plan does not allow this request at the moment.') ?></p>
+    </section>
+<?php endif; ?>
 <form id="brForm" method="post" enctype="multipart/form-data" action="<?= $e($formAction) ?>" novalidate data-cs-once
-      data-base-due="<?= $e(number_format($dueBase, 2, '.', '')) ?>"
-      data-attire-price="<?= $e(number_format((float) $attire_price, 2, '.', '')) ?>"
-      data-note-zero="<?= $e($noteZero) ?>"
-      data-note-due="<?= $e($noteDue) ?>">
+      data-attire-price="<?= $e(number_format((float) $attire_price, 2, '.', '')) ?>">
     <?= csrf_field() ?>
 
     <div class="br-layout">
@@ -62,8 +61,8 @@ $claimantRelationships = ['Beneficiary', 'Spouse', 'Child', 'Parent', 'Sibling',
                     <div class="br-covered">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8.5 8 9 4.5-.5 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>
                         <div>
-                            <p class="br-covered__title">Fully covered by your Damayan plan</p>
-                            <p class="br-covered__sub">Plan: <?= $e($plan_name) ?> · Member <?= $e($member_name) ?></p>
+                            <p class="br-covered__title">The casket in your plan is released at no extra charge</p>
+                            <p class="br-covered__sub">Plan: <?= $e($plan_name) ?> · Member <?= $e($member_name) ?>. Your remaining plan balance stays and you keep paying your monthly contribution.</p>
                         </div>
                     </div>
                 <?php endif; ?>
@@ -117,23 +116,44 @@ $claimantRelationships = ['Beneficiary', 'Spouse', 'Child', 'Parent', 'Sibling',
             <?php if ($onBehalf): ?>
             <section class="br-card" aria-labelledby="br-claimant-title">
                 <h2 id="br-claimant-title" class="br-card__title">Who is making the claim</h2>
-                <div class="br-grid">
-                    <div class="br-field">
-                        <label for="claimant_name">Full name of the person claiming <span class="br-req">Required</span></label>
-                        <input id="claimant_name" name="claimant_name" class="br-input" type="text" autocomplete="off" value="<?= old('claimant_name') ?>" aria-describedby="err-claimant_name" required>
-                        <p class="br-error" id="err-claimant_name" <?= $errorFor('claimant_name') === '' ? 'hidden' : '' ?>><?= $e($errorFor('claimant_name')) ?></p>
-                    </div>
-                    <div class="br-field">
-                        <label for="claimant_relationship">Their relationship to the plan holder <span class="br-req">Required</span></label>
-                        <select id="claimant_relationship" name="claimant_relationship" class="br-input" aria-describedby="err-claimant_relationship" required>
-                            <option value="">Select</option>
-                            <?php foreach ($claimantRelationships as $rel): ?>
-                                <option value="<?= $e($rel) ?>" <?= (string) old('claimant_relationship') === $rel ? 'selected' : '' ?>><?= $e($rel) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                        <p class="br-error" id="err-claimant_relationship" <?= $errorFor('claimant_relationship') === '' ? 'hidden' : '' ?>><?= $e($errorFor('claimant_relationship')) ?></p>
-                    </div>
+                <p class="br-muted">Choose the claimant from the plan holder's records. Beneficiaries must be registered on the plan; they come to the branch because they have no account.</p>
+                <?php $claimantOptions = is_array($claimant_options ?? null) ? $claimant_options : []; $chosen = (string) old('claimant_choice', ''); ?>
+                <fieldset class="br-field" aria-describedby="err-claimant_choice">
+                    <legend class="br-label">Claimant <span class="br-req">Required</span></legend>
+                    <?php foreach ($claimantOptions as $opt): ?>
+                        <label class="br-check">
+                            <input type="radio" name="claimant_choice" class="br-check__input claimant-choice" value="<?= $e($opt['id']) ?>" data-rel="<?= $e($opt['relationship']) ?>" <?= $chosen === (string) $opt['id'] ? 'checked' : '' ?> required>
+                            <span><?= $e($opt['label']) ?><?= $opt['relationship'] !== '' ? ' · ' . $e($opt['relationship']) : '' ?></span>
+                        </label>
+                    <?php endforeach; ?>
+                    <?php if (count($claimantOptions) < 2): ?><p class="br-muted">No beneficiary is registered on this plan yet, so only the plan holder can be the claimant.</p><?php endif; ?>
+                    <p class="br-error" id="err-claimant_choice" <?= $errorFor('claimant_choice') === '' ? 'hidden' : '' ?>><?= $e($errorFor('claimant_choice')) ?></p>
+                </fieldset>
+                <div class="br-field">
+                    <label for="claimant_relationship">Their relationship to the plan holder <span class="br-req">Required</span></label>
+                    <select id="claimant_relationship" name="claimant_relationship" class="br-input" aria-describedby="err-claimant_relationship" required>
+                        <option value="">Select</option>
+                        <?php foreach (array_unique(array_merge(['Plan holder'], $claimantRelationships)) as $rel): ?>
+                            <option value="<?= $e($rel) ?>" <?= (string) old('claimant_relationship') === $rel ? 'selected' : '' ?>><?= $e($rel) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <p class="br-error" id="err-claimant_relationship" <?= $errorFor('claimant_relationship') === '' ? 'hidden' : '' ?>><?= $e($errorFor('claimant_relationship')) ?></p>
                 </div>
+                <script>
+                (function () {
+                    var sel = document.getElementById('claimant_relationship');
+                    document.querySelectorAll('.claimant-choice').forEach(function (r) {
+                        r.addEventListener('change', function () {
+                            var rel = r.getAttribute('data-rel') || '';
+                            if (!rel) { return; }
+                            var found = false;
+                            for (var i = 0; i < sel.options.length; i++) { if (sel.options[i].value === rel) { found = true; } }
+                            if (!found) { var o = document.createElement('option'); o.value = rel; o.textContent = rel; sel.appendChild(o); }
+                            sel.value = rel;
+                        });
+                    });
+                })();
+                </script>
             </section>
             <?php endif; ?>
 
@@ -180,7 +200,7 @@ $claimantRelationships = ['Beneficiary', 'Spouse', 'Child', 'Parent', 'Sibling',
                     <span class="br-doc__icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M14 10h4M14 14h3"/></svg></span>
                     <div class="br-doc__body">
                         <div class="br-doc__head">
-                            <label for="doc_beneficiary_id" class="br-doc__title">Valid ID of the contact person</label>
+                            <label for="doc_beneficiary_id" class="br-doc__title"><?= $onBehalf ? 'Valid ID of the person making the claim' : 'Valid ID of the contact person' ?></label>
                             <span class="br-tag br-tag--req">Required</span>
                         </div>
                         <p class="br-hint">A clear photo of a government-issued ID.</p>
@@ -215,34 +235,13 @@ $claimantRelationships = ['Beneficiary', 'Spouse', 'Child', 'Parent', 'Sibling',
         </div>
 
         <aside class="br-summary" aria-labelledby="br-sum-title">
-            <h2 id="br-sum-title" class="br-card__title">Cost summary</h2>
-            <dl class="br-rows">
-                <div class="br-row">
-                    <dt><?= $e($package['package_name'] ?? '—') ?></dt>
-                    <dd class="br-num"><?= $money((float) $base_price) ?></dd>
-                </div>
-                <div class="br-row" id="addonRow" <?= $attireOn ? '' : 'hidden' ?>>
-                    <dt>Burial attire add-on</dt>
-                    <dd class="br-num" id="addonAmount"><?= $money((float) $attire_price) ?></dd>
-                </div>
-                <?php if ($isClaim): ?>
-                    <div class="br-row br-row--credit">
-                        <dt>Damayan entitlement</dt>
-                        <dd class="br-num">−<?= $money((float) $base_price) ?></dd>
-                    </div>
-                <?php elseif ((float) $benefit_credit > 0): ?>
-                    <div class="br-row br-row--credit">
-                        <dt>Damayan benefit credit</dt>
-                        <dd class="br-num">−<?= $money((float) $benefit_credit) ?></dd>
-                    </div>
-                <?php endif; ?>
-            </dl>
+            <h2 id="br-sum-title" class="br-card__title">What this means for your balance</h2>
+            <dl class="br-rows" id="quoteRows" aria-live="polite"></dl>
             <div class="br-divider"></div>
-            <p class="br-label">Amount due</p>
-            <p id="amountDue" class="<?= $dueNow > 0 ? 'br-amount br-num' : 'br-amount br-amount--covered' ?>"><?= $dueNow > 0 ? $money($dueNow) : 'Fully covered' ?></p>
-            <p id="amountNote" class="br-muted br-amount-note"><?= $e($dueNow > 0 ? $noteDue : $noteZero) ?></p>
-
-            <button type="submit" id="submitBtn" class="br-btn br-btn--primary br-btn--block"><?= $isClaim ? 'Submit claim' : 'Submit request' ?></button>
+            <p class="br-label">Added to your balance</p>
+            <p id="amountDue" class="br-amount br-num"></p>
+            <p id="amountNote" class="br-muted br-amount-note"></p>
+            <button type="submit" id="submitBtn" class="br-btn br-btn--primary br-btn--block" <?= $blocked ? 'disabled' : '' ?>><?= $isClaim ? 'Submit claim' : 'Submit request' ?></button>
             <a class="br-link" href="<?= site_url('/client/service?tab=packages') ?>">Cancel</a>
             <p class="br-help">Need help now?
                 <?php if ($branch_phone !== ''): ?>
@@ -263,34 +262,61 @@ $claimantRelationships = ['Beneficiary', 'Spouse', 'Child', 'Parent', 'Sibling',
     var today = '<?= $today ?>';
     var attireSwitch = document.getElementById('attireSwitch');
     var attireBox = document.getElementById('burialAttire');
-    var addonRow = document.getElementById('addonRow');
+    var quoteRows = document.getElementById('quoteRows');
     var amountDue = document.getElementById('amountDue');
     var amountNote = document.getElementById('amountNote');
     var submitBtn = document.getElementById('submitBtn');
-    var baseDue = Number(form.getAttribute('data-base-due'));
-    var attirePrice = Number(form.getAttribute('data-attire-price'));
+    var Q = <?= json_encode($fq, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 
     function money(value) {
-        return '₱' + value.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return '₱' + Number(value).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    function row(label, value, cls) {
+        return '<div class="br-row' + (cls ? ' ' + cls : '') + '"><dt>' + label + '</dt><dd class="br-num">' + value + '</dd></div>';
     }
 
+    // The exact figures the approval will use (ClaimAvailService), with or without the add-on.
     function renderAmount() {
         var on = attireBox.checked;
-        var due = Math.round((baseDue + (on ? attirePrice : 0)) * 100) / 100;
         attireSwitch.setAttribute('aria-checked', on ? 'true' : 'false');
         attireSwitch.classList.toggle('is-on', on);
-        addonRow.hidden = !on;
-        if (due > 0) {
-            amountDue.textContent = money(due);
-            amountDue.className = 'br-amount br-num';
-            amountNote.textContent = form.getAttribute('data-note-due');
+        var q = (on ? Q.attire : Q.plain) || Q.plain;
+        if (!q || q.added === undefined) { return; }
+        var h = '';
+        if (q.free) {
+            h += row(q.name + ' (in your plan)', 'Free', 'br-row--credit');
+            if (q.addons_total > 0) { h += row(q.addons_label + ' add-on', '+ ' + money(q.addons_total)); }
         } else {
-            amountDue.textContent = 'Fully covered';
-            amountDue.className = 'br-amount br-amount--covered';
-            amountNote.textContent = form.getAttribute('data-note-zero');
+            h += row(q.name, money(q.item_price));
+            if (q.addons_total > 0) { h += row(q.addons_label + ' add-on', '+ ' + money(q.addons_total)); }
+        }
+        if (q.added > 0) {
+            if (q.upfront) {
+                h += row('Paid in full up front', money(q.down));
+            } else {
+                h += row('Down payment (' + Math.round(q.rate * 100) + '%)', money(q.down));
+                h += row('Then paid in instalments', money(q.financed));
+                if (q.terms && q.terms.length) {
+                    h += row('Monthly instalment, by the term your branch chooses', '');
+                    q.terms.forEach(function (t) { h += row('&nbsp;&nbsp;' + t.term + ' months', money(t.monthly) + ' a month'); });
+                }
+            }
+            h += row('Plan balance (unchanged)', money(q.plan_balance));
+            h += row('Total balance after approval', money(q.total_after));
+        } else {
+            h += row('Your plan balance stays', money(q.plan_balance));
+        }
+        quoteRows.innerHTML = h;
+        amountDue.textContent = q.added > 0 ? money(q.added) : '₱0.00';
+        if (q.added > 0 && q.upfront) {
+            amountNote.textContent = 'This small amount is paid in full within ' + q.down_days + ' days of approval, or the request is cancelled. Nothing is charged now.';
+        } else if (q.added > 0) {
+            amountNote.textContent = 'Added to your balance when your branch approves. The down payment is due within ' + q.down_days + ' days of approval, or the request is cancelled. Nothing is charged now.';
+        } else {
+            amountNote.textContent = 'Nothing is added to your balance. You keep paying your plan contribution of ' + money(q.plan_monthly) + ' a month.';
         }
     }
-
+    renderAmount();
     attireSwitch.addEventListener('click', function () {
         attireBox.checked = !attireBox.checked;
         renderAmount();

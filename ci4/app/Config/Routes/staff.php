@@ -73,7 +73,12 @@ $routes->group('staff', ['filter' => 'auth'], static function (RouteCollection $
     $routes->get('services/requests', 'Staff\ServiceApplicationController::index', ['filter' => 'role:3']);
     $routes->get('services/requests/(:num)', 'Staff\ServiceApplicationController::show/$1', ['filter' => 'role:3']);
     $routes->get('services/requests/document/(:num)', 'Staff\ServiceApplicationController::downloadDocument/$1', ['filter' => 'role:3']);
+    // File a claim FOR a plan holder of this branch (the claimant is the plan holder or a registered beneficiary).
+    $routes->get('services/file-claim', 'Staff\ClaimController::pick', ['filter' => 'role:3']);
+    $routes->get('services/file-claim/(:num)', 'Staff\ClaimController::form/$1', ['filter' => 'role:3']);
+    $routes->post('services/file-claim/(:num)', 'Staff\ClaimController::store/$1', ['filter' => 'role:3']);
     $routes->post('services/requests/approve/(:num)', 'Staff\ServiceApplicationController::approve/$1', ['filter' => 'role:3']);
+    $routes->post('services/requests/note/(:num)', 'Staff\ServiceApplicationController::addNote/$1', ['filter' => 'role:3']);
     $routes->post('services/requests/reject/(:num)', 'Staff\ServiceApplicationController::reject/$1', ['filter' => 'role:3']);
 
     // Reports & Analytics

@@ -147,20 +147,6 @@ class ClaimSubmissionService
             return ['ok' => false, 'error' => 'No plan holder profile found.'];
         }
 
-        $who = $onBehalf ? 'This plan holder' : 'You';
-
-        [$canApply, $membership, $planId] = $this->eligibility($planHolderId);
-
-        $monthsPaid = (int) ($membership['months_paid'] ?? 0);
-        if ($monthsPaid < self::MIN_MONTHS_PAID) {
-            return ['ok' => false, 'error' => $who . ' must complete at least 2 months of payments before requesting services.'];
-        }
-
-        $serviceAccess = (new MembershipService())->serviceAccess($planHolderId);
-        if (! $serviceAccess['allowed']) {
-            return ['ok' => false, 'error' => $serviceAccess['reason'] ?: 'This plan does not allow service requests at this time.'];
-        }
-
         $package = $db->table('packages')
             ->select('package_id, package_name, base_price, is_damayan_entitlement')
             ->where('package_id', $packageId)
@@ -170,18 +156,20 @@ class ClaimSubmissionService
             return ['ok' => false, 'error' => 'Selected package is unavailable.'];
         }
 
-        $isEntitlement = (int) ($package['is_damayan_entitlement'] ?? 0) === 1;
-
-        if ($isEntitlement) {
-            $claimStatus = $this->entitlementClaimStatus($canApply, $membership, $planId);
-            if (! $claimStatus['eligible']) {
-                return ['ok' => false, 'error' => (string) $claimStatus['reason']];
+        // The one rule set for claims and avails (ClaimAvailService): 2 paid months in the current
+        // cycle, no unsettled balance, one open request at a time. Checked again here on the server.
+        $claimAvail = new ClaimAvailService();
+        $el = $claimAvail->eligibility($planHolderId, $packageId);
+        if (! $el['allowed']) {
+            $msg = (string) $el['message'];
+            if ($onBehalf) {
+                $msg = strtr($msg, ['You have paid' => 'They have paid', 'You need' => 'The plan holder needs', 'You already have' => 'The plan holder already has', 'You can request' => 'The plan holder can request']);
             }
 
-            if ($this->openClaim($planHolderId, $planId) !== null) {
-                return ['ok' => false, 'error' => 'A claim is already in progress for this entitlement.', 'redirect_open_claim' => true];
-            }
+            return ['ok' => false, 'error' => $msg, 'redirect_open_claim' => $el['code'] === 'open_request'];
         }
+
+        $isEntitlement = $claimAvail->requestType($claimAvail->planFor($planHolderId) ?? [], $packageId) === ClaimAvailService::TYPE_CLAIM;
 
         // ---- input -------------------------------------------------------
         $text = static fn (string $key): string => trim((string) ($post[$key] ?? ''));
@@ -225,14 +213,29 @@ class ClaimSubmissionService
         // Who is making the claim (filled in when a Branch Admin files it).
         $claimantName = $text('claimant_name');
         $claimantRelationship = $text('claimant_relationship');
+        $claimantBeneficiaryId = null;
         if ($onBehalf) {
-            if ($claimantName === '') {
-                $errors['claimant_name'] = 'Enter the name of the person making the claim.';
-            } elseif (mb_strlen($claimantName) > 150) {
-                $errors['claimant_name'] = 'Keep the name under 150 characters.';
+            // The claimant is the plan holder or one of the plan holder's REGISTERED beneficiaries,
+            // picked from the list - never free text. The name comes from our own records.
+            $choice = $text('claimant_choice');
+            if ($choice === 'holder') {
+                $holderUser = $db->table('users')->select('first_name, middle_name, last_name')->where('user_id', (int) $holder['user_id'])->get()->getRowArray() ?: [];
+                $claimantName = trim(implode(' ', array_filter([$holderUser['first_name'] ?? '', $holderUser['middle_name'] ?? '', $holderUser['last_name'] ?? ''])));
+                $claimantRelationship = $claimantRelationship !== '' ? $claimantRelationship : 'Plan holder';
+            } elseif (ctype_digit($choice) && (int) $choice > 0) {
+                $ben = $db->table('beneficiaries')->where('beneficiary_id', (int) $choice)->where('plan_holder_id', $planHolderId)->get()->getRowArray();
+                if ($ben === null) {
+                    $errors['claimant_choice'] = 'Choose the claimant from the plan holder\'s registered beneficiaries.';
+                } else {
+                    $claimantBeneficiaryId = (int) $ben['beneficiary_id'];
+                    $claimantName = trim(implode(' ', array_filter([$ben['first_name'], $ben['middle_name'], $ben['last_name'], $ben['name_extension']])));
+                    $claimantRelationship = $claimantRelationship !== '' ? $claimantRelationship : (string) ($ben['relationship'] ?? '');
+                }
+            } else {
+                $errors['claimant_choice'] = 'Choose who is making the claim: the plan holder or a registered beneficiary.';
             }
             if ($claimantRelationship === '') {
-                $errors['claimant_relationship'] = 'Choose who is making the claim.';
+                $errors['claimant_relationship'] = 'Enter the claimant\'s relationship to the plan holder.';
             } elseif (mb_strlen($claimantRelationship) > 100) {
                 $errors['claimant_relationship'] = 'Keep this under 100 characters.';
             }
@@ -257,7 +260,7 @@ class ClaimSubmissionService
         if ($beneficiaryId === null) {
             $errors['documents_beneficiary_id'] = $this->hasUpload($uploads['beneficiary_id'] ?? null)
                 ? 'The ID must be an image or PDF up to 5 MB.'
-                : 'Upload a valid ID of the beneficiary.';
+                : ($onBehalf ? 'Upload a valid ID of the person making the claim.' : 'Upload a valid ID of the beneficiary.');
         }
         if ($this->hasUpload($uploads['death_certificate'] ?? null) && $deathCertificate === null) {
             $errors['documents_death_certificate'] = 'The death certificate must be an image or PDF up to 5 MB.';
@@ -271,19 +274,11 @@ class ClaimSubmissionService
         $burialAttireSelected = ! empty($post['burial_attire']);
         $burialAttirePrice = $burialAttireSelected ? self::BURIAL_ATTIRE_PRICE : null;
 
-        $basePrice = (float) $package['base_price'];
-        if ($isEntitlement) {
-            // Fully covered - the whole casket price is the benefit itself.
-            $damayanBenefitApplied = $basePrice;
-            $applicationAmount = $burialAttireSelected ? self::BURIAL_ATTIRE_PRICE : 0.0;
-        } else {
-            $damayanBenefitApplied = 0.0;
-            if (! empty($membership) && (! empty($membership['can_access_services']))) {
-                $planRow = $db->table('plans')->where('plan_id', $planId)->get()->getRowArray();
-                $damayanBenefitApplied = min($basePrice, PlanLedgerService::targetFor($planRow ?: []));
-            }
-            $applicationAmount = $basePrice - $damayanBenefitApplied + ($burialAttireSelected ? self::BURIAL_ATTIRE_PRICE : 0.0);
-        }
+        // What is added to the client's balance, by the same rule the approval uses: a claim adds only
+        // paid add-ons; an avail adds the package price (and add-ons). There is no "benefit credit".
+        $priced = $claimAvail->priceItem($planHolderId, ['package_id' => $packageId, 'attire' => $burialAttireSelected]);
+        $damayanBenefitApplied = 0.0;
+        $applicationAmount = (float) ($priced['charge'] ?? 0.0);
 
         // ---- save --------------------------------------------------------
         $db->transBegin();
@@ -304,6 +299,8 @@ class ClaimSubmissionService
                 'burial_attire_price' => $burialAttirePrice,
                 'damayan_benefit_applied' => $damayanBenefitApplied,
                 'application_amount' => $applicationAmount,
+                'request_type' => $isEntitlement ? ClaimAvailService::TYPE_CLAIM : ClaimAvailService::TYPE_AVAIL,
+                'rule_version' => ClaimAvailService::RULE_VERSION,
                 'awaiting_death_certificate' => $deathCertificate === null ? 1 : 0,
             ];
 
@@ -312,6 +309,9 @@ class ClaimSubmissionService
                 $insert['filed_on_behalf'] = 1;
                 $insert['claimant_name'] = $claimantName;
                 $insert['claimant_relationship'] = $claimantRelationship;
+                if ($claimantBeneficiaryId !== null && $db->fieldExists('claimant_beneficiary_id', 'service_applications')) {
+                    $insert['claimant_beneficiary_id'] = $claimantBeneficiaryId;
+                }
             }
 
             $db->table('service_applications')->insert($insert);
@@ -349,7 +349,7 @@ class ClaimSubmissionService
 
             $label = (string) $package['package_name'];
             $message = $onBehalf
-                ? 'A ' . ($isEntitlement ? 'claim for ' : 'request for ') . $label . ' was filed for you by your ' . ($filedBy['actor_role'] ?? 'branch') . ', ' . ($filedBy['actor_name'] ?? '') . '.'
+                ? 'A ' . ($isEntitlement ? 'claim for ' : 'request for ') . $label . ' was filed for you at the branch by ' . ($filedBy['actor_name'] ?? '') . ' (' . ($filedBy['actor_role'] ?? 'branch') . ') for ' . $claimantName . ' (' . $claimantRelationship . ').'
                 : ($isEntitlement ? 'Your claim for ' : 'Your application for ') . $label . ' has been submitted.';
 
             (new NotificationService())->notify((int) $holder['user_id'], $message, 'registration_pending');
