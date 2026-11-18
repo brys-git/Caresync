@@ -431,6 +431,10 @@ class PaymentTracking extends BaseController
 
         $plan = (new PlanModel())->find((int) $payment['plan_id']);
         $autoApproved = false;
+        if ($plan && ! in_array($targetStatus, ['paid', 'verified'], true)) {
+            // Rejected / cancelled: any slices of this payment go and the plan's allocations are recomputed.
+            (new \App\Services\ClaimAvailService())->onPaymentReversed((int) $payment['payment_id'], (int) $plan['plan_id']);
+        }
         if ($plan && in_array($targetStatus, ['paid', 'verified'], true)) {
             $monthsCovered = max(1, (int) ($payment['months_covered'] ?? 1));
             if ($this->isInitialPayment((int) $payment['payment_id'], (int) $plan['plan_id'], (int) ($plan['plan_holder_id'] ?? 0))) {

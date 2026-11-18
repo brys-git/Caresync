@@ -314,7 +314,7 @@ class PlanLedgerService
             ->select('payment_date, amount')
             ->where('plan_id', $planId)
             ->where('status', 'pending')
-            ->where('payment_type !=', 'reinstatement_fee')
+            ->whereNotIn('payment_type', ['reinstatement_fee', 'avail_down_payment'])
             ->where('deleted_at IS NULL', null, false)
             ->get()
             ->getResultArray();
@@ -364,21 +364,31 @@ class PlanLedgerService
      *
      * @return list<array{date:string, amount:float}>
      */
-    private function paymentsFor(array $plan, string $anchor): array
+    private function paymentsFor(array $plan, string $anchor, array $excludePaymentIds = []): array
     {
         $db = db_connect();
         $cycle = (int) ($plan['current_cycle_number'] ?? 1);
 
-        $live = $db->table('payments')
-            ->select('payment_date, amount')
-            ->where('plan_id', (int) $plan['plan_id'])
-            ->whereIn('status', ['paid', 'verified'])
-            ->where('payment_type !=', 'reinstatement_fee')
-            ->where('cycle_number', $cycle)
-            ->get()
-            ->getResultArray();
+        // Only the PLAN part of a payment counts as a contribution. A package down payment is
+        // never a contribution, and the slices of a payment that went to package instalments
+        // (payment_allocations) are taken out. A payment with no allocation rows - every
+        // payment made before this feature - counts 100% as plan money, exactly as before.
+        $amount = self::allocationsReady()
+            ? "payments.amount - COALESCE((SELECT SUM(a.amount) FROM payment_allocations a WHERE a.payment_id = payments.payment_id AND a.target_type IN ('avail_down_payment', 'avail_instalment')), 0)"
+            : 'payments.amount';
 
-        $rows = array_map(static fn (array $r): array => ['date' => (string) $r['payment_date'], 'amount' => (float) $r['amount']], $live);
+        $builder = $db->table('payments')
+            ->select("payments.payment_id, payments.payment_date, $amount AS plan_amount", false)
+            ->where('payments.plan_id', (int) $plan['plan_id'])
+            ->whereIn('payments.status', ['paid', 'verified'])
+            ->whereNotIn('payments.payment_type', ['reinstatement_fee', 'avail_down_payment'])
+            ->where('payments.cycle_number', $cycle);
+        if ($excludePaymentIds !== []) {
+            $builder->whereNotIn('payments.payment_id', array_map('intval', $excludePaymentIds));
+        }
+        $live = $builder->get()->getResultArray();
+
+        $rows = array_map(static fn (array $r): array => ['date' => (string) $r['payment_date'], 'amount' => (float) $r['plan_amount'], 'payment_id' => (int) $r['payment_id']], $live);
 
         if (LegacyRecordService::ready()) {
             $past = $db->table('legacy_payments')
@@ -395,6 +405,37 @@ class PlanLedgerService
         }
 
         return $rows;
+    }
+
+    /** Whether payment_allocations exists (the table is new; a database not migrated yet simply has none). */
+    public static function allocationsReady(): bool
+    {
+        static $ready = null;
+
+        return $ready ??= db_connect()->tableExists('payment_allocations');
+    }
+
+    /**
+     * The plan's contributions after pouring in the plan money of its payments - used by
+     * ClaimAvailService to decide which contributions a new payment would pay.
+     *
+     * @param list<int>                                                   $excludePaymentIds  payments to leave out
+     * @param list<array{date:string, amount:float}>                      $extraMoney         plan money to add on top
+     *
+     * @return list<array{number:int, due:string, amount:float, paid:float, remaining:float, is_paid:bool}>
+     */
+    public function contributionsWithMoney(int $planId, array $excludePaymentIds = [], array $extraMoney = []): array
+    {
+        $plan = db_connect()->table('plans')->where('plan_id', $planId)->get()->getRowArray();
+        if (! $plan) {
+            return [];
+        }
+
+        $anchor = $this->anchorFor($plan);
+        $money  = array_merge($this->paymentsFor($plan, $anchor, $excludePaymentIds), $extraMoney);
+        $s      = self::compute($this->planInput($plan, $anchor), $money, $this->today(), ['target' => self::targetFor($plan)]);
+
+        return $s['contributions'];
     }
 
     private function feePaidSince(int $planId, ?string $since): float

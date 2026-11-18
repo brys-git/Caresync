@@ -152,6 +152,10 @@ class ApprovalService
                 ->where('payment_id', $paymentId)
                 ->update(['status' => 'cancelled', 'remarks' => $reason]);
 
+            // A cancelled payment keeps no allocation slices (ClaimAvailService recomputes the plan).
+            $cancelledPlanId = (int) (db_connect()->table('payments')->select('plan_id')->where('payment_id', $paymentId)->get(1)->getRowArray()['plan_id'] ?? 0);
+            (new \App\Services\ClaimAvailService())->onPaymentReversed($paymentId, $cancelledPlanId);
+
             // Log the activity
             helper('activity_log');
             log_activity((int) session('user_id'), 'rejected', 'payment', $paymentId, 'Rejected payment: ' . $reason);

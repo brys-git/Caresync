@@ -187,6 +187,10 @@ class CycleService
             ->where('payment_id', $paymentId)
             ->update(['cycle_number' => (int) ($plan['current_cycle_number'] ?? 1)]);
 
+        // A client with an avail: split this payment between plan contributions and package
+        // instalments (the ledger then counts only the plan part). No-op for everyone else.
+        (new ClaimAvailService())->onPaymentVerified($paymentId, $planId);
+
         $this->membershipService->recalculateMonthsPaid($planId);
 
         $this->closeCycleIfSettled($planId);

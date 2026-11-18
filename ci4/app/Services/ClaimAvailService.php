@@ -511,46 +511,475 @@ class ClaimAvailService
 
         $count = 0;
         foreach ($builder->get()->getResultArray() as $avail) {
-            $db->transStart();
-            $db->table('package_avails')->where('avail_id', (int) $avail['avail_id'])->where('status', 'awaiting_down_payment')->update([
-                'status'           => 'cancelled',
-                'cancelled_reason' => 'Cancelled - no down payment',
-                'cancelled_at'     => date('Y-m-d H:i:s'),
-            ]);
-            if ((int) $avail['service_id'] > 0) {
-                $db->table('services')->where('service_id', (int) $avail['service_id'])->where('status', 'pending')->update(['status' => 'cancelled']);
+            if ($this->cancelNoDownPayment($avail)) {
+                $count++;
             }
-            $db->transComplete();
-
-            if (! $db->transStatus()) {
-                continue;
-            }
-            $count++;
-
-            $notify = new NotificationService();
-            $notify->notify((int) $avail['client_user_id'], 'Your package request was cancelled because the down payment was not paid in time. The package amount was removed from your balance.', 'general', false, false, (int) $avail['plan_id']);
-
-            $admins = $db->table('users')->select('user_id')->where('role_id', 2)->where('status', 'active')->where('deleted_at', null);
-            if ((int) $avail['branch_id'] > 0) {
-                $admins->where('branch_id', (int) $avail['branch_id']);
-            }
-            foreach ($admins->get()->getResultArray() as $admin) {
-                $notify->notify((int) $admin['user_id'], 'An avail (request #' . (int) $avail['avail_id'] . ') was cancelled - no down payment was received in time.', 'general');
-            }
-
-            $actor = (int) ($avail['approved_by'] ?: $avail['client_user_id']);
-            (new ActivityLogService())->log($actor, 'cancelled', 'package_avail', (int) $avail['avail_id'], 'Avail cancelled - no down payment within ' . (int) $this->config->availDownPaymentDays . ' days');
         }
 
         return $count;
     }
 
+    /**
+     * Cancels ONE avail for a missing down payment. Safe when two requests get here at the same
+     * time: the update only matches while the avail is still 'awaiting_down_payment' with the down
+     * payment still due, inside a transaction, and the notifications go out only if that update
+     * really changed a row - so the loser of a race changes nothing and tells nobody.
+     *
+     * @param array<string,mixed> $avail avail_id, service_id, plan_id, branch_id, approved_by, client_user_id
+     */
+    public function cancelNoDownPayment(array $avail): bool
+    {
+        $db = db_connect();
+
+        $db->transStart();
+        $db->table('package_avails')
+            ->where('avail_id', (int) $avail['avail_id'])
+            ->where('status', 'awaiting_down_payment')
+            ->where('down_payment_status', 'due')
+            ->update([
+                'status'           => 'cancelled',
+                'cancelled_reason' => 'Cancelled - no down payment',
+                'cancelled_at'     => date('Y-m-d H:i:s'),
+            ]);
+        $changed = $db->affectedRows() > 0;
+        if ($changed && (int) ($avail['service_id'] ?? 0) > 0) {
+            $db->table('services')->where('service_id', (int) $avail['service_id'])->where('status', 'pending')->update(['status' => 'cancelled']);
+        }
+        $db->transComplete();
+
+        if (! $changed || ! $db->transStatus()) {
+            return false;
+        }
+
+        $notify = new NotificationService();
+        $notify->notify((int) $avail['client_user_id'], 'Your package request was cancelled because the down payment was not paid in time. The package amount was removed from your balance.', 'general', false, false, (int) $avail['plan_id']);
+
+        $admins = $db->table('users')->select('user_id')->where('role_id', 2)->where('status', 'active')->where('deleted_at', null);
+        if ((int) ($avail['branch_id'] ?? 0) > 0) {
+            $admins->where('branch_id', (int) $avail['branch_id']);
+        }
+        foreach ($admins->get()->getResultArray() as $admin) {
+            $notify->notify((int) $admin['user_id'], 'An avail (request #' . (int) $avail['avail_id'] . ') was cancelled - no down payment was received in time.', 'general');
+        }
+
+        $actor = (int) (($avail['approved_by'] ?? 0) ?: $avail['client_user_id']);
+        (new ActivityLogService())->log($actor, 'cancelled', 'package_avail', (int) $avail['avail_id'], 'Avail cancelled - no down payment within ' . (int) $this->config->availDownPaymentDays . ' days');
+
+        return true;
+    }
     /** Forget which scopes were already checked (tests, and the spark command). */
     public static function resetExpiryMemory(): void
     {
         self::$expiredScopes = [];
     }
 
+    /* ======================================================================
+     * Applying payments (payment_allocations)
+     *
+     * A payment from a client who has an avail is split into slices: plan contributions and
+     * package instalments. Slices are written when the payment is VERIFIED and rebuilt from
+     * scratch (reallocatePlan) whenever a payment is rejected/cancelled/reversed, so the rows can
+     * never drift from the payments. Payments with no rows count 100% as plan money (nothing is
+     * backfilled), and clients without an avail never get rows.
+     * ==================================================================== */
+
+    /**
+     * Pure: pour one payment into what is due, oldest first.
+     *
+     * 1. Everything due on or before $asOf - plan contributions AND package instalments together,
+     *    oldest due date first (a plan contribution goes before an instalment due the same day).
+     * 2. What is left is ADVANCE on the plan (its future contributions).
+     * 3. Only when every plan contribution is paid does the rest go to future instalments.
+     * 4. Anything beyond that stays unallocated (plan overpayment, as today).
+     *
+     * @param list<array{number:int, due:string, remaining:float}>                                          $planDue
+     * @param list<array{instalment_id:int, avail_id:int, number:int, due:string, remaining:float}>        $instalmentDue
+     *
+     * @return array{slices:list<array<string,mixed>>, plan_amount:float, package_amount:float, excess:float}
+     */
+    public static function allocate(array $planDue, array $instalmentDue, float $amount, string $asOf): array
+    {
+        $pool   = (int) round($amount * 100);
+        $slices = [];
+        $planLeft = [];   // number => cents still unpaid
+
+        $items = [];
+        foreach ($planDue as $p) {
+            $cents = (int) round($p['remaining'] * 100);
+            if ($cents <= 0) {
+                continue;
+            }
+            $planLeft[(int) $p['number']] = $cents;
+            $items[] = ['kind' => 'plan', 'order' => 0, 'due' => (string) $p['due'], 'number' => (int) $p['number'], 'room' => $cents, 'row' => $p];
+        }
+        foreach ($instalmentDue as $i) {
+            $cents = (int) round($i['remaining'] * 100);
+            if ($cents > 0) {
+                $items[] = ['kind' => 'instalment', 'order' => 1, 'due' => (string) $i['due'], 'number' => (int) $i['number'], 'room' => $cents, 'row' => $i];
+            }
+        }
+
+        $take = static function (array $item, bool $advance) use (&$pool, &$slices, &$planLeft): void {
+            $put = min($item['room'], $pool);
+            if ($put <= 0) {
+                return;
+            }
+            $pool -= $put;
+            $slice = ['kind' => $item['kind'], 'number' => $item['number'], 'due' => $item['due'], 'amount' => round($put / 100, 2), 'advance' => $advance];
+            if ($item['kind'] === 'instalment') {
+                $slice['instalment_id'] = (int) $item['row']['instalment_id'];
+                $slice['avail_id']      = (int) $item['row']['avail_id'];
+            } else {
+                $planLeft[$item['number']] -= $put;
+            }
+            $slices[] = $slice;
+        };
+
+        // 1. what is due now
+        $dueNow = array_values(array_filter($items, static fn (array $it): bool => strcmp($it['due'], $asOf) <= 0));
+        usort($dueNow, static fn (array $a, array $b): int => [$a['due'], $a['order'], $a['number']] <=> [$b['due'], $b['order'], $b['number']]);
+        foreach ($dueNow as $it) {
+            $take($it, false);
+        }
+
+        // 2. advance on the plan
+        $futurePlan = array_values(array_filter($items, static fn (array $it): bool => $it['kind'] === 'plan' && strcmp($it['due'], $asOf) > 0));
+        usort($futurePlan, static fn (array $a, array $b): int => $a['number'] <=> $b['number']);
+        foreach ($futurePlan as $it) {
+            $take($it, true);
+        }
+
+        // 3. future instalments, only once every plan month is paid
+        if ($pool > 0 && array_sum($planLeft) <= 0) {
+            $futureInst = array_values(array_filter($items, static fn (array $it): bool => $it['kind'] === 'instalment' && strcmp($it['due'], $asOf) > 0));
+            usort($futureInst, static fn (array $a, array $b): int => [$a['due'], $a['number']] <=> [$b['due'], $b['number']]);
+            foreach ($futureInst as $it) {
+                $take($it, true);
+            }
+        }
+
+        $plan = 0.0;
+        $pkg  = 0.0;
+        foreach ($slices as $sl) {
+            $sl['kind'] === 'plan' ? $plan += $sl['amount'] : $pkg += $sl['amount'];
+        }
+
+        return ['slices' => $slices, 'plan_amount' => round($plan, 2), 'package_amount' => round($pkg, 2), 'excess' => round($pool / 100, 2)];
+    }
+
+    /** True when the plan has a package amount still to pay (a down payment due, or unpaid instalments). */
+    public function hasPackageItems(int $planId): bool
+    {
+        if (! $this->tableReady('package_avails')) {
+            return false;
+        }
+
+        return db_connect()->table('package_avails')->where('plan_id', $planId)->whereIn('status', ['awaiting_down_payment', 'active'])->countAllResults() > 0;
+    }
+
+    /**
+     * What a payment of $amount would be applied to, for the preview on the recording screens:
+     * "₱3,156.67 -> Plan Oct 2026 ₱240.00 + Instalment 1 ₱2,916.67".
+     *
+     * @return array{ok:bool, error?:string, slices:list<array<string,mixed>>, plan_amount:float, package_amount:float, excess:float, text:string}
+     */
+    public function previewAllocation(int $planId, float $amount, string $paymentDate, string $paymentType = 'monthly_contribution', ?int $availId = null): array
+    {
+        $empty = ['ok' => false, 'slices' => [], 'plan_amount' => 0.0, 'package_amount' => 0.0, 'excess' => 0.0, 'text' => ''];
+        if ($amount <= 0) {
+            return ['error' => 'Enter an amount above 0.'] + $empty;
+        }
+        $db = db_connect();
+
+        if ($paymentType === 'avail_down_payment') {
+            $avail = $availId ? $db->table('package_avails')->where('avail_id', $availId)->where('plan_id', $planId)->get(1)->getRowArray() : null;
+            if (! $avail || $avail['status'] !== 'awaiting_down_payment') {
+                return ['error' => 'There is no down payment waiting on this plan.'] + $empty;
+            }
+            $left = max(0.0, round((float) $avail['down_payment_amount'] - $this->downPaymentPaid((int) $avail['avail_id']), 2));
+            if ($amount - $left > 0.004) {
+                return ['error' => 'The down payment still due is ' . $this->money($left) . '.', 'excess' => round($amount - $left, 2)] + $empty;
+            }
+
+            return ['ok' => true, 'slices' => [['kind' => 'down_payment', 'amount' => round($amount, 2)]], 'plan_amount' => 0.0, 'package_amount' => round($amount, 2), 'excess' => 0.0, 'text' => $this->money($amount) . ' -> Package down payment ' . $this->money($amount)] + $empty;
+        }
+
+        $res = self::allocate($this->planDueNow($planId), $this->instalmentsDue($planId), $amount, $paymentDate);
+
+        return ['ok' => true, 'text' => $this->describeSlices($amount, $res)] + $res + $empty;
+    }
+
+    /** Human text for a split: "₱3,156.67 -> Plan Oct 2026 ₱240.00 + Instalment 1 ₱2,916.67". */
+    public function describeSlices(float $amount, array $res): string
+    {
+        $parts = [];
+        foreach ($res['slices'] as $sl) {
+            $parts[] = ($sl['kind'] === 'plan' ? 'Plan ' . date('M Y', strtotime((string) $sl['due'])) : 'Instalment ' . (int) $sl['number']) . ' ' . $this->money((float) $sl['amount']) . (! empty($sl['advance']) ? ' (advance)' : '');
+        }
+        if ($res['excess'] > 0.004) {
+            $parts[] = 'Extra ' . $this->money((float) $res['excess']) . ' kept on the plan';
+        }
+
+        return $this->money($amount) . ' -> ' . ($parts === [] ? 'nothing is due' : implode(' + ', $parts));
+    }
+
+    /** Down payment money verified so far for an avail. */
+    public function downPaymentPaid(int $availId): float
+    {
+        if (! $this->tableReady('payment_allocations')) {
+            return 0.0;
+        }
+
+        return (float) (db_connect()->table('payment_allocations')->selectSum('amount', 't')->where('avail_id', $availId)->where('target_type', 'avail_down_payment')->get()->getRowArray()['t'] ?? 0);
+    }
+
+    /**
+     * Can this service be started (Ongoing)? An avail's service needs its down payment fully paid
+     * and VERIFIED (or the waiver approved). A service that is not an avail has no such condition.
+     */
+    public function downPaymentCleared(int $serviceId): bool
+    {
+        if ($serviceId <= 0 || ! $this->tableReady('package_avails')) {
+            return true;
+        }
+        $avail = db_connect()->table('package_avails')->select('down_payment_status, status')->where('service_id', $serviceId)->get(1)->getRowArray();
+        if ($avail === null) {
+            return true;
+        }
+
+        return in_array($avail['down_payment_status'], ['paid', 'waived'], true) && $avail['status'] !== 'cancelled';
+    }
+
+    /** Plan contributions already due (or part paid) that still need money, from the ledger. */
+    private function planDueNow(int $planId): array
+    {
+        $rows = [];
+        foreach ($this->ledger->contributionsWithMoney($planId) as $c) {
+            if ($c['remaining'] > 0.004) {
+                $rows[] = ['number' => (int) $c['number'], 'due' => (string) $c['due'], 'remaining' => (float) $c['remaining']];
+            }
+        }
+
+        return $rows;
+    }
+
+    /** Package instalments that still need money, oldest first. @return list<array<string,mixed>> */
+    private function instalmentsDue(int $planId): array
+    {
+        if (! $this->tableReady('package_avail_instalments')) {
+            return [];
+        }
+
+        $rows = db_connect()->query(
+            "SELECT i.instalment_id, i.avail_id, i.number, i.due_date AS due, ROUND(i.amount - i.paid_amount, 2) AS remaining
+               FROM package_avail_instalments i
+               JOIN package_avails pa ON pa.avail_id = i.avail_id
+              WHERE pa.plan_id = ? AND pa.status = 'active' AND i.paid_amount < i.amount
+              ORDER BY i.due_date, i.number",
+            [$planId]
+        )->getResultArray();
+
+        return array_map(static fn (array $r): array => ['instalment_id' => (int) $r['instalment_id'], 'avail_id' => (int) $r['avail_id'], 'number' => (int) $r['number'], 'due' => (string) $r['due'], 'remaining' => (float) $r['remaining']], $rows);
+    }
+
+    /** Call when a payment has just been verified (CycleService::afterPaymentVerified does). */
+    public function onPaymentVerified(int $paymentId, int $planId): void
+    {
+        if (! $this->tableReady('payment_allocations') || ! $this->tableReady('package_avails') || $planId <= 0) {
+            return;
+        }
+
+        $payment = db_connect()->table('payments')->select('payment_type, status')->where('payment_id', $paymentId)->get(1)->getRowArray();
+        if ($payment === null || ! in_array($payment['status'], ['paid', 'verified'], true) || $payment['payment_type'] === 'reinstatement_fee') {
+            return;
+        }
+
+        // Clients without an avail keep 100% plan payments and never get allocation rows.
+        $hasAvail = db_connect()->table('package_avails')->where('plan_id', $planId)->where('status !=', 'cancelled')->countAllResults() > 0;
+        if (! $hasAvail) {
+            return;
+        }
+
+        $this->reallocatePlan($planId, [$paymentId]);
+    }
+
+    /** Call when a payment is rejected, cancelled or reversed: its slices go and everything is recomputed. */
+    public function onPaymentReversed(int $paymentId, int $planId): void
+    {
+        if (! $this->tableReady('payment_allocations') || $planId <= 0) {
+            return;
+        }
+
+        $had = db_connect()->table('payment_allocations')->where('payment_id', $paymentId)->countAllResults() > 0;
+        if (! $had) {
+            return;
+        }
+
+        db_connect()->table('payment_allocations')->where('payment_id', $paymentId)->delete();
+        $this->reallocatePlan($planId);
+        $this->ledger->sync($planId, true);
+    }
+
+    /**
+     * Rebuilds every allocation of a plan from its verified payments, in date order: package down
+     * payments go only to their down payment, every other payment goes oldest-due-first (allocate()).
+     * The payments replayed are those that already have rows, plus $includePaymentIds; payments
+     * from before the first avail has no rows and stay plain plan money.
+     *
+     * @param list<int> $includePaymentIds payments that were just verified
+     *
+     * @return array{payments:int, avails:int}
+     */
+    public function reallocatePlan(int $planId, array $includePaymentIds = []): array
+    {
+        $db     = db_connect();
+        $plan   = $db->table('plans')->where('plan_id', $planId)->get(1)->getRowArray();
+        $avails = $plan ? $db->table('package_avails')->where('plan_id', $planId)->where('status !=', 'cancelled')->orderBy('avail_id')->get()->getResultArray() : [];
+        if (! $plan || $avails === []) {
+            return ['payments' => 0, 'avails' => 0];
+        }
+
+        $ids = array_map('intval', array_column($db->table('payment_allocations')->select('payment_id')->distinct()->where('plan_id', $planId)->get()->getResultArray(), 'payment_id'));
+        $ids = array_values(array_unique(array_merge($ids, array_map('intval', $includePaymentIds))));
+        $payments = $ids === [] ? [] : $db->table('payments')
+            ->select('payment_id, payment_date, amount, payment_type, avail_id, verified_at')
+            ->where('plan_id', $planId)
+            ->whereIn('payment_id', $ids)
+            ->whereIn('status', ['paid', 'verified'])
+            ->where('payment_type !=', 'reinstatement_fee')
+            ->get()->getResultArray();
+        usort($payments, static fn (array $a, array $b): int => [(string) $a['payment_date'], (int) $a['payment_id']] <=> [(string) $b['payment_date'], (int) $b['payment_id']]);
+
+        $dueDay = $this->planDueDay($plan);
+        $db->transStart();
+
+        // Reset: forget every allocation and schedule of this plan's avails.
+        $db->table('payment_allocations')->where('plan_id', $planId)->delete();
+        $state = [];
+        foreach ($avails as $a) {
+            $db->table('package_avail_instalments')->where('avail_id', (int) $a['avail_id'])->delete();
+            $waived = $a['down_payment_status'] === 'waived';
+            $db->table('package_avails')->where('avail_id', (int) $a['avail_id'])->update([
+                'down_payment_status'     => $waived ? 'waived' : 'due',
+                'down_payment_payment_id' => null,
+                'down_payment_paid_at'    => null,
+                'first_due_date'          => null,
+                'status'                  => $waived ? 'active' : 'awaiting_down_payment',
+            ]);
+            $state[(int) $a['avail_id']] = ['avail' => $a, 'down_paid' => 0, 'inst' => []];
+            if ($waived) {
+                $state[(int) $a['avail_id']]['inst'] = $this->writeSchedule($a, (string) substr((string) ($a['waived_at'] ?: $a['approved_at'] ?: date('Y-m-d')), 0, 10), $dueDay);
+            }
+        }
+
+        $planMoney = [];   // plan money of the payments replayed so far (plan slices + advance + excess)
+        foreach ($payments as $p) {
+            $amount = (float) $p['amount'];
+            $pid    = (int) $p['payment_id'];
+
+            if ($p['payment_type'] === 'avail_down_payment') {
+                $aid = (int) $p['avail_id'];
+                if (! isset($state[$aid])) {
+                    continue;
+                }
+                $a    = $state[$aid]['avail'];
+                $need = (int) round((float) $a['down_payment_amount'] * 100) - $state[$aid]['down_paid'];
+                $put  = min((int) round($amount * 100), max(0, $need));
+                if ($put <= 0) {
+                    continue;
+                }
+                $this->insertAllocation($pid, 'avail_down_payment', $planId, $aid, null, null, $put / 100);
+                $state[$aid]['down_paid'] += $put;
+                if ($state[$aid]['down_paid'] >= (int) round((float) $a['down_payment_amount'] * 100)) {
+                    $when = substr((string) ($p['verified_at'] ?: $p['payment_date']), 0, 10);
+                    $db->table('package_avails')->where('avail_id', $aid)->update([
+                        'down_payment_status' => 'paid', 'down_payment_payment_id' => $pid, 'down_payment_paid_at' => $when . ' 00:00:00',
+                    ]);
+                    $state[$aid]['inst'] = $this->writeSchedule($a, $when, $dueDay);
+                }
+                continue;
+            }
+
+            // Every other payment: oldest due first across plan contributions and instalments.
+            $planDue = [];
+            foreach ($this->ledger->contributionsWithMoney($planId, $ids, $planMoney) as $c) {
+                if ($c['remaining'] > 0.004) {
+                    $planDue[] = ['number' => (int) $c['number'], 'due' => (string) $c['due'], 'remaining' => (float) $c['remaining']];
+                }
+            }
+            $instDue = [];
+            foreach ($state as $aid => $st) {
+                foreach ($st['inst'] as $iid => $i) {
+                    $left = round($i['amount'] - $i['paid'], 2);
+                    if ($left > 0.004) {
+                        $instDue[] = ['instalment_id' => $iid, 'avail_id' => $aid, 'number' => $i['number'], 'due' => $i['due'], 'remaining' => $left];
+                    }
+                }
+            }
+
+            $res = self::allocate($planDue, $instDue, $amount, (string) $p['payment_date']);
+            foreach ($res['slices'] as $sl) {
+                if ($sl['kind'] === 'plan') {
+                    $this->insertAllocation($pid, 'plan_contribution', $planId, null, null, (int) $sl['number'], (float) $sl['amount']);
+                    continue;
+                }
+                $aid = (int) $sl['avail_id'];
+                $iid = (int) $sl['instalment_id'];
+                $this->insertAllocation($pid, 'avail_instalment', $planId, $aid, $iid, null, (float) $sl['amount']);
+                $state[$aid]['inst'][$iid]['paid'] = round($state[$aid]['inst'][$iid]['paid'] + (float) $sl['amount'], 2);
+                $full = $state[$aid]['inst'][$iid]['paid'] >= $state[$aid]['inst'][$iid]['amount'] - 0.004;
+                $db->table('package_avail_instalments')->where('instalment_id', $iid)->update([
+                    'paid_amount' => $state[$aid]['inst'][$iid]['paid'],
+                    'paid_at'     => $full ? substr((string) $p['payment_date'], 0, 10) . ' 00:00:00' : null,
+                ]);
+            }
+            $planMoney[] = ['date' => (string) $p['payment_date'], 'amount' => round($res['plan_amount'] + $res['excess'], 2)];
+        }
+
+        // An avail whose instalments are all paid is settled.
+        foreach ($state as $aid => $st) {
+            if ($st['inst'] !== [] && array_sum(array_map(static fn (array $i): int => $i['paid'] >= $i['amount'] - 0.004 ? 0 : 1, $st['inst'])) === 0) {
+                $db->table('package_avails')->where('avail_id', $aid)->update(['status' => 'settled']);
+            }
+        }
+        $db->transComplete();
+
+        return ['payments' => count($payments), 'avails' => count($avails)];
+    }
+
+    /**
+     * Writes an avail's instalment schedule (once its down payment is verified or the waiver is
+     * approved) and makes the avail active. The first instalment is due one month after $basisDate,
+     * on the plan's due day.
+     *
+     * @return array<int, array{number:int, due:string, amount:float, paid:float}> by instalment_id
+     */
+    public function writeSchedule(array $avail, string $basisDate, int $planDueDay): array
+    {
+        $db = db_connect();
+        $db->table('package_avail_instalments')->where('avail_id', (int) $avail['avail_id'])->delete();
+
+        $financed = (float) $avail['financed_amount'];
+        $first    = self::firstDueDate($basisDate, $planDueDay);
+        $out      = [];
+        if ($financed > 0.004) {
+            foreach (self::instalmentSchedule($financed, (int) $avail['term_months'], $first) as $row) {
+                $db->table('package_avail_instalments')->insert(['avail_id' => (int) $avail['avail_id'], 'number' => $row['number'], 'due_date' => $row['due'], 'amount' => $row['amount'], 'paid_amount' => 0]);
+                $out[(int) $db->insertID()] = ['number' => $row['number'], 'due' => $row['due'], 'amount' => $row['amount'], 'paid' => 0.0];
+            }
+        }
+        $db->table('package_avails')->where('avail_id', (int) $avail['avail_id'])->update(['first_due_date' => $out === [] ? null : $first, 'status' => 'active']);
+
+        return $out;
+    }
+
+    private function insertAllocation(int $paymentId, string $type, int $planId, ?int $availId, ?int $instalmentId, ?int $contributionNo, float $amount): void
+    {
+        db_connect()->table('payment_allocations')->insert([
+            'payment_id' => $paymentId, 'target_type' => $type, 'plan_id' => $planId, 'avail_id' => $availId,
+            'instalment_id' => $instalmentId, 'contribution_number' => $contributionNo, 'amount' => round($amount, 2),
+        ]);
+    }
     /* ======================================================================
      * Small helpers
      * ==================================================================== */
