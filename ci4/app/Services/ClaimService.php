@@ -52,7 +52,7 @@ class ClaimService
         }
 
         $builder = db_connect()->table('service_applications sa')
-            ->select('sa.application_id, sa.plan_holder_id, sa.package_id, sa.service_list_id, sa.status, sa.created_at, ph.unique_identifier, u.first_name, u.last_name, p.package_name, sl.service_name')
+            ->select('sa.application_id, sa.plan_holder_id, sa.package_id, sa.service_list_id, sa.status, sa.request_type, sa.rejection_reason, sa.created_at, ph.unique_identifier, u.first_name, u.last_name, p.package_name, sl.service_name')
             ->join('plan_holders ph', 'ph.plan_holder_id = sa.plan_holder_id', 'inner')
             ->join('users u', 'u.user_id = ph.user_id', 'inner')
             ->join('packages p', 'p.package_id = sa.package_id', 'left')
@@ -67,8 +67,26 @@ class ClaimService
             ->get()
             ->getResultArray();
 
+        // Claim (the plan's own package) or avail (any other package), for the label and for which
+        // buttons the list may show: an avail needs the Branch Admin's review page.
+        $planPackage = [];
+        $holderIds = array_values(array_unique(array_map(static fn (array $r): int => (int) $r['plan_holder_id'], $rows)));
+        if ($holderIds !== []) {
+            foreach (db_connect()->table('plans')->select('plan_holder_id, package_id')->whereIn('plan_holder_id', $holderIds)->where('status', 'active')->orderBy('plan_id', 'ASC')->get()->getResultArray() as $pl) {
+                $planPackage[(int) $pl['plan_holder_id']] = (int) $pl['package_id'];
+            }
+        }
+
         foreach ($rows as &$row) {
             $row['claim_label'] = (string) ($row['package_name'] ?? $row['service_name'] ?? '-');
+            if ((int) ($row['package_id'] ?? 0) <= 0) {
+                $row['request_kind'] = 'service';
+            } elseif (! empty($row['request_type'])) {
+                $row['request_kind'] = (string) $row['request_type'];
+            } else {
+                $own = $planPackage[(int) $row['plan_holder_id']] ?? 0;
+                $row['request_kind'] = $own > 0 && $own !== (int) $row['package_id'] ? 'avail' : 'claim';
+            }
         }
         unset($row);
 
@@ -78,120 +96,29 @@ class ClaimService
     /**
      * @return array{ok: bool, message: string}
      */
-    public function approve(int $applicationId, int $branchId, int $processedByUserId): array
+    /**
+     * Approves a pending request. The rules (claim vs avail, who may approve what, the quote,
+     * the down payment, the link to its service) live in ClaimAvailService; this stays as the
+     * branch-scoped entry point the two controllers call.
+     *
+     * @param array{term?:int|string, waive?:bool, reason?:string} $options term / waiver for an avail
+     *
+     * @return array{ok: bool, message: string}
+     */
+    public function approve(int $applicationId, int $branchId, int $processedByUserId, int $roleId = 2, array $options = []): array
     {
-        $request = $this->findClaimForBranch($applicationId, $branchId);
-        if (! $request) {
-            return ['ok' => false, 'message' => 'Claim not found.'];
-        }
-
-        if (($request['status'] ?? '') !== 'pending') {
-            return ['ok' => false, 'message' => 'Only pending claims can be approved.'];
-        }
-
-        $db = db_connect();
-        $db->transBegin();
-
-        try {
-            $this->serviceApplicationModel->update($applicationId, ['status' => 'approved']);
-
-            $this->stampClaimCycle($applicationId, (int) $request['package_id'], (int) $request['plan_holder_id']);
-
-            $serviceRecordId = (int) $this->serviceModel->insert([
-                'plan_holder_id' => (int) $request['plan_holder_id'],
-                'branch_id' => $branchId,
-                'service_list_id' => (int) ($request['service_list_id'] ?? 0) > 0 ? (int) $request['service_list_id'] : null,
-                'package_id' => (int) ($request['package_id'] ?? 0) > 0 ? (int) $request['package_id'] : null,
-                'total_cost' => (string) ((int) ($request['service_list_id'] ?? 0) > 0 ? ($request['service_price'] ?? 0) : ($request['package_price'] ?? 0)),
-                'service_date' => date('Y-m-d'),
-                'service_time' => null,
-                'burial_location' => null,
-                'assigned_staff' => null,
-                'notes' => 'Created from approved claim.',
-                'status' => 'pending',
-            ]);
-
-            $balanceService = new ServiceBalanceService();
-            $balanceId = $balanceService->createBalanceRecord([
-                'application_id' => (int) $request['application_id'],
-                'plan_holder_id' => (int) $request['plan_holder_id'],
-                'branch_id' => $branchId,
-                'service_list_id' => (int) ($request['service_list_id'] ?? 0),
-                'package_id' => (int) ($request['package_id'] ?? 0),
-                'service_type' => (int) ($request['service_list_id'] ?? 0) > 0 ? 'service' : 'package',
-                'service_name' => (string) ($request['service_name'] ?? $request['package_name'] ?? 'Selected service'),
-                'package_name' => (string) ($request['package_name'] ?? null),
-                'package_cost' => (float) ((int) ($request['service_list_id'] ?? 0) > 0 ? ($request['service_price'] ?? 0) : ($request['package_price'] ?? 0)),
-            ], [
-                'service_id' => $serviceRecordId,
-            ]);
-
-            if ($balanceId) {
-                $this->notificationModel->insert([
-                    'user_id' => (int) $request['user_id'],
-                    'message' => 'Your approved claim now has a separate funeral balance for beneficiary continuation.',
-                ]);
-            }
-
-            $this->notificationModel->insert([
-                'user_id' => (int) $request['user_id'],
-                'message' => 'Your claim has been approved.',
-            ]);
-
-            if ($db->transStatus() === false) {
-                throw new \RuntimeException('Failed to approve claim.');
-            }
-
-            $db->transCommit();
-        } catch (\Throwable $e) {
-            $db->transRollback();
-
-            return ['ok' => false, 'message' => $e->getMessage()];
-        }
-
-        return ['ok' => true, 'message' => 'Claim approved and moved to services.'];
+        return (new ClaimAvailService())->approve($applicationId, $branchId, $processedByUserId, $roleId, $options);
     }
 
     /**
+     * Rejects a pending request; the reason is required and shown to the client.
+     *
      * @return array{ok: bool, message: string}
      */
-    public function reject(int $applicationId, int $branchId, int $processedByUserId, string $reason = ''): array
+    public function reject(int $applicationId, int $branchId, int $processedByUserId, string $reason = '', int $roleId = 2): array
     {
-        $request = $this->findClaimForBranch($applicationId, $branchId);
-        if (! $request) {
-            return ['ok' => false, 'message' => 'Claim not found.'];
-        }
-
-        if (($request['status'] ?? '') !== 'pending') {
-            return ['ok' => false, 'message' => 'Only pending claims can be rejected.'];
-        }
-
-        $db = db_connect();
-        $db->transBegin();
-
-        try {
-            $this->serviceApplicationModel->update($applicationId, ['status' => 'rejected']);
-
-            $message = 'Your claim has been rejected.' . ($reason !== '' ? (' Reason: ' . $reason) : '');
-            $this->notificationModel->insert([
-                'user_id' => (int) $request['user_id'],
-                'message' => $message,
-            ]);
-
-            if ($db->transStatus() === false) {
-                throw new \RuntimeException('Failed to reject claim.');
-            }
-
-            $db->transCommit();
-        } catch (\Throwable $e) {
-            $db->transRollback();
-
-            return ['ok' => false, 'message' => $e->getMessage()];
-        }
-
-        return ['ok' => true, 'message' => 'Claim rejected.'];
+        return (new ClaimAvailService())->reject($applicationId, $branchId, $processedByUserId, $roleId, $reason);
     }
-
     /**
      * Full detail for a single claim (for a review/detail page), scoped to
      * the reviewer's branch.

@@ -42,21 +42,25 @@
                             <?php $status = (string) ($request['status'] ?? 'pending'); ?>
                             <tr>
                                 <td><?= esc(trim((string) (($request['first_name'] ?? '') . ' ' . ($request['last_name'] ?? '')))) ?></td>
-                                <td><?= esc((string) ($request['claim_label'] ?? $request['package_name'] ?? $request['service_name'] ?? '-')) ?></td>
+                                <td><?= esc((string) ($request['claim_label'] ?? $request['package_name'] ?? $request['service_name'] ?? '-')) ?> <?php if (($request['request_kind'] ?? '') === 'avail'): ?><span class="badge text-bg-info">Avail</span><?php elseif (($request['request_kind'] ?? '') === 'claim'): ?><span class="badge text-bg-secondary">Claim</span><?php endif; ?></td>
                                 <td class="text-nowrap"><?= cs_date($request['created_at'] ?? null) ?></td>
-                                <td><?= cs_status($status) ?></td>
+                                <td><?= cs_status($status) ?><?php if ($status === 'rejected' && ! empty($request['rejection_reason'])): ?><div class="cs-table__sub"><?= esc((string) $request['rejection_reason']) ?></div><?php endif; ?></td>
                                 <td class="cs-table__actions">
                                     <a href="<?= site_url('/staff/services/requests/' . (int) $request['application_id']) ?>" class="btn btn-sm btn-primary me-1">View</a>
                                     <?php if ($status === 'pending'): ?>
-                                        <form action="<?= site_url('/staff/services/requests/approve/' . (int) $request['application_id']) ?>" method="post" class="d-inline">
-                                            <?= csrf_field() ?>
-                                            <button class="btn btn-sm btn-primary" type="submit">Approve</button>
-                                        </form>
-                                        <form action="<?= site_url('/staff/services/requests/reject/' . (int) $request['application_id']) ?>" method="post" class="d-inline">
-                                            <?= csrf_field() ?>
-                                            <input type="text" name="rejection_reason" class="form-control form-control-sm d-inline-block" style="max-width: 160px;" placeholder="Reason (optional)">
-                                            <button class="btn btn-sm btn-danger" type="submit">Reject</button>
-                                        </form>
+                                        <?php if (($request['request_kind'] ?? '') === 'avail'): ?>
+                                            <span class="text-muted small">Only a Branch Admin decides an avail</span>
+                                        <?php else: ?>
+                                            <form action="<?= site_url('/staff/services/requests/approve/' . (int) $request['application_id']) ?>" method="post" class="d-inline">
+                                                <?= csrf_field() ?>
+                                                <button class="btn btn-sm btn-primary" type="submit">Approve</button>
+                                            </form>
+                                            <form action="<?= site_url('/staff/services/requests/reject/' . (int) $request['application_id']) ?>" method="post" class="d-inline">
+                                                <?= csrf_field() ?>
+                                                <input type="text" name="rejection_reason" class="form-control form-control-sm d-inline-block" style="max-width: 160px;" placeholder="Reason (required)" required minlength="5">
+                                                <button class="btn btn-sm btn-danger" type="submit">Reject</button>
+                                            </form>
+                                        <?php endif; ?>
                                     <?php endif; ?>
                                 </td>
                             </tr>

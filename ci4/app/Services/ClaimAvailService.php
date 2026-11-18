@@ -33,6 +33,15 @@ class ClaimAvailService
     public const TYPE_CLAIM = 'claim';
     public const TYPE_AVAIL = 'avail';
 
+    public const ROLE_BRANCH_ADMIN = 2;
+    public const ROLE_STAFF        = 3;
+
+    /** A waiver of the down payment needs a written reason of at least this many characters. */
+    public const WAIVER_REASON_MIN = 15;
+
+    /** A rejection needs a reason (shown to the client). */
+    public const REJECTION_REASON_MIN = 5;
+
     /**
      * RULE (not yet confirmed by Kaagapay - change it here only): an approved avail uses the
      * plan's entitlement for the current cycle, so the client cannot also claim the plan's own
@@ -214,11 +223,12 @@ class ClaimAvailService
      *
      * @return array<string,mixed>|null
      */
-    public function openRequest(int $planHolderId): ?array
+    public function openRequest(int $planHolderId, ?int $ignoreApplicationId = null): ?array
     {
         $db         = db_connect();
         $availJoin  = $this->tableReady('package_avails') ? 'LEFT JOIN package_avails pa ON pa.application_id = sa.application_id' : '';
-        $serviceKey = $this->tableReady('package_avails') ? 'COALESCE(sb.service_id, pa.service_id)' : 'sb.service_id';
+        $link       = $this->columnReady('service_applications', 'service_id') ? 'sa.service_id, ' : '';
+        $serviceKey = $this->tableReady('package_avails') ? "COALESCE({$link}sb.service_id, pa.service_id)" : "COALESCE({$link}sb.service_id)";
         $availOk    = $this->tableReady('package_avails') ? "AND (pa.avail_id IS NULL OR pa.status <> 'cancelled')" : '';
 
         return $db->query(
@@ -227,12 +237,12 @@ class ClaimAvailService
                LEFT JOIN service_balances sb ON sb.application_id = sa.application_id
                $availJoin
                LEFT JOIN services s ON s.service_id = $serviceKey AND s.deleted_at IS NULL
-              WHERE sa.plan_holder_id = ?
+              WHERE sa.plan_holder_id = ? AND sa.application_id <> ?
                 AND (sa.status = 'pending'
                      OR (sa.status = 'approved' AND (s.service_id IS NULL OR s.status IN ('pending', 'ongoing')) $availOk))
               ORDER BY sa.application_id DESC
               LIMIT 1",
-            [$planHolderId]
+            [$planHolderId, (int) $ignoreApplicationId]
         )->getRowArray() ?: null;
     }
 
@@ -246,7 +256,7 @@ class ClaimAvailService
      * @return array{allowed:bool, type:string, code:string, message:?string, reasons:list<array{code:string,message:string}>,
      *               plan_id:int, cycle_number:int, months_paid:int, months_needed:int, balances:array<string,float>}
      */
-    public function eligibility(int $planHolderId, int $packageId): array
+    public function eligibility(int $planHolderId, int $packageId, ?int $ignoreApplicationId = null): array
     {
         // Lazy expiry (the host has no scheduled tasks): a down payment that was never made
         // is cancelled the next time anyone looks at this client's requests.
@@ -290,7 +300,7 @@ class ClaimAvailService
         $reasons = [];
 
         // Rule 4: one open request at a time.
-        if ($this->openRequest($planHolderId) !== null) {
+        if ($this->openRequest($planHolderId, $ignoreApplicationId) !== null) {
             $reasons[] = ['code' => 'open_request', 'message' => 'You already have a claim or avail in progress. You can make another request once it is completed.'];
         }
 
@@ -851,6 +861,10 @@ class ClaimAvailService
         usort($payments, static fn (array $a, array $b): int => [(string) $a['payment_date'], (int) $a['payment_id']] <=> [(string) $b['payment_date'], (int) $b['payment_id']]);
 
         $dueDay = $this->planDueDay($plan);
+        $wasDue = [];
+        foreach ($avails as $a) {
+            $wasDue[(int) $a['avail_id']] = $a['down_payment_status'] === 'due';
+        }
         $db->transStart();
 
         // Reset: forget every allocation and schedule of this plan's avails.
@@ -943,6 +957,13 @@ class ClaimAvailService
             }
         }
         $db->transComplete();
+
+        // Told once: only when this run is what turned the down payment from due to paid.
+        foreach ($wasDue as $aid => $was) {
+            if ($was && $db->table('package_avails')->where('avail_id', $aid)->where('down_payment_status', 'paid')->countAllResults() > 0) {
+                $this->notifyDownPaymentReceived($aid);
+            }
+        }
 
         return ['payments' => count($payments), 'avails' => count($avails)];
     }
@@ -1049,8 +1070,386 @@ class ClaimAvailService
         ];
     }
     /* ======================================================================
+     * Deciding a request: approve (claim or avail), reject, start the service
+     *
+     * Claims (the plan's own package): Branch Admin or Staff. Avails: Branch Admin only - they set
+     * the money terms (down payment, term, waiver). Staff can view avails and record payments.
+     * ==================================================================== */
+
+    /** One request with its plan holder and package, scoped to a branch. @return array<string,mixed>|null */
+    private function loadApplication(int $applicationId, int $branchId): ?array
+    {
+        if ($applicationId <= 0 || $branchId <= 0) {
+            return null;
+        }
+
+        $row = db_connect()->table('service_applications sa')
+            ->select('sa.*, ph.branch_id, ph.user_id AS client_user_id, p.package_name, p.base_price AS package_price, sl.service_name, sl.base_price AS service_price')
+            ->join('plan_holders ph', 'ph.plan_holder_id = sa.plan_holder_id', 'inner')
+            ->join('packages p', 'p.package_id = sa.package_id', 'left')
+            ->join('service_list sl', 'sl.service_list_id = sa.service_list_id', 'left')
+            ->where('sa.application_id', $applicationId)
+            ->get(1)
+            ->getRowArray();
+
+        return $row && (int) $row['branch_id'] === $branchId ? $row : null;
+    }
+
+    /** 'claim', 'avail', or 'service' (a single service, not a package). */
+    public function typeOfApplication(array $app, ?array $plan): string
+    {
+        if ((int) ($app['package_id'] ?? 0) <= 0) {
+            return 'service';
+        }
+
+        return $plan === null ? self::TYPE_CLAIM : $this->requestType($plan, (int) $app['package_id']);
+    }
+
+    /**
+     * Approves a pending request.
+     *
+     * @param array{term?:int|string, waive?:bool, reason?:string} $options only used for an avail
+     *
+     * @return array{ok:bool, message:string, type?:string}
+     */
+    public function approve(int $applicationId, int $branchId, int $actorUserId, int $actorRole, array $options = []): array
+    {
+        $this->expireDownPayments(null);
+
+        $app = $this->loadApplication($applicationId, $branchId);
+        if ($app === null) {
+            return ['ok' => false, 'message' => 'Claim not found.'];
+        }
+        if ($app['status'] !== 'pending') {
+            return ['ok' => false, 'message' => 'Only pending claims can be approved.'];
+        }
+        if (! in_array($actorRole, [self::ROLE_BRANCH_ADMIN, self::ROLE_STAFF], true)) {
+            return ['ok' => false, 'message' => 'You are not allowed to approve this.'];
+        }
+
+        $planHolderId = (int) $app['plan_holder_id'];
+        $plan         = $this->planFor($planHolderId);
+        if ($plan === null) {
+            return ['ok' => false, 'message' => 'This plan holder has no active plan.'];
+        }
+
+        $type = $this->typeOfApplication($app, $plan);
+
+        if ($type === 'service') {
+            return $this->approveSingleService($app, $plan, $actorUserId);
+        }
+
+        if ($type === self::TYPE_AVAIL && $actorRole !== self::ROLE_BRANCH_ADMIN) {
+            return ['ok' => false, 'message' => 'Only a Branch Admin can approve an avail: it sets the down payment, the term and any waiver.'];
+        }
+
+        $el = $this->eligibility($planHolderId, (int) $app['package_id'], $applicationId);
+        if (! $el['allowed']) {
+            return ['ok' => false, 'message' => (string) $el['message']];
+        }
+
+        return $type === self::TYPE_CLAIM
+            ? $this->approveClaim($app, $plan, $actorUserId)
+            : $this->approveAvail($app, $plan, $actorUserId, $options);
+    }
+
+    /** A claim of the plan's own package: released free; the plan balance stays. */
+    private function approveClaim(array $app, array $plan, int $actorUserId): array
+    {
+        $db = db_connect();
+        $db->transStart();
+        $serviceId = $this->createService($app, (float) $app['package_price'], 'Created from approved claim.');
+        $db->table('service_applications')->where('application_id', (int) $app['application_id'])->update([
+            'status' => 'approved', 'request_type' => self::TYPE_CLAIM, 'rule_version' => self::RULE_VERSION,
+            'cycle_number' => (int) ($plan['current_cycle_number'] ?? 1), 'service_id' => $serviceId,
+            'decided_by' => $actorUserId, 'decided_at' => date('Y-m-d H:i:s'), 'rejection_reason' => null,
+        ]);
+        $db->transComplete();
+        if (! $db->transStatus()) {
+            return ['ok' => false, 'message' => 'Failed to approve the claim.'];
+        }
+
+        $package = db_connect()->table('packages')->select('is_damayan_entitlement')->where('package_id', (int) $app['package_id'])->get(1)->getRowArray();
+        if ($package && (int) $package['is_damayan_entitlement'] === 1) {
+            $db->table('plans')->where('plan_id', (int) $plan['plan_id'])->update(['last_damayan_claim_at' => date('Y-m-d H:i:s')]);
+        }
+        (new CycleService())->closeCycleIfSettled((int) $plan['plan_id']);
+
+        $notify = new NotificationService();
+        $notify->notify((int) $app['client_user_id'], 'Your claim for ' . $app['package_name'] . ' has been approved. Your plan balance stays and you keep paying your monthly contribution.', 'service_approved', false, false, (int) $plan['plan_id']);
+        (new ActivityLogService())->log($actorUserId, 'approved', 'service_application', (int) $app['application_id'], 'Approved claim #' . (int) $app['application_id'] . ' (' . $app['package_name'] . ')');
+
+        return ['ok' => true, 'type' => self::TYPE_CLAIM, 'message' => 'Claim approved and moved to services.'];
+    }
+
+    /**
+     * An avail: the Branch Admin picks the term (only the offered ones) and may waive the down
+     * payment with a written reason. The rate and term used are stored on the avail.
+     */
+    private function approveAvail(array $app, array $plan, int $actorUserId, array $options): array
+    {
+        $term   = (int) ($options['term'] ?? 0);
+        $waive  = ! empty($options['waive']);
+        $reason = trim((string) ($options['reason'] ?? ''));
+
+        if (! in_array($term, $this->config->availTerms(), true)) {
+            return ['ok' => false, 'message' => 'Choose a term of ' . implode(', ', $this->config->availTerms()) . ' months.'];
+        }
+        if ($waive && mb_strlen($reason) < self::WAIVER_REASON_MIN) {
+            return ['ok' => false, 'message' => 'A waiver needs a reason of at least ' . self::WAIVER_REASON_MIN . ' characters.'];
+        }
+
+        $quote = $this->quote((int) $app['plan_holder_id'], (int) $app['package_id'], $term, $waive);
+        if (empty($quote['ok'])) {
+            return ['ok' => false, 'message' => (string) ($quote['error'] ?? 'Could not price this avail.')];
+        }
+        try {
+            $this->assertAvailTerms((float) $quote['down_payment_rate'], $waive, $term);
+        } catch (\InvalidArgumentException $e) {
+            return ['ok' => false, 'message' => $e->getMessage()];
+        }
+        if (! $waive && $quote['down_payment_amount'] <= 0) {
+            return ['ok' => false, 'message' => 'The down payment would be 0. Check the down-payment rate, or waive it with a reason.'];
+        }
+
+        $db    = db_connect();
+        $now   = date('Y-m-d H:i:s');
+        $dueBy = date('Y-m-d', strtotime('+' . (int) $this->config->availDownPaymentDays . ' days'));
+
+        $db->transStart();
+        $serviceId = $this->createService($app, (float) $quote['package']['price'], 'Created from approved avail.');
+        $db->table('service_applications')->where('application_id', (int) $app['application_id'])->update([
+            'status' => 'approved', 'request_type' => self::TYPE_AVAIL, 'rule_version' => self::RULE_VERSION,
+            'cycle_number' => (int) ($plan['current_cycle_number'] ?? 1), 'service_id' => $serviceId,
+            'decided_by' => $actorUserId, 'decided_at' => $now, 'rejection_reason' => null,
+        ]);
+        $db->table('package_avails')->insert([
+            'application_id' => (int) $app['application_id'], 'plan_holder_id' => (int) $app['plan_holder_id'], 'plan_id' => (int) $plan['plan_id'],
+            'package_id' => (int) $app['package_id'], 'branch_id' => (int) $app['branch_id'], 'service_id' => $serviceId,
+            'cycle_number' => (int) ($plan['current_cycle_number'] ?? 1), 'package_price' => $quote['package']['price'],
+            'down_payment_rate' => $quote['down_payment_rate'], 'down_payment_amount' => $quote['down_payment_amount'],
+            'down_payment_status' => $waive ? 'waived' : 'due', 'down_payment_due_by' => $waive ? null : $dueBy,
+            'waived_by' => $waive ? $actorUserId : null, 'waived_at' => $waive ? $now : null, 'waiver_reason' => $waive ? $reason : null,
+            'financed_amount' => $quote['financed_amount'], 'term_months' => $term, 'monthly_instalment' => $quote['monthly_instalment'],
+            'status' => $waive ? 'active' : 'awaiting_down_payment', 'approved_by' => $actorUserId, 'approved_at' => $now,
+        ]);
+        $availId = (int) $db->insertID();
+        if ($waive) {
+            $availRow = $db->table('package_avails')->where('avail_id', $availId)->get(1)->getRowArray();
+            $this->writeSchedule($availRow, date('Y-m-d'), $this->planDueDay($plan));
+        }
+        $db->transComplete();
+        if (! $db->transStatus()) {
+            return ['ok' => false, 'message' => 'Failed to approve the avail.'];
+        }
+
+        $notify = new NotificationService();
+        $money  = fn (float $v): string => $this->money($v);
+        if ($waive) {
+            $msg = 'Your request for ' . $app['package_name'] . ' was approved with no down payment. You pay ' . $money((float) $quote['monthly_instalment']) . ' a month for ' . $term . ' months, on top of your plan contribution.';
+        } else {
+            $msg = 'Your request for ' . $app['package_name'] . ' was approved. Pay the down payment of ' . $money((float) $quote['down_payment_amount']) . ' by ' . date('F j, Y', strtotime($dueBy))
+                . ' or the request is cancelled. Your service can start once it is verified. After that you pay ' . $money((float) $quote['monthly_instalment']) . ' a month for ' . $term . ' months.';
+        }
+        $notify->notify((int) $app['client_user_id'], $msg, 'service_approved', false, false, (int) $plan['plan_id']);
+        (new ActivityLogService())->log(
+            $actorUserId, 'approved', 'package_avail', $availId,
+            'Approved avail #' . $availId . ' of ' . $app['package_name'] . ' (' . $term . ' months, down payment ' . ($waive ? 'waived: ' . $reason : $money((float) $quote['down_payment_amount'])) . ')'
+        );
+
+        return ['ok' => true, 'type' => self::TYPE_AVAIL, 'message' => 'Avail approved. ' . ($waive ? 'The down payment was waived.' : 'The down payment of ' . $money((float) $quote['down_payment_amount']) . ' is due by ' . date('M j, Y', strtotime($dueBy)) . '.')];
+    }
+
+    /** A single service (not a package): no claim/avail rules, approved as before without any balance record. */
+    private function approveSingleService(array $app, array $plan, int $actorUserId): array
+    {
+        $db = db_connect();
+        $db->transStart();
+        $serviceId = $this->createService($app, (float) ($app['service_price'] ?? 0), 'Created from approved request.');
+        $db->table('service_applications')->where('application_id', (int) $app['application_id'])->update([
+            'status' => 'approved', 'rule_version' => self::RULE_VERSION, 'cycle_number' => (int) ($plan['current_cycle_number'] ?? 1),
+            'service_id' => $serviceId, 'decided_by' => $actorUserId, 'decided_at' => date('Y-m-d H:i:s'), 'rejection_reason' => null,
+        ]);
+        $db->transComplete();
+        if (! $db->transStatus()) {
+            return ['ok' => false, 'message' => 'Failed to approve the request.'];
+        }
+        (new NotificationService())->notify((int) $app['client_user_id'], 'Your request for ' . ($app['service_name'] ?? 'the service') . ' has been approved.', 'service_approved', false, false, (int) $plan['plan_id']);
+
+        return ['ok' => true, 'type' => 'service', 'message' => 'Request approved and moved to services.'];
+    }
+
+    private function createService(array $app, float $price, string $note): int
+    {
+        $db = db_connect();
+        $db->table('services')->insert([
+            'plan_holder_id' => (int) $app['plan_holder_id'], 'branch_id' => (int) $app['branch_id'],
+            'service_list_id' => (int) ($app['service_list_id'] ?? 0) > 0 ? (int) $app['service_list_id'] : null,
+            'package_id' => (int) ($app['package_id'] ?? 0) > 0 ? (int) $app['package_id'] : null,
+            'total_cost' => round($price, 2), 'service_date' => date('Y-m-d'), 'status' => 'pending', 'notes' => $note,
+        ]);
+
+        return (int) $db->insertID();
+    }
+
+    /**
+     * Rejects a pending request. A reason is required, saved and sent to the client. An avail can
+     * only be rejected by a Branch Admin (like approving it).
+     *
+     * @return array{ok:bool, message:string}
+     */
+    public function reject(int $applicationId, int $branchId, int $actorUserId, int $actorRole, string $reason): array
+    {
+        $this->expireDownPayments(null);
+
+        $app = $this->loadApplication($applicationId, $branchId);
+        if ($app === null) {
+            return ['ok' => false, 'message' => 'Claim not found.'];
+        }
+        if ($app['status'] !== 'pending') {
+            return ['ok' => false, 'message' => 'Only pending claims can be rejected.'];
+        }
+        $reason = trim($reason);
+        if (mb_strlen($reason) < self::REJECTION_REASON_MIN) {
+            return ['ok' => false, 'message' => 'Enter the reason for rejecting this request (at least ' . self::REJECTION_REASON_MIN . ' characters). The client will see it.'];
+        }
+        if (! in_array($actorRole, [self::ROLE_BRANCH_ADMIN, self::ROLE_STAFF], true)) {
+            return ['ok' => false, 'message' => 'You are not allowed to reject this.'];
+        }
+
+        $plan = $this->planFor((int) $app['plan_holder_id']);
+        if ($this->typeOfApplication($app, $plan) === self::TYPE_AVAIL && $actorRole !== self::ROLE_BRANCH_ADMIN) {
+            return ['ok' => false, 'message' => 'Only a Branch Admin can decide on an avail.'];
+        }
+
+        db_connect()->table('service_applications')->where('application_id', $applicationId)->update([
+            'status' => 'rejected', 'rejection_reason' => $reason, 'decided_by' => $actorUserId, 'decided_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        $what = $app['package_name'] ?? $app['service_name'] ?? 'your request';
+        (new NotificationService())->notify((int) $app['client_user_id'], 'Your request for ' . $what . ' was rejected. Reason: ' . $reason, 'service_rejected', false, false, $plan ? (int) $plan['plan_id'] : null);
+        (new ActivityLogService())->log($actorUserId, 'rejected', 'service_application', $applicationId, 'Rejected request #' . $applicationId . ': ' . $reason);
+
+        return ['ok' => true, 'message' => 'Request rejected. The client was told the reason.'];
+    }
+
+    /**
+     * Everything the review page needs about one request: its type, whether it can be approved
+     * now, the full quote for each offered term (with and without a waiver), and - once approved -
+     * the avail with its down payment, waiver and approver.
+     *
+     * @return array<string,mixed>|null
+     */
+    public function decisionInfo(int $applicationId, int $branchId): ?array
+    {
+        $this->expireDownPayments(null);
+
+        $app = $this->loadApplication($applicationId, $branchId);
+        if ($app === null) {
+            return null;
+        }
+
+        $plan = $this->planFor((int) $app['plan_holder_id']);
+        $type = $this->typeOfApplication($app, $plan);
+        $info = ['type' => $type, 'plan' => $plan, 'eligibility' => null, 'quotes' => [], 'terms' => $this->config->availTerms(), 'avail' => null, 'balances' => $plan ? $this->balances((int) $plan['plan_id']) : null, 'down_payment_days' => (int) $this->config->availDownPaymentDays, 'waiver_min' => self::WAIVER_REASON_MIN];
+
+        if ($app['status'] === 'pending' && $plan !== null && $type !== 'service') {
+            $info['eligibility'] = $this->eligibility((int) $app['plan_holder_id'], (int) $app['package_id'], $applicationId);
+            if ($type === self::TYPE_AVAIL) {
+                foreach ($this->config->availTerms() as $term) {
+                    $info['quotes'][$term] = ['normal' => $this->quote((int) $app['plan_holder_id'], (int) $app['package_id'], $term, false), 'waived' => $this->quote((int) $app['plan_holder_id'], (int) $app['package_id'], $term, true)];
+                }
+                $info['down_due_by'] = date('Y-m-d', strtotime('+' . (int) $this->config->availDownPaymentDays . ' days'));
+            }
+        }
+
+        if ($this->tableReady('package_avails')) {
+            $info['avail'] = db_connect()->table('package_avails pa')
+                ->select('pa.*, ab.first_name AS approver_first, ab.last_name AS approver_last, wb.first_name AS waiver_first, wb.last_name AS waiver_last')
+                ->join('users ab', 'ab.user_id = pa.approved_by', 'left')
+                ->join('users wb', 'wb.user_id = pa.waived_by', 'left')
+                ->where('pa.application_id', $applicationId)
+                ->get(1)->getRowArray() ?: null;
+            if ($info['avail'] !== null) {
+                $info['avail']['down_paid'] = $this->downPaymentPaid((int) $info['avail']['avail_id']);
+            }
+        }
+
+        return $info;
+    }
+
+    /**
+     * May the service move to this status? An avail's service cannot start (ongoing) or finish
+     * until its down payment is fully paid and verified, or waived.
+     *
+     * @return array{ok:bool, message:string}
+     */
+    public function checkServiceStatusChange(int $serviceId, string $newStatus): array
+    {
+        if (! in_array($newStatus, ['ongoing', 'completed'], true) || $this->downPaymentCleared($serviceId)) {
+            return ['ok' => true, 'message' => ''];
+        }
+
+        $avail = db_connect()->table('package_avails')->where('service_id', $serviceId)->get(1)->getRowArray();
+        if ($avail !== null && $avail['status'] === 'cancelled') {
+            return ['ok' => false, 'message' => 'This avail was cancelled because the down payment was not paid in time.'];
+        }
+        $left = $avail ? max(0.0, round((float) $avail['down_payment_amount'] - $this->downPaymentPaid((int) $avail['avail_id']), 2)) : 0.0;
+
+        return ['ok' => false, 'message' => 'Waiting for the ' . $this->money($left) . ' down payment. The service can start once it is paid and verified.'];
+    }
+
+    /** Tells the client when their service starts or is completed. */
+    public function onServiceStatusChanged(int $serviceId, string $oldStatus, string $newStatus): void
+    {
+        if ($oldStatus === $newStatus || ! in_array($newStatus, ['ongoing', 'completed'], true)) {
+            return;
+        }
+
+        $row = db_connect()->table('services s')
+            ->select('ph.user_id, p.package_name, sl.service_name, s.plan_holder_id')
+            ->join('plan_holders ph', 'ph.plan_holder_id = s.plan_holder_id', 'inner')
+            ->join('packages p', 'p.package_id = s.package_id', 'left')
+            ->join('service_list sl', 'sl.service_list_id = s.service_list_id', 'left')
+            ->where('s.service_id', $serviceId)->get(1)->getRowArray();
+        if ($row === null) {
+            return;
+        }
+
+        $what = $row['package_name'] ?? $row['service_name'] ?? 'your service';
+        (new NotificationService())->notify(
+            (int) $row['user_id'],
+            $newStatus === 'ongoing' ? 'Your service (' . $what . ') has started.' : 'Your service (' . $what . ') has been completed.',
+            $newStatus === 'completed' ? 'service_completed' : 'general'
+        );
+    }
+
+    private function notifyDownPaymentReceived(int $availId): void
+    {
+        $a = db_connect()->table('package_avails pa')
+            ->select('pa.plan_id, pa.down_payment_amount, pa.monthly_instalment, pa.term_months, pa.first_due_date, ph.user_id, p.package_name')
+            ->join('plan_holders ph', 'ph.plan_holder_id = pa.plan_holder_id', 'inner')
+            ->join('packages p', 'p.package_id = pa.package_id', 'left')
+            ->where('pa.avail_id', $availId)->get(1)->getRowArray();
+        if ($a === null) {
+            return;
+        }
+
+        (new NotificationService())->notify(
+            (int) $a['user_id'],
+            'Your down payment of ' . $this->money((float) $a['down_payment_amount']) . ' for ' . $a['package_name'] . ' was received and verified. Your service can start. Your first instalment of '
+                . $this->money((float) $a['monthly_instalment']) . ' is due ' . ($a['first_due_date'] ? date('F j, Y', strtotime((string) $a['first_due_date'])) : 'next month') . '.',
+            'payment_approved', false, false, (int) $a['plan_id']
+        );
+    }
+    /* ======================================================================
      * Small helpers
      * ==================================================================== */
+
+    private function columnReady(string $table, string $column): bool
+    {
+        return self::$tableReady[$table . '.' . $column] ??= db_connect()->fieldExists($column, $table);
+    }
 
     private function tableReady(string $table): bool
     {

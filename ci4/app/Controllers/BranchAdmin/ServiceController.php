@@ -18,6 +18,7 @@ class ServiceController extends BaseController
     public function index(): string
     {
         $this->ensureBranchAdminAccess();
+        (new \App\Services\ClaimAvailService())->expireDownPayments(null);
 
         $branchId = (int) session('branch_id');
 
@@ -230,6 +231,17 @@ class ServiceController extends BaseController
             }
         }
 
+        // An avail's service cannot start (or finish) until its down payment is paid and verified,
+        // or waived. Checked here on the server - hiding a button is not enough.
+        $claimAvail = new \App\Services\ClaimAvailService();
+        $claimAvail->expireDownPayments(null);
+        $newStatus = (string) $this->request->getPost('status');
+        $gate = $claimAvail->checkServiceStatusChange($id, $newStatus);
+        if (! $gate['ok']) {
+            return redirect()->back()->with('error', $gate['message']);
+        }
+        $oldStatus = (string) ($service['status'] ?? '');
+
         $updated = $this->serviceModel->update($id, [
             'status' => (string) $this->request->getPost('status'),
             'assigned_staff' => $assignedStaff === '' ? null : (int) $assignedStaff,
@@ -238,6 +250,8 @@ class ServiceController extends BaseController
         if (! $updated) {
             return redirect()->back()->with('error', 'Failed to update service status.');
         }
+
+        $claimAvail->onServiceStatusChanged($id, $oldStatus, $newStatus);
 
         return redirect()->to('/branch-admin/service-package/ongoing')->with('success', 'Service status updated successfully.');
     }

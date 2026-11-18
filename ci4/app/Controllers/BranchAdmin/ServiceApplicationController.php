@@ -3,6 +3,7 @@
 namespace App\Controllers\BranchAdmin;
 
 use App\Controllers\BaseController;
+use App\Services\ClaimAvailService;
 use App\Services\ClaimService;
 use CodeIgniter\Exceptions\PageNotFoundException;
 
@@ -21,6 +22,7 @@ class ServiceApplicationController extends BaseController
 
         $branchId = (int) session('branch_id');
         $search = cs_search_term($this->request->getGet('search'));
+        (new ClaimAvailService())->expireDownPayments(null);
 
         return view('branch_admin/service_package/index', [
             'page_title' => 'Service / Package Management',
@@ -36,7 +38,13 @@ class ServiceApplicationController extends BaseController
     {
         $this->ensureBranchAdminAccess();
 
-        $result = $this->claimService->approve($id, (int) session('branch_id'), (int) session('user_id'));
+        // Only used when the request is an avail: the Branch Admin chooses the term and may waive
+        // the down payment with a written reason.
+        $result = $this->claimService->approve($id, (int) session('branch_id'), (int) session('user_id'), 2, [
+            'term'   => $this->request->getPost('term'),
+            'waive'  => (string) $this->request->getPost('waive_down_payment') === '1',
+            'reason' => (string) $this->request->getPost('waiver_reason'),
+        ]);
 
         if (! $result['ok']) {
             if ($result['message'] === 'Claim not found.') {
@@ -54,7 +62,7 @@ class ServiceApplicationController extends BaseController
         $this->ensureBranchAdminAccess();
 
         $reason = trim((string) $this->request->getPost('rejection_reason'));
-        $result = $this->claimService->reject($id, (int) session('branch_id'), (int) session('user_id'), $reason);
+        $result = $this->claimService->reject($id, (int) session('branch_id'), (int) session('user_id'), $reason, 2);
 
         if (! $result['ok']) {
             if ($result['message'] === 'Claim not found.') {
@@ -85,6 +93,8 @@ class ServiceApplicationController extends BaseController
             'claim_base_path' => '/branch-admin/service-package/requests',
             'request' => $request,
             'documents' => $this->claimService->getClaimDocuments($id),
+            'claim_info' => (new ClaimAvailService())->decisionInfo($id, $branchId),
+            'viewer_role' => 2,
         ]);
     }
 

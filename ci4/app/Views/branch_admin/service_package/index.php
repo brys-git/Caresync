@@ -187,21 +187,25 @@
                             <?php foreach ($rows as $row): ?>
                                 <tr>
                                     <td><?= esc(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? '')) ?></td>
-                                    <td><?= esc($row['claim_label'] ?? $row['package_name'] ?? $row['service_name'] ?? '-') ?></td>
-                                    <td><?= cs_status((string) ($row['status'] ?? '')) ?></td>
+                                    <td><?= esc($row['claim_label'] ?? $row['package_name'] ?? $row['service_name'] ?? '-') ?> <?php if (($row['request_kind'] ?? '') === 'avail'): ?><span class="badge text-bg-info">Avail</span><?php elseif (($row['request_kind'] ?? '') === 'claim'): ?><span class="badge text-bg-secondary">Claim</span><?php endif; ?></td>
+                                    <td><?= cs_status((string) ($row['status'] ?? '')) ?><?php if (($row['status'] ?? '') === 'rejected' && ! empty($row['rejection_reason'])): ?><div class="cs-table__sub"><?= esc((string) $row['rejection_reason']) ?></div><?php endif; ?></td>
                                     <td class="text-nowrap"><?= cs_date($row['created_at'] ?? null) ?></td>
                                     <td class="cs-table__actions">
                                         <a href="<?= site_url('/branch-admin/service-package/requests/' . (int) $row['application_id']) ?>" class="btn btn-sm btn-primary me-1">View</a>
                                         <?php if (($row['status'] ?? '') === 'pending'): ?>
-                                            <form action="<?= site_url('/branch-admin/service-package/requests/approve/' . (int) $row['application_id']) ?>" method="post" class="d-inline">
-                                                <?= csrf_field() ?>
-                                                <button class="btn btn-sm btn-primary" type="submit">Approve</button>
-                                            </form>
-                                            <form action="<?= site_url('/branch-admin/service-package/requests/reject/' . (int) $row['application_id']) ?>" method="post" class="d-inline">
-                                                <?= csrf_field() ?>
-                                                <input type="text" name="rejection_reason" class="form-control form-control-sm d-inline-block" style="max-width: 160px;" placeholder="Reason (optional)">
-                                                <button class="btn btn-sm btn-danger" type="submit">Reject</button>
-                                            </form>
+                                            <?php if (($row['request_kind'] ?? '') === 'avail'): ?>
+                                                <span class="text-muted small">Open it to choose the term and approve</span>
+                                            <?php else: ?>
+                                                <form action="<?= site_url('/branch-admin/service-package/requests/approve/' . (int) $row['application_id']) ?>" method="post" class="d-inline">
+                                                    <?= csrf_field() ?>
+                                                    <button class="btn btn-sm btn-primary" type="submit">Approve</button>
+                                                </form>
+                                                <form action="<?= site_url('/branch-admin/service-package/requests/reject/' . (int) $row['application_id']) ?>" method="post" class="d-inline">
+                                                    <?= csrf_field() ?>
+                                                    <input type="text" name="rejection_reason" class="form-control form-control-sm d-inline-block" style="max-width: 160px;" placeholder="Reason (required)" required minlength="5">
+                                                    <button class="btn btn-sm btn-danger" type="submit">Reject</button>
+                                                </form>
+                                            <?php endif; ?>
                                         <?php else: ?>
                                             <span class="text-muted">No actions</span>
                                         <?php endif; ?>

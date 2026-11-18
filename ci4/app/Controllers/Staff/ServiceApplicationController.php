@@ -28,6 +28,7 @@ class ServiceApplicationController extends BaseController
     public function index(): string
     {
         $this->ensureStaffAccess();
+        (new \App\Services\ClaimAvailService())->expireDownPayments(null);
 
         $branchId = (int) session('branch_id');
         $branchIssue = $branchId <= 0
@@ -62,6 +63,8 @@ class ServiceApplicationController extends BaseController
             'claim_base_path' => self::BASE_PATH,
             'request' => $request,
             'documents' => $this->claimService->getClaimDocuments($id),
+            'claim_info' => (new \App\Services\ClaimAvailService())->decisionInfo($id, $branchId),
+            'viewer_role' => 3,
         ]);
     }
 
@@ -69,7 +72,7 @@ class ServiceApplicationController extends BaseController
     {
         $this->ensureStaffAccess();
 
-        $result = $this->claimService->approve($id, (int) session('branch_id'), (int) session('user_id'));
+        $result = $this->claimService->approve($id, (int) session('branch_id'), (int) session('user_id'), 3);
 
         if (! $result['ok']) {
             if ($result['message'] === 'Claim not found.') {
@@ -87,7 +90,7 @@ class ServiceApplicationController extends BaseController
         $this->ensureStaffAccess();
 
         $reason = trim((string) $this->request->getPost('rejection_reason'));
-        $result = $this->claimService->reject($id, (int) session('branch_id'), (int) session('user_id'), $reason);
+        $result = $this->claimService->reject($id, (int) session('branch_id'), (int) session('user_id'), $reason, 3);
 
         if (! $result['ok']) {
             if ($result['message'] === 'Claim not found.') {
