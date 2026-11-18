@@ -92,7 +92,7 @@ $person     = static fn ($f, $l): string => trim((string) $f . ' ' . (string) $l
                 <div class="col-md-3"><small class="cs-muted d-block">Amount financed</small><strong><?= $money($avail['financed_amount']) ?></strong></div>
                 <div class="col-md-3"><small class="cs-muted d-block">Monthly instalment</small><strong><?= $money($avail['monthly_instalment']) ?></strong> <span class="cs-muted">× <?= (int) $avail['term_months'] ?> months</span></div>
                 <div class="col-md-4"><small class="cs-muted d-block">Down payment status</small>
-                    <?php if ($avail['status'] === 'cancelled'): ?><span class="badge text-bg-danger">Cancelled - no down payment</span>
+                    <?php if ($avail['status'] === 'cancelled'): ?><span class="badge text-bg-danger"><?= ($avail['kind'] ?? 'package') === 'addons' ? 'Add-on cancelled - not paid (the claim stands)' : 'Cancelled - no down payment' ?></span>
                     <?php elseif ($avail['down_payment_status'] === 'paid'): ?><span class="badge text-bg-success">Paid and verified <?= $avail['down_payment_paid_at'] ? esc(cs_date($avail['down_payment_paid_at'])) : '' ?></span>
                     <?php elseif ($avail['down_payment_status'] === 'waived'): ?><span class="badge text-bg-info">Waived</span>
                     <?php else: ?><span class="badge text-bg-warning">Waiting: <?= $money(max(0, (float) $avail['down_payment_amount'] - (float) ($avail['down_paid'] ?? 0))) ?> due by <?= esc(cs_date($avail['down_payment_due_by'])) ?></span><?php endif; ?>
@@ -157,9 +157,9 @@ $person     = static fn ($f, $l): string => trim((string) $f . ' ' . (string) $l
             <div class="cs-panel__head"><h2 class="cs-panel__title">Actions</h2></div>
             <div class="cs-panel__body">
                 <?php if (($request['status'] ?? '') === 'pending'): ?>
-                    <?php $isAvail = $owes; $canApprove = $elig === null || ! empty($elig['allowed']); $upfront = ! empty($info['upfront']); ?>
+                    <?php $isAvail = $owes; $canApprove = $elig === null || ! empty($elig['allowed']); $upfront = ! empty($info['upfront']); $staffMayApprove = $viewerRole === 3 && $kind === 'claim' && $upfront; ?>
 
-                    <?php if ($isAvail && $viewerRole !== 2): ?>
+                    <?php if ($isAvail && $viewerRole !== 2 && ! $staffMayApprove): ?>
                         <div class="alert alert-info">Only a Branch Admin can approve or reject this, because it adds an amount to the balance and sets the down payment, the term and any waiver. You can see the terms below and leave a note for the Branch Admin.</div>
                     <?php endif; ?>
 
@@ -219,8 +219,8 @@ $person     = static fn ($f, $l): string => trim((string) $f . ' ' . (string) $l
                                 </dl>
                             </div>
 
-                            <?php if ($viewerRole === 2): ?>
-                                <button type="submit" class="btn btn-primary mt-3" <?= $canApprove ? '' : 'disabled' ?>>Approve avail</button>
+                            <?php if ($viewerRole === 2 || $staffMayApprove): ?>
+                                <button type="submit" class="btn btn-primary mt-3" <?= $canApprove ? '' : 'disabled' ?>><?= $kind === 'claim' ? 'Approve claim' : 'Approve avail' ?></button>
                             <?php endif; ?>
                         </form>
                         <script>
@@ -250,7 +250,7 @@ $person     = static fn ($f, $l): string => trim((string) $f . ' ' . (string) $l
                             draw();
                         })();
                         </script>
-                        <?php if ($viewerRole === 2): ?>
+                        <?php if ($viewerRole === 2 || $staffMayApprove): ?>
                             <hr>
                             <form action="<?= site_url($claimBasePath . '/reject/' . (int) $request['application_id']) ?>" method="post">
                                 <?= csrf_field() ?>

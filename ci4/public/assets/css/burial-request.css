@@ -56,6 +56,12 @@
 .br-btn:disabled { opacity: .6; cursor: wait; filter: none; }
 .br-btn--ghost { background: #fff; color: var(--br-navy); }
 .br-btn--block { width: 100%; }
+/* ".br-page button { color: inherit }" above is more specific than ".br-btn", so a <button class="br-btn"> lost its white text
+   (dark on navy). These keep the intended colours for buttons and links alike, at every width. */
+.br-page .br-btn { color: #fff; }
+.br-page .br-btn--ghost { color: var(--br-navy); }
+.br-page .br-btn:disabled { color: #fff; }
+.br-page .br-btn--ghost:disabled { color: var(--br-navy); }
 .br-link { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; width: 100%; margin-top: 6px; color: var(--br-navy); font-weight: 600; text-decoration: none; }
 .br-link:hover { text-decoration: underline; }
 .br-link-inline { color: var(--br-navy); font-weight: 600; }

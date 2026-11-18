@@ -222,7 +222,7 @@ class ClaimAvailService
                LEFT JOIN packages p ON p.package_id = sa.package_id
                $availJoin
               WHERE sa.plan_holder_id = ? AND sa.cycle_number = ? AND sa.status = 'approved'
-                AND ((sa.request_type = 'claim' AND (" . ($this->tableReady('package_avails') ? "pa.avail_id IS NULL OR pa.status <> 'cancelled'" : '1=1') . ")) $availCheck
+                AND (sa.request_type = 'claim' $availCheck
                      OR (sa.request_type IS NULL AND p.is_damayan_entitlement = 1))
               LIMIT 1",
             [$planHolderId, $cycleNumber]
@@ -243,7 +243,8 @@ class ClaimAvailService
         $availJoin  = $this->tableReady('package_avails') ? 'LEFT JOIN package_avails pa ON pa.application_id = sa.application_id' : '';
         $link       = $this->columnReady('service_applications', 'service_id') ? 'sa.service_id, ' : '';
         $serviceKey = $this->tableReady('package_avails') ? "COALESCE({$link}sb.service_id, pa.service_id)" : "COALESCE({$link}sb.service_id)";
-        $availOk    = $this->tableReady('package_avails') ? "AND (pa.avail_id IS NULL OR pa.status <> 'cancelled')" : '';
+        // A cancelled avail / service closes the request; a cancelled ADD-ON on a claim does not (the casket claim stands).
+        $availOk    = $this->tableReady('package_avails') ? "AND (pa.avail_id IS NULL OR pa.status <> 'cancelled' OR pa.kind = 'addons')" : '';
 
         return $db->query(
             "SELECT sa.application_id, sa.status, sa.request_type, sa.created_at, sa.package_id, sa.awaiting_death_certificate, s.status AS service_status
@@ -616,7 +617,7 @@ class ClaimAvailService
 
         $db      = db_connect();
         $builder = $db->table('package_avails pa')
-            ->select('pa.avail_id, pa.service_id, pa.plan_id, pa.branch_id, pa.approved_by, pa.package_price, ph.user_id AS client_user_id, ph.plan_holder_id')
+            ->select('pa.avail_id, pa.service_id, pa.kind, pa.addons_label, pa.plan_id, pa.branch_id, pa.approved_by, pa.package_price, ph.user_id AS client_user_id, ph.plan_holder_id')
             ->join('plan_holders ph', 'ph.plan_holder_id = pa.plan_holder_id', 'inner')
             ->where('pa.status', 'awaiting_down_payment')
             ->where('pa.down_payment_status', 'due')
@@ -647,6 +648,8 @@ class ClaimAvailService
     {
         $db = db_connect();
 
+        $addonOnly = (string) ($avail['kind'] ?? 'package') === 'addons';
+
         $db->transStart();
         $db->table('package_avails')
             ->where('avail_id', (int) $avail['avail_id'])
@@ -654,11 +657,12 @@ class ClaimAvailService
             ->where('down_payment_status', 'due')
             ->update([
                 'status'           => 'cancelled',
-                'cancelled_reason' => 'Cancelled - no down payment',
+                'cancelled_reason' => $addonOnly ? 'Cancelled - add-on not paid' : 'Cancelled - no down payment',
                 'cancelled_at'     => date('Y-m-d H:i:s'),
             ]);
         $changed = $db->affectedRows() > 0;
-        if ($changed && (int) ($avail['service_id'] ?? 0) > 0) {
+        // Only an avail or a single service is cancelled as a whole; for a claim only the add-on goes.
+        if ($changed && ! $addonOnly && (int) ($avail['service_id'] ?? 0) > 0) {
             $db->table('services')->where('service_id', (int) $avail['service_id'])->where('status', 'pending')->update(['status' => 'cancelled']);
         }
         $db->transComplete();
@@ -668,18 +672,24 @@ class ClaimAvailService
         }
 
         $notify = new NotificationService();
-        $notify->notify((int) $avail['client_user_id'], 'Your package request was cancelled because the down payment was not paid in time. The package amount was removed from your balance.', 'general', false, false, (int) $avail['plan_id']);
+        $notify->notify(
+            (int) $avail['client_user_id'],
+            $addonOnly
+                ? 'The add-on' . (! empty($avail['addons_label']) ? ' (' . $avail['addons_label'] . ')' : '') . ' on your claim was cancelled because it was not paid in time, and its amount was removed from your balance. Your casket claim is still approved.'
+                : 'Your package request was cancelled because the down payment was not paid in time. The package amount was removed from your balance.',
+            'general', false, false, (int) $avail['plan_id']
+        );
 
         $admins = $db->table('users')->select('user_id')->where('role_id', 2)->where('status', 'active')->where('deleted_at', null);
         if ((int) ($avail['branch_id'] ?? 0) > 0) {
             $admins->where('branch_id', (int) $avail['branch_id']);
         }
         foreach ($admins->get()->getResultArray() as $admin) {
-            $notify->notify((int) $admin['user_id'], 'An avail (request #' . (int) $avail['avail_id'] . ') was cancelled - no down payment was received in time.', 'general');
+            $notify->notify((int) $admin['user_id'], $addonOnly ? 'The add-on on a claim (#' . (int) $avail['avail_id'] . ') was cancelled - it was not paid in time. The claim itself still stands.' : 'An avail (request #' . (int) $avail['avail_id'] . ') was cancelled - no down payment was received in time.', 'general');
         }
 
         $actor = (int) (($avail['approved_by'] ?? 0) ?: $avail['client_user_id']);
-        (new ActivityLogService())->log($actor, 'cancelled', 'package_avail', (int) $avail['avail_id'], 'Avail cancelled - no down payment within ' . (int) $this->config->availDownPaymentDays . ' days');
+        (new ActivityLogService())->log($actor, 'cancelled', 'package_avail', (int) $avail['avail_id'], ($addonOnly ? 'Add-on cancelled - not paid within ' : 'Avail cancelled - no down payment within ') . (int) $this->config->availDownPaymentDays . ' days');
 
         return true;
     }
@@ -858,12 +868,17 @@ class ClaimAvailService
         if ($serviceId <= 0 || ! $this->tableReady('package_avails')) {
             return true;
         }
-        $avail = db_connect()->table('package_avails')->select('down_payment_status, status')->where('service_id', $serviceId)->get(1)->getRowArray();
+        $avail = db_connect()->table('package_avails')->select('down_payment_status, status, kind')->where('service_id', $serviceId)->get(1)->getRowArray();
         if ($avail === null) {
             return true;
         }
 
-        return in_array($avail['down_payment_status'], ['paid', 'waived'], true) && $avail['status'] !== 'cancelled';
+        // A claim whose add-on was cancelled (not paid in time) may start: the casket claim stands.
+        if ($avail['status'] === 'cancelled') {
+            return (($avail['kind'] ?? 'package') === 'addons');
+        }
+
+        return in_array($avail['down_payment_status'], ['paid', 'waived'], true);
     }
 
     /** Plan contributions already due (or part paid) that still need money, from the ledger. */
@@ -1246,9 +1261,15 @@ class ClaimAvailService
             return ['ok' => false, 'message' => 'The requested package or service was not found.'];
         }
 
-        // Anything that adds an amount to the balance sets money terms: Branch Admin only.
-        if ($priced['charge'] > 0.004 && $actorRole !== self::ROLE_BRANCH_ADMIN) {
-            return ['ok' => false, 'message' => 'Only a Branch Admin can approve this: it adds an amount to the client\'s balance, so it sets the down payment, the term and any waiver.'];
+        // Anything that adds an amount to the balance sets money terms: Branch Admin only - except a CLAIM
+        // whose add-on is paid in full up front (no term, no waiver), which Staff may approve like a plain claim.
+        if ($actorRole !== self::ROLE_BRANCH_ADMIN) {
+            if (! $this->staffMayDecide($priced, $planHolderId, $this->itemFromApplication($app))) {
+                return ['ok' => false, 'message' => 'Only a Branch Admin can approve this: it adds an amount to the client\'s balance that has instalments to set (or may need a waiver).'];
+            }
+            if (! empty($options['waive'])) {
+                return ['ok' => false, 'message' => 'Only a Branch Admin can waive a down payment.'];
+            }
         }
 
         $el = $this->eligibility($planHolderId, (int) $app['package_id'], $applicationId);
@@ -1257,6 +1278,24 @@ class ClaimAvailService
         }
 
         return $this->approveRequest($app, $plan, $actorUserId, $options, $priced);
+    }
+
+    /**
+     * May Staff decide this request? Yes when nothing is added to the balance (a plain claim), or when it is a
+     * CLAIM whose add-on is small enough to be paid in full up front (no term to choose, no waiver).
+     * Everything with instalments to set, and every avail or single service, needs the Branch Admin.
+     */
+    public function staffMayDecide(array $priced, int $planHolderId, array $item): bool
+    {
+        if ($priced['charge'] <= 0.004) {
+            return true;
+        }
+        if ($priced['type'] !== self::TYPE_CLAIM) {
+            return false;
+        }
+        $probe = $this->quoteItem($planHolderId, $item, null, false);
+
+        return ! empty($probe['upfront']);
     }
 
     /**
@@ -1417,8 +1456,8 @@ class ClaimAvailService
 
         $plan   = $this->planFor((int) $app['plan_holder_id']);
         $priced = $plan ? $this->priceItem((int) $app['plan_holder_id'], $this->itemFromApplication($app)) : null;
-        if (($priced['charge'] ?? 0) > 0.004 && $actorRole !== self::ROLE_BRANCH_ADMIN) {
-            return ['ok' => false, 'message' => 'Only a Branch Admin can decide on a request that adds an amount to the balance (an avail, a service, or paid add-ons). Add a note for the Branch Admin instead.'];
+        if ($actorRole !== self::ROLE_BRANCH_ADMIN && $priced !== null && ! $this->staffMayDecide($priced, (int) $app['plan_holder_id'], $this->itemFromApplication($app))) {
+            return ['ok' => false, 'message' => 'Only a Branch Admin can decide on a request that adds an amount to the balance with instalments to set (an avail, a service, or add-ons not paid in full up front). Add a note for the Branch Admin instead.'];
         }
 
         db_connect()->table('service_applications')->where('application_id', $applicationId)->update([
@@ -1502,7 +1541,7 @@ class ClaimAvailService
 
         $avail = db_connect()->table('package_avails')->where('service_id', $serviceId)->get(1)->getRowArray();
         if ($avail !== null && $avail['status'] === 'cancelled') {
-            return ['ok' => false, 'message' => 'This avail was cancelled because the down payment was not paid in time.'];
+            return ['ok' => false, 'message' => 'This request was cancelled because the down payment was not paid in time.'];
         }
         $left = $avail ? max(0.0, round((float) $avail['down_payment_amount'] - $this->downPaymentPaid((int) $avail['avail_id']), 2)) : 0.0;
 
@@ -1664,7 +1703,7 @@ class ClaimAvailService
                 $row['status_label'] = 'Pending';
             } elseif ($row['status'] === 'rejected') {
                 $row['status_label'] = 'Rejected';
-            } elseif ($av !== null && $av['status'] === 'cancelled') {
+            } elseif ($av !== null && $av['status'] === 'cancelled' && ($av['kind'] ?? 'package') !== 'addons') {
                 $row['status_label'] = 'Cancelled - no down payment';
             } elseif ($svcStatus === 'ongoing') {
                 $row['status_label'] = 'Ongoing';
@@ -1678,7 +1717,8 @@ class ClaimAvailService
                 $row['status_label'] = 'Approved';
             }
 
-            $row['amount_added'] = $av !== null ? (float) $av['package_price'] : ($row['old_rule'] ? (float) ($row['legacy_remaining'] ?? 0) : 0.0);
+            $row['addon_cancelled'] = $av !== null && $av['status'] === 'cancelled' && ($av['kind'] ?? 'package') === 'addons';
+            $row['amount_added'] = $av !== null && ! $row['addon_cancelled'] ? (float) $av['package_price'] : ($row['old_rule'] ? (float) ($row['legacy_remaining'] ?? 0) : 0.0);
             $row['down_left'] = $av !== null && $av['status'] === 'awaiting_down_payment' ? max(0.0, round((float) $av['down_payment_amount'] - (float) $av['down_paid'], 2)) : 0.0;
         }
         unset($row);

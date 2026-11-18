@@ -69,6 +69,8 @@ $tone = static function (string $label): string {
                     </div>
                     <?php if ($av['status'] === 'awaiting_down_payment'): ?>
                         <div class="alert alert-warning mt-3 mb-0"><div>Pay the <strong><?= $money($r['down_left']) ?></strong> down payment by <strong><?= esc(cs_date($av['down_payment_due_by'])) ?></strong>, or this request is cancelled. Your service starts once it is paid and verified.</div></div>
+                    <?php elseif ($av['status'] === 'cancelled' && ($av['kind'] ?? 'package') === 'addons'): ?>
+                        <div class="alert alert-warning mt-3 mb-0"><div>The add-on was cancelled because it was not paid in time, and its amount was removed from your balance. <strong>Your casket claim is still approved.</strong></div></div>
                     <?php elseif ($av['status'] === 'cancelled'): ?>
                         <div class="alert alert-danger mt-3 mb-0"><div>Cancelled - the down payment was not paid in time. The amount was removed from your balance.</div></div>
                     <?php elseif ($av['down_payment_status'] === 'paid'): ?>
