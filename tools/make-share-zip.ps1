@@ -91,6 +91,17 @@ try {
         [void][System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $_.FullName, 'ci4/' + $rel, [System.IO.Compression.CompressionLevel]::Optimal)
         $added++
     }
+    # The deploy/ folder (SQL for the live database, checklists) sits next to ci4/. A partD_backfill*.sql
+    # file is generated from live data, so it is never shared.
+    $deployDir = Join-Path $repoRoot 'deploy'
+    if (Test-Path -LiteralPath $deployDir) {
+        $dprefix = $deployDir.TrimEnd('\') + '\'
+        Get-ChildItem -LiteralPath $deployDir -Recurse -File -Force | ForEach-Object {
+            if ($_.Name -like 'partD_backfill*') { $skipped++; return }
+            [void][System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $_.FullName, 'deploy/' + $_.FullName.Substring($dprefix.Length).Replace('\', '/'), [System.IO.Compression.CompressionLevel]::Optimal)
+            $added++
+        }
+    }
 }
 finally {
     $zip.Dispose()
@@ -101,6 +112,7 @@ $bad = @()
 $check = [System.IO.Compression.ZipFile]::OpenRead($OutFile)
 try {
     foreach ($e in $check.Entries) {
+        if (-not $e.FullName.StartsWith('ci4/')) { if ($e.FullName -like 'deploy/partD_backfill*') { $bad += $e.FullName }; continue }
         $rel = $e.FullName.Substring('ci4/'.Length).ToLowerInvariant()
         $leaf = [System.IO.Path]::GetFileName($rel)
         $isPlaceholder = $leaf -eq 'index.html'
