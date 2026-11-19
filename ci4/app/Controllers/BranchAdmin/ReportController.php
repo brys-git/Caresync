@@ -64,13 +64,18 @@ class ReportController extends BaseController
         $mode = (string) $this->request->getGet('mode');
 
         if ($mode === 'csv') {
-            return $this->simpleCsv('overdue_report', ['Plan Holder', 'Unique ID', 'Contact', 'Remaining Balance', 'Months Paid', 'Overdue Months', 'Days Overdue', 'Next Due Date', 'Status'], $rows, static fn (array $row): array => [
+            return $this->simpleCsv('overdue_report', ['Plan Holder', 'Unique ID', 'Contact', 'Plan Balance', 'Package Balance', 'Months Paid', 'Plan Overdue Months', 'Plan Overdue Amount', 'Package Overdue Instalments', 'Package Overdue Amount', 'Total Overdue Amount', 'Days Overdue', 'Oldest Due Date', 'Status'], $rows, static fn (array $row): array => [
                 trim((string) ($row['first_name'] ?? '') . ' ' . (string) ($row['last_name'] ?? '')),
                 (string) ($row['unique_identifier'] ?? ''),
                 (string) ($row['contact_number'] ?? ''),
                 number_format((float) ($row['remaining_balance'] ?? 0), 2, '.', ''),
+                number_format((float) ($row['package_balance'] ?? 0), 2, '.', ''),
                 (string) ($row['months_paid'] ?? 0),
                 (string) ($row['overdue_months'] ?? 0),
+                number_format((float) ($row['overdue_amount'] ?? 0), 2, '.', ''),
+                (string) ($row['package_overdue_count'] ?? 0),
+                number_format((float) ($row['package_overdue_amount'] ?? 0), 2, '.', ''),
+                number_format((float) ($row['total_overdue_amount'] ?? 0), 2, '.', ''),
                 (string) ($row['days_overdue'] ?? 0),
                 (string) ($row['next_due_date'] ?? ''),
                 (string) ($row['status_text'] ?? ''),
@@ -88,6 +93,41 @@ class ReportController extends BaseController
             'reports_base_path' => '/branch-admin/reports',
             'reports_hidden_tabs' => ['ledger', 'collections'],
             'active_report' => 'overdue',
+            'filters' => $filters,
+            'rows' => $rows,
+        ]);
+    }
+
+    /**
+     * Avails and waivers for this branch.
+     */
+    public function avails()
+    {
+        $this->ensureBranchAdminAccess();
+
+        $branchId = (int) session('branch_id');
+        if ($branchId <= 0) {
+            throw PageNotFoundException::forPageNotFound();
+        }
+
+        $filters = $this->reportService->availsFilters($this->request->getGet(), $branchId);
+        $rows = $this->reportService->getAvailsReport($filters);
+        $mode = (string) $this->request->getGet('mode');
+
+        if ($mode === 'csv') {
+            return $this->simpleCsv('avails_report', $this->reportService->availsCsvHeaders(), $rows, fn (array $row): array => $this->reportService->availsCsvRow($row));
+        }
+        if ($mode === 'pdf' || $mode === 'print') {
+            return $this->pdfResponse('avails', ['rows' => $rows, 'status_line' => $filters['status']], $branchId, ['date_from' => $filters['date_from'], 'date_to' => $filters['date_to']], $mode === 'print');
+        }
+
+        return view('admin/reports/avails', [
+            'role_layout' => 'layouts/branch_admin',
+            'page_title' => 'Avails and Waivers',
+            'page_sub' => 'Every package, service and add-on avail in your branch with its down payment, waiver, what has been paid and what is left.',
+            'reports_base_path' => '/branch-admin/reports',
+            'reports_hidden_tabs' => ['ledger', 'collections'],
+            'active_report' => 'avails',
             'filters' => $filters,
             'rows' => $rows,
         ]);
@@ -237,6 +277,7 @@ class ReportController extends BaseController
             'report_rows' => $rows,
             'summary' => $breakdown,
             'total_remittance' => $totalRemittance,
+            'split_totals' => $this->reportService->splitTotalLines($filters),
             'staff_options' => $staffOptions,
             'print_mode' => $printMode,
         ];
@@ -251,6 +292,7 @@ class ReportController extends BaseController
         $totals = [
             ['label' => 'Cash Total', 'amount' => $breakdown['cash_total']],
             ['label' => 'GCash Total', 'amount' => $breakdown['gcash_total']],
+            ...$this->reportService->splitTotalLines($filters),
             ['label' => 'Total Remittance', 'amount' => $this->reportService->getTotalRemittance($filters), 'strong' => true],
         ];
 
@@ -289,13 +331,16 @@ class ReportController extends BaseController
         $filename = 'remittance_report_' . date('Ymd_His') . '.csv';
 
         $stream = fopen('php://temp', 'w+');
-        fputcsv($stream, ['Date', 'Client Name', 'Amount', 'Method', 'Reference', 'Received By']);
+        fputcsv($stream, ['Date', 'Client Name', 'Amount', 'Plan Contribution', 'Package Instalment', 'Down Payment', 'Method', 'Reference', 'Received By']);
 
         foreach ($rows as $row) {
             fputcsv($stream, [
                 (string) ($row['payment_date'] ?? ''),
                 trim(((string) ($row['client_first'] ?? '')) . ' ' . ((string) ($row['client_last'] ?? ''))),
                 number_format((float) ($row['amount'] ?? 0), 2, '.', ''),
+                $row['plan_part'] === null ? '' : number_format((float) $row['plan_part'], 2, '.', ''),
+                $row['instalment_part'] === null ? '' : number_format((float) $row['instalment_part'], 2, '.', ''),
+                $row['down_part'] === null ? '' : number_format((float) $row['down_part'], 2, '.', ''),
                 (string) ($row['payment_method'] ?? ''),
                 (string) ($row['reference_number'] ?? ''),
                 trim(((string) ($row['staff_first'] ?? '')) . ' ' . ((string) ($row['staff_last'] ?? ''))),

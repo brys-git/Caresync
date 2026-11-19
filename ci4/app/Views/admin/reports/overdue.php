@@ -85,11 +85,14 @@ $overdueQuery = (! empty($filters['branch_id']) ? '&branch_id=' . (int) $filters
                             <th>Plan Holder</th>
                             <th>Branch</th>
                             <th>Contact</th>
-                            <th class="cs-num">Remaining Balance</th>
+                            <th class="cs-num">Plan Balance</th>
+                            <th class="cs-num">Package Balance</th>
                             <th>Months Paid</th>
-                            <th>Overdue Months</th>
+                            <th class="cs-num">Plan Overdue</th>
+                            <th class="cs-num">Package Overdue</th>
+                            <th class="cs-num">Total Overdue</th>
                             <th>Days Overdue</th>
-                            <th>Next Due Date</th>
+                            <th>Oldest Due Date</th>
                             <th>Status</th>
                         </tr>
                     </thead>
@@ -103,8 +106,11 @@ $overdueQuery = (! empty($filters['branch_id']) ? '&branch_id=' . (int) $filters
                                 <td><?= esc((string) ($row['branch_name'] ?? '-')) ?></td>
                                 <td><?= esc((string) ($row['contact_number'] ?? '-')) ?></td>
                                 <td class="cs-num"><?= cs_money($row['remaining_balance'] ?? 0) ?></td>
+                                <td class="cs-num"><?= ! empty($row['has_package']) ? cs_money($row['package_balance'] ?? 0) : '-' ?></td>
                                 <td><?= esc((string) ($row['months_paid'] ?? 0)) ?></td>
-                                <td><?= esc((string) ($row['overdue_months'] ?? 0)) ?> <span class="cs-table__sub"><?= cs_peso($row['overdue_amount'] ?? 0) ?></span></td>
+                                <td class="cs-num"><?= (int) ($row['overdue_months'] ?? 0) > 0 ? cs_peso($row['overdue_amount'] ?? 0) . ' <span class="cs-table__sub">' . (int) $row['overdue_months'] . ' month(s)</span>' : '-' ?></td>
+                                <td class="cs-num"><?= (int) ($row['package_overdue_count'] ?? 0) > 0 ? cs_peso($row['package_overdue_amount'] ?? 0) . ' <span class="cs-table__sub">' . (int) $row['package_overdue_count'] . ' instalment(s)</span>' : '-' ?></td>
+                                <td class="cs-num"><strong><?= cs_peso($row['total_overdue_amount'] ?? ($row['overdue_amount'] ?? 0)) ?></strong></td>
                                 <td><?= cs_status('overdue', (string) ($row['days_overdue'] ?? 0) . ' days') ?></td>
                                 <td><?= cs_date($row['next_due_date'] ?? null) ?></td>
                                 <td><?= cs_status((string) ($row['lifecycle'] ?? 'grace'), (string) ($row['status_text'] ?? '')) ?></td>

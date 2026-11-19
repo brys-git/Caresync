@@ -66,6 +66,7 @@ $routes->group('admin', ['filter' => 'auth'], static function (RouteCollection $
     $routes->get('reports', 'Reports::index', ['filter' => 'role:1']);
     $routes->get('reports/overdue', 'Reports::overdue', ['filter' => 'role:1']);
     $routes->get('reports/ledger', 'Reports::ledger', ['filter' => 'role:1']);
+    $routes->get('reports/avails', 'Reports::avails', ['filter' => 'role:1']);
     $routes->get('reports/collections', 'Reports::collections', ['filter' => 'role:1']);
     $routes->get('reports/commission', 'Reports::commission', ['filter' => 'role:1']);
     $routes->get('reports/remittance', 'Reports::remittance', ['filter' => 'role:1']);

@@ -11,6 +11,7 @@ $tabs = [
     'overdue' => 'Overdue',
     'ledger' => 'Ledger of Plan Holder',
     'collections' => 'Collections',
+    'avails' => 'Avails and waivers',
     'commission' => 'Commission',
     'remittance' => 'Remittance',
 ];

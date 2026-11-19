@@ -18,6 +18,9 @@ $totals = $totals ?? [];
             <th>Reference / OR</th>
             <th>Recorded By</th>
             <th>Status</th>
+            <th class="num">Plan</th>
+            <th class="num">Instalment</th>
+            <th class="num">Down Payment</th>
             <th class="num">Amount</th>
         </tr>
     </thead>
@@ -32,18 +35,21 @@ $totals = $totals ?? [];
                 <td><?= esc((string) (($row['reference_number'] ?? '') !== '' ? $row['reference_number'] : (($row['official_receipt_number'] ?? '') !== '' ? $row['official_receipt_number'] : '-'))) ?></td>
                 <td><?= esc(trim((string) ($row['staff_first'] ?? '') . ' ' . (string) ($row['staff_last'] ?? ''))) ?></td>
                 <td><?= esc(ucfirst((string) ($row['status'] ?? 'pending'))) ?></td>
+                <td class="num"><?= ($row['plan_part'] ?? null) === null ? '-' : esc(cs_peso($row['plan_part'])) ?></td>
+                <td class="num"><?= ($row['instalment_part'] ?? null) === null || (float) $row['instalment_part'] == 0 ? '-' : esc(cs_peso($row['instalment_part'])) ?></td>
+                <td class="num"><?= ($row['down_part'] ?? null) === null || (float) $row['down_part'] == 0 ? '-' : esc(cs_peso($row['down_part'])) ?></td>
                 <td class="num"><?= esc(cs_peso($row['amount'] ?? 0)) ?></td>
             </tr>
         <?php endforeach; ?>
         <?php if ($rows === []): ?>
-            <tr><td colspan="9" class="rpt-empty">No records for the selected filters.</td></tr>
+            <tr><td colspan="12" class="rpt-empty">No records for the selected filters.</td></tr>
         <?php endif; ?>
     </tbody>
     <?php if ($rows !== [] && $totals !== []): ?>
         <tfoot>
             <?php foreach ($totals as $line): ?>
                 <tr class="<?= ! empty($line['strong']) ? 'rpt-total' : '' ?>">
-                    <td colspan="8" class="num"><?= esc((string) $line['label']) ?></td>
+                    <td colspan="11" class="num"><?= esc((string) $line['label']) ?></td>
                     <td class="num"><?= esc(cs_peso($line['amount'])) ?></td>
                 </tr>
             <?php endforeach; ?>

@@ -29,11 +29,45 @@ class ReportService
         $builder = $this->baseQuery($filters)
             ->select('p.payment_id, p.payment_date, p.amount, p.months_covered, p.payment_method, p.reference_number, p.official_receipt_number, p.status, rb.first_name AS staff_first, rb.last_name AS staff_last, cu.first_name AS client_first, cu.last_name AS client_last, ph.plan_holder_id, ph.unique_identifier, pl.start_date, b.branch_name');
 
-        return $builder
+        $rows = $builder
             ->orderBy('p.payment_date', 'DESC')
             ->orderBy('p.payment_id', 'DESC')
             ->get()
             ->getResultArray();
+
+        // Where each paid payment went: plan contribution / package instalment / down payment.
+        $amounts = [];
+        foreach ($rows as $r) {
+            $amounts[(int) $r['payment_id']] = (float) $r['amount'];
+        }
+        $splits = $this->metrics()->paymentSplits(array_keys($amounts), $amounts);
+        foreach ($rows as &$r) {
+            $paid = strtolower((string) ($r['status'] ?? '')) === 'paid';
+            $sp = $splits[(int) $r['payment_id']] ?? ['plan' => 0.0, 'instalments' => 0.0, 'down_payments' => 0.0];
+            $r['plan_part'] = $paid ? $sp['plan'] : null;
+            $r['instalment_part'] = $paid ? $sp['instalments'] : null;
+            $r['down_part'] = $paid ? $sp['down_payments'] : null;
+        }
+        unset($r);
+
+        return $rows;
+    }
+
+    /**
+     * The three total lines every remittance/collections report prints under "Cash / GCash":
+     * plan contributions, package instalments, down payments. They add up to the total.
+     *
+     * @return list<array{label:string, amount:float}>
+     */
+    public function splitTotalLines(array $filters): array
+    {
+        $s = $this->metrics()->collectedSplit($this->branchOf($filters), (string) $filters['date_from'], (string) $filters['date_to'], $this->metricOpts($filters));
+
+        return [
+            ['label' => 'Plan contributions', 'amount' => $s['plan']],
+            ['label' => 'Package instalments', 'amount' => $s['instalments']],
+            ['label' => 'Down payments', 'amount' => $s['down_payments']],
+        ];
     }
 
     /**
@@ -221,6 +255,113 @@ class ReportService
         return $line;
     }
 
+    /**
+     * "Avails and waivers": every package / service / add-on avail with its price, down payment
+     * (paid, waived with reason and who, or still due), term, what has been paid so far, the balance and the status.
+     *
+     * @param array{branch_id?:int, search?:string, status?:string, date_from?:string, date_to?:string} $filters
+     *        status: '' | awaiting_down_payment | active | settled | cancelled | waived   (dates filter the approval date)
+     *
+     * @return list<array<string,mixed>>
+     */
+    public function getAvailsReport(array $filters): array
+    {
+        $db = db_connect();
+        if (! $db->tableExists('package_avails')) {
+            return [];
+        }
+        $b = $db->table('package_avails pa')
+            ->select("pa.*, ph.unique_identifier, u.first_name, u.last_name, br.branch_name, COALESCE(pk.package_name, sl.service_name) AS what,"
+                . " w.first_name AS waived_by_first, w.last_name AS waived_by_last, ap.first_name AS approved_by_first, ap.last_name AS approved_by_last,"
+                . " (SELECT COALESCE(SUM(al.amount),0) FROM payment_allocations al WHERE al.avail_id = pa.avail_id) AS paid_so_far,"
+                . " (SELECT COALESCE(SUM(al.amount),0) FROM payment_allocations al WHERE al.avail_id = pa.avail_id AND al.target_type = 'avail_down_payment') AS down_paid", false)
+            ->join('plan_holders ph', 'ph.plan_holder_id = pa.plan_holder_id', 'inner')
+            ->join('users u', 'u.user_id = ph.user_id', 'inner')
+            ->join('branches br', 'br.branch_id = ph.branch_id', 'left')
+            ->join('packages pk', 'pk.package_id = pa.package_id', 'left')
+            ->join('service_list sl', 'sl.service_list_id = pa.service_list_id', 'left')
+            ->join('users w', 'w.user_id = pa.waived_by', 'left')
+            ->join('users ap', 'ap.user_id = pa.approved_by', 'left');
+
+        if ((int) ($filters['branch_id'] ?? 0) > 0) {
+            $b->where('ph.branch_id', (int) $filters['branch_id']);
+        }
+        $status = (string) ($filters['status'] ?? '');
+        if ($status === 'waived') {
+            $b->where('pa.down_payment_status', 'waived');
+        } elseif (in_array($status, ['awaiting_down_payment', 'active', 'settled', 'cancelled'], true)) {
+            $b->where('pa.status', $status);
+        }
+        if (($filters['date_from'] ?? '') !== '') {
+            $b->where('DATE(pa.approved_at) >=', (string) $filters['date_from']);
+        }
+        if (($filters['date_to'] ?? '') !== '') {
+            $b->where('DATE(pa.approved_at) <=', (string) $filters['date_to']);
+        }
+        cs_apply_search($b, (string) ($filters['search'] ?? ''), ['u.first_name', 'u.last_name', 'ph.unique_identifier', 'pk.package_name', 'sl.service_name']);
+
+        $rows = $b->orderBy('pa.approved_at', 'DESC')->orderBy('pa.avail_id', 'DESC')->get()->getResultArray();
+        foreach ($rows as &$r) {
+            $r['paid_so_far'] = round((float) $r['paid_so_far'], 2);
+            $r['balance'] = $r['status'] === 'cancelled' ? 0.0 : max(0.0, round((float) $r['package_price'] - $r['paid_so_far'], 2));
+            $r['client_name'] = trim((string) $r['first_name'] . ' ' . (string) $r['last_name']);
+            $r['waived_by_name'] = trim((string) ($r['waived_by_first'] ?? '') . ' ' . (string) ($r['waived_by_last'] ?? ''));
+            $r['status_label'] = ['awaiting_down_payment' => 'Awaiting down payment', 'active' => 'Active', 'settled' => 'Settled', 'cancelled' => 'Cancelled'][$r['status']] ?? (string) $r['status'];
+            $r['kind_label'] = ['package' => 'Package', 'service' => 'Service', 'addons' => 'Add-on'][$r['kind'] ?? 'package'] ?? 'Package';
+            $r['down_label'] = $r['down_payment_status'] === 'waived'
+                ? 'Waived'
+                : ($r['down_payment_status'] === 'paid' ? 'Paid' : 'Due' . ($r['down_payment_due_by'] ? ' by ' . date('j M Y', strtotime((string) $r['down_payment_due_by'])) : ''));
+            $r['term_label'] = (int) $r['term_months'] > 0 ? (int) $r['term_months'] . ' months' : 'Paid in full';
+        }
+        unset($r);
+
+        return $rows;
+    }
+
+    /** Cleans the Avails and waivers filters (status, approval dates, search). */
+    public function availsFilters(array $input, int $branchId): array
+    {
+        $date = static function ($v): string {
+            $v = trim((string) $v);
+
+            return preg_match('/^\d{4}-\d{2}-\d{2}$/', $v) && strtotime($v) !== false ? $v : '';
+        };
+        $status = (string) ($input['status'] ?? '');
+        $from = $date($input['date_from'] ?? '');
+        $to = $date($input['date_to'] ?? '');
+        if ($from !== '' && $to !== '' && $from > $to) {
+            [$from, $to] = [$to, $from];
+        }
+
+        return [
+            'branch_id' => $branchId,
+            'status' => in_array($status, ['awaiting_down_payment', 'active', 'settled', 'cancelled', 'waived'], true) ? $status : '',
+            'date_from' => $from,
+            'date_to' => $to,
+            'search' => cs_search_term($input['search'] ?? ''),
+        ];
+    }
+
+    /** @return list<string> */
+    public function availsCsvHeaders(): array
+    {
+        return ['Plan Holder', 'Plan No.', 'Branch', 'Type', 'Package / Service', 'Price', 'Down Payment Amount', 'Down Payment', 'Waived By', 'Waived On', 'Waiver Reason', 'Term', 'Monthly Instalment', 'Paid So Far', 'Balance', 'Status', 'Approved On'];
+    }
+
+    /** @return list<string> */
+    public function availsCsvRow(array $r): array
+    {
+        $m = static fn ($v): string => number_format((float) $v, 2, '.', '');
+
+        return [
+            (string) $r['client_name'], (string) ($r['unique_identifier'] ?? ''), (string) ($r['branch_name'] ?? ''), (string) $r['kind_label'], (string) ($r['what'] ?? ''),
+            $m($r['package_price']), $m($r['down_payment_amount']), (string) $r['down_label'],
+            (string) $r['waived_by_name'], $r['waived_at'] ? date('Y-m-d', strtotime((string) $r['waived_at'])) : '', (string) ($r['waiver_reason'] ?? ''),
+            (string) $r['term_label'], (int) $r['term_months'] > 0 ? $m($r['monthly_instalment']) : '', $m($r['paid_so_far']), $m($r['balance']),
+            (string) $r['status_label'], $r['approved_at'] ? date('Y-m-d', strtotime((string) $r['approved_at'])) : '',
+        ];
+    }
+
     public function getOverdueReport(array $filters): array
     {
         $branchId = (int) ($filters['branch_id'] ?? 0);
@@ -256,6 +397,11 @@ class ReportService
                 $builder->orWhereIn('pl.lifecycle_status', ['grace', 'lapsed', 'forfeited']);
             }
 
+            // a plan that is fine on its contribution but behind on a package instalment
+            if ($db->tableExists('package_avail_instalments')) {
+                $builder->orWhere("pl.plan_id IN (SELECT pa.plan_id FROM package_avails pa JOIN package_avail_instalments i ON i.avail_id = pa.avail_id WHERE pa.status IN ('active','settled') AND i.due_date < " . $db->escape($today) . ' AND i.paid_amount < i.amount)', null, false);
+            }
+
             $builder->groupEnd();
         }
 
@@ -266,19 +412,25 @@ class ReportService
         cs_apply_search($builder, (string) ($filters['search'] ?? ''), ['u.first_name', 'u.last_name', 'u.contact_number', 'ph.unique_identifier']);
 
         $ledger = new PlanLedgerService();
+        $claimAvail = new ClaimAvailService();
         $rows = [];
 
         foreach ($builder->get()->getResultArray() as $row) {
             // "As of": the plan as it stood on that date (payments after it do not count yet).
             $s = $ledger->summarizeAsOf((int) $row['plan_id'], $asOf);
-            if (! $s || ! in_array($s['lifecycle'], ['grace', 'lapsed', 'forfeited'], true)) {
+            if (! $s) {
+                continue;
+            }
+            $planBehind = in_array($s['lifecycle'], ['grace', 'lapsed', 'forfeited'], true);
+            $pk = $claimAvail->packageStandingAsOf((int) $row['plan_id'], $asOf, $dueFrom, $dueTo);
+            if (! $planBehind && $pk['overdue_count'] === 0) {
                 continue;
             }
 
-            $overdueCount = (int) $s['overdue_count'];
-            $overdueAmount = (float) $s['overdue_amount'];
-            $overdueDues = $s['overdue_dues'];
-            $oldestDue = $s['oldest_unpaid_due'];
+            $overdueCount = $planBehind ? (int) $s['overdue_count'] : 0;
+            $overdueAmount = $planBehind ? (float) $s['overdue_amount'] : 0.0;
+            $overdueDues = $planBehind ? $s['overdue_dues'] : [];
+            $oldestDue = $planBehind ? $s['oldest_unpaid_due'] : null;
 
             // "Due from / to": only overdue contributions whose due date is in the range.
             if ($dueFrom !== '' || $dueTo !== '') {
@@ -290,13 +442,22 @@ class ReportService
                 }));
 
                 if ($inRange === []) {
+                    $overdueCount = 0;
+                    $overdueAmount = 0.0;
+                    $overdueDues = [];
+                    $oldestDue = null;
+                } else {
+                    $overdueCount = count($inRange);
+                    $overdueAmount = round(array_sum(array_column($inRange, 'remaining')), 2);
+                    $overdueDues = array_column($inRange, 'due');
+                    $oldestDue = $inRange[0]['due'];
+                }
+                if ($overdueCount === 0 && $pk['overdue_count'] === 0) {
                     continue;
                 }
-
-                $overdueCount = count($inRange);
-                $overdueAmount = round(array_sum(array_column($inRange, 'remaining')), 2);
-                $overdueDues = array_column($inRange, 'due');
-                $oldestDue = $inRange[0]['due'];
+            }
+            if ($pk['oldest_due'] !== null && ($oldestDue === null || strcmp($pk['oldest_due'], (string) $oldestDue) < 0)) {
+                $oldestDue = $pk['oldest_due'];
             }
 
             $rows[] = $row + [
@@ -305,14 +466,19 @@ class ReportService
                 'overdue_months'         => $overdueCount,
                 'overdue_amount'         => $overdueAmount,
                 'overdue_dues'           => $overdueDues,
+                'package_balance'        => $pk['balance'],
+                'package_overdue_count'  => $pk['overdue_count'],
+                'package_overdue_amount' => $pk['overdue_amount'],
+                'total_overdue_amount'   => round($overdueAmount + $pk['overdue_amount'], 2),
+                'has_package'            => $pk['has_package'],
                 'next_due_date'          => $oldestDue,
-                'days_overdue'           => $s['days_overdue'],
+                'days_overdue'           => max((int) $s['days_overdue'], $pk['oldest_due'] !== null ? (int) floor((strtotime($asOf) - strtotime($pk['oldest_due'])) / 86400) : 0),
                 'lifecycle'              => $s['lifecycle'],
                 // Kept under its old key for the CSV/PDF callers: now the
                 // days left in the grace period (null once it has passed).
                 'days_until_forfeiture'  => $s['grace_days_left'],
                 'grace_days_left'        => $s['grace_days_left'],
-                'status_text'            => match ($s['lifecycle']) {
+                'status_text'            => ! $planBehind ? 'Package instalment overdue' : match ($s['lifecycle']) {
                     'grace'  => $s['grace_days_left'] . ' day(s) left to pay',
                     'lapsed' => 'Lapsed - on hold',
                     default  => 'Forfeited',
@@ -424,7 +590,7 @@ class ReportService
     public function getCollectionsByCollector(array $filters): array
     {
         $builder = $this->collectorBaseQuery($filters)
-            ->select('u.user_id, u.first_name, u.last_name, r.role_name, COUNT(p.payment_id) AS transaction_count, COALESCE(SUM(p.amount), 0) AS total_collected', false)
+            ->select("u.user_id, u.first_name, u.last_name, r.role_name, COUNT(p.payment_id) AS transaction_count, COALESCE(SUM(p.amount), 0) AS total_collected, COALESCE(SUM((SELECT SUM(al.amount) FROM payment_allocations al WHERE al.payment_id = p.payment_id AND al.target_type = 'avail_instalment')), 0) AS instalments_collected, COALESCE(SUM((SELECT SUM(al.amount) FROM payment_allocations al WHERE al.payment_id = p.payment_id AND al.target_type = 'avail_down_payment')), 0) AS down_collected", false)
             ->groupBy('u.user_id, u.first_name, u.last_name, r.role_name')
             ->orderBy('total_collected', 'DESC');
 
@@ -433,6 +599,9 @@ class ReportService
         foreach ($rows as &$row) {
             $row['total_collected'] = (float) ($row['total_collected'] ?? 0);
             $row['transaction_count'] = (int) ($row['transaction_count'] ?? 0);
+            $row['instalments_collected'] = round((float) ($row['instalments_collected'] ?? 0), 2);
+            $row['down_collected'] = round((float) ($row['down_collected'] ?? 0), 2);
+            $row['plan_collected'] = round($row['total_collected'] - $row['instalments_collected'] - $row['down_collected'], 2);
         }
         unset($row);
 

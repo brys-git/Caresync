@@ -1824,6 +1824,49 @@ class ClaimAvailService
     }
 
     /**
+     * The package part of a plan as it stood on a date, for the overdue report: what is still owed on
+     * every package, and the instalments that were due before the date and not paid by it (optionally only
+     * those due inside a range). Payments made after the date do not count yet.
+     *
+     * @return array{has_package:bool, balance:float, overdue_count:int, overdue_amount:float, oldest_due:?string}
+     */
+    public function packageStandingAsOf(int $planId, string $asOf, string $dueFrom = '', string $dueTo = ''): array
+    {
+        $none = ['has_package' => false, 'balance' => 0.0, 'overdue_count' => 0, 'overdue_amount' => 0.0, 'oldest_due' => null];
+        if (! $this->tableReady('package_avails')) {
+            return $none;
+        }
+        $db = db_connect();
+        $avails = $db->table('package_avails')->where('plan_id', $planId)->whereIn('status', ['awaiting_down_payment', 'active', 'settled'])->where('DATE(approved_at) <=', $asOf)->get()->getResultArray();
+        if ($avails === []) {
+            return $none;
+        }
+        $paidBy = static function (string $col, int $id) use ($db, $asOf): float {
+            return (float) ($db->table('payment_allocations al')->selectSum('al.amount', 't')->join('payments p', 'p.payment_id = al.payment_id', 'inner')
+                ->where("al.$col", $id)->where('p.status', 'paid')->where('p.payment_date <=', $asOf)->get()->getRowArray()['t'] ?? 0);
+        };
+        $out = ['has_package' => true, 'balance' => 0.0, 'overdue_count' => 0, 'overdue_amount' => 0.0, 'oldest_due' => null];
+        foreach ($avails as $a) {
+            $out['balance'] += max(0.0, round((float) $a['package_price'] - $paidBy('avail_id', (int) $a['avail_id']), 2));
+            foreach ($db->table('package_avail_instalments')->where('avail_id', (int) $a['avail_id'])->orderBy('number')->get()->getResultArray() as $i) {
+                if (strcmp((string) $i['due_date'], $asOf) >= 0 || ($dueFrom !== '' && strcmp((string) $i['due_date'], $dueFrom) < 0) || ($dueTo !== '' && strcmp((string) $i['due_date'], $dueTo) > 0)) {
+                    continue;
+                }
+                $left = round((float) $i['amount'] - $paidBy('instalment_id', (int) $i['instalment_id']), 2);
+                if ($left > 0.004) {
+                    $out['overdue_count']++;
+                    $out['overdue_amount'] += $left;
+                    $out['oldest_due'] = $out['oldest_due'] === null || strcmp((string) $i['due_date'], $out['oldest_due']) < 0 ? (string) $i['due_date'] : $out['oldest_due'];
+                }
+            }
+        }
+        $out['balance'] = round($out['balance'], 2);
+        $out['overdue_amount'] = round($out['overdue_amount'], 2);
+
+        return $out;
+    }
+
+    /**
      * The package part of a collection list row, for many plans at once: what is due on or before
      * the date, what is overdue, and the monthly instalment - so the list and the route sheet show which
      * part is behind.

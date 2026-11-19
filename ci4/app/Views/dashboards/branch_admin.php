@@ -5,6 +5,7 @@
 
 <?php
 $an         = $analytics ?? [];
+$pk         = $an['package'] ?? [];
 $mem        = $an['members'] ?? [];
 $overdue    = (int) ($an['overdue_accounts'] ?? 0);
 $pendingSrv = (int) ($an['pending_service_requests'] ?? 0);
@@ -16,7 +17,9 @@ $attention = [
     ['branch-admin/registration-approvals',            'ti-user-check',         'Registrations waiting for approval',    (int) ($pending_approvals ?? 0)],
     ['branch-admin/payment-tracking?status=pending',   'ti-cash',               'Payments waiting to be verified',       $pendingPay],
     ['branch-admin/service-package/requests',          'ti-clipboard-list',     'Claims and service requests to review', $pendingSrv],
-    ['branch-admin/reports/overdue',                   'ti-alert-triangle',     'Accounts with overdue contributions',   $overdue],
+    ['branch-admin/reports/overdue',                   'ti-alert-triangle',     'Accounts with overdue payments (plan or package)',   $overdue],
+    ['branch-admin/reports/avails?status=awaiting_down_payment', 'ti-clock-exclamation', 'Avails waiting for a down payment' . ($pk['next_deadline'] ? ' (next deadline ' . date('j M', strtotime($pk['next_deadline'])) . ')' : ''), (int) ($pk['awaiting_down_payment'] ?? 0)],
+    ['branch-admin/reports/overdue', 'ti-alert-triangle', 'Package instalments overdue (₱' . number_format((float) ($pk['overdue_amount'] ?? 0), 2) . ')', (int) ($pk['overdue_instalments'] ?? 0)],
     ['branch-admin/service-package/ongoing',           'ti-calendar-event',     'Service events today without a crew',   $unassigned],
 ];
 $attention = array_values(array_filter($attention, static fn (array $row): bool => $row[3] > 0));
@@ -51,6 +54,14 @@ for ($d = 1; $d <= $daysInMonth; $d++) {
         'value' => $collections_this_month ?? 0,
         'money' => true,
         'tone'  => 'money',
+    ],
+    [
+        'label' => 'Package balances',
+        'icon'  => 'ti-package',
+        'value' => $pk['package_balance'] ?? 0,
+        'money' => true,
+        'tone'  => ((int) ($pk['overdue_instalments'] ?? 0) > 0) ? 'warn' : 'money',
+        'meta'  => number_format((float) ($pk['active_avails'] ?? 0)) . ' active · ' . number_format((float) ($pk['overdue_instalments'] ?? 0)) . ' instalment' . ((int) ($pk['overdue_instalments'] ?? 0) === 1 ? '' : 's') . ' overdue (₱' . number_format((float) ($pk['overdue_amount'] ?? 0), 2) . ')',
     ],
     [
         'label' => 'Awaiting approval',

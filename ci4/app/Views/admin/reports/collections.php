@@ -43,6 +43,9 @@
                             <th>Collector</th>
                             <th>Role</th>
                             <th>Transactions</th>
+                            <th class="cs-num">Plan</th>
+                            <th class="cs-num">Package Instalments</th>
+                            <th class="cs-num">Down Payments</th>
                             <th class="cs-num">Total Collected</th>
                         </tr>
                     </thead>
@@ -52,6 +55,9 @@
                                 <td><?= esc(trim((string) ($row['first_name'] ?? '') . ' ' . (string) ($row['last_name'] ?? ''))) ?></td>
                                 <td><?= esc((string) ($row['role_name'] ?? '-')) ?></td>
                                 <td><?= esc((string) ($row['transaction_count'] ?? 0)) ?></td>
+                                <td class="cs-num"><?= cs_money($row['plan_collected'] ?? 0) ?></td>
+                                <td class="cs-num"><?= cs_money($row['instalments_collected'] ?? 0) ?></td>
+                                <td class="cs-num"><?= cs_money($row['down_collected'] ?? 0) ?></td>
                                 <td class="cs-num"><?= cs_money($row['total_collected'] ?? 0) ?></td>
                             </tr>
                         <?php endforeach; ?>

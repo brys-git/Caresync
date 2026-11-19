@@ -179,6 +179,7 @@ $routes->group('branch-admin', ['filter' => 'auth'], static function (RouteColle
     // this route did not exist at all before, so none of them worked.
     $routes->post('reports/remittance/generate', 'BranchAdmin\ReportController::generate', ['filter' => 'role:2']);
     $routes->get('reports/overdue', 'BranchAdmin\ReportController::overdue', ['filter' => 'role:2']);
+    $routes->get('reports/avails', 'BranchAdmin\ReportController::avails', ['filter' => 'role:2']);
     $routes->get('reports/commission', 'BranchAdmin\ReportController::commission', ['filter' => 'role:2']);
     $routes->post('reports/commission/pay', 'BranchAdmin\ReportController::payCommission', ['filter' => 'role:2']);
     // The old Analytics page is part of the Dashboard now; old links and bookmarks still work.

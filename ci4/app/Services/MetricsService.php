@@ -257,6 +257,22 @@ class MetricsService
 
         $active = $byStatus['active'] + $byStatus['fully_paid'];
 
+        // "Overdue accounts" = the rows of the Overdue report: behind on the plan contribution (grace, lapsed,
+        // forfeited) OR behind on a package instalment. A client behind on both is one account.
+        $overdueAccounts = $byStatus['grace'] + $byStatus['lapsed'] + $byStatus['forfeited'];
+        if ($db->tableExists('package_avail_instalments')) {
+            $both = $db->table('plans p')->select('COUNT(DISTINCT p.plan_holder_id) AS n', false)
+                ->join('plan_holders ph', 'ph.plan_holder_id = p.plan_holder_id', 'inner')
+                ->groupStart()
+                    ->whereIn('p.lifecycle_status', ['grace', 'lapsed', 'forfeited'])
+                    ->orWhere('p.plan_id IN (' . $this->overdueInstalmentPlansSql() . ')', null, false)
+                ->groupEnd();
+            if ($branchId !== null && $branchId > 0) {
+                $both->where('ph.branch_id', $branchId);
+            }
+            $overdueAccounts = (int) ($both->get()->getRowArray()['n'] ?? $overdueAccounts);
+        }
+
         return [
             'total_members'    => $total,
             'pending_members'  => $pendingCount,
@@ -265,9 +281,155 @@ class MetricsService
             'lapsed'           => $byStatus['lapsed'],
             'forfeited'        => $byStatus['forfeited'],
             'suspended'        => $byStatus['lapsed'] + $byStatus['forfeited'],
-            'overdue_accounts' => $byStatus['grace'] + $byStatus['lapsed'] + $byStatus['forfeited'],
+            'overdue_accounts' => $overdueAccounts,
             'inactive_members' => max(0, $total - $active),
         ];
+    }
+
+    /** Plans with at least one package instalment past its due date and not fully paid (SQL for a subselect). */
+    private function overdueInstalmentPlansSql(): string
+    {
+        return "SELECT pa.plan_id FROM package_avails pa JOIN package_avail_instalments i ON i.avail_id = pa.avail_id WHERE pa.status IN ('active','settled') AND i.due_date < " . db_connect()->escape(date('Y-m-d')) . ' AND i.paid_amount < i.amount';
+    }
+
+    /**
+     * Package (avail) figures for a branch, null = all branches. THE rule behind every "package" number on
+     * the dashboards: money still owed on active avails, overdue instalments, avails waiting for a down payment.
+     *
+     * @return array{active_avails:int, package_balance:float, overdue_instalments:int, overdue_amount:float, overdue_plans:int, awaiting_down_payment:int, down_payment_outstanding:float, next_deadline:?string, waived_avails:int}
+     */
+    public function packageFigures(?int $branchId = null): array
+    {
+        $out = ['active_avails' => 0, 'package_balance' => 0.0, 'overdue_instalments' => 0, 'overdue_amount' => 0.0, 'overdue_plans' => 0, 'awaiting_down_payment' => 0, 'down_payment_outstanding' => 0.0, 'next_deadline' => null, 'waived_avails' => 0];
+        $db = db_connect();
+        if (! $db->tableExists('package_avails') || ! $db->tableExists('payment_allocations')) {
+            return $out;
+        }
+        $scope = static function (BaseBuilder $b) use ($branchId): BaseBuilder {
+            $b->join('plan_holders ph', 'ph.plan_holder_id = pa.plan_holder_id', 'inner');
+            if ($branchId !== null && $branchId > 0) {
+                $b->where('ph.branch_id', $branchId);
+            }
+
+            return $b;
+        };
+
+        // balance and counts per avail that is still being paid
+        $rows = $scope($db->table('package_avails pa')
+            ->select("pa.avail_id, pa.status, pa.package_price, pa.down_payment_amount, pa.down_payment_status, pa.down_payment_due_by, (SELECT COALESCE(SUM(al.amount),0) FROM payment_allocations al WHERE al.avail_id = pa.avail_id) AS paid, (SELECT COALESCE(SUM(al.amount),0) FROM payment_allocations al WHERE al.avail_id = pa.avail_id AND al.target_type = 'avail_down_payment') AS down_paid", false)
+            ->whereIn('pa.status', ['awaiting_down_payment', 'active']))->get()->getResultArray();
+        foreach ($rows as $r) {
+            $out['package_balance'] += max(0.0, (float) $r['package_price'] - (float) $r['paid']);
+            if ($r['status'] === 'active') {
+                $out['active_avails']++;
+            } else {
+                $out['awaiting_down_payment']++;
+                $out['down_payment_outstanding'] += max(0.0, (float) $r['down_payment_amount'] - (float) $r['down_paid']);
+                $d = (string) $r['down_payment_due_by'];
+                if ($d !== '' && ($out['next_deadline'] === null || strcmp($d, $out['next_deadline']) < 0)) {
+                    $out['next_deadline'] = $d;
+                }
+            }
+        }
+
+        $over = $scope($db->table('package_avail_instalments i')
+            ->select('COUNT(*) AS n, COALESCE(SUM(i.amount - i.paid_amount), 0) AS t, COUNT(DISTINCT pa.plan_id) AS plans', false)
+            ->join('package_avails pa', 'pa.avail_id = i.avail_id', 'inner')
+            ->whereIn('pa.status', ['active', 'settled'])
+            ->where('i.due_date <', date('Y-m-d'))
+            ->where('i.paid_amount < i.amount', null, false))->get()->getRowArray();
+        $out['overdue_instalments'] = (int) ($over['n'] ?? 0);
+        $out['overdue_amount']      = round((float) ($over['t'] ?? 0), 2);
+        $out['overdue_plans']       = (int) ($over['plans'] ?? 0);
+
+        $w = $scope($db->table('package_avails pa')->select('COUNT(*) AS n', false)->where('pa.down_payment_status', 'waived')->whereIn('pa.status', ['awaiting_down_payment', 'active', 'settled']))->get()->getRowArray();
+        $out['waived_avails'] = (int) ($w['n'] ?? 0);
+
+        $out['package_balance'] = round($out['package_balance'], 2);
+        $out['down_payment_outstanding'] = round($out['down_payment_outstanding'], 2);
+
+        return $out;
+    }
+
+    /**
+     * Money collected in a range split into plan contributions, package instalments and down payments.
+     * A payment with no allocation rows (every payment of a client with no package) is all plan contribution.
+     * The three parts always add up to collected() for the same filters.
+     *
+     * @return array{plan:float, instalments:float, down_payments:float, total:float}
+     */
+    public function collectedSplit(?int $branchId = null, ?string $from = null, ?string $to = null, array $opts = []): array
+    {
+        $total = $this->collected($branchId, $from, $to, $opts);
+        $db = db_connect();
+        $inst = 0.0; $down = 0.0;
+        if ($db->tableExists('payment_allocations')) {
+            $ids = $this->paidPayments($branchId, $from, $to, $opts)->select('pay.payment_id')->getCompiledSelect();
+            $rows = $db->query("SELECT target_type, COALESCE(SUM(amount),0) AS t FROM payment_allocations WHERE payment_id IN ($ids) AND target_type IN ('avail_instalment','avail_down_payment') GROUP BY target_type")->getResultArray();
+            foreach ($rows as $r) {
+                if ($r['target_type'] === 'avail_instalment') {
+                    $inst = (float) $r['t'];
+                } else {
+                    $down = (float) $r['t'];
+                }
+            }
+        }
+
+        return ['plan' => round($total - $inst - $down, 2), 'instalments' => round($inst, 2), 'down_payments' => round($down, 2), 'total' => $total];
+    }
+
+    /**
+     * Where each payment went, for report rows: payment_id => [plan, instalments, down_payments].
+     *
+     * @param list<int> $paymentIds
+     *
+     * @return array<int, array{plan:float, instalments:float, down_payments:float}>
+     */
+    public function paymentSplits(array $paymentIds, array $amounts): array
+    {
+        $out = [];
+        foreach ($paymentIds as $id) {
+            $out[(int) $id] = ['plan' => (float) ($amounts[$id] ?? 0), 'instalments' => 0.0, 'down_payments' => 0.0];
+        }
+        $db = db_connect();
+        if ($paymentIds === [] || ! $db->tableExists('payment_allocations')) {
+            return $out;
+        }
+        $rows = $db->table('payment_allocations')->select('payment_id, target_type, SUM(amount) AS t', false)->whereIn('payment_id', array_map('intval', $paymentIds))->whereIn('target_type', ['avail_instalment', 'avail_down_payment'])->groupBy('payment_id, target_type')->get()->getResultArray();
+        foreach ($rows as $r) {
+            $pid = (int) $r['payment_id'];
+            $key = $r['target_type'] === 'avail_instalment' ? 'instalments' : 'down_payments';
+            $out[$pid][$key] = round((float) $r['t'], 2);
+            $out[$pid]['plan'] = round($out[$pid]['plan'] - (float) $r['t'], 2);
+        }
+
+        return $out;
+    }
+
+    /**
+     * Avails whose down payment is still outstanding, soonest deadline first (dashboards' "needs attention").
+     *
+     * @return list<array<string,mixed>>
+     */
+    public function availsAwaitingDownPayment(?int $branchId = null, int $limit = 5): array
+    {
+        $db = db_connect();
+        if (! $db->tableExists('package_avails')) {
+            return [];
+        }
+        $b = $db->table('package_avails pa')
+            ->select('pa.avail_id, pa.down_payment_amount, pa.down_payment_due_by, u.first_name, u.last_name, COALESCE(pk.package_name, sl.service_name) AS what')
+            ->join('plan_holders ph', 'ph.plan_holder_id = pa.plan_holder_id', 'inner')
+            ->join('users u', 'u.user_id = ph.user_id', 'inner')
+            ->join('packages pk', 'pk.package_id = pa.package_id', 'left')
+            ->join('service_list sl', 'sl.service_list_id = pa.service_list_id', 'left')
+            ->where('pa.status', 'awaiting_down_payment')
+            ->orderBy('pa.down_payment_due_by', 'ASC')->limit($limit);
+        if ($branchId !== null && $branchId > 0) {
+            $b->where('ph.branch_id', $branchId);
+        }
+
+        return $b->get()->getResultArray();
     }
 
     /** Payments of any kind waiting to be verified. */

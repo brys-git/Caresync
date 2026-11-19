@@ -140,6 +140,8 @@ class AnalyticsService
         $totalCollectors = $db->table('users')->where('role_id', 5)->countAllResults();
 
         return [
+            'package' => $metrics->packageFigures(null),
+            'awaiting_avails' => $metrics->availsAwaitingDownPayment(null, 5),
             'total_members' => $members['total_members'],
             'active_members' => $members['active'],
             'delinquent_members' => $members['grace'],
@@ -198,6 +200,8 @@ class AnalyticsService
         $daily = $this->cached('daily', 'branch_' . $branchId . '_' . $currentMonth, static fn (): array => $metrics->collectedByDay($branchId, $currentMonth));
 
         return [
+            'package' => $metrics->packageFigures($branchId),
+            'awaiting_avails' => $metrics->availsAwaitingDownPayment($branchId, 5),
             'branch_members' => $members['total_members'],
             'active_members' => $members['active'],
             'members' => $members,
@@ -230,6 +234,8 @@ class AnalyticsService
             ->countAllResults();
 
         return [
+            'package' => $metrics->packageFigures($branchId),
+            'awaiting_avails' => $metrics->availsAwaitingDownPayment($branchId, 5),
             'staff_members' => $metrics->memberCounts($branchId)['total_members'],
             'assigned_services' => $assignedServices,
             'pending_requests' => $metrics->pendingServiceRequests($branchId),

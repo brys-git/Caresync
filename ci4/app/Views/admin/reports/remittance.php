@@ -61,6 +61,9 @@
 <section class="cs-panel mb-3">
     <div class="cs-panel__body">
         <h2 class="cs-panel__title mb-0">Total Remittance: <?= cs_money($total_remittance ?? 0) ?></h2>
+        <?php if (! empty($split_totals)): ?>
+            <p class="cs-muted mb-0 mt-1"><?php foreach ($split_totals as $i => $line): ?><?= $i > 0 ? ' · ' : '' ?><?= esc($line['label']) ?> <strong><?= cs_money($line['amount']) ?></strong><?php endforeach; ?></p>
+        <?php endif; ?>
     </div>
 </section>
 
@@ -80,6 +83,9 @@
                             <th>Client Name</th>
                             <th>Unique ID</th>
                             <th class="cs-num">Amount</th>
+                            <th class="cs-num">Plan</th>
+                            <th class="cs-num">Instalment</th>
+                            <th class="cs-num">Down Payment</th>
                             <th>Method</th>
                             <th>Reference / OR</th>
                             <th>Received By</th>
@@ -92,6 +98,9 @@
                                 <td><?= esc(trim((string) ($row['client_first'] ?? '') . ' ' . (string) ($row['client_last'] ?? ''))) ?></td>
                                 <td><?= esc((string) ($row['unique_identifier'] ?? '-')) ?></td>
                                 <td class="cs-num"><?= cs_money($row['amount'] ?? 0) ?></td>
+                                <td class="cs-num"><?= $row['plan_part'] === null ? '-' : cs_money($row['plan_part']) ?></td>
+                                <td class="cs-num"><?= $row['instalment_part'] === null || (float) $row['instalment_part'] == 0 ? '-' : cs_money($row['instalment_part']) ?></td>
+                                <td class="cs-num"><?= $row['down_part'] === null || (float) $row['down_part'] == 0 ? '-' : cs_money($row['down_part']) ?></td>
                                 <td><?= esc(strtoupper((string) ($row['payment_method'] ?? ''))) ?></td>
                                 <td><?= esc((string) ($row['reference_number'] ?? ($row['official_receipt_number'] ?? '-'))) ?></td>
                                 <td><?= esc(trim((string) ($row['staff_first'] ?? '') . ' ' . (string) ($row['staff_last'] ?? ''))) ?></td>
