@@ -33,9 +33,18 @@ first), with `app.baseURL` set to the staging address. Run the test list. Only t
 
 1. phpMyAdmin -> select the database -> **Export** -> *Quick* -> *SQL* -> Go.
 2. Save the file as `live_backup_YYYYMMDD-HHMM.sql` somewhere safe. **This is your way back.** Do not continue without it.
-3. In the SQL tab run `SELECT COUNT(*) AS migrations, MAX(version) AS latest FROM migrations;`
-   It must show `latest = 2026-11-17-010000` (or later) and the count must **not** already include the nine
-   versions listed at the bottom of `partB_migrations.sql`. If it does not match, stop and ask.
+3. **Check the migration level (do this on live right before importing, and on staging too).** In the SQL tab run:
+
+   ```sql
+   SELECT version, class FROM migrations ORDER BY version DESC LIMIT 10;
+   ```
+
+   **Expected result:** the newest row is `2026-11-17-010000` (or a later version that is *not* one of the nine
+   below); there are **no** rows with versions `2026-11-19-000000` ... `2026-11-19-070000` or `2026-11-20-000000`.
+   - Newest row **older** than `2026-11-17-010000` -> the live database is behind. **Stop.** Paste the result to the
+     developer: the missing earlier migrations go in `deploy/pre_partB.sql`, which you import *first*.
+   - Any of the nine versions **already present** -> stop, do not import `partB_migrations.sql`.
+   - Otherwise continue.
 
 ## 2. Generate the ID numbers from the live export (done by the developer, on a copy)
 
