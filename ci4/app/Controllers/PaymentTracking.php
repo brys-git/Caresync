@@ -275,7 +275,11 @@ class PaymentTracking extends BaseController
 
         $autoApproved = false;
         if ($status === 'paid') {
-            if ($this->isInitialPayment($paymentId, (int) $plan['plan_id'], (int) $plan['plan_holder_id'])) {
+            // The very first payment of a plan holder who is still INACTIVE activates them. A holder who is already
+            // active (e.g. registered at the branch) takes the normal path: without it the payment was never given a
+            // cycle number or coverage, so the ledger ignored it (months paid stayed 0).
+            $holderIsInactive = strtolower((string) (db_connect()->table('plan_holders')->select('status')->where('plan_holder_id', (int) $plan['plan_holder_id'])->get(1)->getRowArray()['status'] ?? '')) === 'inactive';
+            if ($holderIsInactive && $this->isInitialPayment($paymentId, (int) $plan['plan_id'], (int) $plan['plan_holder_id'])) {
                 $autoApproved = $this->autoApprovePlanHolderFromInitialPayment($plan, $monthsCovered, $paymentId);
             } else {
                 (new MembershipService())->applyMembershipCoverage((int) $plan['plan_id'], $monthsCovered);
@@ -449,13 +453,19 @@ class PaymentTracking extends BaseController
             ? 'GCash verified by ' . $reviewerLabel
             : ('GCash rejected by ' . $reviewerLabel . ($rejectionReason !== '' ? (': ' . $rejectionReason) : ''));
 
-        $paymentModel->update($paymentId, [
+        // received_by is WHO COLLECTED the money. When a collector recorded a cash payment in the field and the Branch Admin
+        // now verifies it, the collector must stay as received_by (commission and remittances are worked out from it);
+        // only a payment nobody had received yet (a client's own GCash payment) is attributed to the reviewer.
+        $reviewUpdate = [
             'status' => $targetStatus,
-            'received_by' => (int) session('user_id'),
             'verified_by' => (int) session('user_id'),
             'verified_at' => date('Y-m-d H:i:s'),
             'remarks' => $remarks,
-        ]);
+        ];
+        if ((int) ($payment['received_by'] ?? 0) <= 0) {
+            $reviewUpdate['received_by'] = (int) session('user_id');
+        }
+        $paymentModel->update($paymentId, $reviewUpdate);
 
         $plan = (new PlanModel())->find((int) $payment['plan_id']);
         $autoApproved = false;
@@ -465,7 +475,8 @@ class PaymentTracking extends BaseController
         }
         if ($plan && in_array($targetStatus, ['paid', 'verified'], true)) {
             $monthsCovered = max(1, (int) ($payment['months_covered'] ?? 1));
-            if ($this->isInitialPayment((int) $payment['payment_id'], (int) $plan['plan_id'], (int) ($plan['plan_holder_id'] ?? 0))) {
+            $holderIsInactive = strtolower((string) (db_connect()->table('plan_holders')->select('status')->where('plan_holder_id', (int) ($plan['plan_holder_id'] ?? 0))->get(1)->getRowArray()['status'] ?? '')) === 'inactive';
+            if ($holderIsInactive && $this->isInitialPayment((int) $payment['payment_id'], (int) $plan['plan_id'], (int) ($plan['plan_holder_id'] ?? 0))) {
                 $autoApproved = $this->autoApprovePlanHolderFromInitialPayment($plan, $monthsCovered, (int) $payment['payment_id']);
             } else {
                 (new MembershipService())->applyMembershipCoverage((int) $plan['plan_id'], $monthsCovered);

@@ -221,10 +221,11 @@ class AccountRegistrationService
         if ($temporary) {
             $loginDetails = new LoginDetailsService();
             $input['password'] = $loginDetails->generatePassword();
-            $extra = [
+            // merge, don't replace: $extra may already carry is_collector for a Staff account
+            $extra = array_merge($extra, [
                 'must_change_password'     => 1,
                 'temp_password_expires_at' => $loginDetails->expiryTimestamp(),
-            ];
+            ]);
         }
 
         $db = db_connect();

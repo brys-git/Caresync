@@ -183,6 +183,103 @@ trim((string) ($row['first_name'] ?? '') . ' ' . (string) ($row['last_name'] ?? 
         ]);
     }
 
+    public function generate()
+    {
+        $this->ensureBranchAdminAccess();
+
+        $branchId = (int) session('branch_id');
+        if ($branchId <= 0) {
+            throw PageNotFoundException::forPageNotFound();
+        }
+
+        $filters = $this->buildFilters([
+            'date_from' => (string) $this->request->getPost('date_from'),
+            'date_to' => (string) $this->request->getPost('date_to'),
+            'payment_method' => (string) $this->request->getPost('payment_method'),
+            'received_by' => (string) $this->request->getPost('received_by'),
+            'search' => (string) $this->request->getPost('search'),
+        ], $branchId);
+
+        $action = (string) $this->request->getPost('action');
+        if ($action === 'csv') {
+            return $this->exportCsv($filters);
+        }
+
+        if ($action === 'pdf' || $action === 'print') {
+            return $this->remittancePdf($filters, $action === 'print');
+        }
+
+        return view('branch_admin/reports/remittance', $this->buildViewData($filters, false));
+    }
+
+    private function buildViewData(array $filters, bool $printMode): array
+    {
+        $rows = $this->reportService->getRemittanceReport($filters);
+        $breakdown = $this->reportService->getPaymentBreakdown($filters);
+        $totalRemittance = $this->reportService->getTotalRemittance($filters);
+        // getBranchPaymentStaff() is really "everyone who has received_by'd a
+        // payment in this branch" - despite the name, that already includes
+        // Collectors (see CollectionListController's Record Payment), not
+        // just role_id 3 Staff. Reused rather than duplicated: this is the
+        // "each collector's recorded collections, with totals, and which
+        // are still unverified" view the Collector capability work needed -
+        // it already had the data, it just never showed status or a
+        // pending breakdown.
+        $staffOptions = $this->reportService->getBranchPaymentStaff((int) $filters['branch_id']);
+
+        $pendingCount = 0;
+        $pendingAmount = 0.0;
+        foreach ($rows as $row) {
+            if (strtolower((string) ($row['status'] ?? '')) === 'pending') {
+                $pendingCount++;
+                $pendingAmount += (float) ($row['amount'] ?? 0);
+            }
+        }
+        $breakdown['pending_count'] = $pendingCount;
+        $breakdown['pending_amount'] = $pendingAmount;
+
+        return [
+            'role_layout' => 'layouts/branch_admin',
+            'page_title' => 'Remittance Report',
+            'filters' => $filters,
+            'report_rows' => $rows,
+            'summary' => $breakdown,
+            'total_remittance' => $totalRemittance,
+            'split_totals' => $this->reportService->splitTotalLines($filters),
+            'staff_options' => $staffOptions,
+            'print_mode' => $printMode,
+        ];
+    }
+
+    private function remittancePdf(array $filters, bool $inline)
+    {
+        $rows = $this->reportService->getRemittanceReport($filters);
+        $breakdown = $this->reportService->getPaymentBreakdown($filters);
+
+        // Same figures and labels as the on-screen summary cards + total.
+        $totals = [
+            ['label' => 'Cash Total', 'amount' => $breakdown['cash_total']],
+            ['label' => 'GCash Total', 'amount' => $breakdown['gcash_total']],
+            ...$this->reportService->splitTotalLines($filters),
+            ['label' => 'Total Remittance', 'amount' => $this->reportService->getTotalRemittance($filters), 'strong' => true],
+        ];
+
+        $filterLines = [];
+        if ($filters['payment_method'] !== '') {
+            $filterLines[] = 'Method: ' . strtoupper($filters['payment_method']);
+        }
+        if ((int) $filters['received_by'] > 0) {
+            foreach ($this->reportService->getBranchPaymentStaff((int) $filters['branch_id']) as $staff) {
+                if ((int) $staff['user_id'] === (int) $filters['received_by']) {
+                    $filterLines[] = 'Recorded by: ' . trim((string) $staff['first_name'] . ' ' . (string) $staff['last_name']);
+                    break;
+                }
+            }
+        }
+
+        return $this->pdfResponse('remittance', ['rows' => $rows, 'totals' => $totals], (int) $filters['branch_id'], $filters + ['filter_lines' => $filterLines], $inline);
+    }
+
     /**
      * Every Branch Admin report PDF goes through here so the header, layout and
      * disposition (inline for Print, attachment for Export PDF) stay identical.
