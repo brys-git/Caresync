@@ -45,7 +45,7 @@ class ClientDetailController extends BaseController
         $data['role_layout'] = $cfg['layout'];
         $data['show_page_head'] = false; // the shared partial draws its own header
         $data['page_title']  = $this->fullName($client);
-        $data['page_sub']    = 'Plan holder #' . (string) ($client['unique_identifier'] ?: $client['plan_holder_id']) . ' · ' . ($client['branch_name'] ?: 'No branch');
+        $data['page_sub']    = 'ID Control No. ' . \App\Services\IdControlService::label((string) ($client['id_control_no'] ?? '')) . ' · Plan holder #' . (string) ($client['unique_identifier'] ?: $client['plan_holder_id']) . ' · ' . ($client['branch_name'] ?: 'No branch');
         $data['crumbs']      = [
             ['label' => 'Plan holders', 'url' => site_url($cfg['list']), ],
             ['label' => $this->fullName($client)],

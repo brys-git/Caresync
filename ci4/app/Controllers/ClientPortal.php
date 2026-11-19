@@ -746,7 +746,6 @@ class ClientPortal extends BaseController
         $user = $access['user'];
 
         $rules = [
-            'id_control_no' => 'permit_empty|max_length[50]',
             'coordinator' => 'permit_empty|max_length[100]',
             'application_date' => 'permit_empty|valid_date[Y-m-d]',
             'last_name' => 'required|max_length[50]',
@@ -804,7 +803,7 @@ class ClientPortal extends BaseController
                 $planHolderId = (int) $existing['plan_holder_id'];
                 $planHolderModel->update($planHolderId, [
                     'branch_id' => $branchId,
-                    // id_control_no is assigned by Kaagapay staff; a plan holder's posted value is ignored.
+                    // id_control_no is generated on approval (IdControlService); a posted value is ignored.
                     'coordinator' => trim((string) $this->request->getPost('coordinator')),
                     'application_date' => $this->nullablePost('application_date'),
                     'address_no' => trim((string) $this->request->getPost('address_no')),

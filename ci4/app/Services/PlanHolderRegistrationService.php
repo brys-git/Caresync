@@ -346,8 +346,7 @@ class PlanHolderRegistrationService
 
         $planHolderData = $this->filterTableData('plan_holders', [
             'user_id' => $userId,
-            // id_control_no is assigned by Kaagapay staff, never by the plan holder:
-            // a value posted here is ignored and an existing one is left alone.
+            // id_control_no is generated on approval (IdControlService); a posted value is ignored.
             'coordinator' => trim((string) ($input['coordinator'] ?? '')),
             'application_date' => $this->nullable($input['application_date'] ?? null),
             'address_no' => trim((string) ($input['address_no'] ?? '')),

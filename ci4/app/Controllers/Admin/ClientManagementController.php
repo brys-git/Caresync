@@ -251,7 +251,6 @@ class ClientManagementController extends BaseController
                 'last_name' => trim((string) $this->request->getPost('last_name')),
                 'email' => trim((string) $this->request->getPost('email')),
                 'contact_number' => trim((string) $this->request->getPost('contact_number')),
-                'id_control_no' => trim((string) $this->request->getPost('id_control_no')),
                 'coordinator' => trim((string) $this->request->getPost('coordinator')),
                 'application_date' => trim((string) $this->request->getPost('application_date')),
                 'address_no' => trim((string) $this->request->getPost('address_no')),

@@ -130,7 +130,6 @@ class ClientService
             }
 
             $updatedPlanHolder = $planHolderModel->update($planHolderId, [
-                'id_control_no' => (string) ($data['id_control_no'] ?? ''),
                 'coordinator' => (string) ($data['coordinator'] ?? ''),
                 'application_date' => $this->nullable($data['application_date'] ?? null),
                 'address_no' => (string) ($data['address_no'] ?? ''),

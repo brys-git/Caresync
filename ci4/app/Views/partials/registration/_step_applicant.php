@@ -81,13 +81,8 @@ $isEdit = ($wizard['context'] ?? 'register') === 'edit';
             <div class="row g-3">
                 <div class="col-md-4">
                     <label class="form-label" for="id_control_no">ID Control No.</label>
-                    <?php /* TODO: once Kaagapay gives the official ID control number format, generate it automatically and make it unique. Until then branch staff may type it; it stays blank otherwise. */ ?>
-                    <?php if (($wizard['mode'] ?? 'self') === 'self'): ?>
-                        <?php // A plan holder never sets this: no name, so nothing is posted. ?>
-                        <input id="id_control_no" class="form-control" value="<?= esc((string) ($planHolder['id_control_no'] ?? '')) ?>" placeholder="Assigned by Kaagapay" disabled>
-                    <?php else: ?>
-                        <input id="id_control_no" name="id_control_no" class="form-control" placeholder="Assigned by Kaagapay" value="<?= esc(old('id_control_no', (string) ($planHolder['id_control_no'] ?? ''))) ?>">
-                    <?php endif; ?>
+                    <?php // Generated when the registration is approved; nobody types it, so no field name is posted. ?>
+                    <input id="id_control_no" class="form-control" value="<?= esc(\App\Services\IdControlService::label((string) ($planHolder['id_control_no'] ?? ''))) ?>" disabled>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label" for="coordinator">Coordinator</label>

@@ -33,7 +33,7 @@ class ReceiptPdfService
 
         $db  = db_connect();
         $row = $db->table('payments pay')
-            ->select('pay.*, p.plan_holder_id, p.package_id, p.program_id, ph.user_id AS holder_user_id, ph.branch_id AS holder_branch_id, ph.unique_identifier,'
+            ->select('pay.*, p.plan_holder_id, p.package_id, p.program_id, ph.user_id AS holder_user_id, ph.branch_id AS holder_branch_id, ph.unique_identifier, ph.id_control_no,'
                 . ' u.first_name, u.middle_name, u.last_name, u.name_extension,'
                 . ' pk.package_name, mp.program_name,'
                 . ' rb.first_name AS rb_first, rb.last_name AS rb_last,'
@@ -111,6 +111,7 @@ class ReceiptPdfService
         $data = [
             'receipt_no'   => $receiptNo,
             'holder_name'  => $holderName,
+            'id_control_no' => IdControlService::label((string) ($row['id_control_no'] ?? '')),
             'holder_id'    => (string) (($row['unique_identifier'] ?? '') ?: ('PH-' . (int) $row['plan_holder_id'])),
             'program_name' => (string) (($row['program_name'] ?? '') ?: MembershipService::PROGRAM_NAME),
             'package_name' => (string) ($row['package_name'] ?? ''),

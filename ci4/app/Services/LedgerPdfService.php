@@ -25,7 +25,7 @@ class LedgerPdfService
         $db = db_connect();
 
         $holder = $db->table('plan_holders ph')
-            ->select('ph.plan_holder_id, ph.unique_identifier, ph.branch_id, u.first_name, u.middle_name, u.last_name, u.name_extension, b.branch_name')
+            ->select('ph.plan_holder_id, ph.unique_identifier, ph.id_control_no, ph.branch_id, u.first_name, u.middle_name, u.last_name, u.name_extension, b.branch_name')
             ->join('users u', 'u.user_id = ph.user_id', 'inner')
             ->join('branches b', 'b.branch_id = ph.branch_id', 'left')
             ->where('ph.plan_holder_id', $planHolderId)
@@ -96,6 +96,7 @@ class LedgerPdfService
         return [
             'holder_name'   => $name,
             'last_name'     => (string) $holder['last_name'],
+            'id_control_no' => IdControlService::label((string) ($holder['id_control_no'] ?? '')),
             'plan_no'       => (string) (($holder['unique_identifier'] ?? '') ?: ('PH-' . $planHolderId)),
             'branch_name'   => (string) ($holder['branch_name'] ?? ''),
             'plan_name'     => $plan ? trim((string) (($plan['program_name'] ?? '') ?: MembershipService::PROGRAM_NAME) . (($plan['package_name'] ?? '') !== '' ? ' - ' . $plan['package_name'] : '')) : '',

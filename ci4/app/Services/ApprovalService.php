@@ -97,6 +97,9 @@ class ApprovalService
                 ->where('plan_holder_id', $planHolderId)
                 ->update(['status' => 'active']);
 
+            // The ID Control No. is handed out here, once, inside this same transaction.
+            (new IdControlService())->assign($planHolderId);
+
             // Update user access
             db_connect()->table('users')
                 ->where('user_id', (int) ($payment['user_id'] ?? 0))

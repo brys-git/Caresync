@@ -477,6 +477,7 @@ class LegacyRecordService
         // Becoming a real, active member: the same flags a normal approved
         // registration sets, so the client lands on the right dashboard.
         $db->table('plan_holders')->where('plan_holder_id', (int) $rec['plan_holder_id'])->update(['status' => 'active']);
+        (new IdControlService())->assign((int) $rec['plan_holder_id']);
         $db->table('users')->where('user_id', (int) $holder['user_id'])->update(['is_plan_holder' => 1, 'account_status' => 'verified']);
 
         return $this->recompute($planId);

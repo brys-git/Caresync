@@ -27,7 +27,7 @@ class ReportService
     public function getRemittanceReport(array $filters): array
     {
         $builder = $this->baseQuery($filters)
-            ->select('p.payment_id, p.payment_date, p.amount, p.months_covered, p.payment_method, p.reference_number, p.official_receipt_number, p.status, rb.first_name AS staff_first, rb.last_name AS staff_last, cu.first_name AS client_first, cu.last_name AS client_last, ph.plan_holder_id, ph.unique_identifier, pl.start_date, b.branch_name');
+            ->select('p.payment_id, p.payment_date, p.amount, p.months_covered, p.payment_method, p.reference_number, p.official_receipt_number, p.status, rb.first_name AS staff_first, rb.last_name AS staff_last, cu.first_name AS client_first, cu.last_name AS client_last, ph.plan_holder_id, ph.unique_identifier, ph.id_control_no, pl.start_date, b.branch_name');
 
         $rows = $builder
             ->orderBy('p.payment_date', 'DESC')

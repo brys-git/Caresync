@@ -9,6 +9,7 @@ $kv = static fn (string $label, string $value): string =>
 <table class="rpt-table" style="margin-bottom:10px;">
     <tbody>
         <?= $kv('Plan holder', esc($holder_name)) ?>
+        <?= $kv('ID Control No.', esc($id_control_no ?? '-')) ?>
         <?= $kv('Plan no.', esc($plan_no)) ?>
         <?= $kv('Plan', esc($plan_name !== '' ? $plan_name : '-')) ?>
         <?= $kv('Monthly fee', esc(cs_peso($monthly_fee))) ?>

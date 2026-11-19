@@ -145,7 +145,7 @@ $sections = [
     'Application record' => [
         ['label' => 'Date of application', 'value' => $dateText($p('application_date'))],
         ['label' => 'Branch', 'value' => $branchName],
-        ['label' => 'ID control no.', 'value' => $p('id_control_no'), 'dash' => true],
+        ['label' => 'ID control no.', 'value' => \App\Services\IdControlService::label($p('id_control_no'))],
         ['label' => 'Coordinator', 'value' => $p('coordinator'), 'pending' => true],
     ],
 ];

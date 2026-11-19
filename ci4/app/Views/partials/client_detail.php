@@ -42,7 +42,7 @@ $qs = static function (array $over) use ($filters): string {
     <div>
         <h1 class="cs-pagehead__title"><?= $e($fullName) ?></h1>
         <p class="cs-pagehead__sub">
-            Plan holder #<?= $e(($client['unique_identifier'] ?? '') ?: $phId) ?> · <?= $e($client['branch_name'] ?: 'No branch') ?>
+            ID Control No. <strong><?= $e(\App\Services\IdControlService::label((string) ($client['id_control_no'] ?? ''))) ?></strong> · Plan holder #<?= $e(($client['unique_identifier'] ?? '') ?: $phId) ?> · <?= $e($client['branch_name'] ?: 'No branch') ?>
             <?php if (! empty($member_since)): ?>
                 · <?= $e(ClientDetailService::memberFor($member_since)) ?> (since <?= cs_date($member_since) ?>)
             <?php endif; ?>
@@ -180,6 +180,7 @@ $qs = static function (array $over) use ($filters): string {
                             <div class="row g-2 mb-3">
                                 <?php
                                 $facts = [
+                                    'ID Control No.'        => \App\Services\IdControlService::label((string) ($client['id_control_no'] ?? '')),
                                     'Plan / package'        => (string) ($plan['plan_name'] ?? ''),
                                     'Contract amount'       => cs_money($summary['contract_amount']),
                                     'Monthly contribution'  => cs_money($summary['monthly_fee']),

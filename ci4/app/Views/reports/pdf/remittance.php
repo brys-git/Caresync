@@ -29,7 +29,7 @@ $totals = $totals ?? [];
             <tr>
                 <td><?= cs_date($row['payment_date'] ?? null) ?></td>
                 <td><?= esc(trim((string) ($row['client_first'] ?? '') . ' ' . (string) ($row['client_last'] ?? ''))) ?></td>
-                <td><?= esc((string) ($row['unique_identifier'] ?? '-')) ?></td>
+                <td><?= esc((string) ($row['id_control_no'] ?? '') !== '' ? (string) $row['id_control_no'] : '-') ?></td>
                 <td class="center"><?= (int) ($row['months_covered'] ?? 1) ?></td>
                 <td><?= esc(strtoupper((string) ($row['payment_method'] ?? '-'))) ?></td>
                 <td><?= esc((string) (($row['reference_number'] ?? '') !== '' ? $row['reference_number'] : (($row['official_receipt_number'] ?? '') !== '' ? $row['official_receipt_number'] : '-'))) ?></td>

@@ -30,6 +30,7 @@ $row = static fn (string $label, string $value): string =>
 <table class="rpt-table" style="margin-bottom:10px;">
     <tbody>
         <?= $row('Received from', esc($holder_name !== '' ? $holder_name : '-')) ?>
+        <?= $row('ID Control No.', esc($id_control_no ?? '-')) ?>
         <?= $row('Plan holder ID', esc($holder_id)) ?>
         <?= $row('Plan / program', esc($program_name)) ?>
         <?php if ($package_name !== ''): ?><?= $row('Package', esc($package_name)) ?><?php endif; ?>
