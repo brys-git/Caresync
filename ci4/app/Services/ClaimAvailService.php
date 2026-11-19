@@ -839,7 +839,22 @@ class ClaimAvailService
     public function describeSlices(float $amount, array $res): string
     {
         $parts = [];
-        foreach ($res['slices'] as $sl) {
+        $slices = array_values($res['slices']);
+        for ($i = 0, $n = count($slices); $i < $n; $i++) {
+            $sl = $slices[$i];
+            if ($sl['kind'] === 'plan') {
+                // a long run of plan months of the same sort reads as one range: "Plan Nov 2026 - Nov 2027 (13 months)"
+                $j = $i; $sum = (float) $sl['amount'];
+                while ($j + 1 < $n && $slices[$j + 1]['kind'] === 'plan' && ! empty($slices[$j + 1]['advance']) === ! empty($sl['advance'])) {
+                    $j++;
+                    $sum += (float) $slices[$j]['amount'];
+                }
+                if ($j - $i >= 2) {
+                    $parts[] = 'Plan ' . date('M Y', strtotime((string) $sl['due'])) . ' - ' . date('M Y', strtotime((string) $slices[$j]['due'])) . ' (' . ($j - $i + 1) . ' months) ' . $this->money($sum) . (! empty($sl['advance']) ? ' (advance)' : '');
+                    $i = $j;
+                    continue;
+                }
+            }
             $parts[] = ($sl['kind'] === 'plan' ? 'Plan ' . date('M Y', strtotime((string) $sl['due'])) : 'Instalment ' . (int) $sl['number']) . ' ' . $this->money((float) $sl['amount']) . (! empty($sl['advance']) ? ' (advance)' : '');
         }
         if ($res['excess'] > 0.004) {
