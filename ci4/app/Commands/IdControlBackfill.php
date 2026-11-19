@@ -12,6 +12,7 @@ use CodeIgniter\CLI\CLI;
  *
  *   php spark idcontrol:backfill          shows the list and the number each would get - changes NOTHING
  *   php spark idcontrol:backfill --run    writes the numbers
+ *   php spark idcontrol:backfill --sql deploy/partD_backfill.sql   writes the same numbers as an SQL file (changes nothing)
  *
  * On a host with no command line (InfinityFree) use deploy/partD_backfill.sql instead.
  */
@@ -20,7 +21,7 @@ class IdControlBackfill extends BaseCommand
     protected $group       = 'CareSync';
     protected $name        = 'idcontrol:backfill';
     protected $description = 'Numbers existing approved plan holders (list only unless --run is given).';
-    protected $options     = ['--run' => 'Write the numbers (without it, only the list is shown).'];
+    protected $options     = ['--run' => 'Write the numbers (without it, only the list is shown).', '--sql' => 'Write the numbers as an SQL file at this path instead (for phpMyAdmin).'];
 
     public function run(array $params)
     {
@@ -39,6 +40,14 @@ class IdControlBackfill extends BaseCommand
             $rows[] = [$p['proposed'], $p['name'], $p['branch'], substr($p['approved_at'], 0, 10), $p['source']];
         }
         CLI::table($rows, ['ID Control No.', 'Plan holder', 'Branch', 'Approved', 'Date taken from']);
+
+        $sqlPath = $params['sql'] ?? CLI::getOption('sql');
+        if (is_string($sqlPath) && $sqlPath !== '') {
+            file_put_contents($sqlPath, $svc->backfillSql($plan));
+            CLI::write('SQL written to ' . $sqlPath . ' - review it, then import it in phpMyAdmin. Nothing was changed in this database.', 'green');
+
+            return;
+        }
 
         if (! array_key_exists('run', $params) && CLI::getOption('run') === null) {
             CLI::write('Nothing was changed. Run again with --run to write these numbers.', 'white');

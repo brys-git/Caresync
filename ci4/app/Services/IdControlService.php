@@ -156,6 +156,44 @@ class IdControlService
     }
 
     /**
+     * The backfill as plain SQL (for phpMyAdmin on a host with no command line). One UPDATE per plan holder,
+     * guarded so a holder that already has a number is never touched, plus the counters so that numbers handed out
+     * later continue after these. Nothing is written to the database by this method.
+     *
+     * @param list<array{plan_holder_id:int, name:string, branch:string, approved_at:string, source:string, proposed:string}> $plan
+     */
+    public function backfillSql(array $plan): string
+    {
+        $q = static fn (string $s): string => "'" . str_replace("'", "''", $s) . "'";
+        $o = [];
+        $o[] = '-- Part D: ID Control No. for plan holders that are already active. Generated ' . date('Y-m-d H:i') . ' from the database it was run against.';
+        $o[] = '-- ' . count($plan) . ' plan holder(s), oldest approval first. A plan holder that already has a number is never changed.';
+        $o[] = '-- Requires partB_migrations.sql (the id_control_sequences table and the unique index) to be imported first.';
+        $o[] = '';
+        $o[] = 'START TRANSACTION;';
+        $last = [];
+        foreach ($plan as $p) {
+            $o[] = '-- ' . str_replace(["\r", "\n"], ' ', $p['name']) . ' (' . str_replace(["\r", "\n"], ' ', $p['branch']) . '), approved ' . substr($p['approved_at'], 0, 10) . ' (' . $p['source'] . ')';
+            $o[] = 'UPDATE plan_holders SET id_control_no = ' . $q($p['proposed']) . ' WHERE plan_holder_id = ' . (int) $p['plan_holder_id'] . " AND (id_control_no IS NULL OR TRIM(id_control_no) = '');";
+            if (preg_match('/^KKM-([A-Z]{3})-(\d{4})-(\d{5})$/', $p['proposed'], $m)) {
+                $k = $m[1] . '|' . $m[2];
+                $last[$k] = max($last[$k] ?? 0, (int) $m[3]);
+            }
+        }
+        $o[] = '';
+        $o[] = '-- counters: the next number handed out continues after the ones above';
+        foreach ($last as $k => $seq) {
+            [$letters, $year] = explode('|', $k);
+            $o[] = 'INSERT INTO id_control_sequences (branch_code, year, last_seq, updated_at) VALUES (' . $q($letters) . ', ' . (int) $year . ', ' . $seq . ', NOW()) ON DUPLICATE KEY UPDATE last_seq = GREATEST(last_seq, VALUES(last_seq)), updated_at = NOW();';
+        }
+        $o[] = 'COMMIT;';
+        $o[] = '';
+        $o[] = '-- Check afterwards:  SELECT plan_holder_id, id_control_no FROM plan_holders WHERE id_control_no IS NOT NULL ORDER BY id_control_no;';
+
+        return implode("\n", $o) . "\n";
+    }
+
+    /**
      * Numbers every plan holder in backfillPlan(), in that order, through assign() (so counters and the unique
      * index are respected). Returns the numbers given.
      *
