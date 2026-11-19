@@ -1,45 +1,39 @@
 <?php
-/** Commission report body - same columns as admin/reports/commission.php. */
+/** Commission report body (from remittances) - same columns as admin/reports/commission.php. */
 $rows = $rows ?? [];
-$sumTx = 0;
-$sumCollected = 0.0;
-$sumCommission = 0.0;
-$sumNet = 0.0;
-$sumPaid = 0.0;
-$sumUnpaid = 0.0;
+$t = ['n' => 0, 'g' => 0.0, 'ce' => 0.0, 'cp' => 0.0, 'ch' => 0.0, 'nc' => 0.0, 'np' => 0.0];
+$rule = (new \App\Services\RemittanceService())->ruleText();
 ?>
+<p class="rpt-note" style="margin:0 0 6px;">Rule in force: <?= esc($rule) ?>. Commission is earned when the Branch Admin confirms the remittance.</p>
 <table class="rpt-table">
     <thead>
         <tr>
             <th>Collector</th>
-            <th>Role</th>
-            <th class="center">Transactions</th>
+            <th class="center">Remittances</th>
             <th class="num">Total Collected</th>
-            <th class="num">Commission (10%)</th>
+            <th class="num">Commission Earned</th>
+            <th class="num">Commission Waiting</th>
+            <th class="num">On Hold</th>
             <th class="num">Net Remitted</th>
-            <th class="num">Paid</th>
-            <th class="num">Unpaid</th>
+            <th class="num">Net Waiting</th>
         </tr>
     </thead>
     <tbody>
         <?php foreach ($rows as $row): ?>
             <?php
-            $sumTx += (int) ($row['transaction_count'] ?? 0);
-            $sumCollected += (float) ($row['total_collected'] ?? 0);
-            $sumCommission += (float) ($row['commission'] ?? 0);
-            $sumNet += (float) ($row['net_remitted'] ?? 0);
-            $sumPaid += (float) ($row['paid'] ?? 0);
-            $sumUnpaid += (float) ($row['unpaid'] ?? 0);
+            $t['n'] += (int) $row['remittances']; $t['g'] += (float) $row['gross']; $t['ce'] += (float) $row['commission_earned'];
+            $t['cp'] += (float) $row['commission_pending']; $t['ch'] += (float) $row['commission_on_hold'];
+            $t['nc'] += (float) $row['net_confirmed']; $t['np'] += (float) $row['net_pending'];
             ?>
             <tr>
-                <td><?= esc(trim((string) ($row['first_name'] ?? '') . ' ' . (string) ($row['last_name'] ?? ''))) ?></td>
-                <td><?= esc((string) ($row['role_name'] ?? '-')) ?></td>
-                <td class="center"><?= (int) ($row['transaction_count'] ?? 0) ?></td>
-                <td class="num"><?= esc(cs_peso($row['total_collected'] ?? 0)) ?></td>
-                <td class="num"><?= esc(cs_peso($row['commission'] ?? 0)) ?></td>
-                <td class="num"><?= esc(cs_peso($row['net_remitted'] ?? 0)) ?></td>
-                <td class="num"><?= esc(cs_peso($row['paid'] ?? 0)) ?></td>
-                <td class="num"><?= esc(cs_peso($row['unpaid'] ?? 0)) ?></td>
+                <td><?= esc((string) $row['collector_name']) ?></td>
+                <td class="center"><?= (int) $row['remittances'] ?></td>
+                <td class="num"><?= esc(cs_peso($row['gross'])) ?></td>
+                <td class="num"><?= esc(cs_peso($row['commission_earned'])) ?></td>
+                <td class="num"><?= esc(cs_peso($row['commission_pending'])) ?></td>
+                <td class="num"><?= esc(cs_peso($row['commission_on_hold'])) ?></td>
+                <td class="num"><?= esc(cs_peso($row['net_confirmed'])) ?></td>
+                <td class="num"><?= esc(cs_peso($row['net_pending'])) ?></td>
             </tr>
         <?php endforeach; ?>
         <?php if ($rows === []): ?>
@@ -49,13 +43,14 @@ $sumUnpaid = 0.0;
     <?php if ($rows !== []): ?>
         <tfoot>
             <tr class="rpt-total">
-                <td colspan="2" class="num">Total</td>
-                <td class="center"><?= $sumTx ?></td>
-                <td class="num"><?= esc(cs_peso($sumCollected)) ?></td>
-                <td class="num"><?= esc(cs_peso($sumCommission)) ?></td>
-                <td class="num"><?= esc(cs_peso($sumNet)) ?></td>
-                <td class="num"><?= esc(cs_peso($sumPaid)) ?></td>
-                <td class="num"><?= esc(cs_peso($sumUnpaid)) ?></td>
+                <td class="num">Total</td>
+                <td class="center"><?= $t['n'] ?></td>
+                <td class="num"><?= esc(cs_peso($t['g'])) ?></td>
+                <td class="num"><?= esc(cs_peso($t['ce'])) ?></td>
+                <td class="num"><?= esc(cs_peso($t['cp'])) ?></td>
+                <td class="num"><?= esc(cs_peso($t['ch'])) ?></td>
+                <td class="num"><?= esc(cs_peso($t['nc'])) ?></td>
+                <td class="num"><?= esc(cs_peso($t['np'])) ?></td>
             </tr>
         </tfoot>
     <?php endif; ?>

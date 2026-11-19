@@ -211,17 +211,17 @@ class Reports extends BaseController
         if ($mode === 'csv') {
             return $this->csvResponse(
                 'commission_report',
-                ['Collector', 'Role', 'Transactions', 'Total Collected', 'Commission (10%)', 'Net Remitted', 'Paid', 'Unpaid'],
+                ['Collector', 'Remittances', 'Total Collected', 'Commission Earned (confirmed)', 'Commission Pending', 'Commission On Hold', 'Net Remitted (confirmed)', 'Net Waiting'],
                 $rows,
                 static fn (array $row): array => [
-                    trim((string) ($row['first_name'] ?? '') . ' ' . (string) ($row['last_name'] ?? '')),
-                    (string) ($row['role_name'] ?? ''),
-                    (string) ($row['transaction_count'] ?? 0),
-                    number_format((float) ($row['total_collected'] ?? 0), 2, '.', ''),
-                    number_format((float) ($row['commission'] ?? 0), 2, '.', ''),
-                    number_format((float) ($row['net_remitted'] ?? 0), 2, '.', ''),
-                    number_format((float) ($row['paid'] ?? 0), 2, '.', ''),
-                    number_format((float) ($row['unpaid'] ?? 0), 2, '.', ''),
+trim((string) ($row['first_name'] ?? '') . ' ' . (string) ($row['last_name'] ?? '')),
+                    (string) ($row['remittances'] ?? 0),
+                    number_format((float) ($row['gross'] ?? 0), 2, '.', ''),
+                    number_format((float) ($row['commission_earned'] ?? 0), 2, '.', ''),
+                    number_format((float) ($row['commission_pending'] ?? 0), 2, '.', ''),
+                    number_format((float) ($row['commission_on_hold'] ?? 0), 2, '.', ''),
+                    number_format((float) ($row['net_confirmed'] ?? 0), 2, '.', ''),
+                    number_format((float) ($row['net_pending'] ?? 0), 2, '.', ''),
                 ]
             );
         }
@@ -233,7 +233,7 @@ class Reports extends BaseController
         return view('admin/reports/commission', [
             'role_layout' => 'layouts/admin',
             'page_title' => 'Commission Report',
-            'page_sub' => 'Commission earned per collector - 10% of the amount collected, computed automatically.',
+            'page_sub' => 'What collectors remitted and the commission they earn (counted when the Branch Admin confirms the remittance).',
             'active_report' => 'commission',
             'filters' => $filters,
             'branches' => $this->branchOptions(),

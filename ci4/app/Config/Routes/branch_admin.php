@@ -103,6 +103,11 @@ $routes->group('branch-admin', ['filter' => 'auth'], static function (RouteColle
 
     // Collector Assignments - assigns a barangay (or the whole branch) to a
     // collector. Collection List and GCash approval both depend on this.
+    // Remittances (Part E): confirm the cash a collector handed over, or report a discrepancy.
+    $routes->get('remittances', 'BranchAdmin\RemittanceController::index', ['filter' => 'role:2']);
+    $routes->get('remittances/(:num)', 'BranchAdmin\RemittanceController::show/$1', ['filter' => 'role:2']);
+    $routes->post('remittances/(:num)/confirm', 'BranchAdmin\RemittanceController::confirm/$1', ['filter' => 'role:2']);
+    $routes->post('remittances/(:num)/discrepancy', 'BranchAdmin\RemittanceController::discrepancy/$1', ['filter' => 'role:2']);
     $routes->get('collector-assignments', 'BranchAdmin\CollectorAssignmentController::index', ['filter' => 'role:2']);
     $routes->post('collector-assignments/store', 'BranchAdmin\CollectorAssignmentController::store', ['filter' => 'role:2']);
     $routes->post('collector-assignments/delete/(:num)', 'BranchAdmin\CollectorAssignmentController::destroy/$1', ['filter' => 'role:2']);
@@ -181,7 +186,6 @@ $routes->group('branch-admin', ['filter' => 'auth'], static function (RouteColle
     $routes->get('reports/overdue', 'BranchAdmin\ReportController::overdue', ['filter' => 'role:2']);
     $routes->get('reports/avails', 'BranchAdmin\ReportController::avails', ['filter' => 'role:2']);
     $routes->get('reports/commission', 'BranchAdmin\ReportController::commission', ['filter' => 'role:2']);
-    $routes->post('reports/commission/pay', 'BranchAdmin\ReportController::payCommission', ['filter' => 'role:2']);
     // The old Analytics page is part of the Dashboard now; old links and bookmarks still work.
     $routes->get('analytics', static fn () => redirect()->to('/dashboard/branch-admin', 301), ['filter' => 'role:2']);
 

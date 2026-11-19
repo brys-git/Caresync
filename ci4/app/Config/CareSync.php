@@ -86,6 +86,21 @@ class CareSync extends BaseConfig
      */
     public float $availMinFinancedAmount = 5000.0;
 
+    /**
+     * Collector commission (Part E). The collector remits what they collected and keeps this share.
+     * The rate and the rule in force are copied onto every remittance when it is made, so changing
+     * these later never rewrites an old remittance.
+     */
+    public float $commissionRate = 0.10;
+
+    /**
+     * What the commission is worked out on:
+     *   'plan_only'       the plan-contribution part of each collection only (package down payments and
+     *                     instalments earn no commission)  <- default until Kaagapay confirms
+     *   'all_collections' everything the collector collected, packages included
+     */
+    public string $commissionAppliesTo = 'plan_only';
+
     /** Longest instalment term in months a Branch Admin may choose. */
     public int $availMaxTermMonths = 24;
 

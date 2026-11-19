@@ -30,6 +30,11 @@ $routes->group('collector', ['filter' => 'auth'], static function (RouteCollecti
     // and by is_collector-flagged Staff alike.
     $routes->get('collection-list', 'CollectionListController::collector', ['filter' => 'collector']);
     $routes->get('commission', 'CollectionListController::commission', ['filter' => 'collector']);
+    // Remittances (Part E): hand over the cash collected, keep the commission once the Branch Admin confirms.
+    $routes->get('remit', 'CollectorRemittanceController::index', ['filter' => 'collector']);
+    $routes->post('remit', 'CollectorRemittanceController::submit', ['filter' => 'collector']);
+    $routes->get('remit/(:num)', 'CollectorRemittanceController::show/$1', ['filter' => 'collector']);
+    $routes->post('remit/cancel/(:num)', 'CollectorRemittanceController::cancel/$1', ['filter' => 'collector']);
     $routes->get('collection-list/print', 'CollectionListController::printCollector', ['filter' => 'collector']);
     $routes->get('collection-list/record-payment/(:num)', 'CollectionListController::recordPaymentForm/$1', ['filter' => 'collector']);
     $routes->post('collection-list/record-payment/(:num)', 'CollectionListController::submitRecordPayment/$1', ['filter' => 'collector']);

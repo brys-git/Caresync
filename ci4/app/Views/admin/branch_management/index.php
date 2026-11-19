@@ -243,8 +243,8 @@
                             <tr>
                                 <th>Branch Name</th>
                                 <th class="cs-num">Total Payments Collected</th>
-                                <th class="cs-num">Total Remitted</th>
-                                <th class="cs-num">Staff Commission (10%)</th>
+                                <th class="cs-num">Total Remitted (confirmed)</th>
+                                <th class="cs-num">Commission earned (confirmed remittances)</th>
                             </tr>
                         </thead>
                         <tbody>

@@ -63,7 +63,7 @@
                     <div class="col-md-4">
                         <label class="form-label d-block">Total Amount</label>
                         <strong id="totalAmountDisplay" class="fs-5"></strong>
-                        <div class="form-text">Your commission when verified: <strong id="commissionEstimate" class="cs-money--brass"></strong> (estimate)</div>
+                        <div class="form-text">Commission is worked out when you remit: <?= esc((new \App\Services\RemittanceService())->ruleText()) ?>.</div>
                     </div>
                     <?php endif; ?>
                     <div class="col-md-4">
@@ -126,10 +126,8 @@
 <script>
     (function () {
         const monthlyFee = Number('<?= esc((string) ($plan['monthly_fee'] ?? 0)) ?>');
-        const commissionRate = Number('<?= esc((string) \App\Services\CommissionService::RATE) ?>');
         const monthsSelect = document.getElementById('months_covered');
         const totalDisplay = document.getElementById('totalAmountDisplay');
-        const commissionDisplay = document.getElementById('commissionEstimate');
         const receiptInput = document.getElementById('official_receipt_number');
         const openModalBtn = document.getElementById('openConfirmModal');
         const confirmCheck = document.getElementById('confirmReviewedCheck');
@@ -167,7 +165,6 @@
 
         function updateTotal() {
             totalDisplay.textContent = formatMoney(currentTotal());
-            commissionDisplay.textContent = formatMoney(currentTotal() * commissionRate);
         }
 
         if (!amountMode) { monthsSelect.addEventListener('change', updateTotal); }

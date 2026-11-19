@@ -106,6 +106,7 @@ class Nav extends BaseConfig
                         // to the exact same destination.
                         ['key' => 'collections', 'label' => 'Collection list', 'icon' => 'ti-map-pin',   'url' => 'branch-admin/collection-list'],
                         ['key' => 'collector-assignments', 'label' => 'Collector assignments', 'icon' => 'ti-map-pin-pin', 'url' => 'branch-admin/collector-assignments'],
+                        ['key' => 'remittances', 'label' => 'Remittances', 'icon' => 'ti-receipt-2', 'url' => 'branch-admin/remittances', 'count' => 'pending_remittances'],
                         ['key' => 'reports',     'label' => 'Reports',         'icon' => 'ti-file-text', 'url' => 'branch-admin/reports'],
                     ],
                 ],
@@ -138,6 +139,7 @@ class Nav extends BaseConfig
                         // visible link that 403s for them is worse than no
                         // link. See the 'capability' doc comment above.
                         ['key' => 'collections',  'label' => 'Collection list',  'icon' => 'ti-map-pin',          'url' => 'collector/collection-list', 'capability' => 'collect'],
+                        ['key' => 'remit',        'label' => 'Remit collections', 'icon' => 'ti-receipt-2',        'url' => 'collector/remit',           'capability' => 'collect'],
                         ['key' => 'commission',   'label' => 'My commission',    'icon' => 'ti-coin',             'url' => 'collector/commission',      'capability' => 'collect'],
                         ['key' => 'gcash',        'label' => 'My GCash account', 'icon' => 'ti-qrcode',           'url' => 'collector/gcash-account',   'capability' => 'collect'],
                     ],
@@ -167,6 +169,7 @@ class Nav extends BaseConfig
                         // an Unverified total for this same feature).
                         ['key' => 'dashboard',    'label' => "Today's route",   'icon' => 'ti-route',   'url' => 'dashboard/collector'],
                         ['key' => 'collections',  'label' => 'Collection list', 'icon' => 'ti-map-pin', 'url' => 'collector/collection-list'],
+                        ['key' => 'remit',        'label' => 'Remit collections', 'icon' => 'ti-receipt-2', 'url' => 'collector/remit'],
                         ['key' => 'commission',   'label' => 'My commission',   'icon' => 'ti-coin',    'url' => 'collector/commission'],
                         ['key' => 'gcash',        'label' => 'My GCash account', 'icon' => 'ti-qrcode', 'url' => 'collector/gcash-account'],
                     ],

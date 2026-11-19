@@ -25,7 +25,7 @@
         'tone'  => 'money',
     ],
     [
-        'label' => 'Commission this month',
+        'label' => 'Commission earned this month',
         'icon'  => 'ti-percentage',
         'value' => $s['estimated_commission'] ?? 0,
         'money' => true,

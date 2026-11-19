@@ -547,6 +547,9 @@ class MetricsService
         }
 
         $counts = ['pending_requests' => $this->pendingServiceRequests($branchId)];
+        if ($roleId === 2) {
+            $counts['pending_remittances'] = (new RemittanceService())->pendingCount($branchId);
+        }
 
         if ($branchId > 0) {
             $counts['ids_needing_review'] = (new GovernmentIdVerificationService())->countNeedingReview($branchId);

@@ -155,15 +155,15 @@ class ReportController extends BaseController
         $mode = (string) $this->request->getGet('mode');
 
         if ($mode === 'csv') {
-            return $this->simpleCsv('commission_report', ['Collector', 'Role', 'Transactions', 'Total Collected', 'Commission (10%)', 'Net Remitted', 'Paid', 'Unpaid'], $rows, static fn (array $row): array => [
-                trim((string) ($row['first_name'] ?? '') . ' ' . (string) ($row['last_name'] ?? '')),
-                (string) ($row['role_name'] ?? ''),
-                (string) ($row['transaction_count'] ?? 0),
-                number_format((float) ($row['total_collected'] ?? 0), 2, '.', ''),
-                number_format((float) ($row['commission'] ?? 0), 2, '.', ''),
-                number_format((float) ($row['net_remitted'] ?? 0), 2, '.', ''),
-                number_format((float) ($row['paid'] ?? 0), 2, '.', ''),
-                number_format((float) ($row['unpaid'] ?? 0), 2, '.', ''),
+            return $this->simpleCsv('commission_report', ['Collector', 'Remittances', 'Total Collected', 'Commission Earned (confirmed)', 'Commission Pending', 'Commission On Hold', 'Net Remitted (confirmed)', 'Net Waiting'], $rows, static fn (array $row): array => [
+trim((string) ($row['first_name'] ?? '') . ' ' . (string) ($row['last_name'] ?? '')),
+                (string) ($row['remittances'] ?? 0),
+                number_format((float) ($row['gross'] ?? 0), 2, '.', ''),
+                number_format((float) ($row['commission_earned'] ?? 0), 2, '.', ''),
+                number_format((float) ($row['commission_pending'] ?? 0), 2, '.', ''),
+                number_format((float) ($row['commission_on_hold'] ?? 0), 2, '.', ''),
+                number_format((float) ($row['net_confirmed'] ?? 0), 2, '.', ''),
+                number_format((float) ($row['net_pending'] ?? 0), 2, '.', ''),
             ]);
         }
 
@@ -174,142 +174,13 @@ class ReportController extends BaseController
         return view('admin/reports/commission', [
             'role_layout' => 'layouts/branch_admin',
             'page_title' => 'Commission Report',
-            'page_sub' => 'Commission earned per collector - 10% of the amount collected, computed automatically.',
+            'page_sub' => 'What collectors remitted and the commission they earn (counted when you confirm the remittance).',
             'reports_base_path' => '/branch-admin/reports',
             'reports_hidden_tabs' => ['ledger', 'collections'],
             'active_report' => 'commission',
             'filters' => $filters,
             'rows' => $rows,
-            'can_pay_commission' => true,
         ]);
-    }
-
-    /** "Mark as paid": records that the collector's commission for the period was handed over. */
-    public function payCommission()
-    {
-        $this->ensureBranchAdminAccess();
-
-        $branchId = (int) session('branch_id');
-        if ($branchId <= 0) {
-            throw PageNotFoundException::forPageNotFound();
-        }
-
-        $from = trim((string) $this->request->getPost('date_from'));
-        $to = trim((string) $this->request->getPost('date_to'));
-
-        $result = (new \App\Services\CommissionPayoutService())->record(
-            (int) $this->request->getPost('collector_id'),
-            $branchId,
-            $from,
-            $to,
-            (int) session('user_id'),
-            trim((string) $this->request->getPost('reference')),
-            trim((string) $this->request->getPost('notes'))
-        );
-
-        if ($result['ok']) {
-            (new \App\Services\ActivityLogService())->log((int) session('user_id'), 'created', 'commission_payout', (int) $this->request->getPost('collector_id'), $result['message']);
-        }
-
-        return redirect()->to('/branch-admin/reports/commission?date_from=' . urlencode($from) . '&date_to=' . urlencode($to))
-            ->with($result['ok'] ? 'success' : 'error', $result['message']);
-    }
-
-    public function generate()
-    {
-        $this->ensureBranchAdminAccess();
-
-        $branchId = (int) session('branch_id');
-        if ($branchId <= 0) {
-            throw PageNotFoundException::forPageNotFound();
-        }
-
-        $filters = $this->buildFilters([
-            'date_from' => (string) $this->request->getPost('date_from'),
-            'date_to' => (string) $this->request->getPost('date_to'),
-            'payment_method' => (string) $this->request->getPost('payment_method'),
-            'received_by' => (string) $this->request->getPost('received_by'),
-            'search' => (string) $this->request->getPost('search'),
-        ], $branchId);
-
-        $action = (string) $this->request->getPost('action');
-        if ($action === 'csv') {
-            return $this->exportCsv($filters);
-        }
-
-        if ($action === 'pdf' || $action === 'print') {
-            return $this->remittancePdf($filters, $action === 'print');
-        }
-
-        return view('branch_admin/reports/remittance', $this->buildViewData($filters, false));
-    }
-
-    private function buildViewData(array $filters, bool $printMode): array
-    {
-        $rows = $this->reportService->getRemittanceReport($filters);
-        $breakdown = $this->reportService->getPaymentBreakdown($filters);
-        $totalRemittance = $this->reportService->getTotalRemittance($filters);
-        // getBranchPaymentStaff() is really "everyone who has received_by'd a
-        // payment in this branch" - despite the name, that already includes
-        // Collectors (see CollectionListController's Record Payment), not
-        // just role_id 3 Staff. Reused rather than duplicated: this is the
-        // "each collector's recorded collections, with totals, and which
-        // are still unverified" view the Collector capability work needed -
-        // it already had the data, it just never showed status or a
-        // pending breakdown.
-        $staffOptions = $this->reportService->getBranchPaymentStaff((int) $filters['branch_id']);
-
-        $pendingCount = 0;
-        $pendingAmount = 0.0;
-        foreach ($rows as $row) {
-            if (strtolower((string) ($row['status'] ?? '')) === 'pending') {
-                $pendingCount++;
-                $pendingAmount += (float) ($row['amount'] ?? 0);
-            }
-        }
-        $breakdown['pending_count'] = $pendingCount;
-        $breakdown['pending_amount'] = $pendingAmount;
-
-        return [
-            'role_layout' => 'layouts/branch_admin',
-            'page_title' => 'Remittance Report',
-            'filters' => $filters,
-            'report_rows' => $rows,
-            'summary' => $breakdown,
-            'total_remittance' => $totalRemittance,
-            'split_totals' => $this->reportService->splitTotalLines($filters),
-            'staff_options' => $staffOptions,
-            'print_mode' => $printMode,
-        ];
-    }
-
-    private function remittancePdf(array $filters, bool $inline)
-    {
-        $rows = $this->reportService->getRemittanceReport($filters);
-        $breakdown = $this->reportService->getPaymentBreakdown($filters);
-
-        // Same figures and labels as the on-screen summary cards + total.
-        $totals = [
-            ['label' => 'Cash Total', 'amount' => $breakdown['cash_total']],
-            ['label' => 'GCash Total', 'amount' => $breakdown['gcash_total']],
-            ...$this->reportService->splitTotalLines($filters),
-            ['label' => 'Total Remittance', 'amount' => $this->reportService->getTotalRemittance($filters), 'strong' => true],
-        ];
-
-        $filterLines = [];
-        if ($filters['payment_method'] !== '') {
-            $filterLines[] = 'Method: ' . strtoupper($filters['payment_method']);
-        }
-        if ((int) $filters['received_by'] > 0) {
-            foreach ($this->reportService->getBranchPaymentStaff((int) $filters['branch_id']) as $staff) {
-                if ((int) $staff['user_id'] === (int) $filters['received_by']) {
-                    $filterLines[] = 'Recorded by: ' . trim((string) $staff['first_name'] . ' ' . (string) $staff['last_name']);
-                    break;
-                }
-            }
-        }
-
-        return $this->pdfResponse('remittance', ['rows' => $rows, 'totals' => $totals], (int) $filters['branch_id'], $filters + ['filter_lines' => $filterLines], $inline);
     }
 
     /**

@@ -624,40 +624,13 @@ class ReportService
      */
     public function getCommissionReport(array $filters): array
     {
-        $rows = (new CommissionService())->reportRows(
+        // Remittances, not "marked as paid": commission is EARNED when the Branch Admin confirms a collector's remittance.
+        return (new RemittanceService())->reportRows(
             (int) ($filters['branch_id'] ?? 0) ?: null,
             (string) ($filters['date_from'] ?? '') ?: null,
-            (string) ($filters['date_to'] ?? '') ?: null
-        );
-
-        // The commission rows come out of CommissionService already
-        // aggregated, so the collector-name search is applied to them here
-        // (in PHP - no SQL involved): every word must be in the full name.
-        // Earned / Paid / Unpaid per collector for this period.
-        $rows = (new CommissionPayoutService())->annotate(
-            $rows,
-            (string) ($filters['date_from'] ?? '') ?: null,
             (string) ($filters['date_to'] ?? '') ?: null,
-            (int) ($filters['branch_id'] ?? 0) ?: null
+            cs_search_term($filters['search'] ?? '')
         );
-
-        $term = cs_search_term($filters['search'] ?? '');
-        if ($term === '') {
-            return $rows;
-        }
-
-        $words = array_map('mb_strtolower', explode(' ', $term));
-
-        return array_values(array_filter($rows, static function (array $row) use ($words): bool {
-            $name = mb_strtolower(trim((string) ($row['first_name'] ?? '') . ' ' . (string) ($row['last_name'] ?? '')));
-            foreach ($words as $word) {
-                if (! str_contains($name, $word)) {
-                    return false;
-                }
-            }
-
-            return true;
-        }));
     }
 
     private function collectorBaseQuery(array $filters)

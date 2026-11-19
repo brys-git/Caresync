@@ -3,7 +3,6 @@
 namespace App\Controllers;
 
 use App\Services\CollectorAssignmentService;
-use App\Services\CommissionService;
 use App\Services\MembershipService;
 use App\Services\PaymentService;
 use CodeIgniter\HTTP\ResponseInterface;
@@ -235,16 +234,9 @@ class CollectionListController extends BaseController
             return redirect()->back()->withInput()->with('error', 'Failed to record payment. Please try again.');
         }
 
-        $projectedCommission = (new CommissionService())->forPayment($amount);
-
-        // Flash messages are flattened to plain text (caresync.js reads
-        // .textContent when promoting them to a toast), so this can't use
-        // cs_money() - its peso sign is a CSS ::before on the <span> it
-        // returns, which would vanish along with the stripped markup.
-        $commissionText = '₱' . number_format($projectedCommission, 2);
 
         return redirect()->to(base_url('collector/collection-list'))
-            ->with('success', 'Payment recorded for ' . $plan['client_name'] . ($allocationText !== '' ? ' (' . $allocationText . ')' : '') . '. It now shows as Awaiting Verification. Your ' . $commissionText . ' commission will count once your branch admin verifies it.');
+            ->with('success', 'Payment recorded for ' . $plan['client_name'] . ($allocationText !== '' ? ' (' . $allocationText . ')' : '') . '. It now shows as Awaiting Verification. Once your branch admin verifies it, remit it under Remit collections to earn your commission.');
     }
 
     /**
@@ -355,23 +347,22 @@ class CollectionListController extends BaseController
     public function commission(): ResponseInterface|string
     {
         $userId = (int) session('user_id');
+        $branchId = (int) session('branch_id');
         $range = $this->readCommissionRange();
-
-        $commissionService = new CommissionService();
+        $remit = new \App\Services\RemittanceService();
 
         return view('collection_list/commission', [
             'role_layout' => $this->collectorLayout(),
             'page_title' => 'My Commission',
-            'page_sub' => 'Your 10% commission on verified field collections.',
-            'per_client' => $commissionService->perClient($userId, $range['from'], $range['to']),
-            'pending' => $commissionService->pendingPayments($userId, $range['from'], $range['to']),
-            'totals' => $commissionService->totals($userId, $range['from'], $range['to']),
+            'page_sub' => 'Your commission on remitted collections. It is earned when your Branch Admin confirms the remittance.',
+            'summary' => $remit->summary($userId, $branchId, $range['from'], $range['to']),
+            'remittances' => array_values(array_filter($remit->list(['collector_id' => $userId, 'from' => (string) $range['from'], 'to' => (string) $range['to']]), static fn (array $r): bool => $r['status'] !== 'cancelled')),
+            'rule' => $remit->ruleText(),
             'range' => $range,
-            'paid_in_range' => (new \App\Services\CommissionPayoutService())->paidWithin($userId, $range['from'], $range['to']),
-            'payouts' => (new \App\Services\CommissionPayoutService())->historyFor($userId),
+            // Commission that was marked "paid" under the old system stays visible (read-only) but nothing new is added to it.
+            'legacy_payouts' => (new \App\Services\CommissionPayoutService())->historyFor($userId),
         ]);
     }
-
     /**
      * date_from/date_to query params, or a named 'quick' range (this_month/
      * last_month/all_time) - defaults to first day of the current month

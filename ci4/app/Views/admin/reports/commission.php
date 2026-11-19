@@ -57,12 +57,14 @@ if (! empty($filters['branch_id'])) {
     </div>
 </form>
 
+<?php $rem = new \App\Services\RemittanceService(); ?>
+<p class="cs-muted mb-3"><i class="ti ti-info-circle" aria-hidden="true"></i> Rule in force: <?= esc($rem->ruleText()) ?>. Commission counts as <strong>earned</strong> when the Branch Admin confirms the remittance; waiting and on-hold remittances are shown separately. (Dates are the dates the remittances were submitted.)</p>
 <section class="cs-panel">
     <div class="cs-panel__body cs-panel__body--flush">
         <?php if (empty($rows)): ?>
             <?= view('components/empty_state', [
                 'icon'  => 'ti-cash',
-                'title' => 'No collections found for this period',
+                'title' => 'No remittances found for this period',
             ]) ?>
         <?php else: ?>
             <div class="cs-tablewrap">
@@ -70,65 +72,49 @@ if (! empty($filters['branch_id'])) {
                     <thead>
                         <tr>
                             <th>Collector</th>
-                            <th>Role</th>
-                            <th>Transactions</th>
+                            <?php if (! empty($branches)): ?><th>Branch</th><?php endif; ?>
+                            <th class="cs-num">Remittances</th>
                             <th class="cs-num">Total Collected</th>
-                            <th class="cs-num">Commission (10%)</th>
+                            <th class="cs-num">Commission Earned</th>
+                            <th class="cs-num">Commission Waiting</th>
+                            <th class="cs-num">On Hold</th>
                             <th class="cs-num">Net Remitted</th>
-                            <th class="cs-num">Paid</th>
-                            <th class="cs-num">Unpaid</th>
-                            <?php if (! empty($can_pay_commission)): ?><th class="cs-table__actions">Action</th><?php endif; ?>
+                            <th class="cs-num">Net Waiting</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php
-                        $totalCommission = 0.0;
-                        $totalPaid = 0.0;
-                        $totalUnpaid = 0.0;
-                        foreach ($rows as $row):
-                            $totalCommission += (float) ($row['commission'] ?? 0);
-                            $totalPaid += (float) ($row['paid'] ?? 0);
-                            $totalUnpaid += (float) ($row['unpaid'] ?? 0);
-                        ?>
+                        <?php $t = ['n' => 0, 'g' => 0.0, 'ce' => 0.0, 'cp' => 0.0, 'ch' => 0.0, 'nc' => 0.0, 'np' => 0.0]; ?>
+                        <?php foreach ($rows as $row): ?>
+                            <?php
+                            $t['n'] += (int) $row['remittances']; $t['g'] += (float) $row['gross']; $t['ce'] += (float) $row['commission_earned'];
+                            $t['cp'] += (float) $row['commission_pending']; $t['ch'] += (float) $row['commission_on_hold'];
+                            $t['nc'] += (float) $row['net_confirmed']; $t['np'] += (float) $row['net_pending'];
+                            ?>
                             <tr>
-                                <td><?= esc(trim((string) ($row['first_name'] ?? '') . ' ' . (string) ($row['last_name'] ?? ''))) ?></td>
-                                <td><?= esc((string) ($row['role_name'] ?? '-')) ?></td>
-                                <td><?= esc((string) ($row['transaction_count'] ?? 0)) ?></td>
-                                <td class="cs-num"><?= cs_money($row['total_collected'] ?? 0) ?></td>
-                                <td class="cs-num"><?= cs_money($row['commission'] ?? 0) ?></td>
-                                <td class="cs-num"><?= cs_money($row['net_remitted'] ?? 0) ?></td>
-                                <td class="cs-num"><?= cs_money($row['paid'] ?? 0) ?></td>
-                                <td class="cs-num"><?= cs_money($row['unpaid'] ?? 0) ?></td>
-                                <?php if (! empty($can_pay_commission)): ?>
-                                    <td class="cs-table__actions">
-                                        <?php if (! empty($row['can_pay'])): ?>
-                                            <form method="post" action="<?= site_url('branch-admin/reports/commission/pay') ?>" class="d-inline"
-                                                  data-cs-confirm="Mark <?= esc(cs_peso($row['commission'] ?? 0), 'attr') ?> commission as paid to <?= esc(trim((string) ($row['first_name'] ?? '') . ' ' . (string) ($row['last_name'] ?? '')), 'attr') ?> for <?= esc((string) ($filters['date_from'] ?? ''), 'attr') ?> to <?= esc((string) ($filters['date_to'] ?? ''), 'attr') ?>? This is recorded and cannot be repeated for the same period."
-                                                  data-cs-confirm-title="Mark commission as paid" data-cs-confirm-ok="Mark as paid" data-cs-once>
-                                                <?= csrf_field() ?>
-                                                <input type="hidden" name="collector_id" value="<?= (int) $row['user_id'] ?>">
-                                                <input type="hidden" name="date_from" value="<?= esc((string) ($filters['date_from'] ?? ''), 'attr') ?>">
-                                                <input type="hidden" name="date_to" value="<?= esc((string) ($filters['date_to'] ?? ''), 'attr') ?>">
-                                                <button type="submit" class="btn btn-sm btn-primary">Mark as paid</button>
-                                            </form>
-                                        <?php elseif (! empty($row['payout'])): ?>
-                                            <span class="small text-muted">Paid <?= esc(date('M j, Y', strtotime((string) $row['payout']['paid_at']))) ?></span>
-                                        <?php else: ?>
-                                            <span class="text-muted">-</span>
-                                        <?php endif; ?>
-                                    </td>
-                                <?php endif; ?>
+                                <td><?= esc((string) $row['collector_name']) ?><?php if ((int) $row['discrepancies'] > 0): ?> <span class="badge text-bg-danger"><?= (int) $row['discrepancies'] ?> discrepanc<?= (int) $row['discrepancies'] === 1 ? 'y' : 'ies' ?></span><?php endif; ?></td>
+                                <?php if (! empty($branches)): ?><td><?= esc((string) ($row['branch_name'] ?? '-')) ?></td><?php endif; ?>
+                                <td class="cs-num"><?= (int) $row['remittances'] ?></td>
+                                <td class="cs-num"><?= cs_money($row['gross']) ?></td>
+                                <td class="cs-num"><?= cs_money($row['commission_earned']) ?></td>
+                                <td class="cs-num"><?= cs_money($row['commission_pending']) ?></td>
+                                <td class="cs-num"><?= cs_money($row['commission_on_hold']) ?></td>
+                                <td class="cs-num"><?= cs_money($row['net_confirmed']) ?></td>
+                                <td class="cs-num"><?= cs_money($row['net_pending']) ?></td>
                             </tr>
                         <?php endforeach; ?>
-                        <tr class="fw-semibold">
-                            <td colspan="4" class="text-end">Total Commission</td>
-                            <td class="cs-num"><?= cs_money($totalCommission) ?></td>
-                            <td></td>
-                            <td class="cs-num"><?= cs_money($totalPaid) ?></td>
-                            <td class="cs-num"><?= cs_money($totalUnpaid) ?></td>
-                            <?php if (! empty($can_pay_commission)): ?><td></td><?php endif; ?>
-                        </tr>
                     </tbody>
+                    <tfoot>
+                        <tr>
+                            <th<?= ! empty($branches) ? ' colspan="2"' : '' ?>>Total</th>
+                            <th class="cs-num"><?= $t['n'] ?></th>
+                            <th class="cs-num"><?= cs_money($t['g']) ?></th>
+                            <th class="cs-num"><?= cs_money($t['ce']) ?></th>
+                            <th class="cs-num"><?= cs_money($t['cp']) ?></th>
+                            <th class="cs-num"><?= cs_money($t['ch']) ?></th>
+                            <th class="cs-num"><?= cs_money($t['nc']) ?></th>
+                            <th class="cs-num"><?= cs_money($t['np']) ?></th>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
         <?php endif; ?>

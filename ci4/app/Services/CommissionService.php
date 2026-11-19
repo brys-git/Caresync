@@ -3,6 +3,9 @@
 namespace App\Services;
 
 /**
+ * @deprecated Part E replaced this: commission now comes from remittances (App\Services\RemittanceService).
+ *             Nothing calls this class any more; it is listed as removable in the Part E report.
+ *
  * CommissionService
  *
  * The single source of collector commission math and eligibility. Before

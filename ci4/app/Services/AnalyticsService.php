@@ -284,7 +284,8 @@ class AnalyticsService
         // someone else recorded never earns this account commission. Delegates
         // to CommissionService so this dashboard card and the admin Commission
         // Report can never quietly disagree on what counts.
-        $commissionTotals = (new CommissionService())->totals($userId, date('Y-m-01'), date('Y-m-d'));
+        $collectorBranch = (int) ($db->table('users')->select('branch_id')->where('user_id', $userId)->get(1)->getRowArray()['branch_id'] ?? 0);
+        $commissionTotals = ['commission' => (new RemittanceService())->summary($userId, $collectorBranch, date('Y-m-01'), date('Y-m-d'))['earned']];
 
         return [
             'total_collected' => $metrics->collected(null, null, null, $mine),

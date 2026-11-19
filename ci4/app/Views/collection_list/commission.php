@@ -2,16 +2,17 @@
 
 <?= $this->section('content') ?>
 <?php
-$t = $totals ?? [];
+$sm = $summary ?? [];
 $quick = (string) ($range['quick'] ?? 'this_month');
 $rangeLabel = 'All time';
 if (! empty($range['from']) || ! empty($range['to'])) {
     $rangeLabel = cs_date($range['from'] ?? null) . ' - ' . cs_date($range['to'] ?? null);
 }
+$tone = ['submitted' => 'text-bg-warning', 'confirmed' => 'text-bg-success', 'discrepancy' => 'text-bg-danger'];
 ?>
 
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-    <p class="cs-muted mb-0">Showing: <?= esc($rangeLabel) ?></p>
+    <p class="cs-muted mb-0">Showing remittances submitted: <?= esc($rangeLabel) ?></p>
     <div class="d-flex gap-2">
         <a class="btn btn-sm <?= $quick === 'this_month' ? 'btn-primary' : 'btn-ghost' ?>" href="?quick=this_month">This month</a>
         <a class="btn btn-sm <?= $quick === 'last_month' ? 'btn-primary' : 'btn-ghost' ?>" href="?quick=last_month">Last month</a>
@@ -22,165 +23,69 @@ if (! empty($range['from']) || ! empty($range['to'])) {
 <section class="cs-panel mb-3">
     <div class="cs-panel__body">
         <?= view('components/stat_rail', ['stats' => [
-            ['label' => 'Collected (verified)', 'value' => $t['collected'] ?? 0, 'money' => true, 'icon' => 'ti-cash'],
-            ['label' => 'Commission earned (10%)', 'value' => $t['commission'] ?? 0, 'money' => true, 'tone' => 'money', 'icon' => 'ti-coin'],
-            ['label' => 'Paid to you', 'value' => $paid_in_range ?? 0, 'money' => true, 'tone' => 'ok', 'icon' => 'ti-circle-check'],
-            ['label' => 'Not yet paid', 'value' => max(0, round((float) ($t['commission'] ?? 0) - (float) ($paid_in_range ?? 0), 2)), 'money' => true, 'tone' => 'warn', 'icon' => 'ti-hourglass'],
-            ['label' => 'Clients', 'value' => $t['clients'] ?? 0, 'icon' => 'ti-users'],
-            [
-                'label' => 'Awaiting verification',
-                'value' => $t['pending_amount'] ?? 0,
-                'money' => true,
-                'tone' => 'warn',
-                'icon' => 'ti-clock',
-                'meta' => ($t['pending_amount'] ?? 0) > 0
-                    ? ('₱' . number_format((float) ($t['pending_commission'] ?? 0), 2) . ' commission once verified')
-                    : null,
-            ],
+            ['label' => 'Commission earned', 'value' => $sm['earned'] ?? 0, 'money' => true, 'tone' => 'ok', 'icon' => 'ti-coin', 'meta' => 'confirmed by your Branch Admin'],
+            ['label' => 'Waiting for confirmation', 'value' => $sm['pending'] ?? 0, 'money' => true, 'tone' => 'warn', 'icon' => 'ti-hourglass'],
+            ['label' => 'On hold (discrepancy)', 'value' => $sm['on_hold'] ?? 0, 'money' => true, 'tone' => ((float) ($sm['on_hold'] ?? 0)) > 0 ? 'stop' : '', 'icon' => 'ti-alert-triangle'],
+            ['label' => 'Remitted (gross)', 'value' => $sm['remitted_gross'] ?? 0, 'money' => true, 'icon' => 'ti-cash'],
+            ['label' => 'Not remitted yet', 'value' => $sm['available_gross'] ?? 0, 'money' => true, 'icon' => 'ti-clock', 'meta' => '₱' . number_format((float) ($sm['available_commission'] ?? 0), 2) . ' commission once remitted'],
         ]]) ?>
+        <p class="cs-muted small mt-3 mb-0">Commission: <?= esc($rule) ?>. <a href="<?= site_url('collector/remit') ?>">Remit collections</a></p>
     </div>
 </section>
 
 <section class="cs-panel mb-3">
     <div class="cs-panel__head">
-        <h2 class="cs-panel__title">Commission per client</h2>
-        <p class="cs-panel__note">Verified cash collections in this range, newest first.</p>
+        <h2 class="cs-panel__title">My remittances</h2>
+        <p class="cs-panel__note">Each remittance with the commission it earns.</p>
     </div>
     <div class="cs-panel__body cs-panel__body--flush">
-        <?php if (empty($per_client)): ?>
-            <?= view('components/empty_state', [
-                'icon'  => 'ti-coin-off',
-                'title' => 'No collections in this range',
-                'text'  => 'Verified cash collections you record will show up here, with your 10% commission per client.',
-            ]) ?>
+        <?php if (empty($remittances)): ?>
+            <?= view('components/empty_state', ['icon' => 'ti-coin-off', 'title' => 'No remittances in this range', 'text' => 'Remit the cash you collected to start earning commission.', 'action' => ['label' => 'Remit collections', 'url' => 'collector/remit']]) ?>
         <?php else: ?>
             <div class="cs-tablewrap">
                 <table class="cs-table">
-                    <thead>
-                        <tr>
-                            <th>Client</th>
-                            <th>Plan No.</th>
-                            <th>Barangay</th>
-                            <th class="cs-num">Payments</th>
-                            <th class="cs-num">Months</th>
-                            <th class="cs-num">Collected</th>
-                            <th class="cs-num">Commission 10%</th>
-                            <th>Last Collected</th>
-                        </tr>
-                    </thead>
+                    <thead><tr><th>#</th><th>Submitted</th><th class="cs-num">Collected</th><th class="cs-num">Commission</th><th class="cs-num">Net handed over</th><th>Status</th></tr></thead>
                     <tbody>
-                        <?php $totalCollected = 0.0; $totalCommission = 0.0; ?>
-                        <?php foreach ($per_client as $row): ?>
-                            <?php $totalCollected += (float) $row['collected']; $totalCommission += (float) $row['commission']; ?>
+                        <?php foreach ($remittances as $r): ?>
                             <tr>
-                                <td><?= esc((string) $row['client_name']) ?></td>
-                                <td><?= esc((string) $row['plan_number']) ?></td>
-                                <td><?= esc((string) $row['barangay']) ?></td>
-                                <td class="cs-num"><?= esc((string) $row['payments_count']) ?></td>
-                                <td class="cs-num"><?= esc((string) $row['months_total']) ?></td>
-                                <td class="cs-num"><?= cs_money($row['collected']) ?></td>
-                                <td class="cs-num"><?= cs_money($row['commission'], true, 'cs-money--brass') ?></td>
-                                <td class="text-nowrap"><?= cs_date($row['last_collection_date'] ?? null) ?></td>
+                                <td><a href="<?= site_url('collector/remit/' . (int) $r['remittance_id']) ?>">#<?= (int) $r['remittance_id'] ?></a></td>
+                                <td class="text-nowrap"><?= cs_date($r['submitted_at'], true) ?></td>
+                                <td class="cs-num"><?= cs_money($r['gross_amount']) ?></td>
+                                <td class="cs-num"><?= cs_money($r['commission_amount'], true, 'cs-money--brass') ?></td>
+                                <td class="cs-num"><?= cs_money($r['net_amount']) ?></td>
+                                <td><span class="badge <?= $tone[$r['status']] ?? 'text-bg-secondary' ?>"><?= esc((string) $r['status_label']) ?></span></td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
-                    <tfoot>
-                        <tr>
-                            <th colspan="5" class="text-end">Totals</th>
-                            <th class="cs-num"><?= cs_money($totalCollected) ?></th>
-                            <th class="cs-num"><?= cs_money($totalCommission, true, 'cs-money--brass') ?></th>
-                            <th></th>
-                        </tr>
-                    </tfoot>
                 </table>
             </div>
         <?php endif; ?>
     </div>
 </section>
 
+<?php if (! empty($legacy_payouts)): ?>
 <section class="cs-panel mb-3">
     <div class="cs-panel__head">
-        <h2 class="cs-panel__title">Commission payments</h2>
-        <p class="cs-panel__note">Each time your branch paid you commission for a period.</p>
+        <h2 class="cs-panel__title">Earlier commission payments</h2>
+        <p class="cs-panel__note">Recorded under the old "mark as paid" system. Kept for your records; no new ones are added.</p>
     </div>
     <div class="cs-panel__body cs-panel__body--flush">
-        <?php if (empty($payouts)): ?>
-            <?= view('components/empty_state', [
-                'icon'  => 'ti-cash',
-                'title' => 'No commission paid yet',
-                'text'  => 'When your branch pays you, the payment shows up here.',
-            ]) ?>
-        <?php else: ?>
-            <div class="cs-tablewrap">
-                <table class="cs-table">
-                    <thead>
+        <div class="cs-tablewrap">
+            <table class="cs-table">
+                <thead><tr><th>Period</th><th class="cs-num">Collected</th><th class="cs-num">Commission paid</th><th>Paid on</th></tr></thead>
+                <tbody>
+                    <?php foreach ($legacy_payouts as $p): ?>
                         <tr>
-                            <th>Period</th>
-                            <th class="cs-num">Collected</th>
-                            <th class="cs-num">Commission paid</th>
-                            <th>Paid on</th>
-                            <th>Paid by</th>
-                            <th>Reference</th>
+                            <td class="text-nowrap"><?= cs_date($p['period_start']) ?> - <?= cs_date($p['period_end']) ?></td>
+                            <td class="cs-num"><?= cs_money($p['total_collected']) ?></td>
+                            <td class="cs-num"><?= cs_money($p['commission_amount']) ?></td>
+                            <td class="text-nowrap"><?= cs_date($p['paid_at']) ?></td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($payouts as $p): ?>
-                            <tr>
-                                <td class="text-nowrap"><?= cs_date($p['period_start']) ?> - <?= cs_date($p['period_end']) ?></td>
-                                <td class="cs-num"><?= cs_money($p['total_collected']) ?></td>
-                                <td class="cs-num"><?= cs_money($p['commission_amount']) ?></td>
-                                <td class="text-nowrap"><?= cs_date($p['paid_at']) ?></td>
-                                <td><?= esc(trim((string) ($p['paid_by_first'] ?? '') . ' ' . (string) ($p['paid_by_last'] ?? '')) ?: '-') ?></td>
-                                <td><?= esc((string) ($p['reference'] ?: '-')) ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-        <?php endif; ?>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
     </div>
 </section>
-
-<section class="cs-panel">
-    <div class="cs-panel__head">
-        <h2 class="cs-panel__title">Awaiting verification</h2>
-        <p class="cs-panel__note">Not yet earned - counts once your branch admin verifies it.</p>
-    </div>
-    <div class="cs-panel__body cs-panel__body--flush">
-        <?php if (empty($pending)): ?>
-            <?= view('components/empty_state', [
-                'icon'  => 'ti-clock-check',
-                'title' => 'Nothing awaiting verification',
-                'text'  => 'Cash you record shows up here until your branch admin verifies it.',
-            ]) ?>
-        <?php else: ?>
-            <div class="cs-tablewrap">
-                <table class="cs-table">
-                    <thead>
-                        <tr>
-                            <th>Client</th>
-                            <th>Date</th>
-                            <th>OR Number</th>
-                            <th class="cs-num">Amount</th>
-                            <th class="cs-num">Projected Commission</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($pending as $row): ?>
-                            <tr>
-                                <td><?= esc((string) $row['client_name']) ?></td>
-                                <td class="text-nowrap"><?= cs_date($row['payment_date'] ?? null) ?></td>
-                                <td><?= esc((string) ($row['official_receipt_number'] ?: '-')) ?></td>
-                                <td class="cs-num"><?= cs_money($row['amount']) ?></td>
-                                <td class="cs-num"><?= cs_money($row['projected_commission']) ?></td>
-                                <td><?= cs_status('pending') ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-        <?php endif; ?>
-    </div>
-</section>
+<?php endif; ?>
 <?= $this->endSection() ?>

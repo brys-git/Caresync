@@ -843,9 +843,10 @@ class BranchManagementController extends BaseController
 
         foreach ($rows as &$row) {
             $totalCollected = (float) ($row['total_collected'] ?? 0);
-            $commission = $totalCollected * 0.10;
-            $row['staff_commission'] = number_format($commission, 2, '.', '');
-            $row['total_remitted'] = number_format($totalCollected - $commission, 2, '.', '');
+            // Commission is what collectors EARNED on confirmed remittances (Part E), not a flat share of everything.
+            $confirmed = (new \App\Services\RemittanceService())->confirmedForBranchName((string) ($row['branch_name'] ?? ''));
+            $row['staff_commission'] = number_format($confirmed['commission'], 2, '.', '');
+            $row['total_remitted'] = number_format($confirmed['net'], 2, '.', '');
             $row['total_collected'] = number_format($totalCollected, 2, '.', '');
         }
 
