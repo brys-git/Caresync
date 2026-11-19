@@ -62,6 +62,8 @@ $statusLabels = ['approved' => 'Approved', 'pending' => 'Pending', 'rejected' =>
 
             <?= view('partials/plan_standing', ['standing' => $standing ?? null, 'standing_details' => false]) ?>
 
+            <?= view('partials/two_part_amounts', ['plan_id' => (int) ($plan['plan_id'] ?? 0)]) ?>
+
             <div class="cp-top">
                 <section class="cp-next<?= $due['overdue'] ? ' cp-next--overdue' : '' ?>" aria-labelledby="cp-next-title">
                     <h2 id="cp-next-title" class="cp-label"><?= $due['overdue'] ? 'Payment overdue' : 'Next payment due' ?></h2>

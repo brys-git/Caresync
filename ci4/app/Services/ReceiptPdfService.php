@@ -126,6 +126,7 @@ class ReceiptPdfService
             'received_by'  => trim((string) ($row['rb_first'] ?? '') . ' ' . (string) ($row['rb_last'] ?? '')),
             'verified_by'  => trim((string) ($row['vb_first'] ?? '') . ' ' . (string) ($row['vb_last'] ?? '')),
             'remaining_after' => $remainingAfter,
+            'applied_to'   => (new ClaimAvailService())->appliedTo((int) $row['payment_id']),
             'branch'       => $branch,
         ];
 

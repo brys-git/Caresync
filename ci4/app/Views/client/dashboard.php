@@ -52,6 +52,8 @@ $progress = ! empty($summary) ? (float) $summary['progress_pct'] : ($planAmount 
     ['label' => 'Next due', 'icon' => 'ti-calendar', 'value' => strip_tags(cs_date($plan['next_due_date'] ?? null))],
 ]]) ?>
 
+<?= view('partials/two_part_amounts', ['plan_id' => (int) ($plan['plan_id'] ?? 0)]) ?>
+
 <div class="row g-3">
     <div class="col-lg-8">
         <section class="cs-panel mb-3">

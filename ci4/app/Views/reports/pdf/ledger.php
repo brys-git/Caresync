@@ -17,6 +17,7 @@ $kv = static fn (string $label, string $value): string =>
     </tbody>
 </table>
 
+<?php if (! empty($sections)): ?><h3 style="margin:8px 0 4px;">Plan contributions</h3><?php endif; ?>
 <table class="rpt-table">
     <thead>
         <tr>
@@ -51,5 +52,37 @@ $kv = static fn (string $label, string $value): string =>
         <tr class="rpt-total"><td colspan="2"><strong>Remaining balance</strong></td><td class="num"><strong><?= esc(cs_peso($remaining)) ?></strong></td><td colspan="4"></td></tr>
     </tfoot>
 </table>
+
+<?php foreach (($sections ?? []) as $s): ?>
+    <h3 style="margin:14px 0 4px;">Package: <?= esc($s['title']) ?> <span style="font-weight:normal;">(<?= esc($s['status']) ?>)</span></h3>
+    <table class="rpt-table" style="margin-bottom:6px;">
+        <tbody>
+            <?= $kv('Price', esc(cs_peso($s['price']))) ?>
+            <?= $kv('Down payment', esc($s['down'])) ?>
+            <?= $kv('Instalments', esc($s['term'])) ?>
+        </tbody>
+    </table>
+    <?php if ($s['waiver'] !== ''): ?><p class="rpt-note" style="margin:0 0 6px;"><strong>Note:</strong> <?= esc($s['waiver']) ?></p><?php endif; ?>
+    <table class="rpt-table">
+        <thead><tr><th>Date</th><th>Applied to</th><th class="num">Amount</th><th>Method</th><th>OR / Reference</th><th class="num">Balance</th></tr></thead>
+        <tbody>
+            <?php if ($s['rows'] === []): ?>
+                <tr><td colspan="6" class="rpt-empty">No payments on this package yet.</td></tr>
+            <?php else: foreach ($s['rows'] as $r): ?>
+                <tr><td><?= esc(date('M j, Y', strtotime($r['date']))) ?></td><td><?= esc($r['what']) ?></td><td class="num"><?= esc(cs_peso($r['amount'])) ?></td><td><?= esc($r['method']) ?></td><td><?= esc($r['ref'] !== '' ? $r['ref'] : '-') ?></td><td class="num"><?= esc(cs_peso($r['balance'])) ?></td></tr>
+            <?php endforeach; endif; ?>
+        </tbody>
+        <tfoot>
+            <tr><td colspan="2"><strong>Package paid</strong></td><td class="num"><strong><?= esc(cs_peso($s['paid'])) ?></strong></td><td colspan="3"></td></tr>
+            <tr class="rpt-total"><td colspan="2"><strong>Package balance</strong></td><td class="num"><strong><?= esc(cs_peso($s['balance'])) ?></strong></td><td colspan="3"></td></tr>
+        </tfoot>
+    </table>
+<?php endforeach; ?>
+<?php if (! empty($sections)): ?>
+    <table class="rpt-table" style="margin-top:12px;"><tbody>
+        <tr class="rpt-total"><td style="width:50%"><strong>Total paid (plan + package)</strong></td><td class="num"><strong><?= esc(cs_peso($grand_paid)) ?></strong></td></tr>
+        <tr class="rpt-total"><td><strong>Total balance (plan + package)</strong></td><td class="num"><strong><?= esc(cs_peso($grand_balance)) ?></strong></td></tr>
+    </tbody></table>
+<?php endif; ?>
 
 <p class="rpt-note" style="margin-top:10px;">Only verified payments are listed. Date generated: <?= esc($generated) ?> (Philippine time).</p>

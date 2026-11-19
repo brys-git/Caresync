@@ -13,6 +13,7 @@ $tone = static function (string $label): string {
     };
 };
 ?>
+<?= view('partials/two_part_amounts', ['plan_id' => (int) ($plan_id ?? 0), 'tpa_title' => 'What you owe now']) ?>
 <?php if ($balances !== null): ?>
 <section class="cs-panel mb-3">
     <div class="cs-panel__head"><h2 class="cs-panel__title">What you owe now</h2></div>

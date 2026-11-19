@@ -56,7 +56,7 @@
                         <td><?= esc($row['contact_number']) ?></td>
                         <td class="num"><?= cs_money($row['monthly_fee']) ?></td>
                         <td><?= $row['months_behind'] > 0 ? esc((string) $row['months_behind']) : '-' ?></td>
-                        <td class="num"><?= cs_money($row['amount_due']) ?></td>
+                        <td class="num"><?= cs_money($row['amount_due']) ?><?php if (! empty($row['has_package'])): ?><small class="d-block cs-muted">Plan <?= cs_money($row['plan_due']) ?> + Package <?= cs_money($row['package_due']) ?><?php if ($row['package_overdue'] > 0 || $row['plan_overdue'] > 0): ?><br><span class="text-danger">Overdue: <?= $row['plan_overdue'] > 0 ? 'plan ' . cs_money($row['plan_overdue']) : '' ?><?= $row['plan_overdue'] > 0 && $row['package_overdue'] > 0 ? ' · ' : '' ?><?= $row['package_overdue'] > 0 ? 'package ' . cs_money($row['package_overdue']) : '' ?></span><?php endif; ?></small><?php endif; ?></td>
                         <td></td>
                         <td></td>
                     </tr>

@@ -43,12 +43,17 @@ $row = static fn (string $label, string $value): string =>
         <?php if ($discount > 0): ?>
             <?= $row('Discount', esc(cs_peso($discount)) . ($discount_reason !== '' ? ' (' . esc($discount_reason) . ')' : '')) ?>
         <?php endif; ?>
+        <?php if (! empty($applied_to)): ?>
+            <?php foreach ($applied_to as $i => $a): ?>
+                <?= $row($i === 0 ? 'Applied to' : '', esc($a['label']) . ' &mdash; ' . esc(cs_peso($a['amount']))) ?>
+            <?php endforeach; ?>
+        <?php endif; ?>
         <?= $row('Payment method', esc($method_label)) ?>
         <?php if ($is_gcash): ?><?= $row('GCash reference number', esc($reference !== '' ? $reference : '-')) ?><?php endif; ?>
         <?= $row('Months covered', (int) $months . ' month' . ($months === 1 ? '' : 's')) ?>
         <?= $row('Coverage period', $coverage /* already escaped by cs_coverage_period() */) ?>
         <?php if ($remaining_after !== null): ?>
-            <?= $row('Remaining balance after this payment', esc(cs_peso($remaining_after))) ?>
+            <?= $row(! empty($applied_to) ? 'Remaining plan balance after this payment' : 'Remaining balance after this payment', esc(cs_peso($remaining_after))) ?>
         <?php endif; ?>
     </tbody>
 </table>

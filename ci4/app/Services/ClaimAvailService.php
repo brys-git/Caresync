@@ -1726,6 +1726,180 @@ class ClaimAvailService
         return $rows;
     }
     /* ======================================================================
+     * The two-part picture: plan + package, the same everywhere
+     * (client pages, staff pages, the collection list, receipts, the ledger PDF)
+     * ==================================================================== */
+
+    /**
+     * What a client owes, split into the plan part and the package part. Only meaningful when
+     * has_package is true; a client with no avail never sees any of it (every screen checks).
+     *
+     * @return array{has_package:bool, plan_id:int, plan:array<string,mixed>, package:array<string,mixed>, total:array<string,mixed>, pending_amount:float, pending_count:int}
+     */
+    public function moneyView(int $planId, ?string $asOf = null): array
+    {
+        $asOf ??= date('Y-m-d');
+        $db    = db_connect();
+        $empty = ['has_package' => false, 'plan_id' => $planId, 'plan' => [], 'package' => [], 'total' => [], 'pending_amount' => 0.0, 'pending_count' => 0];
+        if ($planId <= 0 || ! $this->tableReady('package_avails')) {
+            return $empty;
+        }
+
+        $avails = $db->table('package_avails pa')
+            ->select('pa.*, p.package_name, sl.service_name')
+            ->join('packages p', 'p.package_id = pa.package_id', 'left')
+            ->join('service_list sl', 'sl.service_list_id = pa.service_list_id', 'left')
+            ->where('pa.plan_id', $planId)
+            ->whereIn('pa.status', ['awaiting_down_payment', 'active'])
+            ->orderBy('pa.avail_id')
+            ->get()->getResultArray();
+        if ($avails === []) {
+            return $empty;
+        }
+
+        $summary = (new ClientPlanSummary())->forPlan($planId) ?? [];
+        $planBal = (float) ($summary['remaining_balance'] ?? 0);
+        $planMonthly = $planBal > 0.004 ? (float) ($summary['monthly_fee'] ?? 0) : 0.0;
+        $planOverdue = (float) ($summary['overdue_amount'] ?? 0);
+
+        $items = [];
+        $pkgBalance = 0.0; $pkgMonthly = 0.0; $pkgOverdue = 0.0; $pkgOverdueCount = 0; $downDue = 0.0; $nextDue = null;
+        foreach ($avails as $a) {
+            $paid = (float) ($db->table('payment_allocations')->selectSum('amount', 't')->where('avail_id', (int) $a['avail_id'])->get()->getRowArray()['t'] ?? 0);
+            $balance = max(0.0, round((float) $a['package_price'] - $paid, 2));
+
+            $inst = $db->table('package_avail_instalments')->where('avail_id', (int) $a['avail_id'])->orderBy('number')->get()->getResultArray();
+            $next = null; $over = 0.0; $overN = 0;
+            foreach ($inst as $i) {
+                $left = round((float) $i['amount'] - (float) $i['paid_amount'], 2);
+                if ($left <= 0.004) {
+                    continue;
+                }
+                $next ??= $i + ['left' => $left];
+                if (strcmp((string) $i['due_date'], $asOf) < 0) {
+                    $over += $left;
+                    $overN++;
+                }
+            }
+            $dl = $a['status'] === 'awaiting_down_payment' ? max(0.0, round((float) $a['down_payment_amount'] - $this->downPaymentPaid((int) $a['avail_id']), 2)) : 0.0;
+
+            $pkgBalance += $balance; $pkgOverdue += $over; $pkgOverdueCount += $overN; $downDue += $dl;
+            if ($next !== null) {
+                $pkgMonthly += (float) $next['left'];
+                $nextDue = $nextDue === null || strcmp((string) $next['due_date'], $nextDue) < 0 ? (string) $next['due_date'] : $nextDue;
+            }
+            $items[] = [
+                'avail_id' => (int) $a['avail_id'], 'label' => (string) ($a['package_name'] ?? $a['service_name'] ?? 'Package') . ((float) $a['addons_amount'] > 0 && $a['kind'] === 'addons' ? ' (add-on)' : ''),
+                'kind' => (string) $a['kind'], 'price' => (float) $a['package_price'], 'balance' => $balance, 'term' => (int) $a['term_months'],
+                'instalment' => $next !== null ? (float) $next['left'] : 0.0, 'next_number' => $next !== null ? (int) $next['number'] : 0, 'next_due' => $next !== null ? (string) $next['due_date'] : null,
+                'overdue' => round($over, 2), 'overdue_count' => $overN, 'down_due' => $dl, 'down_due_by' => $a['down_payment_due_by'], 'status' => (string) $a['status'],
+                'waived' => $a['down_payment_status'] === 'waived',
+            ];
+        }
+
+        $pending = $db->table('payments')->select('COUNT(*) AS n, COALESCE(SUM(amount), 0) AS t', false)->where('plan_id', $planId)->where('status', 'pending')->get()->getRowArray();
+
+        return [
+            'has_package' => true, 'plan_id' => $planId,
+            'plan' => ['monthly' => $planMonthly, 'balance' => $planBal, 'overdue' => $planOverdue, 'overdue_count' => (int) ($summary['overdue_count'] ?? 0), 'next_due' => $summary['next_due_date'] ?? null],
+            'package' => ['monthly' => round($pkgMonthly, 2), 'balance' => round($pkgBalance, 2), 'overdue' => round($pkgOverdue, 2), 'overdue_count' => $pkgOverdueCount, 'down_due' => round($downDue, 2), 'next_due' => $nextDue, 'items' => $items],
+            'total' => ['monthly' => round($planMonthly + $pkgMonthly, 2), 'balance' => round($planBal + $pkgBalance, 2), 'overdue' => round($planOverdue + $pkgOverdue, 2)],
+            'pending_amount' => round((float) ($pending['t'] ?? 0), 2), 'pending_count' => (int) ($pending['n'] ?? 0),
+        ];
+    }
+
+    /**
+     * The package part of a collection list row, for many plans at once: what is due on or before
+     * the date, what is overdue, and the monthly instalment - so the list and the route sheet show which
+     * part is behind.
+     *
+     * @param list<int> $planIds
+     *
+     * @return array<int, array{due:float, overdue:float, overdue_count:int, monthly:float, down_due:float}>
+     */
+    public function collectionParts(array $planIds, string $asOf): array
+    {
+        if ($planIds === [] || ! $this->tableReady('package_avails')) {
+            return [];
+        }
+        $db  = db_connect();
+        $out = [];
+        $rows = $db->table('package_avails pa')->select('pa.avail_id, pa.plan_id, pa.status, pa.down_payment_amount')->whereIn('pa.plan_id', $planIds)->whereIn('pa.status', ['awaiting_down_payment', 'active'])->get()->getResultArray();
+        foreach ($rows as $a) {
+            $pid = (int) $a['plan_id'];
+            $out[$pid] ??= ['due' => 0.0, 'overdue' => 0.0, 'overdue_count' => 0, 'monthly' => 0.0, 'down_due' => 0.0];
+            if ($a['status'] === 'awaiting_down_payment') {
+                $out[$pid]['down_due'] += max(0.0, round((float) $a['down_payment_amount'] - $this->downPaymentPaid((int) $a['avail_id']), 2));
+            }
+            $first = true;
+            foreach ($db->table('package_avail_instalments')->where('avail_id', (int) $a['avail_id'])->orderBy('number')->get()->getResultArray() as $i) {
+                $left = round((float) $i['amount'] - (float) $i['paid_amount'], 2);
+                if ($left <= 0.004) {
+                    continue;
+                }
+                if ($first) {
+                    $out[$pid]['monthly'] += $left;
+                    $first = false;
+                }
+                if (strcmp((string) $i['due_date'], $asOf) <= 0) {
+                    $out[$pid]['due'] += $left;
+                }
+                if (strcmp((string) $i['due_date'], $asOf) < 0) {
+                    $out[$pid]['overdue'] += $left;
+                    $out[$pid]['overdue_count']++;
+                }
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Where a payment went, for the receipt: "Plan Oct 2026 ₱240.00", "Instalment 1 of 12 ₱2,916.67",
+     * "Down payment ₱15,000.00". Empty for a payment with no allocation rows (every payment of a client
+     * without an avail), so those receipts stay exactly as they are.
+     *
+     * @return list<array{label:string, amount:float}>
+     */
+    public function appliedTo(int $paymentId): array
+    {
+        if (! $this->tableReady('payment_allocations')) {
+            return [];
+        }
+        $db   = db_connect();
+        $rows = $db->table('payment_allocations a')
+            ->select('a.target_type, a.contribution_number, a.amount, a.plan_id, i.number AS inst_no, pa.term_months, pa.kind, p.package_name, sl.service_name')
+            ->join('package_avail_instalments i', 'i.instalment_id = a.instalment_id', 'left')
+            ->join('package_avails pa', 'pa.avail_id = a.avail_id', 'left')
+            ->join('packages p', 'p.package_id = pa.package_id', 'left')
+            ->join('service_list sl', 'sl.service_list_id = pa.service_list_id', 'left')
+            ->where('a.payment_id', $paymentId)
+            ->orderBy('a.allocation_id')
+            ->get()->getResultArray();
+        if ($rows === []) {
+            return [];
+        }
+
+        $plan   = $db->table('plans')->where('plan_id', (int) $rows[0]['plan_id'])->get(1)->getRowArray() ?: [];
+        $marker = (string) ($plan['contribution_cycle_started_at'] ?? '');
+        $anchor = date('Y-m-d', strtotime($marker !== '' ? $marker : (string) ($plan['start_date'] ?? date('Y-m-d'))));
+
+        $out = [];
+        foreach ($rows as $r) {
+            $what = (string) ($r['package_name'] ?? $r['service_name'] ?? 'package');
+            if ($r['target_type'] === 'plan_contribution') {
+                $label = 'Plan ' . date('M Y', strtotime(PlanLedgerService::addMonths($anchor, max(0, (int) $r['contribution_number'] - 1))));
+            } elseif ($r['target_type'] === 'avail_instalment') {
+                $label = 'Instalment ' . (int) $r['inst_no'] . ' of ' . (int) $r['term_months'] . ' (' . $what . ')';
+            } else {
+                $label = ($r['kind'] === 'addons' ? 'Add-on payment' : 'Down payment') . ' (' . $what . ')';
+            }
+            $out[] = ['label' => $label, 'amount' => (float) $r['amount']];
+        }
+
+        return $out;
+    }
+    /* ======================================================================
      * Small helpers
      * ==================================================================== */
 

@@ -541,10 +541,8 @@ class CollectionListController extends BaseController
         // needs HAVING instead. This runs after the CASE above has already
         // been computed once per row, so it's not a second pass over the
         // EXISTS subquery - just a cheap string comparison on the result.
-        if ($filters['status'] !== '') {
-            $sql .= ' HAVING collection_status = ?';
-            $params[] = $filters['status'];
-        }
+        // (the status filter is applied in PHP below, after the package part is folded in:
+        // a plan that is fine on its contribution can still be behind on a package instalment)
 
         // Reuses the collection_status alias rather than re-deriving it -
         // one CASE evaluation (with its EXISTS subquery) per row, not three.
@@ -556,6 +554,8 @@ class CollectionListController extends BaseController
 
         $rows = db_connect()->query($sql, $params)->getResultArray();
 
+        $parts = (new \App\Services\ClaimAvailService())->collectionParts(array_map(static fn ($r) => (int) $r['plan_id'], $rows), (string) $filters['as_of']);
+
         $result = [];
         foreach ($rows as $row) {
             $monthlyFee = (float) $row['monthly_fee'];
@@ -564,6 +564,23 @@ class CollectionListController extends BaseController
 
             $monthsBehind = $status === 'overdue' ? max(1, $overdueMonths) : 0;
             $amountDue = in_array($status, ['overdue', 'due'], true) ? $monthlyFee * max(1, $monthsBehind) : 0.0;
+
+            // Package part (only for a plan with an avail; every other row is untouched)
+            $pk = $parts[(int) $row['plan_id']] ?? null;
+            $pkgDue = 0.0; $pkgOverdue = 0.0; $pkgMonthly = 0.0;
+            if ($pk !== null) {
+                $pkgDue     = round($pk['due'] + $pk['down_due'], 2);
+                $pkgOverdue = round($pk['overdue'], 2);
+                $pkgMonthly = round($pk['monthly'], 2);
+                if ($status !== 'awaiting_verification' && ($pkgDue > 0 || $pk['overdue_count'] > 0)) {
+                    $status = $pk['overdue_count'] > 0 ? 'overdue' : (in_array($status, ['overdue'], true) ? 'overdue' : 'due');
+                }
+            }
+            $planDue = $amountDue;
+            $amountDue = round($planDue + $pkgDue, 2);
+            if ($filters['status'] !== '' && $status !== $filters['status']) {
+                continue;
+            }
 
             $result[] = [
                 'plan_id' => (int) $row['plan_id'],
@@ -576,6 +593,12 @@ class CollectionListController extends BaseController
                 'monthly_fee' => $monthlyFee,
                 'months_behind' => $monthsBehind,
                 'amount_due' => $amountDue,
+                'has_package' => $pk !== null,
+                'plan_due' => $planDue,
+                'package_due' => $pkgDue,
+                'package_monthly' => $pkgMonthly,
+                'plan_overdue' => $status === 'overdue' && $monthsBehind > 0 ? $planDue : 0.0,
+                'package_overdue' => $pkgOverdue,
                 'collection_status' => $status,
                 'can_visit' => in_array($status, ['overdue', 'due'], true),
                 'remarks' => (string) ($row['remarks'] ?? ''),

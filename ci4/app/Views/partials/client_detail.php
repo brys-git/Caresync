@@ -78,6 +78,8 @@ $qs = static function (array $over) use ($filters): string {
 
 <?= view('partials/plan_ledger_panel', ['ledger' => $summary['ledger'] ?? null, 'reinstate_url' => $urls['reinstate']]) ?>
 
+<?= view('partials/two_part_amounts', ['plan_id' => (int) ($summary['plan_id'] ?? 0), 'tpa_title' => 'Plan and package amounts']) ?>
+
 <?php if ($summary === null): ?>
     <section class="cs-panel mb-3">
         <div class="cs-panel__body">

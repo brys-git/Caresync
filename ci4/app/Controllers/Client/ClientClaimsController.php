@@ -28,6 +28,7 @@ class ClientClaimsController extends BaseController
             'page_sub'    => 'Your claims, packages and services, and what you still owe on them.',
             'requests'    => $requests,
             'balances'    => $plan ? $service->balances((int) $plan['plan_id']) : null,
+            'plan_id'     => $plan ? (int) $plan['plan_id'] : 0,
         ]);
     }
 }
