@@ -44,9 +44,9 @@ $routes->group('dashboard', ['filter' => 'auth'], static function (RouteCollecti
     $routes->get('collector', 'Dashboard::collector', ['filter' => 'role:5']);
 });
 
-// Plan Holder Registration Routes (accessible by Admin: 1, BranchAdmin: 2)
+// Plan holder verification queue (Admin: 1, BranchAdmin: 2). The old POST plan-holders/store registration route was
+// removed: every registration goes through the shared wizard (branch-admin/client/register, admin/client/register).
 $routes->get('plan-holders/register', 'PlanHolders::register', ['filter' => 'auth']);
-$routes->post('plan-holders/store', 'PlanHolders::store', ['filter' => 'auth']);
 // Approve/reject a pending plan holder registration - PlanHolders::approve()/
 // reject() already existed fully implemented (role check + branch scoping
 // done inside the controller, same as register/store above) but were never
