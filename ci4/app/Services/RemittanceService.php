@@ -7,15 +7,20 @@ use Config\CareSync;
 /**
  * Collector remittances and commission (Part E) - the ONE place for the rules.
  *
- *  1. A collector's CASH collections that are verified ('paid') and not yet in a remittance are "available".
- *  2. The collector picks some of them and remits: gross = their total; commission = rate x the commission base;
+ *  1. What a collector collects in the field - cash, or a client's GCash reference they checked on their own GCash
+ *     account (Config\CareSync::$remitGcash) - is "collected, awaiting remittance" (status 'pending' +
+ *     payments.awaiting_remittance = 1). The client has paid, so it already counts for the plan ledger / overdue.
+ *     Collections not yet in a remittance are "available". Any number of partial remittances per month is fine.
+ *  2. The collector picks some of them (default: all) and remits: gross = their total; commission = rate x the commission base;
  *     net to hand over = gross - commission. The commission base depends on Config\CareSync::$commissionAppliesTo:
  *       'plan_only'        the plan-contribution part of each collection (default: package down payments and
  *                          instalments earn nothing)
  *       'all_collections'  the whole collection
  *     The rate and the rule are copied onto the remittance, so a later change of the setting never rewrites it.
- *  3. The Branch Admin of that branch confirms it (the cash was received) or reports a discrepancy (what was actually
- *     received and why it differs). A discrepancy can still be confirmed later once it is sorted out.
+ *  3. The Branch Admin of that branch confirms it (the money was received): in ONE transaction every payment of that
+ *     remittance becomes 'paid' through the normal verification path (PaymentVerificationService). Or they report a
+ *     discrepancy (what was actually received and why): only that remittance goes on hold, its payments stay awaiting.
+ *     A discrepancy can still be confirmed later once it is sorted out.
  *  4. Commission is EARNED only when the remittance is confirmed. Submitted and discrepancy remittances are shown as
  *     pending / on hold.
  *
@@ -36,7 +41,7 @@ class RemittanceService
     {
         $db = db_connect();
 
-        return $db->tableExists('remittances') && $db->fieldExists('remittance_id', 'payments');
+        return $db->tableExists('remittances') && $db->fieldExists('remittance_id', 'payments') && PaymentService::collectedReady();
     }
 
     public function rate(): float
@@ -77,13 +82,20 @@ class RemittanceService
         $rows = $this->paymentQuery()
             ->where('pay.received_by', $collectorUserId)
             ->where('pay.branch_id', $branchId)
-            ->where('pay.payment_method', 'cash')
-            ->where('pay.status', 'paid')
+            ->whereIn('pay.payment_method', $this->remittableMethods())
+            ->where('pay.status', 'pending')
+            ->where('pay.awaiting_remittance', 1)
             ->where('pay.remittance_id', null)
             ->orderBy('pay.payment_date', 'ASC')->orderBy('pay.payment_id', 'ASC')
             ->get()->getResultArray();
 
         return $this->decorate($rows, $this->rate(), $this->appliesTo());
+    }
+
+    /** Payment methods that go into a remittance (GCash only when the setting says so). @return list<string> */
+    public function remittableMethods(): array
+    {
+        return $this->cfg->remitGcash ? ['cash', 'gcash'] : ['cash'];
     }
 
     /**
@@ -96,7 +108,7 @@ class RemittanceService
     public function preview(int $collectorUserId, int $branchId, array $paymentIds): array
     {
         $ids = array_values(array_unique(array_filter(array_map('intval', $paymentIds), static fn (int $i): bool => $i > 0)));
-        $out = ['ok' => false, 'message' => '', 'rows' => [], 'gross' => 0.0, 'base' => 0.0, 'commission' => 0.0, 'net' => 0.0, 'rate' => $this->rate(), 'applies_to' => $this->appliesTo()];
+        $out = ['ok' => false, 'message' => '', 'rows' => [], 'cash' => 0.0, 'gcash' => 0.0, 'gross' => 0.0, 'base' => 0.0, 'commission' => 0.0, 'net' => 0.0, 'rate' => $this->rate(), 'applies_to' => $this->appliesTo()];
         if ($ids === []) {
             $out['message'] = 'Select at least one collection to remit.';
 
@@ -117,7 +129,10 @@ class RemittanceService
         foreach ($out['rows'] as $r) {
             $out['gross'] += (float) $r['amount'];
             $out['base'] += (float) $r['commission_base'];
+            $out[$r['payment_method'] === 'gcash' ? 'gcash' : 'cash'] += (float) $r['amount'];
         }
+        $out['cash'] = round($out['cash'], 2);
+        $out['gcash'] = round($out['gcash'], 2);
         $out['gross'] = round($out['gross'], 2);
         $out['base'] = round($out['base'], 2);
         $out['commission'] = round($out['base'] * $out['rate'], 2);
@@ -160,6 +175,8 @@ class RemittanceService
                 'status' => 'submitted',
                 'payment_count' => count($p['rows']),
                 'gross_amount' => $p['gross'],
+                'cash_amount' => $p['cash'],
+                'gcash_amount' => $p['gcash'],
                 'commission_rate' => $p['rate'],
                 'commission_applies_to' => $p['applies_to'],
                 'commission_base' => $p['base'],
@@ -213,7 +230,11 @@ class RemittanceService
         return ['ok' => true, 'message' => 'Remittance #' . $remittanceId . ' cancelled. Its collections can be remitted again.'];
     }
 
-    /** The Branch Admin confirms the cash was received (also resolves a discrepancy). */
+    /**
+     * The Branch Admin confirms the money was received (also resolves a discrepancy). In ONE transaction the remittance
+     * becomes 'confirmed' and each of its payments becomes 'paid' through the normal verification path - if any
+     * payment cannot be confirmed nothing at all changes.
+     */
     public function confirm(int $remittanceId, int $branchId, int $byUserId): array
     {
         $db = db_connect();
@@ -229,11 +250,35 @@ class RemittanceService
 
             return ['ok' => false, 'message' => 'This remittance is already ' . $r['status'] . '.'];
         }
-        $db->table('remittances')->where('remittance_id', $remittanceId)->update([
-            'status' => 'confirmed', 'confirmed_by' => $byUserId, 'confirmed_at' => date('Y-m-d H:i:s'),
-            'received_amount' => $r['received_amount'] !== null ? $r['received_amount'] : $r['net_amount'],
-        ]);
-        $db->transCommit();
+        try {
+            $verification = new PaymentVerificationService();
+            $pays = $db->query('SELECT payment_id, status, awaiting_remittance FROM payments WHERE remittance_id = ? ORDER BY payment_id FOR UPDATE', [$remittanceId])->getResultArray();
+            // Check everything first: either all of its payments can be confirmed or none is touched.
+            if (count($pays) !== (int) $r['payment_count']) {
+                throw new \RuntimeException('The remittance does not hold the payments it was made with.');
+            }
+            foreach ($pays as $pay) {
+                if ($pay['status'] !== 'pending' || (int) $pay['awaiting_remittance'] !== 1) {
+                    throw new \RuntimeException('Payment #' . (int) $pay['payment_id'] . ' is not waiting for confirmation.');
+                }
+            }
+            foreach ($pays as $pay) {
+                $verification->confirmCollected((int) $pay['payment_id'], $byUserId, 'Confirmed with remittance #' . $remittanceId);
+            }
+            $db->table('remittances')->where('remittance_id', $remittanceId)->update([
+                'status' => 'confirmed', 'confirmed_by' => $byUserId, 'confirmed_at' => date('Y-m-d H:i:s'),
+                'received_amount' => $r['received_amount'] !== null ? $r['received_amount'] : $r['net_amount'],
+            ]);
+            if ($db->transStatus() === false) {
+                throw new \RuntimeException('A database step failed.');
+            }
+            $db->transCommit();
+        } catch (\Throwable $e) {
+            $db->transRollback();
+            log_message('error', 'RemittanceService::confirm failed for remittance ' . $remittanceId . ': ' . $e->getMessage());
+
+            return ['ok' => false, 'message' => 'The remittance could not be confirmed. Nothing was changed - please try again.'];
+        }
         (new NotificationService())->notify((int) $r['collector_user_id'], 'Remittance #' . $remittanceId . ' was confirmed. Your commission of ' . cs_peso((float) $r['commission_amount']) . ' is now earned.', 'general');
 
         return ['ok' => true, 'message' => 'Remittance #' . $remittanceId . ' confirmed.'];
@@ -462,7 +507,7 @@ class RemittanceService
     private function paymentQuery()
     {
         return db_connect()->table('payments pay')
-            ->select("pay.payment_id, pay.payment_date, pay.amount, pay.official_receipt_number, pay.remittance_id, pay.plan_id, cu.first_name, cu.last_name, ph.unique_identifier,"
+            ->select("pay.payment_id, pay.payment_date, pay.payment_method, pay.reference_number, pay.collected_at, pay.status, pay.amount, pay.official_receipt_number, pay.remittance_id, pay.plan_id, cu.first_name, cu.last_name, ph.unique_identifier,"
                 . " (SELECT COALESCE(SUM(al.amount),0) FROM payment_allocations al WHERE al.payment_id = pay.payment_id AND al.target_type IN ('avail_instalment','avail_down_payment')) AS package_part", false)
             ->join('plans pl', 'pl.plan_id = pay.plan_id', 'inner')
             ->join('plan_holders ph', 'ph.plan_holder_id = pl.plan_holder_id', 'inner')

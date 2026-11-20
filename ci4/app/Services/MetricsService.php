@@ -438,7 +438,8 @@ class MetricsService
         $builder = db_connect()->table('payments pay')
             ->join('plans pl', 'pl.plan_id = pay.plan_id', 'left')
             ->join('plan_holders ph', 'ph.plan_holder_id = pl.plan_holder_id', 'left')
-            ->where('pay.status', 'pending');
+            // Money a collector already collected is confirmed with their remittance, not as a pending payment.
+            ->where(PaymentService::plainPendingSql('pay'), null, false);
 
         if ($branchId !== null && $branchId > 0) {
             $builder->where('COALESCE(NULLIF(pay.branch_id, 0), ph.branch_id) =', $branchId, false);

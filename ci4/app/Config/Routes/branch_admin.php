@@ -186,6 +186,8 @@ $routes->group('branch-admin', ['filter' => 'auth'], static function (RouteColle
     $routes->get('reports/overdue', 'BranchAdmin\ReportController::overdue', ['filter' => 'role:2']);
     $routes->get('reports/avails', 'BranchAdmin\ReportController::avails', ['filter' => 'role:2']);
     $routes->get('reports/commission', 'BranchAdmin\ReportController::commission', ['filter' => 'role:2']);
+    $routes->get('reports/monthly-summary', 'BranchAdmin\ReportController::monthlySummary', ['filter' => 'role:2']);
+    $routes->get('remittances/months/(:num)', 'BranchAdmin\RemittanceController::monthSummary/$1', ['filter' => 'role:2']);
     // The old Analytics page is part of the Dashboard now; old links and bookmarks still work.
     $routes->get('analytics', static fn () => redirect()->to('/dashboard/branch-admin', 301), ['filter' => 'role:2']);
 

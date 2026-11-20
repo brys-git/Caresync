@@ -183,6 +183,43 @@ trim((string) ($row['first_name'] ?? '') . ' ' . (string) ($row['last_name'] ?? 
         ]);
     }
 
+    /** Monthly collection summary of this branch's collectors. */
+    public function monthlySummary()
+    {
+        $this->ensureBranchAdminAccess();
+        $branchId = (int) session('branch_id');
+        if ($branchId <= 0) {
+            throw PageNotFoundException::forPageNotFound();
+        }
+        $filters = [
+            'month_from' => \App\Services\CollectionMonthService::monthKeyOrEmpty((string) $this->request->getGet('month_from')),
+            'month_to' => \App\Services\CollectionMonthService::monthKeyOrEmpty((string) $this->request->getGet('month_to')),
+            'branch_id' => $branchId,
+            'search' => cs_search_term($this->request->getGet('search')),
+        ];
+        $rows = (new \App\Services\CollectionMonthService())->summaries($filters);
+        $mode = (string) $this->request->getGet('mode');
+
+        if ($mode === 'csv') {
+            return $this->simpleCsv('monthly_collection_summary', \App\Services\CollectionMonthService::csvHeaders(), $rows, static fn (array $r): array => \App\Services\CollectionMonthService::csvRow($r));
+        }
+        if ($mode === 'pdf' || $mode === 'print') {
+            return $this->pdfResponse('monthly', ['rows' => $rows], $branchId, $filters + ['filter_lines' => []], $mode === 'print');
+        }
+
+        return view('admin/reports/monthly_summary', [
+            'role_layout' => 'layouts/branch_admin',
+            'page_title' => 'Monthly collection summary',
+            'page_sub' => 'What each collector collected, did not collect and remitted, per closed month.',
+            'reports_base_path' => '/branch-admin/reports',
+            'reports_hidden_tabs' => ['ledger', 'collections'],
+            'active_report' => 'monthly-summary',
+            'detail_base' => 'branch-admin/remittances/months',
+            'filters' => $filters,
+            'rows' => $rows,
+        ]);
+    }
+
     public function generate()
     {
         $this->ensureBranchAdminAccess();

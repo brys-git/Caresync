@@ -33,6 +33,9 @@ $routes->group('collector', ['filter' => 'auth'], static function (RouteCollecti
     // Remittances (Part E): hand over the cash collected, keep the commission once the Branch Admin confirms.
     $routes->get('remit', 'CollectorRemittanceController::index', ['filter' => 'collector']);
     $routes->post('remit', 'CollectorRemittanceController::submit', ['filter' => 'collector']);
+    $routes->post('remit/not-collected', 'CollectorRemittanceController::markNotCollected', ['filter' => 'collector']);
+    $routes->post('remit/not-collected/undo', 'CollectorRemittanceController::clearNotCollected', ['filter' => 'collector']);
+    $routes->post('remit/close-month', 'CollectorRemittanceController::closeMonth', ['filter' => 'collector']);
     $routes->get('remit/(:num)', 'CollectorRemittanceController::show/$1', ['filter' => 'collector']);
     $routes->post('remit/cancel/(:num)', 'CollectorRemittanceController::cancel/$1', ['filter' => 'collector']);
     $routes->get('collection-list/print', 'CollectionListController::printCollector', ['filter' => 'collector']);

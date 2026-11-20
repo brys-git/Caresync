@@ -22,6 +22,15 @@ $attention = [
     ['branch-admin/reports/overdue', 'ti-alert-triangle', 'Package instalments overdue (₱' . number_format((float) ($pk['overdue_amount'] ?? 0), 2) . ')', (int) ($pk['overdue_instalments'] ?? 0)],
     ['branch-admin/service-package/ongoing',           'ti-calendar-event',     'Service events today without a crew',   $unassigned],
 ];
+// Collectors: money held too long, and months not closed in time.
+$ca = $collection_alerts ?? ['unremitted' => [], 'unclosed' => [], 'max_days' => 7];
+if (! empty($ca['unremitted'])) {
+    $names = array_values(array_unique(array_filter(array_map(static fn (array $r): string => (string) $r['collector_name'], $ca['unremitted']))));
+    $attention[] = ['branch-admin/remittances', 'ti-clock-exclamation', 'Collected payments not remitted for more than ' . (int) $ca['max_days'] . ' days (' . implode(', ', $names) . ')', count($ca['unremitted'])];
+}
+foreach (($ca['unclosed'] ?? []) as $u) {
+    $attention[] = ['branch-admin/reports/monthly-summary', 'ti-calendar-x', 'Collector ' . $u['collector_name'] . ' hasn\'t closed ' . $u['month_label'], 1];
+}
 $attention = array_values(array_filter($attention, static fn (array $row): bool => $row[3] > 0));
 
 // Daily collections this month, every day of the month (days with no payment are empty bars).

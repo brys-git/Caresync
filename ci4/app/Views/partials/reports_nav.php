@@ -14,6 +14,7 @@ $tabs = [
     'avails' => 'Avails and waivers',
     'commission' => 'Commission',
     'remittance' => 'Remittance',
+    'monthly-summary' => 'Monthly collection summary',
 ];
 ?>
 <ul class="nav nav-tabs mb-3">

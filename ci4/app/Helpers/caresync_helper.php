@@ -128,6 +128,24 @@ if (! function_exists('cs_status')) {
     }
 }
 
+if (! function_exists('cs_payment_status')) {
+    /**
+     * A payment's status badge. A payment a collector collected that the office has not confirmed yet is 'pending' in
+     * the database but, for people, it is "Paid to collector - waiting for office confirmation" (with its OR / reference).
+     */
+    function cs_payment_status(array $payment): string
+    {
+        $status = strtolower(trim((string) ($payment['status'] ?? 'pending')));
+        if ($status === 'pending' && (int) ($payment['awaiting_remittance'] ?? 0) === 1) {
+            $ref = trim((string) (($payment['official_receipt_number'] ?? '') !== '' ? $payment['official_receipt_number'] : ($payment['reference_number'] ?? '')));
+
+            return cs_status('pending', \App\Services\PaymentService::COLLECTED_LABEL . ($ref !== '' ? ' (' . $ref . ')' : ''));
+        }
+
+        return cs_status($status);
+    }
+}
+
 if (! function_exists('cs_date')) {
     /** Dates read the same everywhere: 14 Sep 2026. */
     function cs_date($value, bool $withTime = false): string

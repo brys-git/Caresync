@@ -131,9 +131,10 @@ class ClientPaymentController extends BaseController
                     'cash' => 'Cash · branch',
                     default => $method !== '' ? ucfirst($method) : '—',
                 },
-                'status' => match ($status) {
-                    'paid' => 'approved',
-                    'cancelled' => 'rejected',
+                'status' => match (true) {
+                    $status === 'paid' => 'approved',
+                    $status === 'cancelled' => 'rejected',
+                    $status === 'pending' && (int) ($payment['awaiting_remittance'] ?? 0) === 1 => 'collected',
                     default => 'pending',
                 },
                 'receipt' => $receipt !== '' ? $receipt : null,

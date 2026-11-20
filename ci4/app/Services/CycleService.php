@@ -183,8 +183,11 @@ class CycleService
             return;
         }
 
+        // A payment keeps the cycle it was first counted in (a collector's collection is counted when it is collected,
+        // and counted again, unchanged, when the office confirms it).
         db_connect()->table('payments')
             ->where('payment_id', $paymentId)
+            ->where('cycle_number', null)
             ->update(['cycle_number' => (int) ($plan['current_cycle_number'] ?? 1)]);
 
         // A client with an avail: split this payment between plan contributions and package

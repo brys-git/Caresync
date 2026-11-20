@@ -94,7 +94,7 @@ $progress = ! empty($summary) ? (float) $summary['progress_pct'] : ($planAmount 
                                                 Payment recorded via <?= esc(strtoupper((string) ($payment['payment_method'] ?? '—'))) ?>
                                             <?php endif; ?>
                                         </td>
-                                        <td><?= cs_status((string) ($payment['status'] ?? 'pending')) ?></td>
+                                        <td><?= cs_payment_status($payment) ?></td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>

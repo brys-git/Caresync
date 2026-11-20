@@ -97,6 +97,7 @@ class Dashboard extends BaseController
             'unassigned_services' => $unassignedServices,
             'activity_logs' => $activityLogs,
             'payment_analytics' => $paymentAnalytics,
+            'collection_alerts' => $this->collectionAlerts($branchId),
         ]);
     }
 
@@ -157,6 +158,23 @@ class Dashboard extends BaseController
     private function getBranchId(): int
     {
         return (int) session()->get('branch_id');
+    }
+
+    /**
+     * What the Branch Admin should chase about collectors: money collected but not remitted within the limit, and a
+     * month a collector has not closed by the due day.
+     *
+     * @return array{unremitted:list<array<string,mixed>>, unclosed:list<array<string,mixed>>, max_days:int}
+     */
+    private function collectionAlerts(int $branchId): array
+    {
+        $svc = new \App\Services\CollectionMonthService();
+
+        return [
+            'unremitted' => $svc->unremittedPastLimit($branchId),
+            'unclosed' => $svc->unclosedMonths($branchId),
+            'max_days' => (int) config('CareSync')->remittanceMaxDays,
+        ];
     }
 
     private function getTodayServiceCalendar(int $branchId): array

@@ -28,6 +28,7 @@ class ReportPdfService
         'receipt'    => ['Official Receipt', 'reports/pdf/receipt', 'portrait', 'receipt'],
         'avails'     => ['Avails and Waivers Report', 'reports/pdf/avails', 'landscape', 'avails_report'],
         'ledger'     => ['Ledger of Plan Holder', 'reports/pdf/ledger', 'portrait', 'ledger'],
+        'monthly'    => ['Monthly Collection Summary', 'reports/pdf/monthly_summary', 'landscape', 'monthly_collection_summary'],
     ];
 
     /**

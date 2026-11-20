@@ -6,7 +6,7 @@ $state = (string) ($access['state'] ?? 'unregistered');
 $e = static fn ($v): string => esc((string) ($v ?? ''));
 $peso = static fn ($v): string => '₱' . number_format((float) $v, 2);
 $fmt = static fn (?string $d): string => ($d !== null && $d !== '' && strtotime($d) !== false) ? date('j M Y', strtotime($d)) : '—';
-$statusLabels = ['approved' => 'Approved', 'pending' => 'Pending', 'rejected' => 'Rejected'];
+$statusLabels = ['approved' => 'Approved', 'pending' => 'Pending', 'rejected' => 'Rejected', 'collected' => 'Paid to collector - waiting for office confirmation'];
 ?>
 <?php // Flash messages are already surfaced as toasts by layouts/_shell.php - no need to render them again here. ?>
 

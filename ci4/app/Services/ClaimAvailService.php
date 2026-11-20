@@ -936,7 +936,7 @@ class ClaimAvailService
         }
 
         $payment = db_connect()->table('payments')->select('payment_type, status')->where('payment_id', $paymentId)->get(1)->getRowArray();
-        if ($payment === null || ! in_array($payment['status'], ['paid', 'verified'], true) || $payment['payment_type'] === 'reinstatement_fee') {
+        if ($payment === null || ! $this->paymentCounts($paymentId) || $payment['payment_type'] === 'reinstatement_fee') {
             return;
         }
 
@@ -947,6 +947,12 @@ class ClaimAvailService
         }
 
         $this->reallocatePlan($planId, [$paymentId]);
+    }
+
+    /** Whether a payment counts as money received (paid/verified, or collected by a collector and awaiting confirmation). */
+    private function paymentCounts(int $paymentId): bool
+    {
+        return db_connect()->table('payments')->where('payment_id', $paymentId)->where(PaymentService::countedSql('payments'), null, false)->countAllResults() > 0;
     }
 
     /** Call when a payment is rejected, cancelled or reversed: its slices go and everything is recomputed. */
@@ -991,7 +997,7 @@ class ClaimAvailService
             ->select('payment_id, payment_date, amount, payment_type, avail_id, verified_at')
             ->where('plan_id', $planId)
             ->whereIn('payment_id', $ids)
-            ->whereIn('status', ['paid', 'verified'])
+            ->where(PaymentService::countedSql('payments'), null, false)
             ->where('payment_type !=', 'reinstatement_fee')
             ->get()->getResultArray();
         usort($payments, static fn (array $a, array $b): int => [(string) $a['payment_date'], (int) $a['payment_id']] <=> [(string) $b['payment_date'], (int) $b['payment_id']]);
@@ -1812,7 +1818,7 @@ class ClaimAvailService
             ];
         }
 
-        $pending = $db->table('payments')->select('COUNT(*) AS n, COALESCE(SUM(amount), 0) AS t', false)->where('plan_id', $planId)->where('status', 'pending')->get()->getRowArray();
+        $pending = $db->table('payments')->select('COUNT(*) AS n, COALESCE(SUM(amount), 0) AS t', false)->where('plan_id', $planId)->where(PaymentService::plainPendingSql('payments'), null, false)->get()->getRowArray();
 
         return [
             'has_package' => true, 'plan_id' => $planId,
@@ -1843,7 +1849,7 @@ class ClaimAvailService
         }
         $paidBy = static function (string $col, int $id) use ($db, $asOf): float {
             return (float) ($db->table('payment_allocations al')->selectSum('al.amount', 't')->join('payments p', 'p.payment_id = al.payment_id', 'inner')
-                ->where("al.$col", $id)->where('p.status', 'paid')->where('p.payment_date <=', $asOf)->get()->getRowArray()['t'] ?? 0);
+                ->where("al.$col", $id)->where(PaymentService::countedSql('p'), null, false)->where('p.payment_date <=', $asOf)->get()->getRowArray()['t'] ?? 0);
         };
         $out = ['has_package' => true, 'balance' => 0.0, 'overdue_count' => 0, 'overdue_amount' => 0.0, 'oldest_due' => null];
         foreach ($avails as $a) {

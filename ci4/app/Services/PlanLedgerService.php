@@ -313,7 +313,7 @@ class PlanLedgerService
         $pending = $db->table('payments')
             ->select('payment_date, amount')
             ->where('plan_id', $planId)
-            ->where('status', 'pending')
+            ->where(PaymentService::plainPendingSql('payments'), null, false)
             ->whereNotIn('payment_type', ['reinstatement_fee', 'avail_down_payment'])
             ->where('deleted_at IS NULL', null, false)
             ->get()
@@ -380,7 +380,7 @@ class PlanLedgerService
         $builder = $db->table('payments')
             ->select("payments.payment_id, payments.payment_date, $amount AS plan_amount", false)
             ->where('payments.plan_id', (int) $plan['plan_id'])
-            ->whereIn('payments.status', ['paid', 'verified'])
+            ->where(PaymentService::countedSql('payments'), null, false)
             ->whereNotIn('payments.payment_type', ['reinstatement_fee', 'avail_down_payment'])
             ->where('payments.cycle_number', $cycle);
         if ($excludePaymentIds !== []) {

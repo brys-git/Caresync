@@ -72,6 +72,17 @@ class RemittanceController extends BaseController
         ]);
     }
 
+    /** One closed month of a collector of this branch (view and print). */
+    public function monthSummary(int $id): ResponseInterface|string
+    {
+        $s = (new \App\Services\CollectionMonthService())->summary($id);
+        if ($s === null || (int) $s['branch_id'] !== (int) session('branch_id')) {
+            return redirect()->to('/branch-admin/reports/monthly-summary')->with('error', 'Summary not found.');
+        }
+
+        return view('remittances/month_summary', ['role_layout' => 'layouts/branch_admin', 'page_title' => 'Monthly collection summary', 'page_sub' => $s['collector_name'] . ' - ' . $s['month_label'], 'summary' => $s]);
+    }
+
     public function confirm(int $id): ResponseInterface
     {
         $result = $this->service->confirm($id, (int) session('branch_id'), (int) session('user_id'));

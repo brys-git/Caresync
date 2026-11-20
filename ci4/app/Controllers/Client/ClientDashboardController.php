@@ -55,7 +55,7 @@ class ClientDashboardController extends BaseController
         $recentPayments = [];
         if (! empty($latestPlan['plan_id'])) {
             $recentPayments = db_connect()->table('payments')
-                ->select('payment_id, payment_date, amount, payment_method, reference_number, official_receipt_number, status, remarks, created_at')
+                ->select('payment_id, payment_date, amount, payment_method, reference_number, official_receipt_number, status, awaiting_remittance, remarks, created_at')
                 ->where('plan_id', (int) $latestPlan['plan_id'])
                 ->orderBy('payment_id', 'DESC')
                 ->limit(5)

@@ -32,5 +32,7 @@ class PaymentModel extends Model
         'coverage_end',
         'payment_type',
         'avail_id',
+        'awaiting_remittance',
+        'collected_at',
     ];
 }

@@ -7,6 +7,35 @@ use App\Services\MembershipService;
 
 class PaymentService
 {
+    /** Whether payments.awaiting_remittance exists (a database that is not migrated yet simply has no such money). */
+    public static function collectedReady(): bool
+    {
+        static $ready = null;
+
+        return $ready ??= db_connect()->fieldExists('awaiting_remittance', 'payments');
+    }
+
+    /**
+     * SQL condition: the payment counts as money received - 'paid'/'verified', or collected by a collector and only
+     * waiting for the office to confirm the remittance (the client has already paid; for the ledger, overdue, grace
+     * and lapse that is paid money).
+     */
+    public static function countedSql(string $alias = 'payments'): string
+    {
+        $base = "$alias.status IN ('paid', 'verified')";
+
+        return self::collectedReady() ? "($base OR ($alias.status = 'pending' AND $alias.awaiting_remittance = 1))" : "($base)";
+    }
+
+    /** SQL condition: a plain pending payment (not collected by a collector) - waiting for a review. */
+    public static function plainPendingSql(string $alias = 'payments'): string
+    {
+        return self::collectedReady() ? "($alias.status = 'pending' AND $alias.awaiting_remittance = 0)" : "($alias.status = 'pending')";
+    }
+
+    /** Words for the client and staff screens about a payment that is collected but not yet confirmed by the office. */
+    public const COLLECTED_LABEL = 'Paid to collector - waiting for office confirmation';
+
     public function getBranchPlanHolderChoices(int $branchId): array
     {
         if ($branchId <= 0) {
@@ -82,7 +111,7 @@ class PaymentService
     public function getPaymentHistory(int $planId): array
     {
         return db_connect()->table('payments pay')
-            ->select('pay.payment_id, pay.plan_id, pay.amount, pay.months_covered, pay.payment_date, pay.payment_method, pay.reference_number, pay.official_receipt_number, pay.remarks, pay.status, pay.created_at, rb.first_name AS receiver_first_name, rb.last_name AS receiver_last_name')
+            ->select('pay.payment_id, pay.plan_id, pay.amount, pay.months_covered, pay.payment_date, pay.payment_method, pay.reference_number, pay.official_receipt_number, pay.remarks, pay.status, pay.awaiting_remittance, pay.created_at, rb.first_name AS receiver_first_name, rb.last_name AS receiver_last_name')
             ->join('users rb', 'rb.user_id = pay.received_by', 'left')
             ->where('pay.plan_id', $planId)
             // Panel brief, section 4: sort payment history ascending.
@@ -471,7 +500,7 @@ class PaymentService
         $pendingMonths = (int) (db_connect()->table('payments')
             ->selectSum('months_covered')
             ->where('plan_id', $planId)
-            ->where('status', 'pending')
+            ->where(self::plainPendingSql('payments'), null, false)
             ->where('payment_type !=', 'reinstatement_fee')
             ->get()
             ->getRowArray()['months_covered'] ?? 0);

@@ -96,10 +96,23 @@ class CareSync extends BaseConfig
     /**
      * What the commission is worked out on:
      *   'plan_only'       the plan-contribution part of each collection only (package down payments and
-     *                     instalments earn no commission)  <- default until Kaagapay confirms
-     *   'all_collections' everything the collector collected, packages included
+     *                     instalments earn no commission)
+     *   'all_collections' everything the collector collected, packages included  <- confirmed by Kaagapay
      */
-    public string $commissionAppliesTo = 'plan_only';
+    public string $commissionAppliesTo = 'all_collections';
+
+    /**
+     * Whether a client's GCash payment that a collector checked against their own GCash account goes into the
+     * collector's remittance (and earns commission) like cash does. Confirmed by Kaagapay: yes. When false, the
+     * collector's GCash approval is final and the payment is 'paid' at once.
+     */
+    public bool $remitGcash = true;
+
+    /** Days a collected payment may wait before the collector remits it; after that it is flagged. */
+    public int $remittanceMaxDays = 7;
+
+    /** Day of the next month by which a collector must have closed the month; after it a reminder is shown. */
+    public int $monthCloseDueDay = 5;
 
     /** Longest instalment term in months a Branch Admin may choose. */
     public int $availMaxTermMonths = 24;

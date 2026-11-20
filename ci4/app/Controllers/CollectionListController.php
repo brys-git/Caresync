@@ -224,19 +224,27 @@ class CollectionListController extends BaseController
             'official_receipt_number' => $receiptNumber,
             'received_by' => (int) session('user_id'),
             'branch_id' => (int) $plan['branch_id'],
+            // Collected in the field: it stays 'pending' until the Branch Admin confirms the remittance it goes into,
+            // but the client has paid, so it already counts for the plan (see PaymentVerificationService).
             'status' => 'pending',
+            'awaiting_remittance' => 1,
+            'collected_at' => date('Y-m-d H:i:s'),
             'coverage_start' => $coverage['start'],
             'coverage_end' => $coverage['end'],
-            'remarks' => 'Recorded in the field by collector, pending branch admin verification',
+            'remarks' => 'Collected in the field by collector - waiting for the remittance to be confirmed by the office',
         ]);
 
         if (! $inserted) {
             return redirect()->back()->withInput()->with('error', 'Failed to record payment. Please try again.');
         }
 
+        $paymentId = (int) $db->insertID();
+        $verification = new \App\Services\PaymentVerificationService();
+        $verification->countCollected($paymentId, $planId, $monthsCovered);
+        $verification->notifyCollected(['plan_id' => $planId, 'amount' => $amount, 'official_receipt_number' => $receiptNumber]);
 
         return redirect()->to(base_url('collector/collection-list'))
-            ->with('success', 'Payment recorded for ' . $plan['client_name'] . ($allocationText !== '' ? ' (' . $allocationText . ')' : '') . '. It now shows as Awaiting Verification. Once your branch admin verifies it, remit it under Remit collections to earn your commission.');
+            ->with('success', 'Payment recorded for ' . $plan['client_name'] . ($allocationText !== '' ? ' (' . $allocationText . ')' : '') . '. It counts for the client now and shows under Remit collections - hand the money over (less your commission) when you remit; the office confirms it then.');
     }
 
     /**
@@ -490,7 +498,7 @@ class CollectionListController extends BaseController
                 u.first_name, u.last_name, u.contact_number,
                 CASE
                     WHEN pl.next_due_date IS NULL THEN 'no_balance_due'
-                    WHEN EXISTS (SELECT 1 FROM payments pay WHERE pay.plan_id = pl.plan_id AND pay.status = 'pending') THEN 'awaiting_verification'
+                    WHEN EXISTS (SELECT 1 FROM payments pay WHERE pay.plan_id = pl.plan_id AND " . \App\Services\PaymentService::plainPendingSql('pay') . ") THEN 'awaiting_verification'
                     WHEN pl.overdue_months > 0 THEN 'overdue'
                     WHEN pl.next_due_date <= ? THEN 'due'
                     ELSE 'not_due'
@@ -623,7 +631,7 @@ class CollectionListController extends BaseController
             INNER JOIN plan_holders ON plan_holders.plan_holder_id = plans.plan_holder_id
             INNER JOIN users ON users.user_id = plan_holders.user_id
             LEFT JOIN users staff_u ON staff_u.user_id = payments.received_by
-            WHERE payments.branch_id = ? AND payments.status = 'pending' AND payments.payment_method = 'gcash'";
+            WHERE payments.branch_id = ? AND payments.status = 'pending' AND payments.awaiting_remittance = 0 AND payments.payment_method = 'gcash'";
         $params = [$branchId];
 
         if ($limitToBarangays !== null) {

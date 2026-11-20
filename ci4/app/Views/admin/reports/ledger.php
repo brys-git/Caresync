@@ -86,7 +86,7 @@
                                     <td><?= esc(strtoupper((string) $payment['payment_method'])) ?></td>
                                     <td><?= esc((string) ($payment['reference_number'] ?: ($payment['official_receipt_number'] ?: '-'))) ?></td>
                                     <td><?= esc(trim((string) ($payment['staff_first'] ?? '') . ' ' . (string) ($payment['staff_last'] ?? '')) ?: '-') ?></td>
-                                    <td><?= cs_status((string) ($payment['status'] ?? 'pending')) ?></td>
+                                    <td><?= cs_payment_status($payment) ?></td>
                                     <td class="cs-num"><?= cs_money($payment['running_total'] ?? 0) ?></td>
                                 </tr>
                             <?php endforeach; ?>

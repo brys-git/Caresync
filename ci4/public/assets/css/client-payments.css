@@ -90,7 +90,7 @@
 .cp-status { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; }
 .cp-status::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: currentColor; }
 .cp-status--approved { color: var(--cp-green); }
-.cp-status--pending { color: var(--cp-amber); }
+.cp-status--pending, .cp-status--collected { color: var(--cp-amber); }
 .cp-status--rejected { color: var(--cp-red); }
 .cp-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 14px; padding: 14px 16px; background: #f7f8fb; border-radius: 12px; font-size: 15px; color: var(--cp-muted); flex-wrap: wrap; }
 .cp-foot strong { color: var(--cp-ink); font-size: 18px; font-variant-numeric: tabular-nums; }

@@ -92,7 +92,7 @@ $apPlanTermMonths = 60;
                         <td class="text-nowrap"><?php if (in_array($status, ['paid', 'approved', 'verified'], true) && ! empty($row['payment_id'])): ?><a href="<?= base_url('receipt/' . (int) $row['payment_id']) ?>"><i class="ti ti-download" aria-hidden="true"></i> PDF</a><?php else: ?><span class="text-muted">-</span><?php endif; ?></td>
                         <td><?= $staffName !== '' ? esc($staffName) : '<span class="text-muted">-</span>' ?></td>
                         <td><?= $remaining > 0 ? esc((string) $remaining) : '<span class="text-muted">-</span>' ?></td>
-                        <?php if ($showStatus): ?><td><?= cs_status($status) ?></td><?php endif; ?>
+                        <?php if ($showStatus): ?><td><?= cs_payment_status($row) ?></td><?php endif; ?>
                         <?php if ($showRemarks): ?>
                             <td>
                                 <?php if ($remarksEditable): ?>
@@ -117,7 +117,9 @@ $apPlanTermMonths = 60;
                         <?php endif; ?>
                         <?php if ($canApprove): ?>
                             <td class="cs-table__actions">
-                                <?php if ($status === 'pending'): ?>
+                                <?php if ($status === 'pending' && (int) ($row['awaiting_remittance'] ?? 0) === 1): ?>
+                                    <span class="text-muted small">Collected by a collector - confirmed with their remittance</span>
+                                <?php elseif ($status === 'pending'): ?>
                                     <form method="post" action="<?= esc($actionBase . '/approve/' . (int) $row['payment_id'], 'attr') ?>" class="d-inline">
                                         <?= csrf_field() ?>
                                         <button class="btn btn-sm btn-primary" type="submit">Approve</button>

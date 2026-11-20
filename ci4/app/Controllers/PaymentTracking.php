@@ -443,6 +443,40 @@ class PaymentTracking extends BaseController
             return redirect()->back()->with('error', 'Official receipt number is required before approval.');
         }
 
+        // Money a collector already collected is confirmed together with the remittance it goes into, never one by one.
+        if ((int) ($payment['awaiting_remittance'] ?? 0) === 1) {
+            if ($targetStatus === 'paid') {
+                return redirect()->back()->with('error', 'A collector collected this payment. It is confirmed when you confirm the collector\'s remittance (Remittances).');
+            }
+            if ($isCollector || (int) ($payment['remittance_id'] ?? 0) > 0) {
+                return redirect()->back()->with('error', 'This payment is already in a remittance. Report a discrepancy on the remittance instead of rejecting the payment.');
+            }
+            (new \App\Services\PaymentVerificationService())->rejectCollected($paymentId, $userId, trim((string) $this->request->getPost('rejection_reason')));
+
+            return redirect()->back()->with('success', 'Payment rejected successfully.');
+        }
+
+        // A collector who verifies a client's GCash reference against their own GCash account has COLLECTED the money:
+        // it is remitted with their other collections and confirmed by the Branch Admin (config: remitGcash).
+        if ($isCollector && $targetStatus === 'paid' && $method === 'gcash' && config('CareSync')->remitGcash && \App\Services\PaymentService::collectedReady()) {
+            $planForCollect = (new PlanModel())->find((int) $payment['plan_id']);
+            $holderStatus = strtolower((string) (db_connect()->table('plan_holders')->select('status')->where('plan_holder_id', (int) ($planForCollect['plan_holder_id'] ?? 0))->get(1)->getRowArray()['status'] ?? ''));
+            if ($planForCollect && $holderStatus === 'active') {
+                $paymentModel->update($paymentId, [
+                    'awaiting_remittance' => 1,
+                    'collected_at' => date('Y-m-d H:i:s'),
+                    'received_by' => $userId,
+                    'remarks' => 'GCash checked by collector - waiting for the remittance to be confirmed by the office',
+                ]);
+                $verification = new \App\Services\PaymentVerificationService();
+                $verification->countCollected($paymentId, (int) $payment['plan_id'], max(1, (int) ($payment['months_covered'] ?? 1)));
+                $verification->notifyCollected($payment);
+                (new ActivityLogService())->log($userId, 'approved', 'payment', $paymentId, 'GCash payment checked by collector (collected, awaiting remittance)', ['status' => 'pending'], ['status' => 'pending', 'awaiting_remittance' => 1]);
+
+                return redirect()->back()->with('success', 'GCash payment checked. It now shows under Remit collections - remit it with your other collections.');
+            }
+        }
+
         $rejectionReason = trim((string) $this->request->getPost('rejection_reason'));
         $reviewerLabel = $isCollector ? 'collector' : 'branch admin';
         // $targetStatus is 'paid' or 'cancelled' (see approveGcash()/

@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Services\ActivityLogService;
+use App\Services\CollectionMonthService;
 use App\Services\RemittanceService;
 use CodeIgniter\HTTP\ResponseInterface;
 
@@ -16,21 +17,33 @@ use CodeIgniter\HTTP\ResponseInterface;
 class CollectorRemittanceController extends BaseController
 {
     private RemittanceService $service;
+    private CollectionMonthService $months;
 
     public function __construct()
     {
         $this->service = new RemittanceService();
+        $this->months = new CollectionMonthService();
     }
 
     public function index(): ResponseInterface|string
     {
         $uid = (int) session('user_id');
         $branchId = (int) session('branch_id');
+        $month = CollectionMonthService::monthKey((string) $this->request->getGet('month'));
+        $prevMonth = date('Y-m', strtotime($month . '-01 -1 month'));
+        $prev = $this->months->progress($uid, $branchId, $prevMonth);
 
         return view('remittances/collector_remit', [
             'role_layout' => $this->layout(),
             'page_title' => 'Remit collections',
-            'page_sub' => 'Hand over the cash you collected. You keep your commission once your Branch Admin confirms.',
+            'page_sub' => 'Hand over what you collected - cash and GCash - as often as you like. You keep your commission once your Branch Admin confirms.',
+            'progress' => $this->months->progress($uid, $branchId, $month),
+            'prev_month' => $prevMonth,
+            'prev_month_open' => $prev['closed'] === null && $prev['counts']['assigned'] > 0,
+            'overdue_items' => $this->months->unremittedPastLimit($branchId, $uid),
+            'max_days' => (int) config('CareSync')->remittanceMaxDays,
+            'reasons' => CollectionMonthService::REASONS,
+            'unclosed' => array_values(array_filter($this->months->unclosedMonths($branchId), static fn (array $u): bool => (int) $u['collector_user_id'] === $uid)),
             'available' => $this->service->available($uid, $branchId),
             'history' => $this->service->list(['collector_id' => $uid]),
             'summary' => $this->service->summary($uid, $branchId),
@@ -54,6 +67,35 @@ class CollectorRemittanceController extends BaseController
         }
 
         return redirect()->to('/collector/remit')->withInput()->with('error', $result['message']);
+    }
+
+    public function markNotCollected(): ResponseInterface
+    {
+        $uid = (int) session('user_id');
+        $month = CollectionMonthService::monthKey((string) $this->request->getPost('month'));
+        $result = $this->months->markNotCollected($uid, (int) session('branch_id'), (int) $this->request->getPost('plan_holder_id'), $month, (string) $this->request->getPost('reason_code'), (string) $this->request->getPost('reason_note'));
+
+        return redirect()->to('/collector/remit?month=' . $month . '#month')->with($result['ok'] ? 'success' : 'error', $result['message']);
+    }
+
+    public function clearNotCollected(): ResponseInterface
+    {
+        $month = CollectionMonthService::monthKey((string) $this->request->getPost('month'));
+        $result = $this->months->clearMark((int) session('user_id'), (int) $this->request->getPost('plan_holder_id'), $month);
+
+        return redirect()->to('/collector/remit?month=' . $month . '#month')->with($result['ok'] ? 'success' : 'error', $result['message']);
+    }
+
+    public function closeMonth(): ResponseInterface
+    {
+        $uid = (int) session('user_id');
+        $month = CollectionMonthService::monthKey((string) $this->request->getPost('month'));
+        $result = $this->months->closeMonth($uid, (int) session('branch_id'), $month, $uid);
+        if ($result['ok']) {
+            (new ActivityLogService())->log($uid, 'created', 'monthly_collection_summary', (int) $result['summary_id'], $result['message']);
+        }
+
+        return redirect()->to('/collector/remit?month=' . $month . '#month')->with($result['ok'] ? 'success' : 'error', $result['message']);
     }
 
     public function show(int $id): ResponseInterface|string

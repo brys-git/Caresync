@@ -241,6 +241,36 @@ trim((string) ($row['first_name'] ?? '') . ' ' . (string) ($row['last_name'] ?? 
         ]);
     }
 
+    /** Monthly collection summary: one line per collector and closed month (System Admin: any branch). */
+    public function monthlySummary()
+    {
+        $filters = [
+            'month_from' => \App\Services\CollectionMonthService::monthKeyOrEmpty((string) $this->request->getGet('month_from')),
+            'month_to' => \App\Services\CollectionMonthService::monthKeyOrEmpty((string) $this->request->getGet('month_to')),
+            'branch_id' => $this->reportBranchFilter(),
+            'search' => cs_search_term($this->request->getGet('search')),
+        ];
+        $rows = (new \App\Services\CollectionMonthService())->summaries($filters);
+        $mode = (string) $this->request->getGet('mode');
+
+        if ($mode === 'csv') {
+            return $this->csvResponse('monthly_collection_summary', \App\Services\CollectionMonthService::csvHeaders(), $rows, static fn (array $r): array => \App\Services\CollectionMonthService::csvRow($r));
+        }
+        if ($mode === 'pdf' || $mode === 'print') {
+            return $this->pdfResponse('monthly', ['rows' => $rows], $filters, $mode === 'print');
+        }
+
+        return view('admin/reports/monthly_summary', [
+            'role_layout' => 'layouts/admin',
+            'page_title' => 'Monthly collection summary',
+            'page_sub' => 'What each collector collected, did not collect and remitted, per closed month.',
+            'active_report' => 'monthly-summary',
+            'filters' => $filters,
+            'branches' => $this->branchOptions(),
+            'rows' => $rows,
+        ]);
+    }
+
     /**
      * Panel brief, section 7: Remittance Report - system-wide for Admin
      * (Branch Admin and Staff already have their own branch-scoped
