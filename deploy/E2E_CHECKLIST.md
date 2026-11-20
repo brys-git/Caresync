@@ -5,7 +5,7 @@ Use a **test copy of the database** (`caresync_test`), never the real `kaagapay_
 
 Setup: XAMPP running, the app at `http://localhost/caresync/ci4/public/` (or `php spark serve`), test database imported from a fresh
 `mysqldump` of `kaagapay_db`. Settings under test: down payment 30 %, 30 days, terms 6/12/24, at least 2 paid months to claim/avail,
-commission 10 % of **plan contributions only** (`Config\CareSync::$commissionAppliesTo = 'plan_only'`).
+commission 10 % of **everything the collector collects, cash and GCash** (`Config\CareSync::$commissionAppliesTo = 'all_collections'`, `remitGcash = true`), remittance reminder after 7 days, month close due on the 5th.
 
 ## 1. System Admin
 | Step | What to do | Expected |
@@ -34,7 +34,8 @@ commission 10 % of **plan contributions only** (`Config\CareSync::$commissionApp
 | E3.5 | Record the down payment (cash) | Avail becomes active, 12 instalments written; service can start |
 | E4 | Record a payment of one instalment + 400 | Preview and receipt show "Applied to: Instalment 1 of 12 / Plan <month>" |
 | F3-F8 | A third holder's avail: approve with **waiver** (reason under 15 characters is refused; a real reason works) | Waiver (who, when, why) on the request page, the client's My claims and the Avails and waivers report |
-| H4-H11 | See Collector section | Remittance confirm / discrepancy |
+| H4-H11, L1-L13 | See Collector section | Remittance confirm / discrepancy, month close, monthly summary |
+| M1-M2 | `POST plan-holders/store`; register a holder with only one active plan | 404; the holder is on that plan (its fee), not PHP 240 |
 | J1-J11 | Reports: Overdue (as of / due from-to), Avails and waivers, Remittance (split totals), Commission; Print / Excel / PDF each; Ledger PDF | All open; package columns present |
 
 ## 3. Staff
@@ -50,11 +51,16 @@ commission 10 % of **plan contributions only** (`Config\CareSync::$commissionApp
 | --- | --- | --- |
 | H0 | (Branch Admin) assign the collector to the whole branch | Saved |
 | H1 | Collector -> Collection list | Branch plan holders listed with plan + package amounts |
-| H2 | Record payment for a client with a package: enter an amount | Preview shows where it goes; saved as **pending** until the Branch Admin verifies |
-| H4 | (Branch Admin) verify it | Paid, split plan / instalment |
-| H5-H6 | Collector -> Remit collections: tick the collection | Gross, commission (10 % of the plan part only), net to hand over; submit |
-| H7-H9 | (Branch Admin) Remittances -> open -> Confirm received | Commission becomes earned; collector notified |
-| H10 | Another remittance: Report discrepancy (amount received + reason) | Status discrepancy, commission on hold, collector notified |
+| H2 | Record payment for a client with a package: enter an amount | Preview shows where it goes; saved as **collected** (status pending, awaiting remittance) |
+| H3 | (Client) Payments / dashboard | "Paid to collector - waiting for office confirmation" with the OR number; the client is **not overdue** |
+| H4 | (Branch Admin) try to approve that payment on its own | Refused: it is confirmed with the remittance |
+| H5-H6 | Collector -> Remit collections: all collections are ticked (untick some for a partial remittance) | Cash / GCash shown separately, gross, commission (10 % of everything), net to hand over; submit. Another remittance later the same month is fine |
+| H7-H9 | (Branch Admin) Remittances -> open -> **Confirm received PHP <net>** | That remittance's payments become **paid** (ledger, receipt, client told once); commission becomes earned; collector notified |
+| H10 | Another remittance: Report discrepancy (amount received + reason) | Only that remittance goes on hold; its payments stay "waiting"; collector notified |
+| I2-I5c | (Client) Make payment -> GCash + 13-digit reference; (Collector) approve it | Collected; appears in Remit collections as GCash; confirming its remittance makes it paid |
+| L1-L3 | Collector -> "My month": progress line, Mark not collected (reason required; Other needs a note), Close month | Close stays disabled until everyone is collected or marked **and** every collection is in a **confirmed** remittance |
+| L4-L10 | Reports -> Monthly collection summary (Branch Admin and System Admin) | The closed month; Print / Excel / PDF; the other branch cannot see it |
+| L12-L13 | A collection older than 7 days; a month not closed by the 5th | Warning on the collector's page and under "Needs attention" (Branch Admin) |
 | H11-H12 | Commission report | Earned / waiting / on hold; no "Mark as paid" |
 
 ## 5. Client
@@ -80,8 +86,9 @@ commission 10 % of **plan contributions only** (`Config\CareSync::$commissionApp
 `php run_all.php` (kept outside the repository, in the test tooling) runs exactly these steps over HTTP against the test server
 (`php -S localhost:8081` with the test database) and prints PASS/FAIL per id above.
 
-## Last automated run (19 Nov 2026, caresync_test)
-132 checks, 132 passed, 0 failed (sections A-K above). Real bugs the run found and that were fixed first:
+## Last automated run (20 Nov 2026, caresync_test)
+159 checks (sections A-M), 159 passed, 0 failed, plus the service-level suites st13 (setting-driven rules), st14 (partial remittances, close month, flags) and st15 (single active plan).
+Earlier run (19 Nov 2026): 132 checks, 132 passed (sections A-K). Real bugs the run found and that were fixed first:
 1. Staff created with a temporary password lost the "can collect" flag.
 2. The first cash payment of an already-active holder was not counted by the ledger (no cycle number).
 3. Approving a collector's payment overwrote who collected it (breaking remittances).
