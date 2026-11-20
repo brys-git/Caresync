@@ -28,6 +28,10 @@ if (! empty($ca['unremitted'])) {
     $names = array_values(array_unique(array_filter(array_map(static fn (array $r): string => (string) $r['collector_name'], $ca['unremitted']))));
     $attention[] = ['branch-admin/remittances', 'ti-clock-exclamation', 'Collected payments not remitted for more than ' . (int) $ca['max_days'] . ' days (' . implode(', ', $names) . ')', count($ca['unremitted'])];
 }
+$sv = $ca['service'] ?? ['overdue' => 0, 'problems' => 0, 'ready' => 0];
+$attention[] = ['branch-admin/service-package/ongoing', 'ti-alarm', 'Service tasks that are overdue', (int) $sv['overdue']];
+$attention[] = ['branch-admin/service-package/ongoing', 'ti-alert-circle', 'Problems reported on service tasks', (int) $sv['problems']];
+$attention[] = ['branch-admin/service-package/ongoing', 'ti-circle-check', 'Services ready to complete', (int) $sv['ready']];
 foreach (($ca['unclosed'] ?? []) as $u) {
     $attention[] = ['branch-admin/reports/monthly-summary', 'ti-calendar-x', 'Collector ' . $u['collector_name'] . ' hasn\'t closed ' . $u['month_label'], 1];
 }

@@ -64,6 +64,12 @@ $routes->group('staff', ['filter' => 'auth'], static function (RouteCollection $
     $routes->post('payment-management/record-cash', 'PaymentTracking::recordCash', ['filter' => 'role:3']);
     $routes->post('payment-management/save-remarks/(:num)', 'PaymentTracking::saveRemarks/$1', ['filter' => 'role:3']);
 
+    // My tasks (service process): the tasks the Branch Admin gave this staff member
+    $routes->get('my-tasks', 'Staff\MyTasksController::index', ['filter' => 'role:3']);
+    $routes->post('my-tasks/(:num)/start', 'Staff\MyTasksController::start/$1', ['filter' => 'role:3']);
+    $routes->post('my-tasks/(:num)/done', 'Staff\MyTasksController::done/$1', ['filter' => 'role:3']);
+    $routes->post('my-tasks/(:num)/problem', 'Staff\MyTasksController::problem/$1', ['filter' => 'role:3']);
+
     // Service Management
     $routes->get('services', 'Staff\ServicesController::index', ['filter' => 'role:3']);
     $routes->get('services/ongoing', 'Staff\ServicesController::ongoingServices', ['filter' => 'role:3']);

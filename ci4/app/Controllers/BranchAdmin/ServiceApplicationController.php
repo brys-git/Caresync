@@ -54,6 +54,11 @@ class ServiceApplicationController extends BaseController
             return redirect()->back()->with('error', $result['message']);
         }
 
+        // Right after approving, the Branch Admin plans the service (schedule, family contact, tasks).
+        if (! empty($result['service_id'])) {
+            return redirect()->to('/branch-admin/service-package/services/' . (int) $result['service_id'] . '/plan')->with('success', $result['message'] . ' Now plan the service.');
+        }
+
         return redirect()->to('/branch-admin/service-package/requests')->with('success', $result['message']);
     }
 

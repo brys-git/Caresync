@@ -82,7 +82,7 @@ class ClientManagementController extends BaseController
                 // Newest claim first: that one gives the status shown in the list.
                 $claims[$holderId]['status'] ??= (string) $row['app_status'] === 'pending'
                     ? 'pending'
-                    : ((string) ($row['service_status'] ?? '') === 'ongoing' ? 'ongoing' : 'approved');
+                    : (in_array((string) ($row['service_status'] ?? ''), ['ongoing', 'burial_day'], true) ? 'ongoing' : 'approved');
                 $claims[$holderId]['since'] ??= (string) $row['created_at'];
             }
         }

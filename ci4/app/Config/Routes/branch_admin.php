@@ -130,7 +130,20 @@ $routes->group('branch-admin', ['filter' => 'auth'], static function (RouteColle
     $routes->post('service-package/requests/reject/(:num)', 'BranchAdmin\ServiceApplicationController::reject/$1', ['filter' => 'role:2']);
 
     // Ongoing Services & Scheduling
-    $routes->get('service-package/ongoing', 'BranchAdmin\ServiceController::index', ['filter' => 'role:2']);
+    // The service board (every stage, with tasks done / total). The old Ongoing page with its status + staff drop-downs was
+    // replaced: stages move by themselves, and staff are assigned PER TASK on the service plan page.
+    $routes->get('service-package/ongoing', 'BranchAdmin\ServiceProcessController::board', ['filter' => 'role:2']);
+    $routes->get('service-package/calendar', 'BranchAdmin\ServiceProcessController::calendar', ['filter' => 'role:2']);
+    $routes->get('service-package/services/(:num)/plan', 'BranchAdmin\ServiceProcessController::plan/$1', ['filter' => 'role:2']);
+    $routes->post('service-package/services/(:num)/plan', 'BranchAdmin\ServiceProcessController::savePlan/$1', ['filter' => 'role:2']);
+    $routes->post('service-package/services/(:num)/tasks', 'BranchAdmin\ServiceProcessController::addTask/$1', ['filter' => 'role:2']);
+    $routes->post('service-package/tasks/(:num)', 'BranchAdmin\ServiceProcessController::updateTask/$1', ['filter' => 'role:2']);
+    $routes->post('service-package/tasks/(:num)/remove', 'BranchAdmin\ServiceProcessController::removeTask/$1', ['filter' => 'role:2']);
+    $routes->post('service-package/tasks/(:num)/move', 'BranchAdmin\ServiceProcessController::moveTask/$1', ['filter' => 'role:2']);
+    $routes->post('service-package/tasks/(:num)/resolve', 'BranchAdmin\ServiceProcessController::resolveTask/$1', ['filter' => 'role:2']);
+    $routes->post('service-package/services/(:num)/complete', 'BranchAdmin\ServiceProcessController::complete/$1', ['filter' => 'role:2']);
+    $routes->post('service-package/services/(:num)/close', 'BranchAdmin\ServiceProcessController::close/$1', ['filter' => 'role:2']);
+    $routes->post('service-package/services/(:num)/cancel', 'BranchAdmin\ServiceProcessController::cancel/$1', ['filter' => 'role:2']);
     $routes->post('service-package/ongoing/update-status/(:num)', 'BranchAdmin\ServiceController::updateStatus/$1', ['filter' => 'role:2']);
     $routes->get('service-package/schedule', 'BranchAdmin\ServiceController::create', ['filter' => 'role:2']);
     $routes->post('service-package/schedule/store', 'BranchAdmin\ServiceController::store', ['filter' => 'role:2']);

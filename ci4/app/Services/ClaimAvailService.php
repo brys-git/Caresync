@@ -254,7 +254,7 @@ class ClaimAvailService
                LEFT JOIN services s ON s.service_id = $serviceKey AND s.deleted_at IS NULL
               WHERE sa.plan_holder_id = ? AND sa.application_id <> ?
                 AND (sa.status = 'pending'
-                     OR (sa.status = 'approved' AND (s.service_id IS NULL OR s.status IN ('pending', 'ongoing')) $availOk))
+                     OR (sa.status = 'approved' AND (s.service_id IS NULL OR s.status IN ('pending', 'scheduled', 'preparing', 'ongoing', 'burial_day')) $availOk))
               ORDER BY sa.application_id DESC
               LIMIT 1",
             [$planHolderId, (int) $ignoreApplicationId]
@@ -1404,6 +1404,9 @@ class ClaimAvailService
             return ['ok' => false, 'message' => 'Failed to approve the request.'];
         }
 
+        // The service process starts: plan row + task checklist from the package inclusions.
+        (new ServiceProcessService())->onApproved($serviceId, $actorUserId);
+
         if ($isClaim) {
             $pkg = $db->table('packages')->select('is_damayan_entitlement')->where('package_id', $priced['package_id'])->get(1)->getRowArray();
             if ($pkg && (int) $pkg['is_damayan_entitlement'] === 1) {
@@ -1433,7 +1436,7 @@ class ClaimAvailService
                 . ($quote !== null ? ' (' . ($quote['upfront'] ? 'paid in full up front' : $term . ' months') . ', down payment ' . ($waive ? 'waived: ' . $reason : $money((float) $quote['down_payment_amount'])) . ')' : '')
         );
 
-        return ['ok' => true, 'type' => $priced['type'], 'message' => $quote === null
+        return ['ok' => true, 'type' => $priced['type'], 'service_id' => $serviceId, 'message' => $quote === null
             ? 'Claim approved and moved to services.'
             : 'Approved. ' . ($waive ? 'The down payment was waived.' : 'The ' . ($quote['upfront'] ? 'payment' : 'down payment') . ' of ' . $money((float) $quote['down_payment_amount']) . ' is due by ' . date('M j, Y', strtotime($dueBy)) . '.')];
     }
@@ -1556,7 +1559,7 @@ class ClaimAvailService
      */
     public function checkServiceStatusChange(int $serviceId, string $newStatus): array
     {
-        if (! in_array($newStatus, ['ongoing', 'completed'], true) || $this->downPaymentCleared($serviceId)) {
+        if (! in_array($newStatus, ['ongoing', 'burial_day', 'completed'], true) || $this->downPaymentCleared($serviceId)) {
             return ['ok' => true, 'message' => ''];
         }
 
@@ -1726,9 +1729,9 @@ class ClaimAvailService
                 $row['status_label'] = 'Rejected';
             } elseif ($av !== null && $av['status'] === 'cancelled' && ($av['kind'] ?? 'package') !== 'addons') {
                 $row['status_label'] = 'Cancelled - no down payment';
-            } elseif ($svcStatus === 'ongoing') {
-                $row['status_label'] = 'Ongoing';
-            } elseif ($svcStatus === 'completed') {
+            } elseif (in_array($svcStatus, ['scheduled', 'preparing', 'ongoing', 'burial_day'], true)) {
+                $row['status_label'] = ServiceProcessService::stageLabel($svcStatus);
+            } elseif (in_array($svcStatus, ['completed', 'closed'], true)) {
                 $row['status_label'] = 'Completed';
             } elseif ($svcStatus === 'cancelled') {
                 $row['status_label'] = 'Cancelled';

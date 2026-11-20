@@ -85,6 +85,28 @@ $tone = static function (string $label): string {
                 <?php elseif ($r['status'] === 'pending'): ?>
                     <p class="mb-0 cs-muted">Your branch is reviewing this. You will be told when it is approved, with the amounts and deadlines.</p>
                 <?php endif; ?>
+
+                <?php $pr = $r['process'] ?? null; ?>
+                <?php if ($pr !== null && ! empty($pr['plan']) && ! empty($pr['plan']['burial_at'])): ?>
+                    <div class="mt-3 p-3 border rounded">
+                        <strong>Your service schedule</strong>
+                        <div class="small mt-1">Wake: <?= ! empty($pr['plan']['wake_start']) ? esc(date('M j, g:ia', strtotime((string) $pr['plan']['wake_start']))) : '-' ?> at <?= esc((string) ($pr['plan']['wake_address'] ?? '-')) ?><br>
+                        Burial: <?= esc(date('M j, g:ia', strtotime((string) $pr['plan']['burial_at']))) ?> at <?= esc((string) ($pr['plan']['cemetery'] ?? '-')) ?></div>
+                    </div>
+                <?php endif; ?>
+                <?php if ($pr !== null && $pr['can_rate']): ?>
+                    <form method="post" action="<?= site_url('client/claims/rate/' . (int) $pr['service_id']) ?>" class="mt-3 p-3 border rounded" data-cs-once>
+                        <?= csrf_field() ?>
+                        <strong>How was our service?</strong>
+                        <div class="d-flex gap-3 my-2" role="radiogroup" aria-label="Rating from 1 to 5">
+                            <?php for ($i = 1; $i <= 5; $i++): ?><label class="form-check-label"><input class="form-check-input me-1" type="radio" name="rating" value="<?= $i ?>" required><?= $i ?> ★</label><?php endfor; ?>
+                        </div>
+                        <textarea class="form-control mb-2" name="feedback" rows="2" maxlength="1000" placeholder="Anything you would like to tell us (optional)"></textarea>
+                        <button type="submit" class="btn btn-primary btn-sm">Send my rating</button>
+                    </form>
+                <?php elseif ($pr !== null && $pr['rated']): ?>
+                    <p class="mt-3 mb-0 text-success">Thank you - you rated this service <?= (int) $pr['plan']['rating'] ?>/5.</p>
+                <?php endif; ?>
             </div>
         </section>
     <?php endforeach; ?>

@@ -115,7 +115,7 @@ if (! function_exists('cs_status')) {
             'delinquent' => 'stop', 'suspended' => 'stop', 'expired' => 'stop', 'failed' => 'stop', 'lapsed' => 'stop',
 
             // informational
-            'ongoing' => 'info', 'scheduled' => 'info', 'new' => 'info', 'in_progress' => 'info',
+            'ongoing' => 'info', 'scheduled' => 'info', 'preparing' => 'info', 'burial_day' => 'pending', 'todo' => 'idle', 'in_progress' => 'info', 'problem' => 'stop', 'new' => 'info', 'in_progress' => 'info',
 
             // dormant
             'forfeited' => 'idle', 'inactive' => 'idle', 'draft' => 'idle', 'closed' => 'idle', 'archived' => 'idle',

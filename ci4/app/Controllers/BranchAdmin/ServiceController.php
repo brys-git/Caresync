@@ -208,6 +208,16 @@ class ServiceController extends BaseController
             throw PageNotFoundException::forPageNotFound();
         }
 
+        // The old status + staff form is retired: stages move by themselves (see ServiceProcessService) and staff are assigned
+        // per task on the service plan page. Cancelling is the one thing still done by hand.
+        if ((string) $this->request->getPost('status') === 'cancelled') {
+            $r = (new \App\Services\ServiceProcessService())->cancel($id, $branchId, (int) session('user_id'));
+
+            return redirect()->to('/branch-admin/service-package/ongoing')->with($r['ok'] ? 'success' : 'error', $r['message']);
+        }
+
+        return redirect()->to('/branch-admin/service-package/services/' . $id . '/plan')->with('error', 'Stages now move by themselves. Plan the service and assign its tasks here.');
+
         $rules = [
             'status' => 'required|in_list[pending,ongoing,completed,cancelled]',
             'assigned_staff' => 'permit_empty|is_natural_no_zero',

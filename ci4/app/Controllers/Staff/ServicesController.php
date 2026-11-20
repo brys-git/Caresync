@@ -133,7 +133,7 @@ class ServicesController extends BaseController
                 ->join('packages p', 'p.package_id = s.package_id', 'left')
                 ->join('service_list sl', 'sl.service_list_id = s.service_list_id', 'left')
                 ->where('s.branch_id', $branchId)
-                ->whereIn('s.status', ['pending', 'ongoing', 'completed'])
+                ->whereIn('s.status', ['pending', 'scheduled', 'preparing', 'ongoing', 'burial_day', 'completed', 'closed'])
                 ->orderBy('s.service_date', 'DESC')
                 ->orderBy('s.service_id', 'DESC')
                 ->get()

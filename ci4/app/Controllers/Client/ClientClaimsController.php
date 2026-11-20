@@ -12,6 +12,14 @@ use App\Services\ClaimAvailService;
  */
 class ClientClaimsController extends BaseController
 {
+    /** The client rates a completed service (once). */
+    public function rate(int $serviceId)
+    {
+        $r = (new \App\Services\ServiceProcessService())->rate($serviceId, (int) session('user_id'), (int) $this->request->getPost('rating'), (string) $this->request->getPost('feedback'));
+
+        return redirect()->to('/client/claims')->with($r['ok'] ? 'success' : 'error', $r['message']);
+    }
+
     public function index()
     {
         $userId = (int) session('user_id');
@@ -21,6 +29,18 @@ class ClientClaimsController extends BaseController
         $service  = new ClaimAvailService();
         $requests = $planHolderId > 0 ? $service->myRequests($planHolderId) : [];
         $plan     = $planHolderId > 0 ? $service->planFor($planHolderId) : null;
+
+        // Where the service is in its process (schedule once planned; the rating form once completed).
+        $process = new \App\Services\ServiceProcessService();
+        foreach ($requests as &$req) {
+            $req['process'] = null;
+            $sid = (int) ($req['service_id'] ?? 0);
+            if ($sid > 0 && \App\Services\ServiceProcessService::ready()) {
+                $p = $process->plan($sid);
+                $req['process'] = ['service_id' => $sid, 'status' => (string) ($req['service_status'] ?? ''), 'plan' => $p, 'rated' => ! empty($p['rated_at']), 'can_rate' => in_array((string) ($req['service_status'] ?? ''), ['completed', 'closed'], true) && empty($p['rated_at'])];
+            }
+        }
+        unset($req);
 
         return view('client/claims', [
             'role_layout' => 'layouts/plan_holder',

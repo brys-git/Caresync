@@ -61,3 +61,8 @@ $routes->group('collector', ['filter' => 'auth'], static function (RouteCollecti
 // gets the QR of the collector resolved for their own address - checked in
 // the controller, since the filter alone can't express that).
 $routes->get('gcash-qr/(:num)', 'CollectorGcashController::qr/$1', ['filter' => 'auth']);
+
+// Files of the service process (a task's document, the family's signed confirmation): Branch Admin of the branch, or the
+// staff member who owns the task. Checked in the controller.
+$routes->get('service-files/task/(:num)', 'ServiceFileController::taskDocument/$1', ['filter' => 'auth']);
+$routes->get('service-files/confirmation/(:num)', 'ServiceFileController::confirmation/$1', ['filter' => 'auth']);

@@ -174,6 +174,7 @@ class Dashboard extends BaseController
             'unremitted' => $svc->unremittedPastLimit($branchId),
             'unclosed' => $svc->unclosedMonths($branchId),
             'max_days' => (int) config('CareSync')->remittanceMaxDays,
+            'service' => (new \App\Services\ServiceProcessService())->attention($branchId),
         ];
     }
 
