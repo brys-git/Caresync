@@ -176,10 +176,12 @@ class ClientPortal extends BaseController
                     'version_id' => $packageData['version_id'],
                 ]);
             } else {
+                $onlyPlan = MembershipService::resolveRegistrationProgram(null);
                 $planId = (int) $planModel->insert([
                     'plan_holder_id' => (int) $holder['plan_holder_id'],
-                    'package_id' => $packageData['package_id'],
-                    'monthly_fee' => MembershipService::MONTHLY_FEE,
+                    'package_id' => (int) ($onlyPlan['package_id'] ?? 0) > 0 ? (int) $onlyPlan['package_id'] : $packageData['package_id'],
+                    'program_id' => $onlyPlan['program_id'] ?? null,
+                    'monthly_fee' => $onlyPlan['monthly_fee'] ?? MembershipService::MONTHLY_FEE,
                     'passbook_fee' => 50,
                     'start_date' => date('Y-m-d'),
                     'status' => 'active',
@@ -903,10 +905,8 @@ class ClientPortal extends BaseController
             if (! $plan) {
                 // The plan picked on the registration form (approved and active),
                 // else the default program.
-                $chosenProgramId = (int) $this->request->getPost('program_id');
-                $chosen = $chosenProgramId > 0
-                    ? db_connect()->table('membership_programs')->where('program_id', $chosenProgramId)->where('approval_status', 'approved')->where('is_active', 1)->get()->getRowArray()
-                    : null;
+                // (with only ONE plan active the picker is not shown: that plan is used, not the PHP 240 default)
+                $chosen = MembershipService::resolveRegistrationProgram((int) $this->request->getPost('program_id') ?: null);
                 $programInfo = $chosen
                     ? ['id' => (int) $chosen['program_id'], 'monthly_fee' => (float) $chosen['monthly_fee'], 'package_id' => (int) ($chosen['package_id'] ?? 0)]
                     : MembershipService::getProgramInfo();

@@ -435,6 +435,16 @@ class ClientService
             return;
         }
 
+        // Nothing chosen (picker skipped): if exactly one plan is active, it is that plan - not the PHP 240 default.
+        if ($programId === null && $forcedPackageId === null && $forcedMonthlyFee === null) {
+            $only = MembershipService::resolveRegistrationProgram(null);
+            if ($only !== null) {
+                $programId = $only['program_id'];
+                $forcedPackageId = $only['package_id'];
+                $forcedMonthlyFee = $only['monthly_fee'];
+            }
+        }
+
         $packageData = $this->resolveMembershipPackage($forcedPackageId);
         $packageId = (int) $packageData['package_id'];
         $effectiveMonthlyFee = $forcedMonthlyFee ?? MembershipService::MONTHLY_FEE;

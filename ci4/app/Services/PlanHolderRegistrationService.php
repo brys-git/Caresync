@@ -488,18 +488,8 @@ class PlanHolderRegistrationService
      */
     private function resolveChosenProgram(array $input): ?array
     {
-        $programId = (int) ($input['program_id'] ?? 0);
-        if ($programId <= 0) {
-            return null;
-        }
-
-        return db_connect()->table('membership_programs')
-            ->select('program_id, package_id, monthly_fee, plan_price, term_months')
-            ->where('program_id', $programId)
-            ->where('approval_status', 'approved')
-            ->where('is_active', 1)
-            ->get()
-            ->getRowArray() ?: null;
+        // The chosen plan, or - when the picker was skipped because only ONE plan is active - that plan.
+        return MembershipService::resolveRegistrationProgram((int) ($input['program_id'] ?? 0) ?: null);
     }
 
     /**

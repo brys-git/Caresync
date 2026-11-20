@@ -317,13 +317,11 @@ class ClientRegistrationService
      * @param int $createdBy (user_id of person creating plan)
      * @return array ['success' => bool, 'plan_id' => int|null, 'error' => string|null]
      */
-    public function createMembershipPlan(int $planHolderId, int $branchId, int $createdBy): array
+    public function createMembershipPlan(int $planHolderId, int $branchId, int $createdBy, ?int $programId = null): array
     {
         try {
-            error_log("createMembershipPlan: Starting for planHolderId={$planHolderId}");
             
             $programInfo = MembershipService::getProgramInfo();
-            error_log("createMembershipPlan: programInfo = " . json_encode($programInfo));
 
             MembershipService::ensureDefaultPackageVersion();
             MembershipService::ensureMembershipProgram();
@@ -337,13 +335,16 @@ class ClientRegistrationService
             // the explicit flag, then MembershipService::
             // DEFAULT_PACKAGE_ID, then the lowest package_id) instead of
             // assuming ids that only held true at first-seed time.
-            $packageAndVersion = $this->resolvePackageAndVersion();
+            // The plan the client chose, or the one active plan when the picker was skipped (never the PHP 240 default then).
+            $chosen = MembershipService::resolveRegistrationProgram($programId);
+            $packageAndVersion = $this->resolvePackageAndVersion($chosen['package_id'] ?? null);
+            $planFee = $chosen['monthly_fee'] ?? (float) ($programInfo['monthly_fee'] ?? 240.0);
 
             $planData = [
                 'plan_holder_id' => $planHolderId,
                 'package_id' => $packageAndVersion['package_id'],
-                'program_id' => (int) ($programInfo['id'] ?? 1),
-                'monthly_fee' => (float) ($programInfo['monthly_fee'] ?? 240.0),
+                'program_id' => $chosen['program_id'] ?? (int) ($programInfo['id'] ?? 1),
+                'monthly_fee' => $planFee,
                 'months_paid' => 0,
                 // Bug fix (found via Phase 3 live testing): plans.start_date
                 // is NOT NULL - passing null here always failed the insert
@@ -357,25 +358,22 @@ class ClientRegistrationService
                 'overdue_months' => 0,
                 'payment_coverage_until' => null,
                 'next_due_date' => null,
-                'legacy_remaining_balance' => (float) ($programInfo['monthly_fee'] ?? 240.0),
+                'legacy_remaining_balance' => $planFee,
                 'version_id' => $packageAndVersion['version_id'],
                 'branch_id' => $branchId,
             ];
 
-            error_log("createMembershipPlan: Inserting plan with data = " . json_encode($planData));
             
             $planId = (int) $this->planModel->insert($planData);
-            error_log("createMembershipPlan: planId = {$planId}");
             
             if ($planId <= 0) {
-                error_log("createMembershipPlan: ERROR - Unable to insert plan");
+                log_message('error', 'ClientRegistrationService::createMembershipPlan could not insert the plan for plan_holder_id=' . $planHolderId);
                 throw new \RuntimeException('Unable to create membership plan');
             }
 
-            error_log("createMembershipPlan: SUCCESS - plan_id = {$planId}");
             return ['success' => true, 'plan_id' => $planId, 'error' => null];
         } catch (\Throwable $e) {
-            error_log("createMembershipPlan: EXCEPTION - " . $e->getMessage() . " | " . $e->getTraceAsString());
+            log_message('error', 'ClientRegistrationService::createMembershipPlan failed for plan_holder_id=' . $planHolderId . ' (' . get_class($e) . ')');
             return ['success' => false, 'plan_id' => null, 'error' => $e->getMessage()];
         }
     }
@@ -390,16 +388,21 @@ class ClientRegistrationService
      *
      * @return array{package_id: int, version_id: int}
      */
-    private function resolvePackageAndVersion(): array
+    private function resolvePackageAndVersion(?int $forcedPackageId = null): array
     {
         $db = db_connect();
 
-        $package = $db->table('packages')
-            ->select('package_id')
-            ->where('is_damayan_entitlement', 1)
-            ->orderBy('package_id', 'ASC')
-            ->get()
-            ->getRowArray();
+        $package = $forcedPackageId !== null
+            ? $db->table('packages')->select('package_id')->where('package_id', $forcedPackageId)->get()->getRowArray()
+            : null;
+        if (! $package) {
+            $package = $db->table('packages')
+                ->select('package_id')
+                ->where('is_damayan_entitlement', 1)
+                ->orderBy('package_id', 'ASC')
+                ->get()
+                ->getRowArray();
+        }
 
         if (! $package) {
             $package = $db->table('packages')
@@ -473,8 +476,6 @@ class ClientRegistrationService
      */
     public function registerExistingUser(int $userId, int $branchId, array $planHolderData, int $createdBy): array
     {
-        error_log("registerExistingUser: Starting with userId={$userId}, branchId={$branchId}");
-        error_log("registerExistingUser: planHolderData = " . json_encode($planHolderData));
         
         $db = db_connect();
         $db->transBegin();
@@ -482,17 +483,14 @@ class ClientRegistrationService
         try {
             // Validate user exists and has correct role
             $user = $this->userModel->find($userId);
-            error_log("registerExistingUser: User query result = " . json_encode($user));
             
             if (!$user || (int) ($user['role_id'] ?? 0) !== 4) {
-                error_log("registerExistingUser: ERROR - User invalid or wrong role");
                 throw new \RuntimeException('Selected user is invalid for plan holder registration (must have Plan Holder role)');
             }
 
             // Prevent duplicate plan holder registration
             $alreadyLinked = $this->planHolderModel->where('user_id', $userId)->first();
             if ($alreadyLinked) {
-                error_log("registerExistingUser: ERROR - User already linked to plan holder");
                 throw new \RuntimeException('Selected user is already registered as a plan holder');
             }
 
@@ -501,18 +499,15 @@ class ClientRegistrationService
                 'is_plan_holder' => 1,
                 'branch_id' => $branchId,
             ]);
-            error_log("registerExistingUser: Updated user is_plan_holder=1");
 
             // Auto-generate unique plan number if not provided
             if (empty($planHolderData['unique_identifier'])) {
                 $planHolderData['unique_identifier'] = $this->generateUniquePlanNumber($branchId);
-                error_log("registerExistingUser: Generated plan number = {$planHolderData['unique_identifier']}");
             }
 
             // Verify unique_identifier uniqueness
             $existing = $this->planHolderModel->where('unique_identifier', $planHolderData['unique_identifier'])->first();
             if ($existing) {
-                error_log("registerExistingUser: ERROR - Plan number already in use");
                 throw new \RuntimeException('Plan number is already in use. Please use a different number.');
             }
 
@@ -522,34 +517,29 @@ class ClientRegistrationService
             $planHolderData['status'] = 'inactive'; // Status should be inactive until payment verified
             $planHolderData['is_linked_account'] = 1;
 
-            error_log("registerExistingUser: Inserting plan holder with data = " . json_encode($planHolderData));
             
             $planHolderId = (int) $this->planHolderModel->insert($planHolderData);
-            error_log("registerExistingUser: planHolderId = {$planHolderId}");
             
             if ($planHolderId <= 0) {
-                error_log("registerExistingUser: ERROR - Unable to insert plan holder, DB errors = " . json_encode($this->planHolderModel->errors()));
+                log_message('error', 'ClientRegistrationService::registerExistingUser could not insert the plan holder for user_id=' . $userId);
                 throw new \RuntimeException('Unable to create plan holder record');
             }
 
             // Create membership plan
-            error_log("registerExistingUser: Creating membership plan");
             $planResult = $this->createMembershipPlan($planHolderId, $branchId, $createdBy);
-            error_log("registerExistingUser: planResult = " . json_encode($planResult));
             
             if (!$planResult['success']) {
-                error_log("registerExistingUser: ERROR - Failed to create membership plan: " . $planResult['error']);
+                log_message('error', 'ClientRegistrationService::registerExistingUser could not create the plan for plan_holder_id=' . $planHolderId);
                 throw new \RuntimeException('Unable to create membership plan: ' . $planResult['error']);
             }
 
             // Verify transaction status
             if ($db->transStatus() === false) {
-                error_log("registerExistingUser: ERROR - Transaction status is false");
+                log_message('error', 'ClientRegistrationService::registerExistingUser transaction failed for user_id=' . $userId);
                 throw new \RuntimeException('Database transaction error detected');
             }
 
             $db->transCommit();
-            error_log("registerExistingUser: Transaction committed successfully");
 
             // Post-registration activities (outside transaction)
             $this->notificationService->notify(
@@ -569,14 +559,12 @@ class ClientRegistrationService
                 ['user_role' => 'admin_or_branch_admin']
             );
 
-            error_log("registerExistingUser: SUCCESS - Returning plan_holder_id={$planHolderId}");
             return ['success' => true, 'plan_holder_id' => $planHolderId, 'error' => null];
         } catch (\Throwable $e) {
-            error_log("registerExistingUser: EXCEPTION - " . $e->getMessage() . " | " . $e->getTraceAsString());
+            log_message('error', 'ClientRegistrationService::registerExistingUser failed for user_id=' . $userId . ' (' . get_class($e) . ')');
             $db->transRollback();
 
             // Log the error
-            error_log('ClientRegistrationService::registerExistingUser - Exception: ' . $e->getMessage());
 
             return ['success' => false, 'plan_holder_id' => null, 'error' => $e->getMessage()];
         }
@@ -705,7 +693,7 @@ class ClientRegistrationService
             $db->transRollback();
 
             // Log the error
-            error_log('ClientRegistrationService::registerNewUser - ' . $e->getMessage());
+            log_message('error', 'ClientRegistrationService::registerNewUser failed (' . get_class($e) . ')');
 
             return [
                 'success' => false,

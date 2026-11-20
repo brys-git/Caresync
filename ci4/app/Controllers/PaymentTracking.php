@@ -577,10 +577,8 @@ class PaymentTracking extends BaseController
     private function autoApprovePlanHolderFromInitialPayment(array $plan, int $monthsCovered = 1, int $paymentId = 0): bool
     {
         $planHolderId = (int) ($plan['plan_holder_id'] ?? 0);
-        error_log("AUTO_APPROVE DEBUG: Starting with planHolderId=$planHolderId, monthsCovered=$monthsCovered");
         
         if ($planHolderId <= 0) {
-            error_log("AUTO_APPROVE DEBUG: Invalid planHolderId");
             return false;
         }
 
@@ -590,33 +588,27 @@ class PaymentTracking extends BaseController
         $planModel = new PlanModel();
 
         $holder = $planHolderModel->find($planHolderId);
-        error_log("AUTO_APPROVE DEBUG: Found holder: " . json_encode($holder));
         
         if (! $holder || (int) ($holder['branch_id'] ?? 0) !== $branchId) {
-            error_log("AUTO_APPROVE DEBUG: Holder not found or branch mismatch");
             return false;
         }
 
         if (strtolower((string) ($holder['status'] ?? '')) !== 'inactive') {
-            error_log("AUTO_APPROVE DEBUG: Holder status is not inactive: " . ($holder['status'] ?? ''));
             return false;
         }
 
-        error_log("AUTO_APPROVE DEBUG: Holder is inactive, proceeding with auto-approval");
 
         $db = db_connect();
         $db->transBegin();
 
         try {
             $packageData = $this->resolvePackageAndVersion((float) ($plan['monthly_fee'] ?? 0));
-            error_log("AUTO_APPROVE DEBUG: Resolved package: " . json_encode($packageData));
             
             $existingPlan = $planModel
                 ->where('plan_holder_id', $planHolderId)
                 ->orderBy('plan_id', 'DESC')
                 ->first();
 
-            error_log("AUTO_APPROVE DEBUG: Existing plan: " . json_encode($existingPlan));
 
             if ($existingPlan) {
                 // The plan the client chose keeps its own fee and package: only
@@ -662,15 +654,17 @@ class PaymentTracking extends BaseController
                 }
                 (new PlanLedgerService())->sync((int) $existingPlan['plan_id']);
                 $this->alignInitialCoverage($paymentId, $today);
-                error_log("AUTO_APPROVE DEBUG: Updated existing plan");
             } else {
                 // No plan on file at all: start from the default program.
                 $today = $this->activationStartDate($paymentId);
-                $defaultProgram = MembershipService::getProgramInfo();
+                $onlyPlan = MembershipService::resolveRegistrationProgram(null);
+                $defaultProgram = $onlyPlan !== null
+                    ? ['id' => $onlyPlan['program_id'], 'monthly_fee' => $onlyPlan['monthly_fee']]
+                    : MembershipService::getProgramInfo();
 
                 $insertData = [
                     'plan_holder_id' => $planHolderId,
-                    'package_id' => $packageData['package_id'],
+                    'package_id' => (int) ($onlyPlan['package_id'] ?? 0) > 0 ? (int) $onlyPlan['package_id'] : $packageData['package_id'],
                     'program_id' => (int) ($defaultProgram['id'] ?? 0) ?: null,
                     'monthly_fee' => (float) ($defaultProgram['monthly_fee'] ?? 0) > 0 ? (float) $defaultProgram['monthly_fee'] : MembershipService::MONTHLY_FEE,
                     'start_date' => $today,
@@ -700,7 +694,6 @@ class PaymentTracking extends BaseController
 
                 $planId = (int) $planModel->insert($insertData, true);
 
-                error_log("AUTO_APPROVE DEBUG: Created new plan with ID=$planId");
 
                 if ($planId <= 0) {
                     throw new \RuntimeException('Unable to create default plan.');
@@ -718,29 +711,26 @@ class PaymentTracking extends BaseController
             // Enforce one active plan
             try {
                 (new MembershipService())->enforceOneActivePlan($planHolderId);
-                error_log("AUTO_APPROVE DEBUG: Enforced one active plan");
             } catch (\Throwable $e) {
-                error_log("AUTO_APPROVE DEBUG: enforceOneActivePlan failed: " . $e->getMessage());
+                log_message('error', 'PaymentTracking::autoApprove enforceOneActivePlan failed for plan_holder_id=' . $planHolderId . ' (' . get_class($e) . ')');
                 // Don't fail the entire transaction for this
             }
 
             $planHolderModel->update($planHolderId, [
                 'status' => 'active',
             ]);
-            error_log("AUTO_APPROVE DEBUG: Updated plan holder status to active");
 
             $userModel->update((int) ($holder['user_id'] ?? 0), [
                 'is_plan_holder' => 1,
                 'account_status' => 'verified',
                 'branch_id' => $branchId,
             ]);
-            error_log("AUTO_APPROVE DEBUG: Updated user");
 
             // Try to send notification, but don't fail if it errors
             try {
                 (new NotificationService())->notify((int) ($holder['user_id'] ?? 0), 'Your registration has been approved. Your plan is now active.', 'registration_pending');
             } catch (\Throwable $e) {
-                error_log("AUTO_APPROVE DEBUG: NotificationService failed: " . $e->getMessage());
+                log_message('error', 'PaymentTracking::autoApprove notification failed for plan_holder_id=' . $planHolderId . ' (' . get_class($e) . ')');
             }
             
             // Try to log activity, but don't fail if it errors
@@ -755,18 +745,17 @@ class PaymentTracking extends BaseController
                     ['status' => 'active']
                 );
             } catch (\Throwable $e) {
-                error_log("AUTO_APPROVE DEBUG: ActivityLogService failed: " . $e->getMessage());
+                log_message('error', 'PaymentTracking::autoApprove activity log failed for plan_holder_id=' . $planHolderId . ' (' . get_class($e) . ')');
             }
 
             if ($db->transStatus() === false) {
-                error_log("AUTO_APPROVE DEBUG: Transaction status is false");
+                log_message('error', 'PaymentTracking::autoApprove transaction failed for plan_holder_id=' . $planHolderId);
                 throw new \RuntimeException('Unable to auto-approve plan holder.');
             }
 
             $db->transCommit();
-            error_log("AUTO_APPROVE DEBUG: Transaction committed successfully");
         } catch (\Throwable $e) {
-            error_log("AUTO_APPROVE DEBUG: Exception caught: " . $e->getMessage());
+            log_message('error', 'PaymentTracking::autoApprove failed for plan_holder_id=' . $planHolderId . ' (' . get_class($e) . ')');
             $db->transRollback();
             return false;
         }

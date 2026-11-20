@@ -95,6 +95,46 @@ class MembershipService
         return self::getProgramInfo();
     }
 
+    /**
+     * The plan a new registration is placed on: the one chosen on the plan picker ('program_id', approved and active), or,
+     * when the picker was not offered because exactly ONE plan is approved and active, that one plan - so its own
+     * program_id, monthly fee and package are stored, never the built-in PHP 240 default.
+     * null when there is no usable choice (no plan, or several and none chosen): callers then fall back to the default
+     * program exactly as before.
+     *
+     * @return array{program_id:int, program_name:string, package_id:?int, monthly_fee:float, plan_price:float, term_months:?int}|null
+     */
+    public static function resolveRegistrationProgram(?int $programId = null): ?array
+    {
+        $db = db_connect();
+        if (! $db->tableExists('membership_programs') || ! $db->fieldExists('approval_status', 'membership_programs')) {
+            return null;
+        }
+        $base = static fn () => db_connect()->table('membership_programs')
+            ->select('program_id, program_name, package_id, monthly_fee, plan_price, term_months')
+            ->where('approval_status', 'approved')
+            ->where('is_active', 1);
+
+        $row = null;
+        if ((int) $programId > 0) {
+            $row = $base()->where('program_id', (int) $programId)->get()->getRowArray();
+        }
+        if (! $row) {
+            $all = $base()->orderBy('program_id', 'ASC')->limit(2)->get()->getResultArray();
+            $row = count($all) === 1 ? $all[0] : null;
+        }
+        if (! $row || (float) $row['monthly_fee'] <= 0) {
+            return null;
+        }
+
+        return [
+            'program_id' => (int) $row['program_id'], 'program_name' => (string) $row['program_name'],
+            'package_id' => (int) ($row['package_id'] ?? 0) > 0 ? (int) $row['package_id'] : null,
+            'monthly_fee' => (float) $row['monthly_fee'], 'plan_price' => (float) ($row['plan_price'] ?? 0),
+            'term_months' => isset($row['term_months']) ? (int) $row['term_months'] : null,
+        ];
+    }
+
     public static function getProgramInfo(): array
     {
         $db = db_connect();
