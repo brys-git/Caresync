@@ -137,6 +137,8 @@ class ClientPaymentController extends BaseController
                     $status === 'pending' && (int) ($payment['awaiting_remittance'] ?? 0) === 1 => 'collected',
                     default => 'pending',
                 },
+                'reason' => $status === 'cancelled' && ! empty($payment['rejection_reason']) ? (string) $payment['rejection_reason'] : null,
+                'proof_requested' => $status === 'pending' && ! empty($payment['proof_requested_at']) ? ['note' => (string) ($payment['proof_request_note'] ?? '')] : null,
                 'receipt' => $receipt !== '' ? $receipt : null,
                 'receipt_url' => $status === 'paid' ? base_url('client/payment/download-receipt/' . (int) $payment['payment_id']) : null,
             ];
@@ -391,7 +393,12 @@ class ClientPaymentController extends BaseController
 
         $amount = $projection['amount'];
 
-        $payload = [
+        $proof = $this->gcashProof($planHolder, '/client/payment/make');
+        if (isset($proof['redirect'])) {
+            return $proof['redirect'];
+        }
+
+        $payload = $proof['fields'] + [
             'plan_id' => (int) $plan['plan_id'],
             'amount' => $amount,
             'months_covered' => $monthsCovered,
@@ -413,9 +420,40 @@ class ClientPaymentController extends BaseController
             $paymentModel->update($paymentId, [
                 'official_receipt_number' => (new PaymentService())->generateReceiptNumber($paymentId, $payload['payment_date']),
             ]);
+            (new \App\Services\GcashReviewService())->notifyNewPayment($paymentId);
         }
 
-        return redirect()->to('/client/payment')->with('success', 'GCash payment submitted. Waiting for branch admin verification.');
+        return redirect()->to('/client/payment')->with('success', 'GCash payment submitted. Waiting for verification.');
+    }
+
+    /**
+     * The screenshot (required) and the details that go with a GCash payment, checked on the server. On a problem the
+     * client is sent back with a message and nothing is saved (no file is kept).
+     *
+     * @return array{fields:array<string,mixed>}|array{redirect:\CodeIgniter\HTTP\RedirectResponse}
+     */
+    private function gcashProof(array $planHolder, string $backTo): array
+    {
+        $review = new \App\Services\GcashReviewService();
+        $account = (new CollectorGcashService())->resolveForClient((int) ($planHolder['branch_id'] ?? 0), $planHolder['barangay_code'] ?? null);
+        $fields = $review->clientFields($this->request->getPost(), $account);
+        if (! $fields['ok']) {
+            return ['redirect' => redirect()->to($backTo)->withInput()->with('error', $fields['message'])];
+        }
+        $shot = $review->storeScreenshot($this->request->getFile('gcash_screenshot'));
+        if (! $shot['ok']) {
+            return ['redirect' => redirect()->to($backTo)->withInput()->with('error', $shot['message'])];
+        }
+
+        return ['fields' => $fields['fields'] + ['proof_image' => $shot['name']]];
+    }
+
+    /** The client sends a clearer screenshot after the verifier asked for one. */
+    public function reuploadProof(int $paymentId)
+    {
+        $r = (new \App\Services\GcashReviewService())->reupload($paymentId, (int) session('user_id'), $this->request->getFile('gcash_screenshot'));
+
+        return redirect()->to('/client/payment')->with($r['ok'] ? 'success' : 'error', $r['message']);
     }
 
     /**
@@ -446,7 +484,12 @@ class ClientPaymentController extends BaseController
             return redirect()->to('/client/payment/make')->withInput()->with('error', 'Duplicate reference number detected. Please verify your reference number.');
         }
 
-        $payload = [
+        $proof = $this->gcashProof($planHolder, '/client/payment/make');
+        if (isset($proof['redirect'])) {
+            return $proof['redirect'];
+        }
+
+        $payload = $proof['fields'] + [
             'plan_id' => $planId,
             'amount' => $prep['amount'],
             'months_covered' => (int) $prep['months_covered'],
@@ -469,6 +512,7 @@ class ClientPaymentController extends BaseController
             $paymentModel->update($paymentId, [
                 'official_receipt_number' => (new PaymentService())->generateReceiptNumber($paymentId, $payload['payment_date']),
             ]);
+            (new \App\Services\GcashReviewService())->notifyNewPayment($paymentId);
         }
 
         return redirect()->to('/client/payment')->with('success', 'GCash payment submitted (' . $prep['text'] . '). Waiting for verification.');
@@ -570,19 +614,15 @@ class ClientPaymentController extends BaseController
             'remarks' => 'Submitted by client, awaiting branch verification',
         ];
 
-        $proof = $this->request->getFile('proof_image');
-        if ($this->supportsProofUpload() && $monthsCovered > 1 && (! $proof || ! $proof->isValid())) {
-            return redirect()->back()->withInput()->with('error', 'Proof image is required for advance payments.');
+        // The screenshot and its details are required for every GCash payment (checked and stored by GcashReviewService).
+        $review = new \App\Services\GcashReviewService();
+        $account = (new CollectorGcashService())->resolveForClient((int) ($planHolder['branch_id'] ?? 0), $planHolder['barangay_code'] ?? null);
+        $fields = $review->clientFields($this->request->getPost() + ['paid_at' => (string) $this->request->getPost('payment_date') . ' 12:00', 'amount_sent' => $amount, 'sender_name' => (string) ($this->request->getPost('sender_name') ?: 'client')], $account);
+        $shot = $review->storeScreenshot($this->request->getFile('gcash_screenshot') ?? $this->request->getFile('proof_image'));
+        if (! $fields['ok'] || ! $shot['ok']) {
+            return redirect()->back()->withInput()->with('error', $fields['ok'] ? $shot['message'] : $fields['message']);
         }
-        if ($this->supportsProofUpload() && $proof && $proof->isValid() && ! $proof->hasMoved()) {
-            $uploadDir = WRITEPATH . 'uploads/payment-proofs';
-            if (! is_dir($uploadDir)) {
-                mkdir($uploadDir, 0775, true);
-            }
-            $proofName = $proof->getRandomName();
-            $proof->move($uploadDir, $proofName);
-            $payload['proof_image'] = $proofName;
-        }
+        $payload = $payload + $fields['fields'] + ['proof_image' => $shot['name']];
 
         $paymentModel = new PaymentModel();
         $paymentId = (int) $paymentModel->insert($payload, true);

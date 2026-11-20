@@ -40,6 +40,8 @@ $routes->group('client', ['filter' => 'auth'], static function (RouteCollection 
     // The client's own ledger (verified payments) as a PDF.
     $routes->get('payment/ledger', 'Client\ClientPaymentController::downloadLedger', ['filter' => 'role:4']);
     $routes->post('payment/submit-gcash', 'Client\ClientPaymentController::submitGcashPayment', ['filter' => 'role:4']);
+    // A clearer GCash screenshot, when the verifier asked for one.
+    $routes->post('payment/reupload/(:num)', 'Client\ClientPaymentController::reuploadProof/$1', ['filter' => 'role:4']);
 
     // Service balance continuation
     $routes->get('service-balances', 'ServiceBalances::index', ['filter' => 'role:4']);
@@ -49,6 +51,7 @@ $routes->group('client', ['filter' => 'auth'], static function (RouteCollection 
 
     // My claims: every claim, avail and service request with its status, terms and balance
     $routes->get('claims', 'Client\ClientClaimsController::index', ['filter' => 'role:4']);
+    $routes->post('claims/rate/(:num)', 'Client\ClientClaimsController::rate/$1', ['filter' => 'role:4']);
 
     // Service Management
     $routes->get('service', 'Client\ClientServiceController::services', ['filter' => 'role:4']);

@@ -34,5 +34,14 @@ class PaymentModel extends Model
         'avail_id',
         'awaiting_remittance',
         'collected_at',
+        'paid_at',
+        'sender_name',
+        'amount_sent',
+        'receiving_gcash_user_id',
+        'receiving_gcash_number',
+        'proof_requested_at',
+        'proof_request_note',
+        'rejection_code',
+        'rejection_reason',
     ];
 }

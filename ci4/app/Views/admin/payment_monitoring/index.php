@@ -107,7 +107,7 @@
                                 <td><?= $staffName !== '' ? esc($staffName) : '<span class="text-muted">-</span>' ?></td>
                                 <td>
                                     <?php if (! empty($supports_proof_upload) && ! empty($row['proof_image'] ?? null)): ?>
-                                        <a href="<?= base_url('uploads/payment-proofs/' . $row['proof_image']) ?>" target="_blank">View</a>
+                                        <span class="text-muted">Screenshot on file</span>
                                     <?php else: ?>
                                         -
                                     <?php endif; ?>

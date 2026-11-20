@@ -29,7 +29,11 @@ commission 10 % of **everything the collector collects, cash and GCash** (`Confi
 | B1 | Plan holders -> Register: pick the new plan, upload a test ID, add a beneficiary | Created, on the 20,000/400 plan, **ID Control No. assigned at once** for a branch-registered (already active) holder (`KKM-<3 letters>-<year>-00001`) |
 | B2 | Payment Tracking -> Record cash, 2 months | Paid; ledger shows 2 months; claim form opens (needs 2 paid months) |
 | C1-C2 | File a casket claim for her (death certificate + beneficiary ID) | Pending request |
-| D1-D4 | Approve it; Ongoing services: Start, then Complete | Approved with no amount owed; service pending -> ongoing -> completed |
+| D1-D3c | Approve it -> Service plan page: schedule + family contact, tasks assigned to staff (due dates), add / remove a task | Stage Approved -> Scheduled -> Preparing; staff notified |
+| D4-D5c | (Staff) My tasks: Start, Done (document tasks need an upload), Report a problem | Service becomes Ongoing; problem notifies the Branch Admin, who resolves it |
+| D6-D8b | (Branch Admin) Complete with and without the family confirmation | Refused until every task is done and the confirmation (name, relationship, date) is given |
+| D9-D11 | (Client) My claims: schedule shown, rate 1-5; (Branch Admin) close; calendar | Rating once; closed; wake and burial on the calendar |
+| N1-N7 | Another staff member / another branch's staff / Branch Admin try the tasks, documents, the old status form; a 6 MB file | All refused |
 | E2-E3 | A second holder applies for a package as a client; approve with **12 months** | Down payment = 30 % of the price, due in 30 days; instalment = rest / 12; service cannot start yet |
 | E3.5 | Record the down payment (cash) | Avail becomes active, 12 instalments written; service can start |
 | E4 | Record a payment of one instalment + 400 | Preview and receipt show "Applied to: Instalment 1 of 12 / Plan <month>" |
@@ -57,7 +61,7 @@ commission 10 % of **everything the collector collects, cash and GCash** (`Confi
 | H5-H6 | Collector -> Remit collections: all collections are ticked (untick some for a partial remittance) | Cash / GCash shown separately, gross, commission (10 % of everything), net to hand over; submit. Another remittance later the same month is fine |
 | H7-H9 | (Branch Admin) Remittances -> open -> **Confirm received PHP <net>** | That remittance's payments become **paid** (ledger, receipt, client told once); commission becomes earned; collector notified |
 | H10 | Another remittance: Report discrepancy (amount received + reason) | Only that remittance goes on hold; its payments stay "waiting"; collector notified |
-| I2-I5c | (Client) Make payment -> GCash + 13-digit reference; (Collector) approve it | Collected; appears in Remit collections as GCash; confirming its remittance makes it paid |
+| I1-I6b | (Client) Make payment -> GCash + 13-digit reference + screenshot + paid time/amount/sender; (Collector) GCash review: checklist + last 4 digits, ask for clearer proof, reject with a reason, duplicate warning | Without a screenshot it is refused; wrong last 4 digits refused; verified = collected (not paid) and appears in Remit collections as GCash; the reject reason reaches the client |
 | L1-L3 | Collector -> "My month": progress line, Mark not collected (reason required; Other needs a note), Close month | Close stays disabled until everyone is collected or marked **and** every collection is in a **confirmed** remittance |
 | L4-L10 | Reports -> Monthly collection summary (Branch Admin and System Admin) | The closed month; Print / Excel / PDF; the other branch cannot see it |
 | L12-L13 | A collection older than 7 days; a month not closed by the 5th | Warning on the collector's page and under "Needs attention" (Branch Admin) |
@@ -86,8 +90,9 @@ commission 10 % of **everything the collector collects, cash and GCash** (`Confi
 `php run_all.php` (kept outside the repository, in the test tooling) runs exactly these steps over HTTP against the test server
 (`php -S localhost:8081` with the test database) and prints PASS/FAIL per id above.
 
-## Last automated run (20 Nov 2026, caresync_test)
-159 checks (sections A-M), 159 passed, 0 failed, plus the service-level suites st13 (setting-driven rules), st14 (partial remittances, close month, flags) and st15 (single active plan).
+## Last automated run (21 Nov 2026, caresync_test)
+206 checks (sections A-N), 206 passed, 0 failed, plus the service-level suites st3-st17 (st16 = service process, 50 checks; st17 = GCash review, 42 checks).
+Earlier run (20 Nov 2026): 159 checks (sections A-M), 159 passed.
 Earlier run (19 Nov 2026): 132 checks, 132 passed (sections A-K). Real bugs the run found and that were fixed first:
 1. Staff created with a temporary password lost the "can collect" flag.
 2. The first cash payment of an already-active holder was not counted by the ledger (no cycle number).

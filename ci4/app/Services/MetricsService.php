@@ -486,7 +486,7 @@ class MetricsService
                     ->groupStart()
                         ->where('s.service_id', null)
                         ->orGroupStart()
-                            ->whereIn('s.status', ['pending', 'ongoing'])
+                            ->whereIn('s.status', ServiceProcessService::OPEN)
                             ->where('s.deleted_at', null)
                         ->groupEnd()
                     ->groupEnd()
@@ -509,7 +509,7 @@ class MetricsService
     }
 
     /**
-     * Services of a branch that are not finished yet (status pending or ongoing).
+     * Services of a branch that are not finished yet (an open stage: approved ... burial day).
      * THE rule behind "Ongoing services": the Branch Admin dashboard number and the
      * Ongoing Services page both use it.
      */
@@ -517,7 +517,7 @@ class MetricsService
     {
         return (int) db_connect()->table('services')
             ->where('branch_id', $branchId)
-            ->whereIn('status', ['pending', 'ongoing'])
+            ->whereIn('status', ServiceProcessService::OPEN)
             ->where('deleted_at', null)
             ->countAllResults();
     }
@@ -541,8 +541,11 @@ class MetricsService
      *
      * @return array<string,int>
      */
-    public function navCounts(int $roleId, int $branchId): array
+    public function navCounts(int $roleId, int $branchId, int $userId = 0): array
     {
+        if ($roleId === 5) {
+            return $userId > 0 && GcashReviewService::ready() ? ['gcash_waiting' => (new GcashReviewService())->waitingCount($userId, $roleId, $branchId)] : [];
+        }
         if ($roleId !== 2 && $roleId !== 3) {
             return [];
         }
@@ -554,6 +557,19 @@ class MetricsService
 
         if ($branchId > 0) {
             $counts['ids_needing_review'] = (new GovernmentIdVerificationService())->countNeedingReview($branchId);
+        }
+
+        // GCash payments waiting for this person to review; service tasks (Branch Admin: overdue / problems / ready; staff: due today).
+        if ($userId > 0 && GcashReviewService::ready() && ($roleId === 2 || can_collect($userId))) {
+            $counts['gcash_waiting'] = (new GcashReviewService())->waitingCount($userId, $roleId, $branchId);
+        }
+        if (ServiceProcessService::ready() && $branchId > 0) {
+            if ($roleId === 2) {
+                $a = (new ServiceProcessService())->attention($branchId);
+                $counts['service_attention'] = $a['overdue'] + $a['problems'] + $a['ready'];
+            } elseif ($userId > 0) {
+                $counts['my_tasks'] = (new ServiceProcessService())->myOpenCount($userId, $branchId);
+            }
         }
 
         return $counts;

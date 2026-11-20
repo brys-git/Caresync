@@ -29,7 +29,7 @@ foreach ($chips as $chip) {
         <p class="cp-sub">Three steps. Your collector confirms the payment against their GCash history.</p>
     </header>
 
-    <form id="makePaymentForm" method="post" action="<?= base_url('client/payment/make') ?>" class="cp-layout" data-cs-once>
+    <form id="makePaymentForm" method="post" action="<?= base_url('client/payment/make') ?>" class="cp-layout" enctype="multipart/form-data" data-cs-once>
         <?= csrf_field() ?>
         <input type="hidden" name="months_count" id="monthsCount" value="1">
         <input type="hidden" name="covers_from" id="coversFrom" value="<?= $e($firstChip['month'] ?? '') ?>">
@@ -144,6 +144,7 @@ foreach ($chips as $chip) {
                     >
                     <p class="cp-hint" id="refHint" aria-live="polite">0 of 13 digits</p>
                 </div>
+                <?= view('client/_gcash_proof_fields') ?>
             </section>
         </div>
 

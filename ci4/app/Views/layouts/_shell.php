@@ -40,9 +40,9 @@ if (! array_key_exists('unread', $navCounts)) {
 // Sidebar badges (pending service requests, IDs needing review) for Branch Admin and
 // Staff. Computed by MetricsService, the same source as the dashboards; a controller
 // that passes its own nav_counts still wins.
-if (in_array((int) (session('role_id') ?? 0), [2, 3], true) && ! array_key_exists('pending_requests', $navCounts)) {
+if (in_array((int) (session('role_id') ?? 0), [2, 3, 5], true) && ! array_key_exists('pending_requests', $navCounts) && ! array_key_exists('gcash_waiting', $navCounts)) {
     try {
-        $navCounts += (new \App\Services\MetricsService())->navCounts((int) session('role_id'), (int) (session('branch_id') ?? 0));
+        $navCounts += (new \App\Services\MetricsService())->navCounts((int) session('role_id'), (int) (session('branch_id') ?? 0), (int) (session('user_id') ?? 0));
     } catch (\Throwable $e) {
         log_message('error', 'Sidebar counts unavailable: ' . $e->getMessage());
     }

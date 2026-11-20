@@ -38,7 +38,7 @@ $peso = static fn ($v): string => '₱' . number_format((float) $v, 2);
         </div>
     </section>
 
-    <form id="makeAmountForm" method="post" action="<?= base_url('client/payment/make') ?>" class="cs-panel" data-cs-once>
+    <form id="makeAmountForm" method="post" action="<?= base_url('client/payment/make') ?>" class="cs-panel" enctype="multipart/form-data" data-cs-once>
         <?= csrf_field() ?>
         <input type="hidden" name="entry_mode" value="amount">
         <div class="cs-panel__head"><h2 class="cs-panel__title">Your payment</h2></div>
@@ -59,6 +59,7 @@ $peso = static fn ($v): string => '₱' . number_format((float) $v, 2);
                     <label class="form-label" for="reference_number">GCash reference number</label>
                     <input id="reference_number" name="reference_number" class="form-control" inputmode="numeric" autocomplete="off" maxlength="13" pattern="\d{13}" placeholder="13 digits" required value="<?= esc((string) old('reference_number', '')) ?>">
                 </div>
+                <div class="col-12"><?= view('client/_gcash_proof_fields') ?></div>
                 <div class="col-12"><div class="alert alert-info mb-0 d-none" id="allocationPreview" role="status"></div></div>
             </div>
             <button type="submit" class="btn btn-primary mt-3">Submit payment</button>

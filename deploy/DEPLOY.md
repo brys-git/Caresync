@@ -1,4 +1,4 @@
-# Deploying Parts B, D and E (claims/avails, payment allocation, reports, ID Control No., collector remittances)
+# Deploying Parts B, D and E, the service process and the GCash review screen
 
 For: InfinityFree (no SSH, no cron, phpMyAdmin only). Do it on the **staging subdomain first**, then on the
 live site. Do not merge `feature/part-b` into `main` until staging has passed the test list below.
@@ -8,7 +8,7 @@ Files in this folder:
 | File | What it is |
 | --- | --- |
 | `DEPLOY.md` | This checklist. |
-| `partB_migrations.sql` | **Fallback** for the database changes (11 migrations: Part B, Part D, Part E). Import **once**, and only if you do *not* use the `/migrate/<key>` page (Method A). |
+| `partB_migrations.sql` | **Fallback** for the database changes (13 migrations: Part B, Part D, Part E, service process, GCash review). Import **once**, and only if you do *not* use the `/migrate/<key>` page (Method A). |
 | `partD_backfill.sql` | ID Control Nos for plan holders who are already active. **Does not exist yet**: it is generated from *your* live export (step 2), not from local data. |
 | `E2E_CHECKLIST.md` | The hand-followable end-to-end test (the same steps the automated run does). |
 
@@ -56,9 +56,9 @@ first), with `app.baseURL` set to the staging address. Run the test list. Only t
    ```
 
    - Method A works from **any** level. Note the newest version for the record.
-   - Method B only: the newest row must be `2026-11-17-010000` (or a later version that is *not* one of the eleven
-     below), with **no** row for `2026-11-19-000000` ... `2026-11-21-000000`. Older than `2026-11-17-010000` ->
-     stop, paste the result to the developer (a `deploy/pre_partB.sql` is needed first). Any of the eleven already
+   - Method B only: the newest row must be `2026-11-17-010000` (or a later version that is *not* one of the thirteen
+     below), with **no** row for `2026-11-19-000000` ... `2026-11-22-010000`. Older than `2026-11-17-010000` ->
+     stop, paste the result to the developer (a `deploy/pre_partB.sql` is needed first). Any of the thirteen already
      present -> stop, do not import the file.
 
 ## 2. Generate the ID numbers from the live export (done by the developer, on a copy)
@@ -88,7 +88,7 @@ Check the file: one `UPDATE` per plan holder, each guarded so an existing number
 4. **Right away delete the `app.migrateKey` line from `.env`** (the page does nothing without it, but a key that
    stays on the server is a door that stays unlocked). Check the page is closed again: the same address must now
    show "page not found".
-5. Check: `SELECT version FROM migrations ORDER BY id DESC LIMIT 11;` ends with `2026-11-21-000000`, and
+5. Check: `SELECT version FROM migrations ORDER BY id DESC LIMIT 13;` ends with `2026-11-22-010000`, and
    `SHOW TABLES LIKE 'remittances';` returns a row.
 
 ### Method B - the SQL file (fallback)
@@ -215,6 +215,38 @@ Log in with each role and tick. (`E2E_CHECKLIST.md` has the long version with ex
       collector's page; a month not closed by the 5th shows "Collector X hasn't closed <month>".
 - [ ] The old *Mark as paid* button is gone from the Commission report, which shows earned / waiting / on hold.
 
+**Service process (after approval)**
+- [ ] Approve a claim: you land on the *Service plan* page with the task list already built from the package's
+      inclusions (viewing setup is one task). Fill in pick-up, wake, burial, cemetery and the family contact, Save:
+      the stage becomes *Scheduled* (the client is told).
+- [ ] Give each task to a staff member of the branch with a due date: the stage becomes *Preparing* and each staff
+      member is notified. Add, edit, reorder and remove a task.
+- [ ] Staff: menu *My tasks* (Today / Upcoming / Done). The card shows the deceased, the family's phone (tap to call),
+      the wake address with a Google Maps link, the time and the instructions. Start -> the service becomes *Ongoing*
+      (for an avail only after its down payment is verified). A task that needs a document cannot be marked done
+      without an upload. *Report a problem* tells the Branch Admin.
+- [ ] A staff member cannot open another staff member's task, and nobody can reach another branch's service.
+- [ ] All tasks done -> the Branch Admin is told it is ready to complete. *Complete* needs the family's name,
+      relationship and date (photo of the signed form optional). The client can rate 1-5 under *My claims*.
+- [ ] *Service board* (every stage, tasks done/total, overdue in red), *Wakes and burials* calendar, and *Needs
+      attention* on the dashboard (overdue tasks, problems, ready to complete).
+- [ ] Uploaded task documents are not reachable by URL (`/uploads/service-tasks/...` is not found); they open only
+      through the app for the Branch Admin / the task's owner.
+
+**GCash review**
+- [ ] Client: *Make payment* asks for a screenshot (image, 5 MB), the time paid, the amount shown and the sender;
+      without a screenshot it is refused.
+- [ ] Verifier (the collector who owns the GCash account shown to the client, or the Branch Admin for the branch
+      account): menu *GCash review* with a count; oldest first, "waiting N days". The review page shows the
+      screenshot (click to zoom), the facts, automatic warnings (duplicate reference, amount differs, date older than
+      7 days or in the future, no screenshot) and the checklist.
+- [ ] *Verify* needs all four ticks AND the last 4 digits of the reference typed correctly. *Received a different
+      amount* (the rest stays due), *Ask for clearer proof* (client re-uploads from *Payments*), *Reject* with a
+      reason the client sees.
+- [ ] A collector's verified GCash payment shows under *Remit collections* (not paid until the Branch Admin
+      confirms the remittance); a Branch Admin's verification makes it paid at once.
+- [ ] The screenshot cannot be opened by anyone else (another collector, the client's URL guess, the System Admin).
+
 **Reports and dashboards**
 - [ ] Overdue report: separate Plan and Package columns; Print, Excel, PDF all open.
 - [ ] Remittance and Collections reports: plan / instalments / down payments split.
@@ -224,6 +256,8 @@ Log in with each role and tick. (`E2E_CHECKLIST.md` has the long version with ex
 - [ ] Open the receipt PDF and the ledger PDF: text not cut off, peso signs and totals right, fits the page.
 
 **Not available on this host**
+- Make sure `writable/uploads/` (payment-proofs, service-tasks, service-confirmations) is writable by the web server and
+  stays outside `public/` (it is, with the folder layout in `ci4/DEPLOY.md`).
 - Nothing runs on a schedule (no cron): the "cancel after 30 days with no down payment" rule runs whenever an avail
   is read, and the "not remitted for 7 days" / "month not closed by the 5th" warnings are worked out whenever the
   Branch Admin dashboard or the collector's page opens.

@@ -44,6 +44,12 @@ $routes->group('dashboard', ['filter' => 'auth'], static function (RouteCollecti
     $routes->get('collector', 'Dashboard::collector', ['filter' => 'role:5']);
 });
 
+// GCash review screen (Branch Admin, and collectors for payments made to their own GCash account; checked in the controller).
+$routes->get('gcash-review', 'GcashReviewController::index', ['filter' => 'auth']);
+$routes->get('gcash-review/(:num)', 'GcashReviewController::show/$1', ['filter' => 'auth']);
+$routes->get('gcash-review/(:num)/image', 'GcashReviewController::image/$1', ['filter' => 'auth']);
+$routes->post('gcash-review/(:num)/decide', 'GcashReviewController::decide/$1', ['filter' => 'auth']);
+
 // Plan holder verification queue (Admin: 1, BranchAdmin: 2). The old POST plan-holders/store registration route was
 // removed: every registration goes through the shared wizard (branch-admin/client/register, admin/client/register).
 $routes->get('plan-holders/register', 'PlanHolders::register', ['filter' => 'auth']);

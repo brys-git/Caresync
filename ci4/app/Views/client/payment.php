@@ -151,7 +151,16 @@ $statusLabels = ['approved' => 'Approved', 'pending' => 'Pending', 'rejected' =>
                                                 <div class="cp-ref">Recorded by branch</div>
                                             <?php endif; ?>
                                         </td>
-                                        <td><span class="cp-status cp-status--<?= $e($row['status']) ?>"><?= $e($statusLabels[$row['status']] ?? 'Pending') ?></span></td>
+                                        <td><span class="cp-status cp-status--<?= $e($row['status']) ?>"><?= $e($statusLabels[$row['status']] ?? 'Pending') ?></span>
+                                            <?php if (! empty($row['reason'])): ?><div class="cp-ref" data-reject-reason>Reason: <?= $e($row['reason']) ?></div><?php endif; ?>
+                                            <?php if (! empty($row['proof_requested'])): ?>
+                                                <form method="post" action="<?= base_url('client/payment/reupload/' . (int) $row['id']) ?>" enctype="multipart/form-data" class="mt-2">
+                                                    <?= csrf_field() ?>
+                                                    <div class="cp-ref">Please upload a clearer screenshot<?= $row['proof_requested']['note'] !== '' ? ': ' . $e($row['proof_requested']['note']) : '' ?></div>
+                                                    <input type="file" name="gcash_screenshot" accept="image/jpeg,image/png,image/webp" required class="form-control form-control-sm my-1">
+                                                    <button type="submit" class="btn btn-sm btn-primary">Upload a clearer screenshot</button>
+                                                </form>
+                                            <?php endif; ?></td>
                                         <td>
                                             <?php if ($row['receipt_url'] !== null): ?>
                                                 <a href="<?= $e($row['receipt_url']) ?>"><?= $e($row['receipt']) ?></a>

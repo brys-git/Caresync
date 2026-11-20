@@ -106,6 +106,7 @@ class Nav extends BaseConfig
                         // to the exact same destination.
                         ['key' => 'collections', 'label' => 'Collection list', 'icon' => 'ti-map-pin',   'url' => 'branch-admin/collection-list'],
                         ['key' => 'collector-assignments', 'label' => 'Collector assignments', 'icon' => 'ti-map-pin-pin', 'url' => 'branch-admin/collector-assignments'],
+                        ['key' => 'gcash-review', 'label' => 'GCash review', 'icon' => 'ti-brand-paypal', 'url' => 'gcash-review', 'count' => 'gcash_waiting'],
                         ['key' => 'remittances', 'label' => 'Remittances', 'icon' => 'ti-receipt-2', 'url' => 'branch-admin/remittances', 'count' => 'pending_remittances'],
                         ['key' => 'reports',     'label' => 'Reports',         'icon' => 'ti-file-text', 'url' => 'branch-admin/reports'],
                     ],
@@ -113,6 +114,7 @@ class Nav extends BaseConfig
                 [
                     'title' => 'Branch',
                     'items' => [
+                        ['key' => 'service-board', 'label' => 'Service board', 'icon' => 'ti-layout-kanban', 'url' => 'branch-admin/service-package/ongoing', 'count' => 'service_attention'],
                         ['key' => 'offers', 'label' => 'Services & packages', 'icon' => 'ti-package',       'url' => 'branch-admin/service-package'],
                         ['key' => 'plans',  'label' => 'Plan builder',        'icon' => 'ti-clipboard-plus', 'url' => 'plan-builder'],
                         ['key' => 'staff',  'label' => 'Staff monitoring',    'icon' => 'ti-id-badge',      'url' => 'branch-admin/staff-monitoring'],
@@ -134,6 +136,8 @@ class Nav extends BaseConfig
                         ['key' => 'id-verification', 'label' => 'ID review',     'icon' => 'ti-id-badge-2',       'url' => 'staff/id-verification', 'count' => 'ids_needing_review'],
                         ['key' => 'payments',     'label' => 'Payments',         'icon' => 'ti-cash',             'url' => 'staff/payment-management'],
                         ['key' => 'services',     'label' => 'Services',         'icon' => 'ti-clipboard-list',   'url' => 'staff/services', 'count' => 'pending_requests'],
+                        ['key' => 'my-tasks',     'label' => 'My tasks',         'icon' => 'ti-checklist',        'url' => 'staff/my-tasks', 'count' => 'my_tasks'],
+                        ['key' => 'gcash-review', 'label' => 'GCash review',     'icon' => 'ti-brand-paypal',     'url' => 'gcash-review', 'count' => 'gcash_waiting', 'capability' => 'collect'],
                         // Hidden unless this Staff account is also flagged
                         // users.is_collector - most Staff aren't, and a
                         // visible link that 403s for them is worse than no
@@ -169,6 +173,7 @@ class Nav extends BaseConfig
                         // an Unverified total for this same feature).
                         ['key' => 'dashboard',    'label' => "Today's route",   'icon' => 'ti-route',   'url' => 'dashboard/collector'],
                         ['key' => 'collections',  'label' => 'Collection list', 'icon' => 'ti-map-pin', 'url' => 'collector/collection-list'],
+                        ['key' => 'gcash-review', 'label' => 'GCash review',  'icon' => 'ti-brand-paypal', 'url' => 'gcash-review', 'count' => 'gcash_waiting'],
                         ['key' => 'remit',        'label' => 'Remit collections', 'icon' => 'ti-receipt-2', 'url' => 'collector/remit'],
                         ['key' => 'commission',   'label' => 'My commission',   'icon' => 'ti-coin',    'url' => 'collector/commission'],
                         ['key' => 'gcash',        'label' => 'My GCash account', 'icon' => 'ti-qrcode', 'url' => 'collector/gcash-account'],

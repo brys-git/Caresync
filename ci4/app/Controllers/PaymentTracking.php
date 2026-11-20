@@ -418,6 +418,12 @@ class PaymentTracking extends BaseController
 
         $method = strtolower((string) ($payment['payment_method'] ?? ''));
         
+        // A client's GCash payment is decided on the review page (screenshot, checklist, last 4 digits of the reference) -
+        // never with a bare Approve / Reject. A registration (initial) payment keeps its own approval screen.
+        if ($method === 'gcash' && ((string) ($payment['payment_type'] ?? '')) !== 'initial_registration' && \App\Services\GcashReviewService::ready()) {
+            return redirect()->to('/gcash-review/' . $paymentId)->with('error', 'GCash payments are verified on the review screen: check the screenshot against your GCash app first.');
+        }
+
         // PHASE REQUIREMENT: Duplicate GCash reference validation
         if (in_array($targetStatus, ['paid', 'verified'], true) && $method === 'gcash') {
             $refNumber = trim((string) ($payment['reference_number'] ?? ''));
