@@ -3,7 +3,7 @@
 <?= $this->section('content') ?>
 <?php
 $initialStatus = strtolower((string) (($latest_initial_payment['status'] ?? 'none')));
-$program = $program ?? ['name' => 'Damayan Burial Program', 'monthly_fee' => 240.0];
+$program = $program ?? ['name' => 'Your plan', 'monthly_fee' => 240.0];
 $monthlyFee = (float) ($monthly_fee ?? ($program['monthly_fee'] ?? 240));
 $fact = static function (string $label, string $html): string {
     return '<div class="col-md-3"><div class="cs-fact"><span class="cs-fact__label">' . esc($label) . '</span><span class="cs-fact__value">' . $html . '</span></div></div>';
@@ -42,13 +42,13 @@ $fact = static function (string $label, string $html): string {
                 <?= view('client/_gcash_account', ['gcash_account' => $gcash_account ?? null]) ?>
             </div>
 
-            <form method="post" action="<?= base_url('initial-payment') ?>">
+            <form method="post" action="<?= base_url('initial-payment') ?>" enctype="multipart/form-data">
                 <?= csrf_field() ?>
                 <section class="cs-panel">
                     <div class="cs-panel__body">
                         <div class="row g-3 mb-3">
                             <?= $fact('Monthly contribution', cs_money($monthlyFee)) ?>
-                            <?= $fact('Plan', esc((string) ($program['name'] ?? 'Damayan Burial Program'))) ?>
+                            <?= $fact('Plan', esc((string) ($program['name'] ?? 'Your plan'))) ?>
                             <?= $fact('Status', cs_status((string) ($plan['status'] ?? 'inactive'))) ?>
                             <?= $fact('Initial payment due', '<span id="initial_amount_preview" class="cs-money">' . esc(number_format($monthlyFee * 2, 2)) . '</span>') ?>
                         </div>
@@ -73,10 +73,13 @@ $fact = static function (string $label, string $html): string {
                                 <input id="reference_number" name="reference_number" class="form-control" placeholder="Enter receipt number from branch or GCash reference" value="<?= esc(old('reference_number')) ?>" required <?= $initialStatus === 'paid' ? 'readonly' : '' ?>>
                                 <small class="cs-muted d-block mt-1" id="hint_receipt">
                                     <span id="hint_cash" class="d-none">Ask your branch for the official receipt number after paying.</span>
-                                    <span id="hint_gcash" class="d-none">Enter your GCash transaction reference.</span>
+                                    <span id="hint_gcash" class="d-none">Enter the 13-digit GCash reference number shown on your receipt, and upload a screenshot below.</span>
                                 </small>
                             </div>
                         </div>
+                    </div>
+                    <div id="gcashProofCard" class="cs-panel__body d-none pt-0">
+                        <?= view('client/_gcash_proof_fields') ?>
                     </div>
                     <div class="cs-panel__foot d-flex justify-content-end">
                         <button type="submit" class="btn btn-primary" <?= $initialStatus === 'paid' ? 'disabled' : '' ?>>Submit initial payment</button>
@@ -105,6 +108,7 @@ $fact = static function (string $label, string $html): string {
         const hintCash = document.getElementById('hint_cash');
         const hintGcash = document.getElementById('hint_gcash');
         const gcashCard = document.getElementById('gcashAccountCard');
+        const proofCard = document.getElementById('gcashProofCard');
 
         if (!method || !reference) {
             return;
@@ -133,6 +137,20 @@ $fact = static function (string $label, string $html): string {
             hintGcash.classList.toggle('d-none', !isGcash);
             if (gcashCard) {
                 gcashCard.classList.toggle('d-none', !isGcash);
+            }
+            if (proofCard) {
+                proofCard.classList.toggle('d-none', !isGcash);
+                // Hidden fields must not block a cash submission (disabled fields are skipped by the browser's checks and the POST).
+                proofCard.querySelectorAll('input').forEach(function (i) { i.disabled = !isGcash; });
+            }
+            if (isGcash) {
+                reference.setAttribute('inputmode', 'numeric');
+                reference.setAttribute('maxlength', '13');
+                reference.setAttribute('pattern', '\\d{13}');
+            } else {
+                reference.removeAttribute('inputmode');
+                reference.removeAttribute('maxlength');
+                reference.removeAttribute('pattern');
             }
 
             if (!isCash && !isGcash) {

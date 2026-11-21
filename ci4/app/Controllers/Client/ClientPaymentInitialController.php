@@ -151,7 +151,14 @@ class ClientPaymentInitialController extends BaseController
             'reference_number' => 'required|string|min_length[5]|max_length[50]',
         ];
 
-        if (! $this->validate($rules)) {
+        $messages = [];
+        if ($paymentMethod === 'gcash') {
+            // Same rule as every GCash payment: exactly 13 digits.
+            $rules['reference_number'] = 'required|regex_match[/^\d{13}$/]';
+            $messages['reference_number'] = ['regex_match' => 'Enter a valid 13-digit GCash reference number.'];
+        }
+
+        if (! $this->validate($rules, $messages)) {
             return redirect()->back()
                 ->withInput()
                 ->with('errors', $this->validator->getErrors());
@@ -194,24 +201,37 @@ class ClientPaymentInitialController extends BaseController
             if ($paymentMethod === 'gcash') {
                 $referenceNumber = (string) $this->request->getPost('reference_number');
 
-                // Check for duplicate GCash references
-                $existingPayment = $db->table('payments')
-                    ->where('reference_number', $referenceNumber)
-                    ->where('payment_method', 'gcash')
-                    ->where('plan_id', (int) $plan['plan_id'])
-                    ->get()
-                    ->getRowArray();
-
-                if ($existingPayment) {
+                // The same duplicate rule as every other GCash payment: one reference number is used once, system-wide.
+                if ($db->table('payments')->where('reference_number', $referenceNumber)->countAllResults() > 0) {
                     $db->transRollback();
 
                     return redirect()->back()
                         ->withInput()
-                        ->with('error', 'This GCash reference has already been used.');
+                        ->with('error', 'Duplicate reference number detected. Please verify your reference number.');
                 }
 
+                // Screenshot (required), when / how much / from whom, and which GCash account was paid.
+                $review  = new \App\Services\GcashReviewService();
+                $account = (new CollectorGcashService())->resolveForClient((int) ($planHolder['branch_id'] ?? 0), $planHolder['barangay_code'] ?? null);
+                $fields  = $review->clientFields($this->request->getPost(), $account);
+                if (! $fields['ok']) {
+                    $db->transRollback();
+
+                    return redirect()->back()->withInput()->with('error', $fields['message']);
+                }
+                $shot = $review->storeScreenshot($this->request->getFile('gcash_screenshot'));
+                if (! $shot['ok']) {
+                    $db->transRollback();
+
+                    return redirect()->back()->withInput()->with('error', $shot['message']);
+                }
+
+                $paymentData = $fields['fields'] + $paymentData + ['proof_image' => $shot['name']];
+                $paymentData['payment_type'] = 'initial_registration';
                 $paymentData['reference_number'] = $referenceNumber;
-                
+                $paymentData['remarks'] = 'Initial payment submitted by client, awaiting branch verification';
+
+
                 // Insert new GCash payment with status='pending'
                 $db->table('payments')->insert($paymentData);
                 $paymentId = (int) $db->insertID();
@@ -294,6 +314,12 @@ class ClientPaymentInitialController extends BaseController
                         ->update();
 
                     log_message('warning', '[CashPayment] ApprovalService fallback activation applied for payment_id=' . (int) $paymentId);
+                }
+            }
+
+            if (! $isAutoApproved) {
+                foreach ($db->table('users')->select('user_id')->where('role_id', 2)->where('branch_id', (int) ($planHolder['branch_id'] ?? 0))->where('status', 'active')->get()->getResultArray() as $ba) {
+                    (new NotificationService())->notify((int) $ba['user_id'], 'A registration payment is waiting for your check. Open Registration approvals.', 'payment_pending');
                 }
             }
 

@@ -50,7 +50,19 @@
                                 <td class="text-nowrap"><?= cs_date($row['payment_date'] ?? null) ?></td>
                                 <td class="cs-num"><?= cs_money($row['amount'] ?? 0) ?></td>
                                 <td><?= esc(strtoupper((string) $row['payment_method'])) ?></td>
-                                <td><?= esc((string) ($row['reference_number'] ?: '—')) ?></td>
+                                <td>
+                                    <?= esc((string) ($row['reference_number'] ?: '—')) ?>
+                                    <?php if ($row['payment_method'] === 'gcash'): ?>
+                                        <?php if (! empty($row['proof_image']) && ! empty($can_verify)): ?>
+                                            <br><a href="<?= base_url('branch-admin/registration-approvals/proof/' . (int) $row['payment_id']) ?>" target="_blank" rel="noopener" class="small">View screenshot</a>
+                                        <?php elseif (empty($row['proof_image'])): ?>
+                                            <br><small class="text-danger">No screenshot</small>
+                                        <?php endif; ?>
+                                        <?php if (! empty($row['sender_name'])): ?>
+                                            <br><small class="cs-muted">From <?= esc((string) $row['sender_name']) ?><?= $row['amount_sent'] !== null ? ', ' . cs_money($row['amount_sent']) : '' ?><?= ! empty($row['paid_at']) ? ', ' . esc(date('M j, g:ia', strtotime((string) $row['paid_at']))) : '' ?></small>
+                                        <?php endif; ?>
+                                    <?php endif; ?>
+                                </td>
                                 <td><?= cs_status('pending') ?></td>
                                 <td>
                                     <?php $idv = $row['id_verification'] ?? null; ?>

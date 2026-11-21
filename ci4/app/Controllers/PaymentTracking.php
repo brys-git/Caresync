@@ -420,7 +420,8 @@ class PaymentTracking extends BaseController
         
         // A client's GCash payment is decided on the review page (screenshot, checklist, last 4 digits of the reference) -
         // never with a bare Approve / Reject. A registration (initial) payment keeps its own approval screen.
-        if ($method === 'gcash' && ((string) ($payment['payment_type'] ?? '')) !== 'initial_registration' && \App\Services\GcashReviewService::ready()) {
+        $holderInactive = strtolower((string) (db_connect()->table('plans p')->select('ph.status')->join('plan_holders ph', 'ph.plan_holder_id = p.plan_holder_id', 'inner')->where('p.plan_id', (int) $payment['plan_id'])->get(1)->getRowArray()['status'] ?? '')) === 'inactive';
+        if ($method === 'gcash' && ((string) ($payment['payment_type'] ?? '')) !== 'initial_registration' && ! $holderInactive && \App\Services\GcashReviewService::ready()) {
             return redirect()->to('/gcash-review/' . $paymentId)->with('error', 'GCash payments are verified on the review screen: check the screenshot against your GCash app first.');
         }
 
@@ -604,289 +605,8 @@ class PaymentTracking extends BaseController
         }
 
 
-        $db = db_connect();
-        $db->transBegin();
-
-        try {
-            $packageData = $this->resolvePackageAndVersion((float) ($plan['monthly_fee'] ?? 0));
-            
-            $existingPlan = $planModel
-                ->where('plan_holder_id', $planHolderId)
-                ->orderBy('plan_id', 'DESC')
-                ->first();
-
-
-            if ($existingPlan) {
-                // The plan the client chose keeps its own fee and package: only
-                // fall back to the defaults when the plan truly has none.
-                // Coverage dates are NOT worked out here - PlanLedgerService
-                // does that from the start date and the payments (sync below).
-                $today = $this->activationStartDate($paymentId);
-                $planFee = (float) ($existingPlan['monthly_fee'] ?? 0);
-
-                $updateData = [
-                    'package_id' => (int) ($existingPlan['package_id'] ?? 0) > 0 ? (int) $existingPlan['package_id'] : $packageData['package_id'],
-                    'monthly_fee' => $planFee > 0 ? $planFee : MembershipService::MONTHLY_FEE,
-                    'start_date' => $today,
-                    'status' => 'active',
-                    // Phase 0 fix: months_paid is no longer written here -
-                    // see the recalculateMonthsPaid() call below. This is
-                    // the holder's first-ever activation, so it's also the
-                    // start of their contribution cycle for the forfeiture
-                    // policy's purposes.
-                    'contribution_cycle_started_at' => $today,
-                ];
-
-                // Only include columns if they exist in the plans table
-                $planFields = $db->getFieldNames('plans');
-                if (in_array('version_id', $planFields, true) && (int) ($existingPlan['version_id'] ?? 0) <= 0) {
-                    $updateData['version_id'] = $packageData['version_id'];
-                }
-                if (in_array('overdue_months', $planFields, true)) {
-                    $updateData['overdue_months'] = 0;
-                }
-                if (in_array('membership_state', $planFields, true)) {
-                    $updateData['membership_state'] = 'active';
-                }
-                if (in_array('legacy_remaining_balance', $planFields, true)) {
-                    $updateData['legacy_remaining_balance'] = 0;
-                }
-
-                $planModel->update((int) $existingPlan['plan_id'], $updateData);
-                if ($paymentId > 0) {
-                    (new CycleService())->afterPaymentVerified($paymentId, (int) $existingPlan['plan_id']);
-                } else {
-                    (new MembershipService())->recalculateMonthsPaid((int) $existingPlan['plan_id']);
-                }
-                (new PlanLedgerService())->sync((int) $existingPlan['plan_id']);
-                $this->alignInitialCoverage($paymentId, $today);
-            } else {
-                // No plan on file at all: start from the default program.
-                $today = $this->activationStartDate($paymentId);
-                $onlyPlan = MembershipService::resolveRegistrationProgram(null);
-                $defaultProgram = $onlyPlan !== null
-                    ? ['id' => $onlyPlan['program_id'], 'monthly_fee' => $onlyPlan['monthly_fee']]
-                    : MembershipService::getProgramInfo();
-
-                $insertData = [
-                    'plan_holder_id' => $planHolderId,
-                    'package_id' => (int) ($onlyPlan['package_id'] ?? 0) > 0 ? (int) $onlyPlan['package_id'] : $packageData['package_id'],
-                    'program_id' => (int) ($defaultProgram['id'] ?? 0) ?: null,
-                    'monthly_fee' => (float) ($defaultProgram['monthly_fee'] ?? 0) > 0 ? (float) $defaultProgram['monthly_fee'] : MembershipService::MONTHLY_FEE,
-                    'start_date' => $today,
-                    'status' => 'active',
-                    // Phase 0 fix: months_paid is no longer written here -
-                    // see the recalculateMonthsPaid() call below.
-                    'contribution_cycle_started_at' => $today,
-                ];
-
-                // Add optional fields only if they exist
-                $planFields = $db->getFieldNames('plans');
-                if (in_array('passbook_fee', $planFields, true)) {
-                    $insertData['passbook_fee'] = 50;
-                }
-                if (in_array('version_id', $planFields, true)) {
-                    $insertData['version_id'] = $packageData['version_id'];
-                }
-                if (in_array('overdue_months', $planFields, true)) {
-                    $insertData['overdue_months'] = 0;
-                }
-                if (in_array('membership_state', $planFields, true)) {
-                    $insertData['membership_state'] = 'active';
-                }
-                if (in_array('legacy_remaining_balance', $planFields, true)) {
-                    $insertData['legacy_remaining_balance'] = 0;
-                }
-
-                $planId = (int) $planModel->insert($insertData, true);
-
-
-                if ($planId <= 0) {
-                    throw new \RuntimeException('Unable to create default plan.');
-                }
-
-                if ($paymentId > 0) {
-                    (new CycleService())->afterPaymentVerified($paymentId, $planId);
-                } else {
-                    (new MembershipService())->recalculateMonthsPaid($planId);
-                }
-                (new PlanLedgerService())->sync($planId);
-                $this->alignInitialCoverage($paymentId, $today);
-            }
-
-            // Enforce one active plan
-            try {
-                (new MembershipService())->enforceOneActivePlan($planHolderId);
-            } catch (\Throwable $e) {
-                log_message('error', 'PaymentTracking::autoApprove enforceOneActivePlan failed for plan_holder_id=' . $planHolderId . ' (' . get_class($e) . ')');
-                // Don't fail the entire transaction for this
-            }
-
-            $planHolderModel->update($planHolderId, [
-                'status' => 'active',
-            ]);
-
-            $userModel->update((int) ($holder['user_id'] ?? 0), [
-                'is_plan_holder' => 1,
-                'account_status' => 'verified',
-                'branch_id' => $branchId,
-            ]);
-
-            // Try to send notification, but don't fail if it errors
-            try {
-                (new NotificationService())->notify((int) ($holder['user_id'] ?? 0), 'Your registration has been approved. Your plan is now active.', 'registration_pending');
-            } catch (\Throwable $e) {
-                log_message('error', 'PaymentTracking::autoApprove notification failed for plan_holder_id=' . $planHolderId . ' (' . get_class($e) . ')');
-            }
-            
-            // Try to log activity, but don't fail if it errors
-            try {
-                (new ActivityLogService())->log(
-                    (int) session('user_id'),
-                    'approved',
-                    'plan_holder',
-                    $planHolderId,
-                    'Auto-approved plan holder after initial payment verification',
-                    ['status' => 'inactive'],
-                    ['status' => 'active']
-                );
-            } catch (\Throwable $e) {
-                log_message('error', 'PaymentTracking::autoApprove activity log failed for plan_holder_id=' . $planHolderId . ' (' . get_class($e) . ')');
-            }
-
-            if ($db->transStatus() === false) {
-                log_message('error', 'PaymentTracking::autoApprove transaction failed for plan_holder_id=' . $planHolderId);
-                throw new \RuntimeException('Unable to auto-approve plan holder.');
-            }
-
-            $db->transCommit();
-        } catch (\Throwable $e) {
-            log_message('error', 'PaymentTracking::autoApprove failed for plan_holder_id=' . $planHolderId . ' (' . get_class($e) . ')');
-            $db->transRollback();
-            return false;
-        }
-
-        return true;
-    }
-
-    /**
-     * The date a plan's contributions start counting from when its first payment
-     * is approved: the day that payment was made (never later than today), so
-     * the money is not dated before the plan it pays for.
-     */
-    /**
-     * The first payment covers the first contributions, which start on the
-     * plan's start date. Its coverage was projected before the plan was
-     * activated, so re-stamp it from the start date (end = the day before the
-     * next due date) to match what the ledger now shows.
-     */
-    private function alignInitialCoverage(int $paymentId, string $startDate): void
-    {
-        if ($paymentId <= 0) {
-            return;
-        }
-
-        $payment = db_connect()->table('payments')->select('months_covered')->where('payment_id', $paymentId)->get()->getRowArray();
-        if (! $payment) {
-            return;
-        }
-
-        $months = max(1, (int) $payment['months_covered']);
-        db_connect()->table('payments')->where('payment_id', $paymentId)->update([
-            'coverage_start' => $startDate,
-            'coverage_end' => PlanLedgerService::addDays(PlanLedgerService::addMonths($startDate, $months), -1),
-        ]);
-    }
-
-    private function activationStartDate(int $paymentId): string
-    {
-        $today = date('Y-m-d');
-        if ($paymentId <= 0) {
-            return $today;
-        }
-
-        $row = db_connect()->table('payments')->select('payment_date')->where('payment_id', $paymentId)->get()->getRowArray();
-        $date = $row ? date('Y-m-d', strtotime((string) $row['payment_date'])) : $today;
-
-        return $date > $today ? $today : $date;
-    }
-
-    private function resolvePackageAndVersion(?float $versionPrice = null): array
-    {
-        $db = db_connect();
-
-        // Services & Packages redesign: prefer the explicit Damayan
-        // entitlement flag over the assumed DEFAULT_PACKAGE_ID=1 - package
-        // ids are no longer guaranteed to start at 1 once the catalog has
-        // been re-seeded.
-        $package = $db->table('packages')
-            ->select('package_id')
-            ->where('is_damayan_entitlement', 1)
-            ->orderBy('package_id', 'ASC')
-            ->get()
-            ->getRowArray();
-
-        if (! $package) {
-            $package = $db->table('packages')
-                ->select('package_id')
-                ->where('package_id', MembershipService::DEFAULT_PACKAGE_ID)
-                ->get()
-                ->getRowArray();
-        }
-
-        if (! $package) {
-            $package = $db->table('packages')
-                ->select('package_id')
-                ->orderBy('package_id', 'ASC')
-                ->get()
-                ->getRowArray();
-        }
-
-        if (! $package) {
-            throw new \RuntimeException('No package is configured yet.');
-        }
-
-        $packageId = (int) $package['package_id'];
-        $version = $db->table('package_versions')
-            ->select('version_id')
-            ->where('package_id', $packageId)
-            ->where('status', 'active')
-            ->orderBy('version_id', 'DESC')
-            ->get()
-            ->getRowArray();
-
-        if (! $version) {
-            $version = $db->table('package_versions')
-                ->select('version_id')
-                ->where('package_id', $packageId)
-                ->orderBy('version_id', 'DESC')
-                ->get()
-                ->getRowArray();
-        }
-
-        if (! $version) {
-            $db->table('package_versions')->insert([
-                'package_id' => $packageId,
-                'price' => $versionPrice !== null && $versionPrice > 0 ? $versionPrice : MembershipService::MONTHLY_FEE,
-                'effective_date' => date('Y-m-d'),
-                'status' => 'active',
-            ]);
-
-            $versionId = (int) $db->insertID();
-            if ($versionId <= 0) {
-                throw new \RuntimeException('No package version is configured yet.');
-            }
-
-            return [
-                'package_id' => $packageId,
-                'version_id' => $versionId,
-            ];
-        }
-
-        return [
-            'package_id' => $packageId,
-            'version_id' => (int) $version['version_id'],
-        ];
+        // One activation path for every approval route (see ApprovalService::approveInitialPayment()).
+        return (new \App\Services\ApprovalService())->approveInitialPayment($paymentId);
     }
 
     private function branchPlanOptions(int $branchId): array
@@ -954,7 +674,7 @@ class PaymentTracking extends BaseController
         $params = [$branchId];
         $searchSql = cs_search_sql($this->searchTerm(), self::SEARCH_COLUMNS, $params);
 
-        $sql = "SELECT payments.*, users.first_name, users.last_name, plan_holders.unique_identifier, plan_holders.plan_holder_id,
+        $sql = "SELECT payments.*, users.first_name, users.last_name, plan_holders.unique_identifier, plan_holders.plan_holder_id, plan_holders.status AS holder_status,
                 staff_u.first_name AS staff_first_name, staff_u.last_name AS staff_last_name, plans.payment_coverage_until, plans.months_paid
             FROM payments
             INNER JOIN plans ON plans.plan_id = payments.plan_id
@@ -1018,7 +738,7 @@ class PaymentTracking extends BaseController
         $params = [$branchId];
         $searchSql = '';
 
-        $sql = "SELECT payments.*, users.first_name, users.last_name, plan_holders.unique_identifier, plan_holders.plan_holder_id,
+        $sql = "SELECT payments.*, users.first_name, users.last_name, plan_holders.unique_identifier, plan_holders.plan_holder_id, plan_holders.status AS holder_status,
                 staff_u.first_name AS staff_first_name, staff_u.last_name AS staff_last_name, plans.payment_coverage_until
             FROM payments
             INNER JOIN plans ON plans.plan_id = payments.plan_id

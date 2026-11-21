@@ -224,7 +224,7 @@ class ClientController extends BaseController
             if ($targetUserId > 0) {
                 (new NotificationService())->notify(
                     $targetUserId,
-                    'Your account was linked as a plan holder and your Damayan Burial Program plan was registered by branch admin.',
+                    'Your account was linked as a plan holder and your plan was registered by branch admin.',
                     'registration_pending'
                 );
 
@@ -262,49 +262,30 @@ class ClientController extends BaseController
         // top-level 'plan_id' - this always evaluated to 0, meaning
         // approve() could never actually find the pending payment it's
         // supposed to approve.
-        $pendingPayment = db_connect()->table('payments')
-            ->select('payment_id, amount, payment_method, reference_number, months_covered')
-            ->where('plan_id', (int) ($client['plan']['plan_id'] ?? 0))
-            ->where('status', 'pending')
-            ->orderBy('payment_date', 'DESC')
-            ->get()
+        $approval = new \App\Services\ApprovalService();
+        if (strtolower((string) ($client['plan_holder_status'] ?? '')) !== 'inactive') {
+            return redirect()->back()->with('error', 'This plan holder is already active.');
+        }
+
+        // The registration payment: still waiting for a check ('pending'), or already verified ('paid') but the holder never got activated.
+        $planId = (int) ($client['plan']['plan_id'] ?? 0);
+        $payment = db_connect()->table('payments')
+            ->select('payment_id, amount, status, payment_method, reference_number')
+            ->where('plan_id', $planId)
+            ->whereIn('status', ['pending', 'paid'])
+            ->orderBy('payment_id', 'DESC')
+            ->get(1)
             ->getRowArray();
 
-        if (! $pendingPayment) {
-            return redirect()->back()->with('error', 'No pending payment found for approval.');
+        if (! $payment) {
+            return redirect()->back()->with('error', 'No registration payment found for approval.');
         }
 
-        try {
-            // Update payment status to paid
-            db_connect()->table('payments')
-                ->where('payment_id', (int) $pendingPayment['payment_id'])
-                ->update(['status' => 'paid']);
+        $result = $approval->verifyAndActivateInitialPayment((int) $payment['payment_id'], (int) session('user_id'), (int) session('branch_id'));
 
-            // Trigger approval service
-            (new \App\Services\ApprovalService())->approveInitialPayment((int) $pendingPayment['payment_id']);
-
-            // Log activity
-            (new ActivityLogService())->log(
-                (int) session('user_id'),
-                'approved',
-                'payment',
-                (int) $pendingPayment['payment_id'],
-                'Approved initial payment for plan holder',
-                null,
-                ['plan_holder_id' => $id, 'amount' => $pendingPayment['amount']]
-            );
-
-            // Notify client
-            (new NotificationService())->notify(
-                (int) $client['user_id'],
-                'Your initial payment has been approved! Your Damayan Burial Program membership is now active.',
-                'payment_approved'
-            );
-
-            return redirect()->back()->with('success', 'Payment approved and membership activated successfully!');
-        } catch (\Throwable $e) {
-            return redirect()->back()->with('error', 'Failed to approve payment: ' . $e->getMessage());
-        }
+        return $result['ok']
+            ? redirect()->back()->with('success', 'Payment approved and membership activated successfully!')
+            : redirect()->back()->with('error', $result['message']);
     }
 
     private function enforceBranchOwnership(array $client): void

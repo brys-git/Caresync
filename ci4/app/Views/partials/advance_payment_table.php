@@ -119,7 +119,7 @@ $apPlanTermMonths = 60;
                             <td class="cs-table__actions">
                                 <?php if ($status === 'pending' && (int) ($row['awaiting_remittance'] ?? 0) === 1): ?>
                                     <span class="text-muted small">Collected by a collector - confirmed with their remittance</span>
-                                <?php elseif ($status === 'pending' && strtolower((string) ($row['payment_method'] ?? '')) === 'gcash' && (string) ($row['payment_type'] ?? '') !== 'initial_registration' && \App\Services\GcashReviewService::ready()): ?>
+                                <?php elseif ($status === 'pending' && strtolower((string) ($row['payment_method'] ?? '')) === 'gcash' && (string) ($row['payment_type'] ?? '') !== 'initial_registration' && (string) ($row['holder_status'] ?? '') !== 'inactive' && \App\Services\GcashReviewService::ready()): ?>
                                     <a class="btn btn-sm btn-primary" href="<?= site_url('gcash-review/' . (int) $row['payment_id']) ?>">Review</a>
                                 <?php elseif ($status === 'pending'): ?>
                                     <form method="post" action="<?= esc($actionBase . '/approve/' . (int) $row['payment_id'], 'attr') ?>" class="d-inline">

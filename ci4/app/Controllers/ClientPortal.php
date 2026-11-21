@@ -28,7 +28,7 @@ class ClientPortal extends BaseController
         $branchId = (int) session('branch_id');
 
         $builder = db_connect()->table('payments pay')
-            ->select('pay.payment_id, pay.plan_id, pay.amount, pay.payment_date, pay.payment_method, pay.reference_number, pay.status, pay.branch_id, p.plan_holder_id, ph.status AS holder_status, u.user_id, u.first_name, u.last_name, u.email, b.branch_name')
+            ->select('pay.payment_id, pay.plan_id, pay.amount, pay.payment_date, pay.payment_method, pay.reference_number, pay.status, pay.branch_id, pay.proof_image, pay.paid_at, pay.amount_sent, pay.sender_name, p.plan_holder_id, ph.status AS holder_status, u.user_id, u.first_name, u.last_name, u.email, b.branch_name')
             ->join('plans p', 'p.plan_id = pay.plan_id', 'inner')
             ->join('plan_holders ph', 'ph.plan_holder_id = p.plan_holder_id', 'inner')
             ->join('users u', 'u.user_id = ph.user_id', 'inner')
@@ -66,6 +66,30 @@ class ClientPortal extends BaseController
             'search_action' => base_url($roleId === 1 ? 'admin/registration-approvals' : 'branch-admin/registration-approvals'),
             'can_verify' => $roleId === 2,
         ]);
+    }
+
+    /**
+     * The screenshot a client uploaded with a registration GCash payment: shown only to the Branch Admin of that branch
+     * (or the collector who owns the GCash account that was paid). Never a public URL.
+     */
+    public function initialProof(int $paymentId)
+    {
+        $roleId = (int) session('role_id');
+        $branch = (int) session('branch_id');
+        $p = db_connect()->table('payments')->where('payment_id', $paymentId)->where('payment_method', 'gcash')->get(1)->getRowArray();
+        $allowed = $p && $branch > 0 && (int) $p['branch_id'] === $branch
+            && $roleId === 2;
+        $file = $p ? trim((string) ($p['proof_image'] ?? '')) : '';
+        $full = WRITEPATH . 'uploads/payment-proofs/' . basename($file);
+        if (! $allowed || $file === '' || ! is_file($full)) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+        $mime = (string) mime_content_type($full);
+        if (! str_starts_with($mime, 'image/')) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        return $this->response->setHeader('Content-Type', $mime)->setHeader('X-Content-Type-Options', 'nosniff')->setHeader('Cache-Control', 'private, no-store')->setBody((string) file_get_contents($full));
     }
 
     public function clientManagement(): string
@@ -1172,15 +1196,12 @@ class ClientPortal extends BaseController
             return redirect()->back()->with('error', 'You can only verify payments within your branch.');
         }
 
-        $paymentModel->update($paymentId, [
-            'status' => 'paid',
-            'received_by' => (int) session('user_id'),
-            'remarks' => 'Initial GCash payment verified by branch admin',
-        ]);
+        // Verify = fully approve, in one step (the same activation the other two approval screens use).
+        $result = (new \App\Services\ApprovalService())->verifyAndActivateInitialPayment($paymentId, (int) session('user_id'), (int) session('branch_id'));
 
-        (new NotificationService())->notify((int) $planHolder['user_id'], 'Your initial payment has been verified. Waiting for final approval.', 'payment_approved');
-
-        return redirect()->back()->with('success', 'Initial payment verified. Plan holder is now ready for approval.');
+        return $result['ok']
+            ? redirect()->back()->with('success', 'Payment verified and the plan holder is now active.')
+            : redirect()->back()->with('error', $result['message']);
     }
 
     private function currentUser(): array

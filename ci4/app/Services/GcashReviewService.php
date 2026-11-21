@@ -99,6 +99,7 @@ class GcashReviewService
             ->where('pay.payment_method', 'gcash')
             ->where(PaymentService::plainPendingSql('pay'), null, false)
             ->where('pay.payment_type !=', 'initial_registration')
+            ->where('ph.status !=', 'inactive')   // a registration payment is verified from Registration approvals
             ->where('pay.deleted_at', null);
     }
 
