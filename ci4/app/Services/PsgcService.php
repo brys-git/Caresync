@@ -5,56 +5,66 @@ namespace App\Services;
 /**
  * PsgcService
  *
- * Oriental Mindoro city/municipality + barangay lookups, read from the local
- * app/Data/OrientalMindoroAddress.php file (PSA PSGC 2025 Q2) instead of the
- * remote PSGC Cloud API this used to call over HTTP. Scope is deliberately
- * narrowed to Oriental Mindoro (15 LGUs, 426 barangays) - every plan holder
- * this app registers lives in the province the branches operate in, so the
- * nationwide PSGC list was never actually needed.
+ * Province -> city/municipality -> barangay lookups for the two Mindoro provinces the branches operate in (Oriental
+ * Mindoro: app/Data/OrientalMindoroAddress.php; Occidental Mindoro: app/Data/OccidentalMindoroAddress.php, both PSA PSGC),
+ * read from local files - no remote API is called while registering.
  *
- * Shared by Api\AddressController (the browser-facing search/list endpoints
- * for the Applicant Information form's address dropdowns) and
- * PlanHolderRegistrationService::register() (server-side validation that a
- * submitted Town/City -> Barangay pair is real and actually related - a
- * client can't be trusted to send back only codes this service itself
- * handed out). Both keep working unchanged: same method names, same
- * ['code' => ..., 'name' => ...] return shape.
+ * Shared by the registration form (server-side validation that a submitted Province -> Town/City -> Barangay triple is
+ * real and actually related: a client can't be trusted to send back only codes this service handed out), by
+ * cs_format_address() (province name for display) and by the registration view (the branch's own province is the default).
  *
- * Accepts either the current 10-digit PSGC code or the legacy 9-digit
- * old_code on input and matches against both, so plan holders saved before
- * this switch (all of whom used the 10-digit code - checked directly
- * against the live plan_holders table before writing this) keep validating,
- * and so would any stray 9-digit code from further back.
+ * Accepts either the current 10-digit PSGC code or the legacy 9-digit old_code on input and matches against both, so plan
+ * holders saved before the switch keep validating.
  */
 class PsgcService
 {
-    private const DATA_PATH = APPPATH . 'Data/OrientalMindoroAddress.php';
+    /** Data files, one per province. */
+    private const DATA_FILES = [
+        APPPATH . 'Data/OccidentalMindoroAddress.php',
+        APPPATH . 'Data/OrientalMindoroAddress.php',
+    ];
 
-    /** @var array<string, mixed>|null */
-    private static ?array $data = null;
+    /** @var list<array<string, mixed>>|null one entry per province, each with its 'cities' */
+    private static ?array $provinces = null;
 
-    /** @var array<string, array<string, mixed>>|null keyed by both code and old_code */
+    /** @var array<string, array<string, mixed>>|null city rows keyed by both code and old_code (each carries 'province_code') */
     private static ?array $citiesByCode = null;
 
     /** @var array<string, array{code: string, name: string, city_code: string}>|null keyed by both code and old_code */
     private static ?array $barangaysByCode = null;
 
-    /**
-     * @return array<int, array{code: string, name: string}>
-     */
-    public function getCities(): ?array
+    /** @return list<array{code: string, name: string}> */
+    public function getProvinces(): array
     {
         $this->load();
 
-        return array_map(
-            static fn (array $city): array => ['code' => $city['code'], 'name' => $city['name']],
-            self::$data['cities']
-        );
+        return array_map(static fn (array $p): array => ['code' => $p['province_code'], 'name' => $p['province']], self::$provinces);
     }
 
     /**
-     * @return array<int, array{code: string, name: string}>|null null if
-     *   $cityCode isn't a real Oriental Mindoro city/municipality code.
+     * Cities/municipalities of one province (all provinces when $provinceCode is null).
+     *
+     * @return list<array{code: string, name: string}>|null null if $provinceCode is not a known province
+     */
+    public function getCities(?string $provinceCode = null): ?array
+    {
+        $this->load();
+
+        $out = [];
+        foreach (self::$provinces as $province) {
+            if ($provinceCode !== null && $province['province_code'] !== trim($provinceCode)) {
+                continue;
+            }
+            foreach ($province['cities'] as $city) {
+                $out[] = ['code' => $city['code'], 'name' => $city['name']];
+            }
+        }
+
+        return $out === [] ? null : $out;
+    }
+
+    /**
+     * @return list<array{code: string, name: string}>|null null if $cityCode isn't a real city/municipality code.
      */
     public function getBarangaysForCity(string $cityCode): ?array
     {
@@ -71,12 +81,7 @@ class PsgcService
         );
     }
 
-    /**
-     * True only if $cityCode is a real Oriental Mindoro city/municipality
-     * and $barangayCode is one of its actual barangays. Used to validate a
-     * submitted registration before saving - never trusts codes sent from
-     * the browser at face value.
-     */
+    /** True only if $cityCode is a real city/municipality and $barangayCode is one of its actual barangays. */
     public function isBarangayInCity(string $cityCode, string $barangayCode): bool
     {
         $this->load();
@@ -91,38 +96,95 @@ class PsgcService
         return $barangay !== null && $barangay['city_code'] === $city['code'];
     }
 
-    /**
-     * @return array<string, mixed>|null the city row (with its own
-     *   'barangays' list) matched by either code format, or null.
-     */
-    private function findCity(string $cityCode): ?array
+    /** True only if $cityCode is a city/municipality of the province $provinceCode. */
+    public function isCityInProvince(string $provinceCode, string $cityCode): bool
     {
-        $cityCode = trim($cityCode);
-        if ($cityCode === '') {
-            return null;
+        $city = $this->findCity($cityCode);
+
+        return $city !== null && $city['province_code'] === trim($provinceCode);
+    }
+
+    /** The province a city/municipality code belongs to (code), or null. */
+    public function provinceCodeForCity(string $cityCode): ?string
+    {
+        $this->load();
+
+        return $this->findCity($cityCode)['province_code'] ?? null;
+    }
+
+    /** "Oriental Mindoro" for 1705200000 (or any city code inside it); null when unknown. */
+    public function provinceName(string $provinceOrCityCode): ?string
+    {
+        $this->load();
+        $code = trim($provinceOrCityCode);
+        foreach (self::$provinces as $province) {
+            if ($province['province_code'] === $code) {
+                return $province['province'];
+            }
+        }
+        $city = $this->findCity($code);
+
+        return $city !== null ? $this->provinceName($city['province_code']) : null;
+    }
+
+    /** The province code for a province NAME as stored on a branch ("Oriental Mindoro"); null when it isn't one we have data for. */
+    public function provinceCodeForName(string $name): ?string
+    {
+        $this->load();
+        $needle = strtolower(trim($name));
+        foreach (self::$provinces as $province) {
+            if (strtolower($province['province']) === $needle) {
+                return $province['province_code'];
+            }
         }
 
-        return self::$citiesByCode[$cityCode] ?? null;
+        return null;
+    }
+
+    /** The province a branch sits in (its address_province), as a code: the default for a registration at that branch. */
+    public function provinceCodeForBranch(int $branchId): ?string
+    {
+        if ($branchId <= 0) {
+            return null;
+        }
+        $row = db_connect()->table('branches')->select('address_province')->where('branch_id', $branchId)->get(1)->getRowArray();
+
+        return $row ? $this->provinceCodeForName((string) $row['address_province']) : null;
+    }
+
+    /** @return array<string, mixed>|null the city row (with its 'barangays' and 'province_code') matched by either code format. */
+    private function findCity(string $cityCode): ?array
+    {
+        $this->load();
+        $cityCode = trim($cityCode);
+
+        return $cityCode === '' ? null : (self::$citiesByCode[$cityCode] ?? null);
     }
 
     private function load(): void
     {
-        if (self::$data !== null) {
+        if (self::$provinces !== null) {
             return;
         }
 
-        self::$data = require self::DATA_PATH;
+        self::$provinces = [];
         self::$citiesByCode = [];
         self::$barangaysByCode = [];
 
-        foreach (self::$data['cities'] as $city) {
-            self::$citiesByCode[$city['code']] = $city;
-            self::$citiesByCode[$city['old_code']] = $city;
+        foreach (self::DATA_FILES as $file) {
+            $data = require $file;
+            self::$provinces[] = $data;
 
-            foreach ($city['barangays'] as $barangay) {
-                $row = ['code' => $barangay['code'], 'name' => $barangay['name'], 'city_code' => $city['code']];
-                self::$barangaysByCode[$barangay['code']] = $row;
-                self::$barangaysByCode[$barangay['old_code']] = $row;
+            foreach ($data['cities'] as $city) {
+                $city['province_code'] = $data['province_code'];
+                self::$citiesByCode[$city['code']] = $city;
+                self::$citiesByCode[$city['old_code']] = $city;
+
+                foreach ($city['barangays'] as $barangay) {
+                    $row = ['code' => $barangay['code'], 'name' => $barangay['name'], 'city_code' => $city['code']];
+                    self::$barangaysByCode[$barangay['code']] = $row;
+                    self::$barangaysByCode[$barangay['old_code']] = $row;
+                }
             }
         }
     }

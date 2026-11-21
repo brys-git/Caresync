@@ -1,13 +1,12 @@
 /**
- * Oriental Mindoro address dropdowns (Town/City -> Barangay), reading from
+ * Mindoro address dropdowns (Province -> Town/City -> Barangay), reading from
  * the local window.CARESYNC_ADDRESS data (public/assets/js/data/
- * oriental-mindoro-address.js) instead of fetching PSGC Cloud - see
- * CARESYNC_PROMPT_LOCAL_ADDRESS_DATA.md. Scope is Oriental Mindoro only: 15
- * cities/municipalities, 426 barangays, all filtering/lookup is instant
- * (no network request, no debounce, no loading state).
+ * mindoro-address.js): Oriental and Occidental Mindoro, 590 barangays, all
+ * filtering/lookup is instant (no network request).
  *
  * Usage: window.CareSyncPsgc.init()
  * Expects the same fixed field ids _step_applicant.php renders:
+ *   province_select (a <select>; its value is the province code),
  *   city_search, address_city, city_municipality_code,
  *   barangay_search, address_barangay, barangay_code,
  * each city/barangay input's own .psgc-dropdown/.psgc-error living inside
@@ -22,6 +21,7 @@ window.CareSyncPsgc = (function () {
             return null;
         }
 
+        const provinceSelect = document.getElementById('province_select');
         const addressCityInput = document.getElementById('address_city');
         const cityCodeInput = document.getElementById('city_municipality_code');
         const cityDropdown = citySearch.closest('.psgc-field').querySelector('.psgc-dropdown');
@@ -83,7 +83,7 @@ window.CareSyncPsgc = (function () {
         // .old_code on preselect (a saved 9-digit legacy code, if any ever
         // existed, normalizes to 10-digit going forward).
         const address = window.CARESYNC_ADDRESS;
-        if (!address || !Array.isArray(address.cities)) {
+        if (!address || !Array.isArray(address.provinces)) {
             console.error('CareSyncPsgc: window.CARESYNC_ADDRESS is missing or malformed.');
             showFieldError(cityError, 'Address list failed to load - refresh the page.');
             showFieldError(barangayError, 'Address list failed to load - refresh the page.');
@@ -99,34 +99,41 @@ window.CareSyncPsgc = (function () {
             return name.toLowerCase().replace(/^city of\s+/, '').trim();
         }
 
-        const cities = address.cities.map(function (city) {
-            return { code: city.code, name: city.name };
-        });
-
-        // code/old_code -> city (with its own .barangays), and
-        // code/old_code -> {code, name, cityCode}, for preselect on an edit
-        // page (which may hold either format) and for the city-mismatch
-        // guard filterBarangays()/selectBarangay() don't need but the server
-        // side (PsgcService) still checks at save time.
+        // code/old_code -> city (with its own .barangays) and -> {code, name, cityCode}, across BOTH provinces:
+        // a saved address (edit page) may be in either, and either code format.
         const citiesByCode = {};
         const barangaysByCode = {};
-        address.cities.forEach(function (city) {
-            citiesByCode[city.code] = city;
-            citiesByCode[city.old_code] = city;
-            city.barangays.forEach(function (barangay) {
-                const row = { code: barangay.code, name: barangay.name, cityCode: city.code };
-                barangaysByCode[barangay.code] = row;
-                barangaysByCode[barangay.old_code] = row;
+        const provinceOfCity = {};
+        address.provinces.forEach(function (province) {
+            province.cities.forEach(function (city) {
+                citiesByCode[city.code] = city;
+                citiesByCode[city.old_code] = city;
+                provinceOfCity[city.code] = province.code;
+                provinceOfCity[city.old_code] = province.code;
+                city.barangays.forEach(function (barangay) {
+                    const row = { code: barangay.code, name: barangay.name, cityCode: city.code };
+                    barangaysByCode[barangay.code] = row;
+                    barangaysByCode[barangay.old_code] = row;
+                });
             });
         });
 
-        const allBarangays = [];
-        address.cities.forEach(function (city) {
-            city.barangays.forEach(function (barangay) {
-                allBarangays.push({ code: barangay.code, name: barangay.name, cityCode: city.code, label: barangay.name + ', ' + city.name });
-            });
-        });
-
+        // Only the chosen province's towns/cities and barangays are offered.
+        let cities = [];
+        let allBarangays = [];
+        function useProvince(code) {
+            const province = address.provinces.find(function (p) { return p.code === code; });
+            cities = province ? province.cities.map(function (c) { return { code: c.code, name: c.name }; }) : [];
+            allBarangays = [];
+            if (province) {
+                province.cities.forEach(function (city) {
+                    city.barangays.forEach(function (barangay) {
+                        allBarangays.push({ code: barangay.code, name: barangay.name, cityCode: city.code, label: barangay.name + ', ' + city.name });
+                    });
+                });
+            }
+        }
+        useProvince(provinceSelect ? provinceSelect.value : address.provinces[0].code);
         function searchCities(query) {
             const needle = normalize(query);
             const results = needle === ''
@@ -134,7 +141,7 @@ window.CareSyncPsgc = (function () {
                 : cities.filter(function (c) { return normalize(c.name).indexOf(needle) !== -1; });
 
             if (results.length === 0) {
-                renderEmpty(cityDropdown, 'No matching town/city found.');
+                renderEmpty(cityDropdown, provinceSelect && !provinceSelect.value ? 'Choose a province first.' : 'No matching town/city found.');
                 return;
             }
             renderResults(cityDropdown, results, selectCity);
@@ -255,11 +262,47 @@ window.CareSyncPsgc = (function () {
             }
         });
 
+        function resetCity() {
+            citySearch.value = '';
+            addressCityInput.value = '';
+            cityCodeInput.value = '';
+            lastSelectedCityName = '';
+            hideDropdown(cityDropdown);
+            clearFieldError(cityError);
+        }
+
+        // Changing the province clears the Town/City and Barangay chosen under the old one.
+        if (provinceSelect) {
+            provinceSelect.addEventListener('change', function () {
+                useProvince(provinceSelect.value);
+                resetCity();
+                resetBarangay();
+            });
+        }
+
+        // A new registration starts in the province of the chosen branch (until an address has been picked).
+        const branchSelect = document.getElementById('branch_id');
+        if (provinceSelect && branchSelect && branchSelect.tagName === 'SELECT') {
+            branchSelect.addEventListener('change', function () {
+                const option = branchSelect.options[branchSelect.selectedIndex];
+                const code = option ? option.getAttribute('data-province') : '';
+                if (code && !cityCodeInput.value.trim() && provinceSelect.value !== code) {
+                    provinceSelect.value = code;
+                    provinceSelect.dispatchEvent(new Event('change'));
+                }
+            });
+        }
+
         const savedCityCode = cityCodeInput.value.trim();
         const savedBarangayCode = barangayCodeInput.value.trim();
         if (savedCityCode !== '') {
             const savedCity = citiesByCode[savedCityCode];
             if (savedCity) {
+                // The saved address decides the province (it may not be the branch's).
+                if (provinceSelect && provinceOfCity[savedCityCode]) {
+                    provinceSelect.value = provinceOfCity[savedCityCode];
+                    useProvince(provinceSelect.value);
+                }
                 // Normalize a legacy 9-digit old_code to the canonical
                 // 10-digit code, same as a fresh selection would.
                 cityCodeInput.value = savedCity.code;

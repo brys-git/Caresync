@@ -73,10 +73,16 @@ class PlanHolderRegistrationService
         $cityCode = trim((string) ($input['city_municipality_code'] ?? ''));
         $barangayCode = trim((string) ($input['barangay_code'] ?? ''));
 
+        // Province -> Town/City -> Barangay: each must exist and belong to the one before it. A form that does not send
+        // a province (an older page) is judged by the province the chosen city really belongs to.
         $psgc = new PsgcService();
-        $cities = $psgc->getCities();
+        $provinceCode = trim((string) ($input['province_code'] ?? ''));
+        if ($provinceCode === '') {
+            $provinceCode = (string) $psgc->provinceCodeForCity($cityCode);
+        }
+        $cities = $psgc->getCities($provinceCode !== '' ? $provinceCode : null);
         if ($cities === null) {
-            throw new \RuntimeException('Unable to verify the selected address right now. Please try again.');
+            throw new \RuntimeException('Please choose a province, town/city and barangay.');
         }
 
         $cityMatch = null;
@@ -86,8 +92,9 @@ class PlanHolderRegistrationService
                 break;
             }
         }
+        $provinceName = (string) $psgc->provinceName($provinceCode);
         if ($cityMatch === null) {
-            throw new \RuntimeException('Please choose a town/city and barangay in Oriental Mindoro.');
+            throw new \RuntimeException('Please choose a town/city and barangay in ' . ($provinceName !== '' ? $provinceName : 'the selected province') . '.');
         }
 
         $barangays = $psgc->getBarangaysForCity($cityCode);
@@ -103,9 +110,8 @@ class PlanHolderRegistrationService
             }
         }
         if ($barangayMatch === null) {
-            throw new \RuntimeException('Please choose a town/city and barangay in Oriental Mindoro.');
+            throw new \RuntimeException('Please choose a town/city and barangay in ' . ($provinceName !== '' ? $provinceName : 'the selected province') . '.');
         }
-
         $dateOfBirth = trim((string) ($input['date_of_birth'] ?? ''));
         $dateOfBirth = $dateOfBirth !== '' ? $dateOfBirth : null;
         if ($dateOfBirth !== null && $dateOfBirth > date('Y-m-d')) {

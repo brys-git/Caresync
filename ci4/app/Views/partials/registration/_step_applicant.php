@@ -8,6 +8,18 @@ $applicationDate = (string) old('application_date', (string) ($planHolder['appli
 $civilStatus = (string) old('civil_status', (string) ($planHolder['civil_status'] ?? ''));
 $gender = (string) old('gender', (string) ($planHolder['gender'] ?? ''));
 $isEdit = ($wizard['context'] ?? 'register') === 'edit';
+
+// Province first. Default: the province of the saved address, else of the branch this registration is for.
+$psgc = new \App\Services\PsgcService();
+$provinceList = $psgc->getProvinces();
+$branchIdForProvince = (int) ($wizard['selected_branch_id'] ?? $planHolder['branch_id'] ?? 0);
+$selectedProvince = (string) old('province_code', '');
+if ($selectedProvince === '') {
+    $selectedProvince = (string) ($psgc->provinceCodeForCity((string) old('city_municipality_code', (string) ($planHolder['city_municipality_code'] ?? ''))) ?? '');
+}
+if ($selectedProvince === '') {
+    $selectedProvince = (string) ($psgc->provinceCodeForBranch($branchIdForProvince) ?? ($provinceList[0]['code'] ?? ''));
+}
 ?>
 <!-- ============ STEP 1: Applicant Information ============ -->
 <div<?= $isEdit ? '' : ' class="wizard-panel" data-step-panel="1"' ?>>
@@ -106,6 +118,15 @@ $isEdit = ($wizard['context'] ?? 'register') === 'edit';
                     <input id="middle_name" name="middle_name" class="form-control" value="<?= esc(old('middle_name', (string) ($user['middle_name'] ?? ''))) ?>">
                 </div>
 
+                <div class="col-md-4">
+                    <label class="form-label" for="province_select">Province</label>
+                    <select id="province_select" name="province_code" class="form-select" required>
+                        <?php foreach ($provinceList as $prov): ?>
+                            <option value="<?= esc($prov['code'], 'attr') ?>" <?= $selectedProvince === $prov['code'] ? 'selected' : '' ?>><?= esc($prov['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="w-100 d-none d-md-block"></div>
                 <div class="col-md-3">
                     <label class="form-label" for="address_no">Address No.</label>
                     <input id="address_no" name="address_no" class="form-control" value="<?= esc(old('address_no', (string) ($planHolder['address_no'] ?? ''))) ?>">
@@ -202,7 +223,7 @@ $isEdit = ($wizard['context'] ?? 'register') === 'edit';
                             <option value="">Select Branch</option>
                             <?php $selectedBranch = (int) old('branch_id', (string) ($wizard['selected_branch_id'] ?? $planHolder['branch_id'] ?? 0)); ?>
                             <?php foreach ($branches as $branch): ?>
-                                <option value="<?= (int) $branch['branch_id'] ?>" <?= $selectedBranch === (int) $branch['branch_id'] ? 'selected' : '' ?>>
+                                <option value="<?= (int) $branch['branch_id'] ?>" data-province="<?= esc((string) ($psgc->provinceCodeForName((string) ($branch['address_province'] ?? '')) ?? ''), 'attr') ?>" <?= $selectedBranch === (int) $branch['branch_id'] ? 'selected' : '' ?>>
                                     <?= esc((string) $branch['branch_name']) ?>
                                 </option>
                             <?php endforeach; ?>
