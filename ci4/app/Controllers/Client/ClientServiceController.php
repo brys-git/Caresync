@@ -88,12 +88,14 @@ class ClientServiceController extends BaseController
         [$canApply, $membership, $planId] = $this->resolveEligibility($access);
         $planHolderId = (int) ($access['plan_holder']['plan_holder_id'] ?? 0);
 
+        $ownPackageId = $this->ownPackageId($access);
         $entitlement = null;
         $gridPackages = [];
         foreach ($packages as $pkg) {
             $pkg['image_url'] = $this->existingImageUrl($pkg['image_path'] ?? null);
             $pkg['inclusion_names'] = $inclusionNames[(int) $pkg['package_id']] ?? [];
-            if ((int) ($pkg['is_damayan_entitlement'] ?? 0) === 1) {
+            // The package that is part of the client's own plan is "Included in your plan"; every other package is an avail.
+            if ((int) $pkg['package_id'] === $ownPackageId) {
                 $entitlement ??= $pkg;
                 continue;
             }
@@ -112,6 +114,7 @@ class ClientServiceController extends BaseController
             'services' => $services,
             'packages' => $gridPackages,
             'entitlement' => $entitlement,
+            'plan_label' => $this->planLabel($access),
             'entitlement_claim' => $openClaim,
             'claim_eligible' => (bool) $claimStatus['eligible'],
             'claim_reason' => $claimStatus['reason'],
@@ -261,20 +264,20 @@ class ClientServiceController extends BaseController
             ->getResultArray();
 
         [$canApply, $membership, $planId] = $this->resolveEligibility($access);
-        $isEntitlement = (int) ($package['is_damayan_entitlement'] ?? 0) === 1;
+        $isEntitlement = $packageId === $this->ownPackageId($access);
+        $planHolderId = (int) ($access['plan_holder']['plan_holder_id'] ?? 0);
 
         $entitlement = null;
-        $benefitCredit = 0.0;
+        $quote = null;
         if ($isEntitlement) {
             $claimStatus = $this->entitlementClaimStatus($canApply, $membership, $planId);
             $entitlement = [
                 'eligible' => $claimStatus['eligible'],
                 'locked_reason' => $claimStatus['reason'],
             ];
-        } elseif ($canApply) {
-            // Credit = the price of the client's OWN plan, capped so it can never
-            // exceed the package price itself.
-            $benefitCredit = min((float) $package['base_price'], $this->planTarget($planId));
+        } elseif ($planHolderId > 0) {
+            // The very same quote the avail form shows (ClaimAvailService::formQuote), so the two can never disagree.
+            $quote = (new \App\Services\ClaimAvailService())->formQuote($planHolderId, ['package_id' => $packageId]);
         }
 
         return view('client/package_details', [
@@ -286,7 +289,8 @@ class ClientServiceController extends BaseController
             'inclusions' => $inclusions,
             'is_entitlement' => $isEntitlement,
             'entitlement' => $entitlement,
-            'benefit_credit' => $benefitCredit,
+            'plan_label' => $this->planLabel($access),
+            'form_quote' => $quote,
             'can_apply' => $canApply,
             'attire_price' => self::BURIAL_ATTIRE_PRICE,
         ]);
@@ -381,7 +385,7 @@ class ClientServiceController extends BaseController
         }
 
         [$canApply, $membership, $planId] = $this->resolveEligibility($access);
-        $isEntitlement = (int) ($package['is_damayan_entitlement'] ?? 0) === 1;
+        $isEntitlement = $packageId === $this->ownPackageId($access);
 
         $planHolder = $access['plan_holder'] ?? [];
         $planHolderId = (int) ($planHolder['plan_holder_id'] ?? 0);
@@ -413,7 +417,7 @@ class ClientServiceController extends BaseController
 
         return view('client/package_apply', [
             'role_layout' => 'layouts/plan_holder',
-            'page_title' => $isEntitlement ? 'Claim Regular Casket' : 'Avail Package',
+            'page_title' => $isEntitlement ? 'Claim ' . (string) ($package['package_name'] ?? 'package') : 'Avail Package',
             'show_page_head' => false,
             'access' => $access,
             'package' => $package,
@@ -422,6 +426,7 @@ class ClientServiceController extends BaseController
             'attire_price' => self::BURIAL_ATTIRE_PRICE,
             'eligibility' => $eligibility,
             'form_quote' => $formQuote,
+            'deceased_options' => $planHolderId > 0 && \App\Services\PlanClosureService::ready() ? (new ClaimSubmissionService())->deceasedOptions($planHolderId, false) : null,
             'existing_claim' => $planHolderId > 0 && ($el['code'] ?? '') === 'open_request' ? $claimAvail->openRequest($planHolderId) : null,
             'plan_name' => (new MembershipService())->resolvePackageName((int) ($activePlan['package_id'] ?? 0)),
             'member_name' => trim(implode(' ', array_filter([$user['first_name'] ?? '', $user['middle_name'] ?? '', $user['last_name'] ?? '']))),
@@ -458,7 +463,7 @@ class ClientServiceController extends BaseController
         $planHolderId = (int) ($access['plan_holder']['plan_holder_id'] ?? 0);
         $application = $planHolderId > 0
             ? db_connect()->table('service_applications sa')
-                ->select('sa.application_id, sa.status, sa.created_at, sa.application_amount, sa.awaiting_death_certificate, sa.filed_on_behalf, sa.claimant_name, p.package_name, p.is_damayan_entitlement')
+                ->select('sa.application_id, sa.status, sa.request_type, sa.package_id, sa.created_at, sa.application_amount, sa.awaiting_death_certificate, sa.filed_on_behalf, sa.claimant_name, p.package_name')
                 ->join('packages p', 'p.package_id = sa.package_id', 'left')
                 ->where('sa.application_id', $applicationId)
                 ->where('sa.plan_holder_id', $planHolderId)
@@ -470,11 +475,13 @@ class ClientServiceController extends BaseController
             return redirect()->to('/client/service?tab=packages')->with('error', 'Claim not found.');
         }
 
-        $isEntitlement = (int) ($application['is_damayan_entitlement'] ?? 0) === 1;
+        $isEntitlement = ! empty($application['request_type'])
+            ? $application['request_type'] === \App\Services\ClaimAvailService::TYPE_CLAIM
+            : (new \App\Services\ClaimAvailService())->isClaimPackage($planHolderId, (int) $application['package_id']);
 
         return view('client/package_submitted', [
             'role_layout' => 'layouts/plan_holder',
-            'page_title' => $isEntitlement ? 'Claim Regular Casket' : 'Avail Package',
+            'page_title' => $isEntitlement ? 'Claim ' . (string) ($application['package_name'] ?? 'package') : 'Avail Package',
             'show_page_head' => false,
             'access' => $access,
             'application' => $application,
@@ -695,6 +702,24 @@ class ClientServiceController extends BaseController
 
         return redirect()->back()->withInput()->with('error', (string) ($result['error'] ?? 'Unable to submit right now.'));
     }
+    /** The package that is part of THIS client's plan (ClaimAvailService::planPackageId): what a claim releases. */
+    private function ownPackageId(array $access): int
+    {
+        $claimAvail = new \App\Services\ClaimAvailService();
+        $holderId   = (int) ($access['plan_holder']['plan_holder_id'] ?? 0);
+
+        return $claimAvail->planPackageId($holderId > 0 ? ($claimAvail->planFor($holderId) ?? []) : []);
+    }
+
+    /** The client's own plan name, e.g. "Damayan 2" - used in every sentence that names the plan. */
+    private function planLabel(array $access): string
+    {
+        $holderId = (int) ($access['plan_holder']['plan_holder_id'] ?? 0);
+        $plan = $holderId > 0 ? (new \App\Services\ClaimAvailService())->planFor($holderId) : null;
+
+        return $plan ? \App\Services\ApprovalService::planName($plan) : 'plan';
+    }
+
     /**
      * Shared can_apply + membership summary resolution (same rule used
      * throughout this controller: active/good-standing plan with at least

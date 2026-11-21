@@ -96,12 +96,14 @@ class ClaimSubmissionService
     public function openClaim(int $planHolderId, int $planId): ?array
     {
         $cycleNumber = $planId > 0 ? (new CycleService())->currentCycle($planId)['cycle_number'] : 0;
+        // The claim is for the package of the client's OWN plan (not a fixed package).
+        $ownPackage = (new ClaimAvailService())->planPackageId((new ClaimAvailService())->planFor($planHolderId) ?? []);
 
         return db_connect()->table('service_applications sa')
             ->select('sa.application_id, sa.status, sa.created_at, sa.awaiting_death_certificate, p.package_name')
             ->join('packages p', 'p.package_id = sa.package_id', 'inner')
             ->where('sa.plan_holder_id', $planHolderId)
-            ->where('p.is_damayan_entitlement', 1)
+            ->where('sa.package_id', $ownPackage)
             ->groupStart()
                 ->where('sa.status', 'pending')
                 ->orGroupStart()
@@ -114,13 +116,77 @@ class ClaimSubmissionService
             ->getRowArray() ?: null;
     }
 
-    /** The Damayan entitlement (Regular casket) package, or null. */
-    public function entitlementPackage(): ?array
+    /**
+     * "Who died?" choices: the plan holder (only when someone files at the branch - the plan holder's own login can't file
+     * for their own death) and every registered beneficiary who is not already deceased.
+     *
+     * @return list<array{id:string, label:string, relationship:string, kind:string}>
+     */
+    public function deceasedOptions(int $planHolderId, bool $onBehalf): array
     {
+        $db = db_connect();
+        $out = [];
+        if ($onBehalf) {
+            $u = $db->table('plan_holders ph')->select('u.first_name, u.middle_name, u.last_name')->join('users u', 'u.user_id = ph.user_id', 'inner')->where('ph.plan_holder_id', $planHolderId)->get(1)->getRowArray() ?: [];
+            $out[] = ['id' => 'holder', 'label' => trim(implode(' ', array_filter([$u['first_name'] ?? '', $u['middle_name'] ?? '', $u['last_name'] ?? '']))) . ' (the plan holder)', 'relationship' => 'Plan holder', 'kind' => 'holder'];
+        }
+        foreach ($this->livingBeneficiaries($planHolderId) as $b) {
+            $out[] = ['id' => (string) (int) $b['beneficiary_id'], 'label' => $this->beneficiaryName($b) . ' (registered beneficiary)', 'relationship' => (string) ($b['relationship'] ?? ''), 'kind' => 'beneficiary'];
+        }
+
+        return $out;
+    }
+
+    /**
+     * Who may be the claimant when someone files at the branch: the plan holder (when a beneficiary died), a registered
+     * beneficiary or the emergency contact (when the plan holder died).
+     *
+     * @return list<array{id:string, label:string, relationship:string, kind:string}>
+     */
+    public function claimantOptions(int $planHolderId): array
+    {
+        $db = db_connect();
+        $holder = $db->table('plan_holders ph')->select('ph.emergency_contact_name, ph.emergency_contact_relationship, u.first_name, u.middle_name, u.last_name')->join('users u', 'u.user_id = ph.user_id', 'inner')->where('ph.plan_holder_id', $planHolderId)->get(1)->getRowArray() ?: [];
+        $out = [['id' => 'holder', 'label' => trim(implode(' ', array_filter([$holder['first_name'] ?? '', $holder['middle_name'] ?? '', $holder['last_name'] ?? '']))) . ' (the plan holder)', 'relationship' => 'Plan holder', 'kind' => 'holder']];
+        foreach ($this->livingBeneficiaries($planHolderId) as $b) {
+            $out[] = ['id' => (string) (int) $b['beneficiary_id'], 'label' => $this->beneficiaryName($b) . ' (registered beneficiary)', 'relationship' => (string) ($b['relationship'] ?? ''), 'kind' => 'beneficiary'];
+        }
+        if (trim((string) ($holder['emergency_contact_name'] ?? '')) !== '') {
+            $out[] = ['id' => 'emergency', 'label' => trim((string) $holder['emergency_contact_name']) . ' (emergency contact)', 'relationship' => (string) ($holder['emergency_contact_relationship'] ?? ''), 'kind' => 'emergency'];
+        }
+
+        return $out;
+    }
+
+    /** @return list<array<string,mixed>> beneficiaries of the plan holder who have not died */
+    private function livingBeneficiaries(int $planHolderId): array
+    {
+        $db = db_connect();
+        $b = $db->table('beneficiaries')->where('plan_holder_id', $planHolderId);
+        if ($db->fieldExists('status', 'beneficiaries')) {
+            $b->where('status', 'active');
+        }
+
+        return $b->orderBy('is_primary', 'DESC')->orderBy('beneficiary_id', 'ASC')->get()->getResultArray();
+    }
+
+    private function beneficiaryName(array $b): string
+    {
+        return trim(implode(' ', array_filter([$b['first_name'] ?? '', $b['middle_name'] ?? '', $b['last_name'] ?? '', $b['name_extension'] ?? ''])));
+    }
+
+    /** The package of the plan holder's own plan (the one a claim releases), or null. */
+    public function entitlementPackage(int $planHolderId = 0): ?array
+    {
+        $claimAvail = new ClaimAvailService();
+        $packageId  = $claimAvail->planPackageId($planHolderId > 0 ? ($claimAvail->planFor($planHolderId) ?? []) : []);
+        if ($packageId <= 0) {
+            return null;
+        }
+
         return db_connect()->table('packages')
             ->select('package_id, package_name, base_price, description, image_path, is_damayan_entitlement')
-            ->where('is_damayan_entitlement', 1)
-            ->orderBy('package_id', 'ASC')
+            ->where('package_id', $packageId)
             ->get()
             ->getRowArray() ?: null;
     }
@@ -183,6 +249,37 @@ class ClaimSubmissionService
         ];
 
         $errors = [];
+
+        // ---- Who died? (policy: the plan holder, or a registered beneficiary who is still living - picked from the list)
+        $policyOn = PlanClosureService::ready();
+        $deceasedType = null;
+        $deceasedBeneficiaryId = null;
+        if ($policyOn) {
+            $choice = $text('deceased_choice');
+            if ($choice === 'holder') {
+                $deceasedType = 'plan_holder';
+                $hu = $db->table('users')->select('first_name, middle_name, last_name')->where('user_id', (int) $holder['user_id'])->get()->getRowArray() ?: [];
+                $input['deceased_name'] = trim(implode(' ', array_filter([$hu['first_name'] ?? '', $hu['middle_name'] ?? '', $hu['last_name'] ?? ''])));
+                if (! $onBehalf) {
+                    $errors['deceased_choice'] = 'The plan holder cannot file a claim for their own death. A registered beneficiary or the emergency contact files it at the branch.';
+                }
+            } elseif (ctype_digit($choice) && (int) $choice > 0) {
+                $bq = $db->table('beneficiaries')->where('beneficiary_id', (int) $choice)->where('plan_holder_id', $planHolderId);
+                $dead = $bq->get(1)->getRowArray();
+                if ($dead === null) {
+                    $errors['deceased_choice'] = 'Choose who died from the registered beneficiaries of this plan.';
+                } elseif ((string) ($dead['status'] ?? 'active') === 'deceased') {
+                    $errors['deceased_choice'] = 'This beneficiary is already recorded as deceased. A claim was already made for them.';
+                } else {
+                    $deceasedType = 'beneficiary';
+                    $deceasedBeneficiaryId = (int) $dead['beneficiary_id'];
+                    $input['deceased_name'] = $this->beneficiaryName($dead);
+                }
+            } else {
+                $errors['deceased_choice'] = 'Choose who died: the plan holder or one of the registered beneficiaries.';
+            }
+        }
+
         if ($input['deceased_name'] === '') {
             $errors['deceased_name'] = 'Enter the full name of the deceased.';
         } elseif (mb_strlen($input['deceased_name']) > 150) {
@@ -214,11 +311,27 @@ class ClaimSubmissionService
         $claimantName = $text('claimant_name');
         $claimantRelationship = $text('claimant_relationship');
         $claimantBeneficiaryId = null;
+        $claimantType = $policyOn ? 'plan_holder' : null;
         if ($onBehalf) {
             // The claimant is the plan holder or one of the plan holder's REGISTERED beneficiaries,
             // picked from the list - never free text. The name comes from our own records.
             $choice = $text('claimant_choice');
-            if ($choice === 'holder') {
+            // Policy: when the plan holder died, a registered beneficiary or the emergency contact claims; when a
+            // beneficiary died, the plan holder claims.
+            if ($policyOn && $deceasedType === 'plan_holder' && $choice === 'holder') {
+                $errors['claimant_choice'] = 'The plan holder died, so the claim is made by a registered beneficiary or the emergency contact.';
+            } elseif ($policyOn && $deceasedType === 'beneficiary' && $choice !== 'holder') {
+                $errors['claimant_choice'] = 'A beneficiary died, so the claim is made by the plan holder.';
+            } elseif ($choice === 'emergency') {
+                $ec = $db->table('plan_holders')->select('emergency_contact_name, emergency_contact_relationship')->where('plan_holder_id', $planHolderId)->get(1)->getRowArray() ?: [];
+                if (trim((string) ($ec['emergency_contact_name'] ?? '')) === '') {
+                    $errors['claimant_choice'] = 'No emergency contact is registered on this plan.';
+                } else {
+                    $claimantType = 'emergency_contact';
+                    $claimantName = trim((string) $ec['emergency_contact_name']);
+                    $claimantRelationship = $claimantRelationship !== '' ? $claimantRelationship : (string) ($ec['emergency_contact_relationship'] ?? '');
+                }
+            } elseif ($choice === 'holder') {
                 $holderUser = $db->table('users')->select('first_name, middle_name, last_name')->where('user_id', (int) $holder['user_id'])->get()->getRowArray() ?: [];
                 $claimantName = trim(implode(' ', array_filter([$holderUser['first_name'] ?? '', $holderUser['middle_name'] ?? '', $holderUser['last_name'] ?? ''])));
                 $claimantRelationship = $claimantRelationship !== '' ? $claimantRelationship : 'Plan holder';
@@ -226,7 +339,10 @@ class ClaimSubmissionService
                 $ben = $db->table('beneficiaries')->where('beneficiary_id', (int) $choice)->where('plan_holder_id', $planHolderId)->get()->getRowArray();
                 if ($ben === null) {
                     $errors['claimant_choice'] = 'Choose the claimant from the plan holder\'s registered beneficiaries.';
+                } elseif ($policyOn && (string) ($ben['status'] ?? 'active') === 'deceased') {
+                    $errors['claimant_choice'] = 'A beneficiary who has died cannot make the claim.';
                 } else {
+                    $claimantType = 'beneficiary';
                     $claimantBeneficiaryId = (int) $ben['beneficiary_id'];
                     $claimantName = trim(implode(' ', array_filter([$ben['first_name'], $ben['middle_name'], $ben['last_name'], $ben['name_extension']])));
                     $claimantRelationship = $claimantRelationship !== '' ? $claimantRelationship : (string) ($ben['relationship'] ?? '');
@@ -304,6 +420,11 @@ class ClaimSubmissionService
                 'awaiting_death_certificate' => $deathCertificate === null ? 1 : 0,
             ];
 
+            if ($policyOn) {
+                $insert['deceased_type'] = $deceasedType;
+                $insert['deceased_beneficiary_id'] = $deceasedBeneficiaryId;
+                $insert['claimant_type'] = $claimantType;
+            }
             if ($onBehalf && $db->fieldExists('filed_on_behalf', 'service_applications')) {
                 $insert['filed_by_user_id'] = $actorUserId;
                 $insert['filed_on_behalf'] = 1;

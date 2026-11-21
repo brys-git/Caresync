@@ -99,3 +99,15 @@ Earlier run (19 Nov 2026): 132 checks, 132 passed (sections A-K). Real bugs the 
 3. Approving a collector's payment overwrote who collected it (breaking remittances).
 4. The Branch Admin Remittance report returned an error (methods removed by mistake in the Part E commit).
 Not exercised: the real Government ID check (no API key on this machine; the "needs staff review" path was used).
+
+## Process fixes and claim policy (sections O and P)
+| ID | What to do | Expected |
+|---|---|---|
+| O1 | Client pays the initial GCash (13 digits + screenshot); Branch Admin: Registration approvals -> Verify | Client active in one step, months on the ledger, ID Control No. |
+| O2 | Same client state via Plan holders -> Approve and Payment tracking -> Approve | Identical end state |
+| O3 | San Jose Branch client registers with an Occidental Mindoro address | Province defaults to the branch's; saved |
+| O4 | Client on a 20,000 / 400 plan whose package is the Half-Glass casket opens Request a service | Half-Glass is *Included in your plan*; Regular Wood is an avail; amounts equal the avail form |
+| P1 | Plan holder dies; beneficiary claims; approve; complete the service | 14,020 waived; plan closed, account switched off, no dues |
+| P2 | Beneficiary dies; plan holder claims | 13,780 waived; new cycle at 0 months; that beneficiary cannot be claimed again |
+| P3 | Client requests closure; another branch's Branch Admin tries; own Branch Admin closes | Only the own branch can; client signs in read-only, ledger downloadable |
+| P4 | Avail of the 50,000 package with 2 months paid; try to close | Plan balance waived, 15,000 down payment; closing refused until the balance is paid |

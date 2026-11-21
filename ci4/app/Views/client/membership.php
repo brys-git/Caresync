@@ -3,7 +3,7 @@
 <?= $this->section('content') ?>
 <?php
 $state = (string) ($access['state'] ?? 'unregistered');
-$program = $program ?? ['name' => 'Damayan Burial Program', 'monthly_fee' => 240.0];
+$program = $program ?? ['name' => 'Your plan', 'monthly_fee' => 240.0];
 $user = $access['user'] ?? [];
 $ph = $plan_holder ?? [];
 $beneficiaries = $beneficiaries ?? [];
@@ -15,7 +15,7 @@ $beneficiaries = $beneficiaries ?? [];
             <section class="cs-panel">
                 <div class="cs-panel__head"><h2 class="cs-panel__title">Membership record</h2></div>
                 <div class="cs-panel__body">
-                    <div class="cs-kv"><span class="cs-muted">Package</span><strong><?= esc((string) ($membership_summary['program_name'] ?? $program['name'] ?? 'Damayan Burial Program')) ?></strong></div>
+                    <div class="cs-kv"><span class="cs-muted">Package</span><strong><?= esc((string) ($membership_summary['program_name'] ?? $program['name'] ?? 'Your plan')) ?></strong></div>
                     <div class="cs-kv"><span class="cs-muted">Status</span><strong>Restricted</strong></div>
                     <div class="cs-kv"><span class="cs-muted">Monthly fee</span><strong><?= cs_money($program['monthly_fee'] ?? 240) ?></strong></div>
                 </div>
@@ -84,7 +84,7 @@ $relative = match (true) {
 };
 $memberId = $p('unique_identifier');
 $branchName = $nonEmpty($branch_info['branch_name'] ?? null);
-$packageName = (string) ($membership_summary['program_name'] ?? $program['name'] ?? 'Damayan Burial Program');
+$packageName = (string) ($membership_summary['program_name'] ?? $program['name'] ?? 'Your plan');
 $payUrl = $state === 'awaiting_activation' ? 'initial-payment' : 'client/payment/make';
 
 if ($state === 'awaiting_activation') {

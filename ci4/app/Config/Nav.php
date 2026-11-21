@@ -107,6 +107,7 @@ class Nav extends BaseConfig
                         ['key' => 'collections', 'label' => 'Collection list', 'icon' => 'ti-map-pin',   'url' => 'branch-admin/collection-list'],
                         ['key' => 'collector-assignments', 'label' => 'Collector assignments', 'icon' => 'ti-map-pin-pin', 'url' => 'branch-admin/collector-assignments'],
                         ['key' => 'gcash-review', 'label' => 'GCash review', 'icon' => 'ti-brand-paypal', 'url' => 'gcash-review', 'count' => 'gcash_waiting'],
+                        ['key' => 'closure-requests', 'label' => 'Closure requests', 'icon' => 'ti-door-exit', 'url' => 'branch-admin/closure-requests', 'count' => 'closure_requests'],
                         ['key' => 'remittances', 'label' => 'Remittances', 'icon' => 'ti-receipt-2', 'url' => 'branch-admin/remittances', 'count' => 'pending_remittances'],
                         ['key' => 'reports',     'label' => 'Reports',         'icon' => 'ti-file-text', 'url' => 'branch-admin/reports'],
                     ],
@@ -196,7 +197,7 @@ class Nav extends BaseConfig
                 [
                     'title' => 'Services & Packages',
                     'items' => [
-                        ['key' => 'services',      'label' => 'Request a service', 'icon' => 'ti-clipboard-list', 'url' => 'client/service'],
+                        ['key' => 'services',      'label' => 'Request a service', 'icon' => 'ti-clipboard-list', 'url' => 'client/service', 'capability' => 'open_plan'],
                         ['key' => 'claims',        'label' => 'My claims',         'icon' => 'ti-file-description', 'url' => 'client/claims'],
                         ['key' => 'notifications', 'label' => 'Notifications',     'icon' => 'ti-bell',           'url' => 'client/notification', 'count' => 'unread'],
                     ],

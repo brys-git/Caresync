@@ -553,6 +553,7 @@ class MetricsService
         $counts = ['pending_requests' => $this->pendingServiceRequests($branchId)];
         if ($roleId === 2) {
             $counts['pending_remittances'] = (new RemittanceService())->pendingCount($branchId);
+            $counts['closure_requests'] = (new PlanClosureService())->pendingCount($branchId);
         }
 
         if ($branchId > 0) {

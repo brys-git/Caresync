@@ -65,6 +65,7 @@
                 </table>
             </div>
         <?php endif; ?>
+        <p class="cs-muted small mb-0 p-3"><strong>Waivers:</strong> plan balances waived on claims in this period: <?= cs_money($waivers_total ?? 0) ?> (not money collected).</p>
     </div>
 </section>
 <?= $this->endSection() ?>

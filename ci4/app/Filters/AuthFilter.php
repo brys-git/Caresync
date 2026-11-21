@@ -71,6 +71,21 @@ class AuthFilter implements FilterInterface
             return redirect()->to('/change-password')->with('error', 'You must change your temporary password first.');
         }
 
+        // A plan holder whose plan was closed may still sign in (Config\CareSync::$closedAccountsCanLogin) but only to LOOK:
+        // the dashboard, the plan, the ledger, receipts, claims and their own profile. No payments, no requests.
+        if ((int) session('role_id') === 4) {
+            $closed = db_connect()->table('plan_holders')->select('status, plan_holder_id')->where('user_id', (int) session('user_id'))->orderBy('plan_holder_id', 'DESC')->get(1)->getRowArray();
+            if ($closed && ((string) $closed['status']) === 'closed') {
+                $method = strtolower((string) $request->getMethod());
+                $readOnlyGet = '#^(client/(dashboard|membership|payment|payment/ledger|payment/download-receipt/\d+|claims|notification|profile(/.*)?)|receipt/\d+|dashboard(/.*)?|change-password|logout)$#';
+                $allowedPost = '#^(client/(profile/(update|update-password|photo)|notification/read)|change-password|logout)$#';
+                $ok = in_array($method, ['get', 'head'], true) ? preg_match($readOnlyGet, $path) === 1 : preg_match($allowedPost, $path) === 1;
+                if (! $ok) {
+                    return redirect()->to('/client/dashboard')->with('info', 'Your plan is closed. You can still see your ledger and download your receipts, but payments and requests are no longer available.');
+                }
+            }
+        }
+
         return null;
     }
 

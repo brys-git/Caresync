@@ -21,6 +21,29 @@ use App\Services\PlanHolderRegistrationService;
  */
 class ClientRegistrationController extends BaseController
 {
+    /**
+     * The plan a new client is about to join: the single approved plan when there is only one, otherwise the
+     * default program. (With several plans the registration form lets them choose.)
+     *
+     * @return array<string,mixed>
+     */
+    private function registrationProgram(): array
+    {
+        $only = MembershipService::resolveRegistrationProgram(null);
+        if ($only === null) {
+            return MembershipService::getProgramInfo();
+        }
+
+        return [
+            'id' => (int) $only['program_id'],
+            'name' => (string) $only['program_name'],
+            'monthly_fee' => (float) $only['monthly_fee'],
+            'plan_price' => (float) $only['plan_price'],
+            'term_months' => (int) ($only['term_months'] ?? 0),
+            'package_id' => (int) ($only['package_id'] ?? 0) > 0 ? (int) $only['package_id'] : MembershipService::DEFAULT_PACKAGE_ID,
+        ];
+    }
+
     use ClientPortalTrait;
 
     /**
@@ -42,7 +65,7 @@ class ClientRegistrationController extends BaseController
             return redirect()->to('/initial-payment');
         }
 
-        $program = MembershipService::getProgramInfo();
+        $program = $this->registrationProgram();
 
         $db = db_connect();
 
@@ -52,10 +75,17 @@ class ClientRegistrationController extends BaseController
         // instead of the old generic/static benefits list.
         $entitlementPackage = $db->table('packages')
             ->select('package_id, package_name, base_price')
-            ->where('is_damayan_entitlement', 1)
-            ->orderBy('package_id', 'ASC')
+            ->where('package_id', (int) ($program['package_id'] ?? 0))
             ->get()
             ->getRowArray();
+        if (! $entitlementPackage) {
+            $entitlementPackage = $db->table('packages')
+                ->select('package_id, package_name, base_price')
+                ->where('is_damayan_entitlement', 1)
+                ->orderBy('package_id', 'ASC')
+                ->get()
+                ->getRowArray();
+        }
 
         $inclusions = [];
         if ($entitlementPackage) {
@@ -69,7 +99,7 @@ class ClientRegistrationController extends BaseController
 
         $otherPackages = $db->table('packages')
             ->select('package_id, package_name, base_price')
-            ->where('is_damayan_entitlement', 0)
+            ->where('package_id !=', (int) ($entitlementPackage['package_id'] ?? 0))
             ->where('is_available', 1)
             ->orderBy('base_price', 'ASC')
             ->get()
@@ -85,7 +115,7 @@ class ClientRegistrationController extends BaseController
         return view('client/plan_info', [
             'role_layout' => 'layouts/plan_holder',
             'page_title' => 'Plan Information',
-            'page_sub' => 'Review the ' . (string) ($program['name'] ?? 'Damayan Burial Program') . ' details before proceeding.',
+            'page_sub' => 'Review the ' . (string) ($program['name'] ?? 'plan') . ' details before proceeding.',
             'access' => $access,
             'program' => $program,
             'entitlement_package' => $entitlementPackage,
@@ -123,7 +153,7 @@ class ClientRegistrationController extends BaseController
             return redirect()->to('/id-verification-status');
         }
 
-        $program = MembershipService::getProgramInfo();
+        $program = $this->registrationProgram();
         $planId = $planId > 0 ? $planId : (int) ($program['package_id'] ?? 0);
 
         $branches = (new BranchModel())

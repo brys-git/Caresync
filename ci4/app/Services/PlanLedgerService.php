@@ -591,7 +591,8 @@ class PlanLedgerService
         $anchor = $this->anchorFor($plan);
         $payments = $this->paymentsFor($plan, $anchor);
 
-        if (! $this->isManaged($plan, $payments)) {
+        // A closed plan (the plan holder died / closed at the client's request) owes nothing and is never put back.
+        if (PlanClosureService::isClosedStatus((string) ($plan['status'] ?? '')) || ! $this->isManaged($plan, $payments)) {
             return $this->summarize($planId, $today);
         }
 
@@ -663,7 +664,7 @@ class PlanLedgerService
     {
         $result = ['checked' => 0, 'grace' => 0, 'lapsed' => 0, 'forfeited' => 0, 'notified' => 0];
 
-        $plans = db_connect()->table('plans')->select('plan_id')->get()->getResultArray();
+        $plans = db_connect()->table('plans')->select('plan_id')->whereNotIn('status', PlanClosureService::CLOSED_STATUSES)->get()->getResultArray();
 
         foreach ($plans as $row) {
             $s = $this->sync((int) $row['plan_id']);

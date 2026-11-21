@@ -151,10 +151,24 @@ class CycleService
             return;
         }
 
+        $this->closeCycle($planId);
+    }
+
+    /**
+     * Closes the current cycle NOW and starts the next one at 0 months (full plan price again). Used when a claim is
+     * approved: the claim waives what is left of the plan price (PlanClosureService), so the cycle does not wait to be
+     * paid off. Money already paid stays with the cycle it was paid in.
+     */
+    public function closeCycle(int $planId): void
+    {
+        $plan = $planId > 0 ? $this->planModel->find($planId) : null;
+        if (! $plan) {
+            return;
+        }
         $today = date('Y-m-d');
 
         $this->planModel->update($planId, [
-            'current_cycle_number' => $cycle['cycle_number'] + 1,
+            'current_cycle_number' => (int) ($plan['current_cycle_number'] ?? 1) + 1,
             'months_paid' => 0,
             'contribution_cycle_started_at' => $today,
             'overdue_months' => 0,
@@ -162,6 +176,8 @@ class CycleService
             'payment_coverage_until' => $today,
             'next_due_date' => date('Y-m-d', strtotime('+1 day', strtotime($today))),
         ]);
+        // Dates, lifecycle and months of the fresh cycle come from the ledger.
+        (new PlanLedgerService())->sync($planId, true);
     }
 
     /**

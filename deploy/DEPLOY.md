@@ -1,4 +1,4 @@
-# Deploying Parts B, D and E, the service process and the GCash review screen
+# Deploying Parts B, D and E, the service process, the GCash review screen, the process fixes and the claim policy
 
 For: InfinityFree (no SSH, no cron, phpMyAdmin only). Do it on the **staging subdomain first**, then on the
 live site. Do not merge `feature/part-b` into `main` until staging has passed the test list below.
@@ -8,7 +8,7 @@ Files in this folder:
 | File | What it is |
 | --- | --- |
 | `DEPLOY.md` | This checklist. |
-| `partB_migrations.sql` | **Fallback** for the database changes (13 migrations: Part B, Part D, Part E, service process, GCash review). Import **once**, and only if you do *not* use the `/migrate/<key>` page (Method A). |
+| `partB_migrations.sql` | **Fallback** for the database changes (14 migrations: Part B, Part D, Part E, service process, GCash review, claim policy). Import **once**, and only if you do *not* use the `/migrate/<key>` page (Method A). |
 | `partD_backfill.sql` | ID Control Nos for plan holders who are already active. **Does not exist yet**: it is generated from *your* live export (step 2), not from local data. |
 | `E2E_CHECKLIST.md` | The hand-followable end-to-end test (the same steps the automated run does). |
 
@@ -56,9 +56,9 @@ first), with `app.baseURL` set to the staging address. Run the test list. Only t
    ```
 
    - Method A works from **any** level. Note the newest version for the record.
-   - Method B only: the newest row must be `2026-11-17-010000` (or a later version that is *not* one of the thirteen
-     below), with **no** row for `2026-11-19-000000` ... `2026-11-22-010000`. Older than `2026-11-17-010000` ->
-     stop, paste the result to the developer (a `deploy/pre_partB.sql` is needed first). Any of the thirteen already
+   - Method B only: the newest row must be `2026-11-17-010000` (or a later version that is *not* one of the fourteen
+     below), with **no** row for `2026-11-19-000000` ... `2026-11-23-000000`. Older than `2026-11-17-010000` ->
+     stop, paste the result to the developer (a `deploy/pre_partB.sql` is needed first). Any of the fourteen already
      present -> stop, do not import the file.
 
 ## 2. Generate the ID numbers from the live export (done by the developer, on a copy)
@@ -88,7 +88,7 @@ Check the file: one `UPDATE` per plan holder, each guarded so an existing number
 4. **Right away delete the `app.migrateKey` line from `.env`** (the page does nothing without it, but a key that
    stays on the server is a door that stays unlocked). Check the page is closed again: the same address must now
    show "page not found".
-5. Check: `SELECT version FROM migrations ORDER BY id DESC LIMIT 13;` ends with `2026-11-22-010000`, and
+5. Check: `SELECT version FROM migrations ORDER BY id DESC LIMIT 14;` ends with `2026-11-23-000000`, and
    `SHOW TABLES LIKE 'remittances';` returns a row.
 
 ### Method B - the SQL file (fallback)
@@ -246,6 +246,30 @@ Log in with each role and tick. (`E2E_CHECKLIST.md` has the long version with ex
 - [ ] A collector's verified GCash payment shows under *Remit collections* (not paid until the Branch Admin
       confirms the remittance); a Branch Admin's verification makes it paid at once.
 - [ ] The screenshot cannot be opened by anyone else (another collector, the client's URL guess, the System Admin).
+
+**Process fixes**
+- [ ] Registration approvals -> Verify, Plan holders -> Approve and Payment tracking -> Approve all end in the same state
+      (holder + plan active, months on the ledger, ID Control No., client told with their own plan name). A registration payment
+      that was already verified but left the client inactive can be approved from Plan holders.
+- [ ] Initial GCash payment: 13-digit reference, duplicate check, screenshot required (image, 5 MB); the Branch Admin opens it
+      from Registration approvals (View screenshot); nobody else can.
+- [ ] Registration form: Province first (default = the branch's province: Oriental or Occidental Mindoro), then Barangay / Town-City.
+- [ ] Request a service / Package details / avail form: "Included in your plan" is the client's OWN plan package; the package
+      details page shows the same quote as the avail form; no "Damayan" wording for a plan that is not a Damayan plan.
+
+**Claim policy**
+- [ ] The claim form asks *Who died?* (the plan holder, or a registered beneficiary who is still living). The plan holder's own login
+      cannot name themselves; a claim for the plan holder's death is filed at the branch with a beneficiary or the emergency contact.
+- [ ] Approving a claim waives the remaining plan balance (plan_waivers), closes the cycle and starts a new one at 0 months.
+- [ ] Plan holder died: when the service is completed the plan is *Closed - plan holder deceased*, the login is switched off, no dues,
+      not in collection lists / overdue report. With an unpaid avail balance the plan stays open for that balance only
+      (*closed_deceased_owing*) until it is paid.
+- [ ] Beneficiary died: that beneficiary is marked deceased (cannot be claimed for again); the client sees what was waived and may
+      continue or press *Request to close my plan*; the Branch Admin sees it under *Closure requests* and closes it (reason +
+      confirmation, own branch only). A plan with an unpaid avail balance cannot be closed. A closed client can sign in read-only
+      (`closedAccountsCanLogin` in `Config/CareSync.php`).
+- [ ] Avail: the plan balance is waived too and only the package price is charged (one constant: `ClaimAvailService::AVAIL_WAIVES_PLAN_BALANCE`).
+- [ ] Reports: waivers in the Avails and waivers report, the Collections report total and the plan holder ledger / PDF.
 
 **Reports and dashboards**
 - [ ] Overdue report: separate Plan and Package columns; Print, Excel, PDF all open.

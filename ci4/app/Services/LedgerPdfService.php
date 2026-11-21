@@ -108,6 +108,8 @@ class LedgerPdfService
             'total_months'  => $summary !== null ? (int) $summary['total_months'] : 0,
             'payments'      => $payments,
             'sections'      => $sections,
+            'waivers'       => $plan ? (new PlanClosureService())->waivers((int) $plan['plan_id']) : [],
+            'closed_info'   => (new PlanClosureService())->closedInfo($planHolderId),
             'grand_paid'    => round(($summary !== null ? (float) $summary['total_paid'] : 0.0) + $pkgPaid, 2),
             'grand_balance' => round(($summary !== null ? (float) $summary['remaining_balance'] : 0.0) + $pkgBalance, 2),
             'generated'     => \CodeIgniter\I18n\Time::now(config('App')->appTimezone)->format('F j, Y, g:i A'),

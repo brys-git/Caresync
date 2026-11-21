@@ -35,6 +35,10 @@ $activeNav = (string) ($activeNav ?? '');
                     if (($item['capability'] ?? '') === 'collect' && ! can_collect()) {
                         continue;
                     }
+                    // a client whose plan was closed only looks (no requests): see AuthFilter
+                    if (($item['capability'] ?? '') === 'open_plan' && cs_client_plan_closed()) {
+                        continue;
+                    }
                     $key    = (string) ($item['key'] ?? '');
                     $count  = isset($item['count']) ? (int) ($navCounts[$item['count']] ?? 0) : 0;
                     $active = $key !== '' && $key === $activeNav;

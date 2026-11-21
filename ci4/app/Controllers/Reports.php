@@ -172,11 +172,13 @@ class Reports extends BaseController
         $rows = $reportService->getCollectionsByCollector($filters);
 
         if ((string) $this->request->getGet('mode') === 'csv') {
+            $rows[] = ['_waivers' => $reportService->waiversTotal($filters)];
+
             return $this->csvResponse(
                 'collections_report',
                 ['Collector', 'Role', 'Transactions', 'Plan Contributions', 'Package Instalments', 'Down Payments', 'Total Collected'],
                 $rows,
-                static fn (array $row): array => [
+                static fn (array $row): array => isset($row['_waivers']) ? ['Waived on claims (plan balances, not collected)', '', '', number_format((float) $row['_waivers'], 2, '.', ''), '', '', ''] : [
                     trim((string) ($row['first_name'] ?? '') . ' ' . (string) ($row['last_name'] ?? '')),
                     (string) ($row['role_name'] ?? ''),
                     (string) ($row['transaction_count'] ?? 0),
@@ -195,6 +197,7 @@ class Reports extends BaseController
             'active_report' => 'collections',
             'filters' => $filters,
             'rows' => $rows,
+            'waivers_total' => $reportService->waiversTotal($filters),
         ]);
     }
 

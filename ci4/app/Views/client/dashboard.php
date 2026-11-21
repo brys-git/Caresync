@@ -3,7 +3,7 @@
 <?= $this->section('content') ?>
 <?php
 $state = (string) ($access['state'] ?? 'unregistered');
-$program = $program ?? ['name' => 'Damayan Burial Program', 'monthly_fee' => 240.0];
+$program = $program ?? ['name' => 'Your plan', 'monthly_fee' => 240.0];
 $userFullName = trim((string) (($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? '')));
 $membership_since = (string) ($membership_since ?? '');
 $branch_name = (string) ($branch_name ?? '');
@@ -24,6 +24,9 @@ if (! empty($summary)) {
     $paidAmount = (float) $summary['total_paid'];
     $remainingBalance = (float) $summary['remaining_balance'];
 }
+if ($state === 'closed') {
+    $remainingBalance = 0.0;   // a closed plan owes nothing
+}
 $latestPayment = $recent_payments[0] ?? null;
 $latestPaymentLabel = $latestPayment ? ('#' . (string) ($latestPayment['payment_id'] ?? '')) : 'None yet';
 $statusTone = $state === 'active' ? 'active' : ($state === 'awaiting_activation' ? 'pending' : 'inactive');
@@ -36,7 +39,13 @@ $progress = ! empty($summary) ? (float) $summary['progress_pct'] : ($planAmount 
     Welcome back, <?= esc($userFullName ?: 'Member') ?> — Kaagapay member since <?= esc($membership_since !== '' ? $membership_since : 'not available') ?>.
 </p>
 
-<?= view('partials/plan_standing', ['standing' => $standing ?? null, 'standing_details' => true]) ?>
+<?php if ($state === 'closed'): ?>
+    <?= view('components/alert', ['type' => 'secondary', 'dismissible' => false, 'title' => 'Plan closed' . (! empty($closed_on) ? ' on ' . date('F j, Y', strtotime((string) $closed_on)) : ''), 'message' => 'No more contributions are due. You can still see your records, download your ledger and your receipts. Payments and new requests are no longer available.']) ?>
+    <p class="mb-3"><a class="btn btn-ghost btn-sm" href="<?= base_url('client/payment/ledger') ?>"><i class="ti ti-download" aria-hidden="true"></i> Download my ledger</a>
+    <a class="btn btn-ghost btn-sm" href="<?= base_url('client/payment') ?>">My payments and receipts</a></p>
+<?php else: ?>
+    <?= view('partials/plan_standing', ['standing' => $standing ?? null, 'standing_details' => true]) ?>
+<?php endif; ?>
 
 <?php if (session()->getFlashdata('error')): ?>
     <?= view('components/alert', ['type' => 'danger', 'message' => session()->getFlashdata('error')]) ?>
@@ -115,18 +124,24 @@ $progress = ! empty($summary) ? (float) $summary['progress_pct'] : ($planAmount 
                 <p><?= esc($statusText) ?></p>
                 <div class="d-flex justify-content-between mb-2"><span class="cs-muted">Membership ID</span><strong><?= esc((string) ($plan_holder['unique_identifier'] ?? 'N/A')) ?></strong></div>
                 <div class="d-flex justify-content-between mb-2"><span class="cs-muted">Branch</span><strong><?= esc($branch_name !== '' ? $branch_name : 'N/A') ?></strong></div>
-                <div class="d-flex justify-content-between mb-2"><span class="cs-muted">Package</span><strong><?= esc((string) ($plan['program_name'] ?? $program['name'] ?? 'Damayan Burial Program')) ?></strong></div>
+                <div class="d-flex justify-content-between mb-2"><span class="cs-muted">Package</span><strong><?= esc((string) ($plan['program_name'] ?? $program['name'] ?? 'Your plan')) ?></strong></div>
                 <div class="d-flex justify-content-between"><span class="cs-muted">Plan status</span><?= cs_status((string) ($plan['status'] ?? 'inactive')) ?></div>
             </div>
         </section>
+
+        <?= view('client/_plan_closure_card', ['claim_notice' => $claim_notice ?? null, 'closure_request' => $closure_request ?? null, 'state' => $state]) ?>
 
         <section class="cs-panel mb-3">
             <div class="cs-panel__head"><h2 class="cs-panel__title">Quick actions</h2></div>
             <div class="cs-panel__body cs-panel__body--flush">
                 <a class="cs-linkrow" href="<?= base_url('client/membership') ?>"><span>View membership</span><i class="ti ti-chevron-right cs-muted ms-auto" aria-hidden="true"></i></a>
+                <?php if ($state !== 'closed'): ?>
                 <a class="cs-linkrow" href="<?= base_url($state === 'awaiting_activation' ? 'initial-payment' : 'client/payment/make') ?>"><span>Make payment</span><i class="ti ti-chevron-right cs-muted ms-auto" aria-hidden="true"></i></a>
+                <?php endif; ?>
                 <a class="cs-linkrow" href="<?= base_url('client/payment') ?>"><span>View payment history</span><i class="ti ti-chevron-right cs-muted ms-auto" aria-hidden="true"></i></a>
+                <?php if ($state !== 'closed'): ?>
                 <a class="cs-linkrow" href="<?= base_url('client/service') ?>"><span>Request a service</span><i class="ti ti-chevron-right cs-muted ms-auto" aria-hidden="true"></i></a>
+                <?php endif; ?>
                 <a class="cs-linkrow" href="<?= base_url('client/profile') ?>"><span>Update profile</span><i class="ti ti-chevron-right cs-muted ms-auto" aria-hidden="true"></i></a>
             </div>
         </section>

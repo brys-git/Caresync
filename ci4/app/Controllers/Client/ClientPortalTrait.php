@@ -163,6 +163,10 @@ trait ClientPortalTrait
         if ($planHolder || $isPlanHolder) {
             $state = $activePlan ? 'active' : 'awaiting_activation';
         }
+        // A plan the Branch Admin closed: the client may still sign in, read-only (AuthFilter keeps the rest out).
+        if ($planHolder && strtolower((string) ($planHolder['status'] ?? '')) === 'closed') {
+            $state = 'closed';
+        }
 
         $badgeClass = 'danger';
         $badgeLabel = 'Unregistered';
@@ -172,6 +176,9 @@ trait ClientPortalTrait
         } elseif ($state === 'active') {
             $badgeClass = 'success';
             $badgeLabel = 'Active';
+        } elseif ($state === 'closed') {
+            $badgeClass = 'secondary';
+            $badgeLabel = 'Plan closed';
         }
 
         $latestInitialPayment = null;

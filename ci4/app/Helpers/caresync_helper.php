@@ -23,10 +23,32 @@ if (! function_exists('cs_format_address')) {
 
         $street = trim($clean($row['address_no'] ?? '') . ' ' . $clean($row['address_street'] ?? ''));
 
+        // The province is added only when it differs from the province of the person's branch (most addresses are
+        // in the branch's own province, so it would only be noise). It is read from the saved city/municipality code.
+        $province = '';
+        $cityCode = $clean($row['city_municipality_code'] ?? '');
+        if ($cityCode !== '') {
+            $psgc = new \App\Services\PsgcService();
+            $name = (string) ($psgc->provinceName($cityCode) ?? '');
+            if ($name !== '') {
+                $branchProvince = $clean($row['branch_province'] ?? '');
+                if ($branchProvince === '' && (int) ($row['branch_id'] ?? 0) > 0) {
+                    static $byBranch = [];
+                    $bid = (int) $row['branch_id'];
+                    $byBranch[$bid] ??= (string) (db_connect()->table('branches')->select('address_province')->where('branch_id', $bid)->get(1)->getRowArray()['address_province'] ?? '');
+                    $branchProvince = $byBranch[$bid];
+                }
+                if ($branchProvince !== '' && strcasecmp($branchProvince, $name) !== 0) {
+                    $province = $name;
+                }
+            }
+        }
+
         return implode(', ', array_filter([
             $street,
             $clean($row['address_barangay'] ?? ''),
             $clean($row['address_city'] ?? ''),
+            $province,
         ], static fn (string $part): bool => $part !== ''));
     }
 }
@@ -238,6 +260,18 @@ if (! function_exists('can_collect')) {
      * from route filters and views on the same request, and a Staff
      * lookup shouldn't hit the DB twice for one page load.
      */
+    /** Is the signed-in plan holder's plan closed (they may only look: ledger, receipts, claims)? */
+    function cs_client_plan_closed(): bool
+    {
+        static $cache = [];
+        $uid = (int) session('user_id');
+        if ($uid <= 0 || (int) session('role_id') !== 4) {
+            return false;
+        }
+
+        return $cache[$uid] ??= (string) (db_connect()->table('plan_holders')->select('status')->where('user_id', $uid)->orderBy('plan_holder_id', 'DESC')->get(1)->getRowArray()['status'] ?? '') === 'closed';
+    }
+
     function can_collect(?int $userId = null): bool
     {
         static $cache = [];
@@ -360,7 +394,7 @@ if (! function_exists('registration_wizard_config')) {
             'selected_branch_id' => $data['selected_branch_id'] ?? null,
             'branch_name' => (string) ($data['branch_name'] ?? ''),
             'existing_users' => $data['existing_users'] ?? [],
-            'program' => $data['program'] ?? ['name' => 'Damayan Burial Program', 'monthly_fee' => 240.0],
+            'program' => $data['program'] ?? ['name' => 'Your plan', 'monthly_fee' => 240.0],
             // A plan picker only makes sense once there's an actual choice -
             // with 0 or 1 approved+active plans, registration keeps working
             // exactly as before (silently assigned the one default plan).

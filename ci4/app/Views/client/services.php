@@ -43,7 +43,7 @@ $shield = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="c
             <div class="rq-feature__body">
                 <span class="rq-badge"><?= $shield ?> Included in your plan</span>
                 <h2 id="rq-ent-title" class="rq-feature__name"><?= $e($entitlement['package_name']) ?></h2>
-                <p class="rq-body">Your Damayan plan entitles you to this casket at no cost. Claim it when you need it — staff will handle the rest.</p>
+                <p class="rq-body">Your <?= $e($plan_label ?? 'plan') ?> plan includes this package at no cost. Claim it when you need it — staff will handle the rest.</p>
                 <p class="rq-price">
                     <s class="rq-muted rq-num"><?= $peso($entitlement['base_price']) ?></s>
                     <span class="rq-covered">Fully covered</span>
@@ -54,9 +54,9 @@ $shield = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="c
                         <span class="rq-pill <?= $claimIsApproved ? 'rq-pill--ok' : 'rq-pill--warn' ?>"><?= $claimIsApproved ? 'Approved' : 'Pending review' ?></span>
                         <a class="rq-btn rq-btn--ghost" href="<?= site_url('/client/apply-package/submitted/' . (int) $entitlement_claim['application_id']) ?>">View claim</a>
                     <?php elseif ($claim_eligible): ?>
-                        <a class="rq-btn rq-btn--green" href="<?= site_url('/client/apply-package/' . $eId) ?>">Claim casket</a>
+                        <a class="rq-btn rq-btn--green" href="<?= site_url('/client/apply-package/' . $eId) ?>">Claim <?= $e($entitlement['package_name']) ?></a>
                     <?php else: ?>
-                        <button type="button" class="rq-btn rq-btn--green" disabled aria-describedby="rq-why">Claim casket</button>
+                        <button type="button" class="rq-btn rq-btn--green" disabled aria-describedby="rq-why">Claim <?= $e($entitlement['package_name']) ?></button>
                     <?php endif; ?>
                     <a class="rq-btn rq-btn--ghost" href="<?= site_url('/client/package/' . $eId) ?>">View details</a>
                 </div>

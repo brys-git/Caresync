@@ -33,6 +33,7 @@ $statusLabels = ['pending' => 'under review', 'approved' => 'approved'];
             'base_price' => (float) ($package['base_price'] ?? 0),
             'form_quote' => $form_quote,
             'claimant_options' => $claimant_options,
+            'deceased_options' => $deceased_options ?? null,
             'attire_price' => (float) $attire_price,
             'plan_name' => (string) $plan_name,
             'member_name' => (string) $member_name,

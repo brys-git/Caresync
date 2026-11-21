@@ -802,6 +802,8 @@ class ServiceProcessService
             return ['ok' => false, 'message' => 'The service could not be completed. Nothing was changed.'];
         }
         (new ActivityLogService())->log($actorUserId, 'updated', 'service', $serviceId, 'Service completed (family confirmation by ' . $name . ')');
+        // Policy: when the plan holder was the one who died, the plan ends now (PlanClosureService).
+        (new PlanClosureService())->onServiceCompleted($serviceId, $actorUserId);
         (new NotificationService())->notify((int) $svc['client_user_id'], 'Your service (' . $svc['what'] . ') has been completed. Thank you for trusting us. Please tell us how we did: open My claims and rate the service (1 to 5).', 'service_completed');
 
         return ['ok' => true, 'message' => 'Service completed. The family was thanked and can now rate it.'];

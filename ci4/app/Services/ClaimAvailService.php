@@ -65,6 +65,13 @@ class ClaimAvailService
      */
     public const PRICED_EXTRAS_ARE_PACKAGE_AMOUNTS = true;
 
+    /**
+     * RULE (temporary until Kaagapay answers - change it here only): approving an AVAIL of a package also waives the
+     * plan's remaining balance, so only the package price is charged (down payment and instalments as before). A CLAIM
+     * always waives it (confirmed policy). A single service is never treated this way.
+     */
+    public const AVAIL_WAIVES_PLAN_BALANCE = true;
+
     /** Label stored in service_applications.rule_version / service_balances.rule_version for new records. */
     public const RULE_VERSION = 'v2';
 
@@ -115,6 +122,12 @@ class ClaimAvailService
         return (int) ($row['package_id'] ?? 0);
     }
 
+    /** Is this package the one in the plan holder's OWN plan (so asking for it is a claim)? Every other package is an avail. */
+    public function isClaimPackage(int $planHolderId, int $packageId): bool
+    {
+        return $packageId > 0 && $packageId === $this->planPackageId($this->planFor($planHolderId) ?? []);
+    }
+
     /** 'claim' when the package is the plan's own, otherwise 'avail'. */
     public function requestType(array $plan, int $packageId): string
     {
@@ -149,7 +162,8 @@ class ClaimAvailService
         }
 
         $summary     = $this->ledger->summarize($planId) ?? [];
-        $planBalance = max(0.0, round(PlanLedgerService::targetFor($plan) - (float) ($summary['total_paid'] ?? 0), 2));
+        $closed      = PlanClosureService::isClosedStatus((string) ($plan['status'] ?? ''));
+        $planBalance = $closed ? 0.0 : max(0.0, round(PlanLedgerService::targetFor($plan) - (float) ($summary['total_paid'] ?? 0), 2));
 
         $packageBalance = 0.0;
         $packageMonthly = 0.0;
@@ -179,7 +193,7 @@ class ClaimAvailService
             ->where('remaining_balance >', 0)
             ->get()->getRowArray()['total'] ?? 0);
 
-        $planMonthly = (float) $plan['monthly_fee'];
+        $planMonthly = $closed ? 0.0 : (float) $plan['monthly_fee'];
 
         return [
             'plan_id'           => $planId,
@@ -319,12 +333,11 @@ class ClaimAvailService
             $reasons[] = ['code' => 'open_request', 'message' => 'You already have a claim or avail in progress. You can make another request once it is completed.'];
         }
 
-        // Rules 2 and 3: an unsettled balance from an earlier claim or avail.
-        $usedThisCycle = $this->entitlementUsedInCycle($planHolderId, $cycleNo);
-        if ($balances['legacy_balance'] > 0.004 || ($usedThisCycle && $balances['total_balance'] > 0.004)) {
-            $reasons[] = ['code' => 'unsettled_balance', 'message' => 'You can request another service after your remaining balance of ' . $this->money($balances['total_balance']) . ' is settled and ' . $needed . ' more months are paid.'];
-        } elseif ($usedThisCycle) {
-            $reasons[] = ['code' => 'cycle_in_progress', 'message' => 'Your balance is settled. You can request another service after ' . $needed . ' months are paid in your new cycle.'];
+        // Rule 2 (policy): what is left of the PLAN is waived when a claim is approved, so it never blocks a new request.
+        // An unpaid package (avail / add-on) balance, or an old-rule balance, still blocks claims and avails alike.
+        $owedOnPackages = round($balances['package_balance'] + $balances['legacy_balance'], 2);
+        if ($owedOnPackages > 0.004) {
+            $reasons[] = ['code' => 'unsettled_balance', 'message' => 'You can request another service after your package balance of ' . $this->money($owedOnPackages) . ' is settled and ' . $needed . ' months are paid in your current cycle.'];
         }
 
         // Rule 1: the 2-months minimum, counted in the current cycle.
@@ -444,6 +457,9 @@ class ClaimAvailService
             'plan_monthly'          => $balances['plan_monthly'],
             // A claim releases the plan's own package free; anything else adds its price to the balance.
             'package_amount_added'  => $charge,
+            // A claim (and an avail of a package, while AVAIL_WAIVES_PLAN_BALANCE) waives what is left of the plan: only
+            // package / old-rule balances and the new charge remain.
+            'plan_waived'           => 0.0,
             'total_balance_after'   => round($balances['total_balance'] + $charge, 2),
             'down_payment_rate'     => 0.0,
             'down_payment_amount'   => 0.0,
@@ -458,6 +474,11 @@ class ClaimAvailService
             'schedule'              => [],
             'monthly_total_due'     => $balances['plan_monthly'],
         ];
+
+        if ($priced['kind'] !== 'service' && ($priced['type'] === self::TYPE_CLAIM || self::AVAIL_WAIVES_PLAN_BALANCE)) {
+            $quote['plan_waived']         = $balances['plan_balance'];
+            $quote['total_balance_after'] = round($balances['package_balance'] + $balances['legacy_balance'] + $charge, 2);
+        }
 
         if ($charge <= 0.004) {
             return $quote;
@@ -900,6 +921,10 @@ class ClaimAvailService
     private function planDueNow(int $planId): array
     {
         $rows = [];
+        $status = (string) (db_connect()->table('plans')->select('status')->where('plan_id', $planId)->get(1)->getRowArray()['status'] ?? '');
+        if (PlanClosureService::isClosedStatus($status)) {
+            return $rows;   // a closed plan owes no contributions; only a package balance can still be paid
+        }
         foreach ($this->ledger->contributionsWithMoney($planId) as $c) {
             if ($c['remaining'] > 0.004) {
                 $rows[] = ['number' => (int) $c['number'], 'due' => (string) $c['due'], 'remaining' => (float) $c['remaining']];
@@ -947,6 +972,7 @@ class ClaimAvailService
         }
 
         $this->reallocatePlan($planId, [$paymentId]);
+        (new PlanClosureService())->settleOwing($planId);
     }
 
     /** Whether a payment counts as money received (paid/verified, or collected by a collector and awaiting confirmation). */
@@ -1408,23 +1434,25 @@ class ClaimAvailService
         (new ServiceProcessService())->onApproved($serviceId, $actorUserId);
 
         if ($isClaim) {
-            $pkg = $db->table('packages')->select('is_damayan_entitlement')->where('package_id', $priced['package_id'])->get(1)->getRowArray();
-            if ($pkg && (int) $pkg['is_damayan_entitlement'] === 1) {
-                $db->table('plans')->where('plan_id', (int) $plan['plan_id'])->update(['last_damayan_claim_at' => $now]);
-            }
-            (new CycleService())->closeCycleIfSettled((int) $plan['plan_id']);
+            $db->table('plans')->where('plan_id', (int) $plan['plan_id'])->update(['last_damayan_claim_at' => $now]);
         }
+        // Policy: the plan balance is waived, the cycle closes now, a deceased beneficiary is marked, and the claimant is
+        // recorded as the person responsible for any avail balance (PlanClosureService).
+        $policy = (new PlanClosureService())->onRequestApproved($app, $plan, $priced, $availId, $actorUserId);
 
         // ---- tell the client
         $extra = $priced['addons_label'] !== '' ? ' (including ' . $priced['addons_label'] . ' ' . $money($priced['addons_total']) . ')' : '';
+        $waivedText = $policy['waived'] > 0.004 ? ' The remaining plan balance of ' . $money($policy['waived']) . ' was waived.' : '';
         if ($quote === null) {
-            $msg = 'Your claim for ' . $what . ' has been approved. Your plan balance stays and you keep paying your monthly contribution.';
+            $msg = 'Your claim for ' . $what . ' has been approved.' . $waivedText . ($policy['beneficiary_died']
+                ? ' You can continue your plan (pay at least ' . (int) $this->config->claimMinMonthsPaid . ' months to be eligible to claim again) or ask your branch to close it.'
+                : ($policy['holder_died'] ? '' : ' A new cycle starts at 0 months.'));
         } elseif ($waive) {
-            $msg = 'Your request for ' . $what . $extra . ' was approved with no down payment. You pay ' . $money((float) $quote['monthly_instalment']) . ' a month for ' . $term . ' month' . ($term === 1 ? '' : 's') . ', on top of your plan contribution.';
+            $msg = 'Your request for ' . $what . $extra . ' was approved with no down payment.' . $waivedText . ' You pay ' . $money((float) $quote['monthly_instalment']) . ' a month for ' . $term . ' month' . ($term === 1 ? '' : 's') . ', on top of your plan contribution.';
         } elseif ($quote['upfront']) {
-            $msg = 'Your ' . ($isClaim ? 'claim' : 'request') . ' for ' . $what . ' was approved. The ' . $money($charge) . ($isClaim ? ' for your add-on' : '') . ' is paid in full by ' . date('F j, Y', strtotime($dueBy)) . ' or the request is cancelled. Your service can start once it is verified.';
+            $msg = 'Your ' . ($isClaim ? 'claim' : 'request') . ' for ' . $what . ' was approved.' . $waivedText . ' The ' . $money($charge) . ($isClaim ? ' for your add-on' : '') . ' is paid in full by ' . date('F j, Y', strtotime($dueBy)) . ' or the request is cancelled. Your service can start once it is verified.';
         } else {
-            $msg = 'Your request for ' . $what . $extra . ' was approved. Pay the down payment of ' . $money((float) $quote['down_payment_amount']) . ' by ' . date('F j, Y', strtotime($dueBy))
+            $msg = 'Your request for ' . $what . $extra . ' was approved.' . $waivedText . ' Pay the down payment of ' . $money((float) $quote['down_payment_amount']) . ' by ' . date('F j, Y', strtotime($dueBy))
                 . ' or the request is cancelled. Your service can start once it is verified. After that you pay ' . $money((float) $quote['monthly_instalment']) . ' a month for ' . $term . ' months.';
         }
         $notify->notify((int) $app['client_user_id'], $msg, 'service_approved', false, false, (int) $plan['plan_id']);
@@ -1590,6 +1618,9 @@ class ClaimAvailService
         }
 
         $what = $row['package_name'] ?? $row['service_name'] ?? 'your service';
+        if ($newStatus === 'completed') {
+            (new PlanClosureService())->onServiceCompleted($serviceId);
+        }
         (new NotificationService())->notify(
             (int) $row['user_id'],
             $newStatus === 'ongoing' ? 'Your service (' . $what . ') has started.' : 'Your service (' . $what . ') has been completed.',
@@ -1653,7 +1684,7 @@ class ClaimAvailService
                 'name' => $probe['package']['name'], 'type' => $probe['type'], 'free' => $probe['free'], 'item_price' => $probe['package']['item_price'],
                 'addons_total' => $probe['addons_total'], 'addons_label' => $probe['addons_label'], 'added' => $probe['package_amount_added'],
                 'down' => $probe['down_payment_amount'], 'rate' => $probe['down_payment_rate'], 'upfront' => $probe['upfront'], 'financed' => $probe['financed_amount'],
-                'terms' => $terms, 'plan_balance' => $probe['plan_balance'], 'plan_monthly' => $probe['plan_monthly'], 'total_after' => $probe['total_balance_after'],
+                'terms' => $terms, 'plan_balance' => $probe['plan_balance'], 'plan_waived' => $probe['plan_waived'], 'plan_monthly' => $probe['plan_monthly'], 'total_after' => $probe['total_balance_after'],
                 'down_days' => $probe['down_payment_days'],
             ];
         }
@@ -1706,7 +1737,15 @@ class ClaimAvailService
             }
         }
 
+        $ownPlan = $this->planFor($planHolderId) ?? [];
+        $waivedBy = [];
+        if (PlanClosureService::ready() && $rows !== []) {
+            foreach ($db->table('plan_waivers')->whereIn('application_id', array_map(static fn (array $r): int => (int) $r['application_id'], $rows))->get()->getResultArray() as $w) {
+                $waivedBy[(int) $w['application_id']] = (float) $w['amount'];
+            }
+        }
         foreach ($rows as &$row) {
+            $row['waived'] = $waivedBy[(int) $row['application_id']] ?? 0.0;
             $av = $avails[(int) $row['application_id']] ?? null;
             $row['avail'] = $av;
 
@@ -1715,7 +1754,8 @@ class ClaimAvailService
             } elseif (! empty($row['request_type'])) {
                 $row['type_label'] = $row['request_type'] === self::TYPE_AVAIL ? 'Avail' : 'Claim';
             } else {
-                $row['type_label'] = (int) ($row['is_damayan_entitlement'] ?? 0) === 1 ? 'Claim' : 'Avail';
+                // An older request with no recorded type: judged by the client's own plan package, like everything else.
+                $row['type_label'] = $this->requestType($ownPlan, (int) $row['package_id']) === self::TYPE_CLAIM ? 'Claim' : 'Avail';
             }
             $row['what'] = (string) ($row['package_name'] ?? $row['service_name'] ?? '-') . ($row['route_name'] ? ' - ' . $row['route_name'] : '');
             $row['addons'] = ! empty($row['burial_attire_selected']) ? [['label' => 'Burial Attire Package', 'price' => (float) ($row['burial_attire_price'] ?? ClaimSubmissionService::BURIAL_ATTIRE_PRICE)]] : [];

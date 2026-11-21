@@ -3,7 +3,7 @@
 <?= $this->section('content') ?>
 <?php
 $beneficiaries = $beneficiaries ?? [];
-$program = $program ?? ['name' => 'Damayan Burial Program', 'monthly_fee' => 240.0];
+$program = $program ?? ['name' => 'Your plan', 'monthly_fee' => 240.0];
 $planId = (int) ($plan_id ?? 0);
 $idTypes = $id_types ?? [];
 $latestVerification = $latest_verification ?? null;

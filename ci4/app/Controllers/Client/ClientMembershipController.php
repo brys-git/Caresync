@@ -78,7 +78,7 @@ class ClientMembershipController extends BaseController
             'role_layout' => 'layouts/plan_holder',
             'page_title' => 'My plan',
             'show_page_head' => false,
-            'page_sub' => 'Damayan program membership overview.',
+            'page_sub' => 'Your plan, contributions and beneficiaries.',
             'access' => $access,
             'active_plan' => $activePlan,
             'membership_summary' => $membershipSummary,
@@ -87,7 +87,7 @@ class ClientMembershipController extends BaseController
             'branch_info' => $branchInfo,
             'plan' => $plan,
             'plan_holder' => $planHolder,
-            'program' => MembershipService::getProgramInfo(),
+            'program' => $plan ? MembershipService::programForPlan($plan) : MembershipService::getProgramInfo(),
         ]);
     }
 }

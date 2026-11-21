@@ -20,7 +20,7 @@ $blocked = isset($fq['eligibility']['allowed']) && ! $fq['eligibility']['allowed
 $errorFor = static fn (string $key): string => (string) ($form_errors[$key] ?? '');
 $description = trim((string) ($package['description'] ?? ''));
 if ($description === '') {
-    $description = $isClaim ? 'The standard casket package for Damayan plan holders.' : 'Package details are confirmed by staff when they call.';
+    $description = $isClaim ? 'The casket package included in your plan.' : 'Package details are confirmed by staff when they call.';
 }
 $relationships = ['Spouse', 'Child', 'Parent', 'Sibling', 'Other relative'];
 $currentRelationship = (string) old('relationship_to_deceased', '');
@@ -33,6 +33,9 @@ $today = date('Y-m-d');
 $formAction = (string) ($form_action ?? site_url('/client/apply-package/' . (int) ($package['package_id'] ?? 0)));
 $onBehalf = (bool) ($on_behalf ?? false);
 $claimantRelationships = ['Beneficiary', 'Spouse', 'Child', 'Parent', 'Sibling', 'Other relative', 'Friend / other'];
+// "Who died?" (null = the migration for the claim policy has not run: the old free-text name is used)
+$deceasedOptions = is_array($deceased_options ?? null) ? $deceased_options : null;
+$chosenDeceased = (string) old('deceased_choice', '');
 ?>
 <?php if ($blocked): ?>
     <section class="br-notice" role="alert">
@@ -62,7 +65,7 @@ $claimantRelationships = ['Beneficiary', 'Spouse', 'Child', 'Parent', 'Sibling',
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8.5 8 9 4.5-.5 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>
                         <div>
                             <p class="br-covered__title">The casket in your plan is released at no extra charge</p>
-                            <p class="br-covered__sub">Plan: <?= $e($plan_name) ?> · Member <?= $e($member_name) ?>. Your remaining plan balance stays and you keep paying your monthly contribution.</p>
+                            <p class="br-covered__sub">Plan: <?= $e($plan_name) ?> · Member <?= $e($member_name) ?>. What is left of your plan balance is waived and a new cycle starts at 0 months.</p>
                         </div>
                     </div>
                 <?php endif; ?>
@@ -80,6 +83,22 @@ $claimantRelationships = ['Beneficiary', 'Spouse', 'Child', 'Parent', 'Sibling',
             <section class="br-card" aria-labelledby="br-deceased-title">
                 <h2 id="br-deceased-title" class="br-card__title">About the deceased</h2>
                 <div class="br-grid">
+                    <?php if ($deceasedOptions !== null): ?>
+                    <div class="br-field br-span-2">
+                        <label for="deceased_choice">Who died? <span class="br-req">Required</span></label>
+                        <select id="deceased_choice" name="deceased_choice" class="br-input" aria-describedby="err-deceased_choice" required>
+                            <option value="">Select one</option>
+                            <?php foreach ($deceasedOptions as $opt): ?>
+                                <option value="<?= $e($opt['id']) ?>" data-kind="<?= $e($opt['kind']) ?>" data-rel="<?= $e($opt['relationship']) ?>" <?= $chosenDeceased === (string) $opt['id'] ? 'selected' : '' ?>><?= $e($opt['label']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <?php if (! $onBehalf): ?>
+                            <p class="br-hint">Pick the registered beneficiary who passed away. If the plan holder has passed away, a registered beneficiary or the emergency contact files the claim at the branch.</p>
+                        <?php endif; ?>
+                        <p class="br-error" id="err-deceased_choice" <?= $errorFor('deceased_choice') === '' ? 'hidden' : '' ?>><?= $e($errorFor('deceased_choice')) ?></p>
+                        <input type="hidden" id="deceased_name" name="deceased_name" value="<?= old('deceased_name') ?>">
+                    </div>
+                    <?php else: ?>
                     <div class="br-field br-span-2">
                         <label for="deceased_name">Full name <span class="br-req">Required</span></label>
                         <input id="deceased_name" name="deceased_name" class="br-input" type="text" autocomplete="off" value="<?= old('deceased_name') ?>" aria-describedby="err-deceased_name" required>
@@ -91,6 +110,7 @@ $claimantRelationships = ['Beneficiary', 'Spouse', 'Child', 'Parent', 'Sibling',
                             <span>The deceased is the plan holder<?= $member_name !== '' ? ' (' . $e($member_name) . ')' : '' ?></span>
                         </label>
                     </div>
+                    <?php endif; ?>
                     <div class="br-field">
                         <label for="deceased_date_of_death">Date of death</label>
                         <input id="deceased_date_of_death" name="deceased_date_of_death" class="br-input" type="date" max="<?= $today ?>" value="<?= old('deceased_date_of_death') ?>" aria-describedby="err-deceased_date_of_death">
@@ -122,11 +142,11 @@ $claimantRelationships = ['Beneficiary', 'Spouse', 'Child', 'Parent', 'Sibling',
                     <legend class="br-label">Claimant <span class="br-req">Required</span></legend>
                     <?php foreach ($claimantOptions as $opt): ?>
                         <label class="br-check">
-                            <input type="radio" name="claimant_choice" class="br-check__input claimant-choice" value="<?= $e($opt['id']) ?>" data-rel="<?= $e($opt['relationship']) ?>" <?= $chosen === (string) $opt['id'] ? 'checked' : '' ?> required>
+                            <input type="radio" name="claimant_choice" class="br-check__input claimant-choice" value="<?= $e($opt['id']) ?>" data-kind="<?= $e($opt['kind'] ?? '') ?>" data-rel="<?= $e($opt['relationship']) ?>" <?= $chosen === (string) $opt['id'] ? 'checked' : '' ?> required>
                             <span><?= $e($opt['label']) ?><?= $opt['relationship'] !== '' ? ' · ' . $e($opt['relationship']) : '' ?></span>
                         </label>
                     <?php endforeach; ?>
-                    <?php if (count($claimantOptions) < 2): ?><p class="br-muted">No beneficiary is registered on this plan yet, so only the plan holder can be the claimant.</p><?php endif; ?>
+                    <p class="br-muted" id="claimantRule">If the plan holder died, the claimant is a registered beneficiary or the emergency contact. If a beneficiary died, the claimant is the plan holder.</p>
                     <p class="br-error" id="err-claimant_choice" <?= $errorFor('claimant_choice') === '' ? 'hidden' : '' ?>><?= $e($errorFor('claimant_choice')) ?></p>
                 </fieldset>
                 <div class="br-field">
@@ -301,8 +321,10 @@ $claimantRelationships = ['Beneficiary', 'Spouse', 'Child', 'Parent', 'Sibling',
                     q.terms.forEach(function (t) { h += row('&nbsp;&nbsp;' + t.term + ' months', money(t.monthly) + ' a month'); });
                 }
             }
-            h += row('Plan balance (unchanged)', money(q.plan_balance));
+            h += (q.plan_waived > 0) ? row('Plan balance waived', '− ' + money(q.plan_waived), 'br-row--credit') : row('Plan balance (unchanged)', money(q.plan_balance));
             h += row('Total balance after approval', money(q.total_after));
+        } else if (q.plan_waived > 0) {
+            h += row('Plan balance waived', '− ' + money(q.plan_waived), 'br-row--credit');
         } else {
             h += row('Your plan balance stays', money(q.plan_balance));
         }
@@ -313,7 +335,9 @@ $claimantRelationships = ['Beneficiary', 'Spouse', 'Child', 'Parent', 'Sibling',
         } else if (q.added > 0) {
             amountNote.textContent = 'Added to your balance when your branch approves. The down payment is due within ' + q.down_days + ' days of approval, or the request is cancelled. Nothing is charged now.';
         } else {
-            amountNote.textContent = 'Nothing is added to your balance. You keep paying your plan contribution of ' + money(q.plan_monthly) + ' a month.';
+            amountNote.textContent = q.plan_waived > 0
+                ? 'Nothing is added to your balance. What is left of your plan (' + money(q.plan_waived) + ') is waived and a new cycle starts at 0 months.'
+                : 'Nothing is added to your balance. You keep paying your plan contribution of ' + money(q.plan_monthly) + ' a month.';
         }
     }
     renderAmount();
@@ -325,13 +349,15 @@ $claimantRelationships = ['Beneficiary', 'Spouse', 'Child', 'Parent', 'Sibling',
     var memberName = <?= json_encode((string) $member_name, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     var memberAddress = <?= json_encode((string) $member_address, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     var memberBox = document.getElementById('deceased_is_member');
-    memberBox.addEventListener('change', function () {
-        if (!memberBox.checked) { return; }
-        if (memberName) { document.getElementById('deceased_name').value = memberName; }
-        if (memberAddress) { document.getElementById('deceased_address').value = memberAddress; }
-        validateField('deceased_name');
-        validateField('deceased_address');
-    });
+    if (memberBox) {
+        memberBox.addEventListener('change', function () {
+            if (!memberBox.checked) { return; }
+            if (memberName) { document.getElementById('deceased_name').value = memberName; }
+            if (memberAddress) { document.getElementById('deceased_address').value = memberAddress; }
+            validateField('deceased_name');
+            validateField('deceased_address');
+        });
+    }
 
     var rules = {
         deceased_name: function (value) {
@@ -362,6 +388,30 @@ $claimantRelationships = ['Beneficiary', 'Spouse', 'Child', 'Parent', 'Sibling',
     var inputFor = {
         documents_beneficiary_id: 'doc_beneficiary_id'
     };
+
+    // "Who died?": the name comes from the plan's own records; the claimant choices follow who died.
+    var deceasedChoice = document.getElementById('deceased_choice');
+    if (deceasedChoice) {
+        rules.deceased_name = function () { return ''; };
+        rules.deceased_choice = function (value) { return value === '' ? 'Choose who died.' : ''; };
+        var applyDeceased = function () {
+            var opt = deceasedChoice.options[deceasedChoice.selectedIndex];
+            var kind = opt ? opt.getAttribute('data-kind') : '';
+            document.getElementById('deceased_name').value = opt && opt.value !== '' ? opt.text.replace(/\s*\([^)]*\)\s*$/, '') : '';
+            if (kind === 'holder' && memberAddress && !document.getElementById('deceased_address').value) { document.getElementById('deceased_address').value = memberAddress; }
+            document.querySelectorAll('.claimant-choice').forEach(function (r) {
+                var k = r.getAttribute('data-kind');
+                var ok = kind === '' || (kind === 'holder' ? k !== 'holder' : k === 'holder');
+                var label = r.closest('label');
+                if (label) { label.hidden = !ok; }
+                if (!ok) { r.checked = false; }
+                r.disabled = !ok;
+            });
+            setError('deceased_choice', '');
+        };
+        deceasedChoice.addEventListener('change', applyDeceased);
+        applyDeceased();
+    }
 
     function setError(name, message) {
         var errorEl = document.getElementById('err-' + name);

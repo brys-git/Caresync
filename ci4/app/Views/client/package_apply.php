@@ -14,7 +14,7 @@ $claimReference = $existing_claim ? 'CLM-' . str_pad((string) (int) $existing_cl
 <div class="br-page">
     <a class="br-back" href="<?= $isClaim ? base_url('client/membership') : base_url('client/service?tab=packages') ?>"><?= $isClaim ? '← Back to my plan' : '← Back to packages' ?></a>
     <header class="br-head">
-        <h1 class="br-title"><?= $isClaim ? 'Claim your casket' : 'Avail package' ?></h1>
+        <h1 class="br-title"><?= $isClaim ? 'Claim ' . $e($package['package_name'] ?? 'your package') : 'Avail package' ?></h1>
         <p class="br-sub">We're sorry for your loss. Fill in what you can — our staff will review your <?= $isClaim ? 'claim' : 'request' ?> and call you to arrange everything.</p>
     </header>
 
@@ -62,6 +62,7 @@ $claimReference = $existing_claim ? 'CLM-' . str_pad((string) (int) $existing_cl
             'package' => $package,
             'base_price' => $basePrice,
             'form_quote' => $form_quote,
+            'deceased_options' => $deceased_options ?? null,
             'attire_price' => (float) $attire_price,
             'plan_name' => (string) $plan_name,
             'member_name' => (string) $member_name,

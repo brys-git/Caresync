@@ -65,6 +65,11 @@ class ClientDetailController extends BaseController
             ? (string) $this->request->getGet('tab')
             : 'overview';
         $data['approval']      = $role === 2 ? $this->approval($data) : null;
+        $closure = new \App\Services\PlanClosureService();
+        $data['closed_info']   = $closure->closedInfo((int) $client['plan_holder_id']);
+        $data['close_plan']    = $role === 2 && \App\Services\PlanClosureService::ready() && (string) ($client['status'] ?? '') === 'active'
+            ? ['reasons' => \App\Services\PlanClosureService::REASONS, 'can_close' => $closure->canClose((int) $client['plan_holder_id'])]
+            : null;
         $data['role_id']       = $role;
 
         return view('client_detail/show', $data);

@@ -87,7 +87,7 @@
                                         </td>
                                         <td><?= esc((string) ($client['email'] ?? '-')) ?></td>
                                         <td><?= esc((string) ($client['contact_number'] ?? '-')) ?></td>
-                                        <td><?= cs_status((string) ($client['plan_holder_status'] ?? 'inactive')) ?></td>
+                                        <td><?= cs_status((string) ($client['plan_holder_status'] ?? 'inactive')) ?><?php $ci = in_array((string) ($client['plan_holder_status'] ?? ''), ['closed', 'deceased'], true) ? (new \App\Services\PlanClosureService())->closedInfo((int) $client['plan_holder_id']) : null; ?><?php if ($ci): ?><div class="cs-table__sub"><?= esc($ci['label']) ?><?= $ci['closed_at'] ? ' · ' . esc(date('M j, Y', strtotime((string) $ci['closed_at']))) : '' ?></div><?php endif; ?></td>
                                         <td class="cs-table__actions">
                                             <a
                                                 href="<?= base_url('staff/client/edit/' . $client['plan_holder_id']) ?>"

@@ -114,6 +114,13 @@ class CareSync extends BaseConfig
     /** Day of the next month by which a collector must have closed the month; after it a reminder is shown. */
     public int $monthCloseDueDay = 5;
 
+    /**
+     * After a Branch Admin closes a plan at the client's request: may the client still sign in? true = read-only
+     * (the dashboard says "Plan closed on <date>", the ledger and receipts can be downloaded, no payments and no
+     * requests). false = the login is switched off. (A plan holder who died is always switched off.)
+     */
+    public bool $closedAccountsCanLogin = true;
+
     /** Longest instalment term in months a Branch Admin may choose. */
     public int $availMaxTermMonths = 24;
 

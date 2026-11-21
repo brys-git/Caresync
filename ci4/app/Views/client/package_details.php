@@ -6,7 +6,10 @@ $state = (string) ($access['state'] ?? 'new');
 $canApply = (bool) ($can_apply ?? false);
 $isEntitlement = (bool) ($is_entitlement ?? false);
 $entitlement = $entitlement ?? null;
-$benefitCredit = (float) ($benefit_credit ?? 0);
+$planLabel = (string) ($plan_label ?? 'plan');
+$formQuote = is_array($form_quote ?? null) ? $form_quote : null;
+$quotePlain = $formQuote['plain'] ?? [];
+$packageName = (string) ($package['package_name'] ?? 'package');
 $attirePrice = (float) ($attire_price ?? 0);
 $basePrice = (float) ($package['base_price'] ?? 0);
 $eligibleToClaim = $isEntitlement && (bool) ($entitlement['eligible'] ?? false);
@@ -44,11 +47,11 @@ $eligibleToClaim = $isEntitlement && (bool) ($entitlement['eligible'] ?? false);
 
     <?php if ($isEntitlement): ?>
         <section class="cs-panel cs-panel--brass mb-3">
-            <div class="cs-panel__head"><h2 class="cs-panel__title">Your Damayan entitlement</h2></div>
+            <div class="cs-panel__head"><h2 class="cs-panel__title">Included in your <?= esc($planLabel) ?> plan</h2></div>
             <div class="cs-panel__body">
                 <?php if ($eligibleToClaim): ?>
                     <p class="mb-3"><?= cs_status('approved', 'Eligible to claim') ?><br>
-                        <span class="cs-muted small">You're eligible to claim this Regular Wood Casket at no cost.</span>
+                        <span class="cs-muted small">You're eligible to claim <?= esc($packageName) ?> at no cost.</span>
                     </p>
                 <?php else: ?>
                     <p class="mb-3"><?= cs_status('inactive', 'Not yet eligible') ?><br>
@@ -57,9 +60,9 @@ $eligibleToClaim = $isEntitlement && (bool) ($entitlement['eligible'] ?? false);
                 <?php endif; ?>
 
                 <?php if ($canApply && $eligibleToClaim): ?>
-                    <a class="btn btn-primary" href="<?= site_url('/client/apply-package/' . (int) ($package['package_id'] ?? 0)) ?>">Claim regular casket</a>
+                    <a class="btn btn-primary" href="<?= site_url('/client/apply-package/' . (int) ($package['package_id'] ?? 0)) ?>">Claim <?= esc($packageName) ?></a>
                 <?php elseif ($canApply): ?>
-                    <button type="button" class="btn btn-primary" disabled>Claim regular casket</button>
+                    <button type="button" class="btn btn-primary" disabled>Claim <?= esc($packageName) ?></button>
                 <?php else: ?>
                     <?= view('components/alert', ['type' => 'info', 'dismissible' => false, 'class' => 'mb-0', 'message' => (string) ($entitlement['locked_reason'] ?? 'You must register as an active Plan Holder to claim this entitlement.')]) ?>
                 <?php endif; ?>
@@ -69,13 +72,11 @@ $eligibleToClaim = $isEntitlement && (bool) ($entitlement['eligible'] ?? false);
         <section class="cs-panel mb-3">
             <div class="cs-panel__head"><h2 class="cs-panel__title">Available package</h2></div>
             <div class="cs-panel__body">
-                <?php if ($canApply && $benefitCredit > 0): ?>
-                    <div class="cs-routerow"><span>Package price</span><?= cs_money($basePrice) ?></div>
-                    <div class="cs-routerow cs-routerow--credit"><span><i class="ti ti-award me-1"></i>Damayan benefit credit</span><span>− <?= cs_money($benefitCredit) ?></span></div>
-                    <div class="cs-routerow cs-routerow--total"><span>Amount due</span><?= cs_money(max(0, $basePrice - $benefitCredit)) ?></div>
-                    <p class="cs-muted small mt-2 mb-3">As a Damayan Plan Holder, your remaining unpaid contribution is waived against this package - it is not added on top of the amount due above.</p>
+                <?php if ($canApply && $quotePlain !== []): ?>
+                    <?= view('partials/quote_summary', ['q' => $quotePlain]) ?>
                 <?php else: ?>
-                    <p class="cs-muted small mb-3">Full package price applies. Damayan Plan Holders in good standing receive a benefit credit equal to the price of their own plan toward this package.</p>
+                    <div class="cs-routerow"><span>Package price</span><span><?= cs_money($basePrice) ?></span></div>
+                    <p class="cs-muted small mt-2 mb-3">The exact amount for your plan - the down payment and the monthly instalments - is shown once you are eligible to request this package.</p>
                 <?php endif; ?>
 
                 <?php if ($canApply): ?>

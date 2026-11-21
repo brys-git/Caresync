@@ -270,8 +270,7 @@ class CollectionListController extends BaseController
             ->join('plan_holders ph', 'ph.plan_holder_id = pl.plan_holder_id', 'inner')
             ->join('users u', 'u.user_id = ph.user_id', 'inner')
             ->where('pl.plan_id', $planId)
-            ->where('pl.status', 'active')
-            ->where('ph.status', 'active')
+            ->groupStart()->groupStart()->where('pl.status', 'active')->where('ph.status', 'active')->groupEnd()->orWhere('pl.status', 'closed_deceased_owing')->groupEnd()
             ->get()
             ->getRowArray();
 
@@ -506,7 +505,7 @@ class CollectionListController extends BaseController
             FROM plans pl
             INNER JOIN plan_holders ph ON ph.plan_holder_id = pl.plan_holder_id
             INNER JOIN users u ON u.user_id = ph.user_id
-            WHERE pl.status = 'active' AND ph.status = 'active' AND ph.branch_id = ?";
+            WHERE ((pl.status = 'active' AND ph.status = 'active') OR pl.status = 'closed_deceased_owing') AND ph.branch_id = ?";
         $params = [$filters['as_of'], $branchId];
 
         if ($limitToBarangays !== null) {

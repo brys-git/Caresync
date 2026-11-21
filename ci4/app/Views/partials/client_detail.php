@@ -18,7 +18,10 @@ $editUrl = site_url($urls['edit'] . $phId);
 
 $statusKey   = $summary['status'] ?? (string) ($client['status'] ?? 'inactive');
 $statusLabel = $summary['status_label'] ?? ucfirst((string) ($client['status'] ?? 'inactive'));
-if ($statusKey === 'grace' && $summary['grace_days_left'] !== null) {
+if (! empty($closed_info)) {
+    $statusKey = 'inactive';
+    $statusLabel = (string) $closed_info['label'];
+} elseif ($statusKey === 'grace' && $summary['grace_days_left'] !== null) {
     $statusLabel .= ' · ' . (int) $summary['grace_days_left'] . ' days left to pay';
 }
 
@@ -76,7 +79,24 @@ $qs = static function (array $over) use ($filters): string {
     </div>
 </header>
 
-<?= view('partials/plan_ledger_panel', ['ledger' => $summary['ledger'] ?? null, 'reinstate_url' => $urls['reinstate']]) ?>
+<?php if (! empty($closed_info)): ?>
+    <div class="alert alert-secondary mb-3" role="status">
+        <strong><?= $e($closed_info['label']) ?></strong><?= ! empty($closed_info['closed_at']) ? ' · ' . $e(date('F j, Y', strtotime((string) $closed_info['closed_at']))) : '' ?>
+        <?php if (! empty($closed_info['reason'])): ?><br><span class="small"><?= $e($closed_info['reason']) ?></span><?php endif; ?>
+        <br><span class="small">No more dues. Every record, the ledger, receipts and the ID Control No. are kept.</span>
+    </div>
+<?php else: ?>
+    <?= view('partials/plan_ledger_panel', ['ledger' => $summary['ledger'] ?? null, 'reinstate_url' => $urls['reinstate']]) ?>
+<?php endif; ?>
+<?php if (! empty($close_plan)): ?>
+    <section class="cs-panel mb-3" id="close-plan">
+        <div class="cs-panel__head"><h2 class="cs-panel__title">Close plan</h2></div>
+        <div class="cs-panel__body">
+            <p class="cs-muted small">Closing stops every due: the client leaves the collection lists, route sheets and overdue reports. Every record is kept.</p>
+            <?= view('partials/close_plan_form', ['plan_holder_id' => $phId, 'reasons' => $close_plan['reasons'], 'can_close' => $close_plan['can_close']]) ?>
+        </div>
+    </section>
+<?php endif; ?>
 
 <?= view('partials/two_part_amounts', ['plan_id' => (int) ($summary['plan_id'] ?? 0), 'tpa_title' => 'Plan and package amounts']) ?>
 

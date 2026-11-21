@@ -53,7 +53,7 @@
                                     <div class="cs-table__sub"><?= esc((string) ($holder['email'] ?? '-')) ?></div>
                                 </td>
                                 <td><?= esc((string) ($holder['unique_identifier'] ?: 'Not assigned')) ?></td>
-                                <td><?= cs_status($holderStatus) ?></td>
+                                <td><?= cs_status($holderStatus) ?><?php $ci = in_array($holderStatus, ['closed', 'deceased'], true) ? (new \App\Services\PlanClosureService())->closedInfo((int) $holder['plan_holder_id']) : null; ?><?php if ($ci): ?><div class="cs-table__sub"><?= esc($ci['label']) ?><?= $ci['closed_at'] ? ' · ' . esc(date('M j, Y', strtotime((string) $ci['closed_at']))) : '' ?></div><?php endif; ?></td>
                                 <td><?= cs_status($paymentStatus, $paymentLabel) ?></td>
                                 <td class="cs-table__actions">
                                     <a href="<?= base_url('branch-admin/client-management/view/' . (int) $holder['plan_holder_id']) ?>" class="btn btn-sm btn-outline-primary me-1">View Details</a>

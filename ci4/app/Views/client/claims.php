@@ -45,6 +45,9 @@ $tone = static function (string $label): string {
                 <span class="badge <?= $tone($label) ?>"><?= esc($label) ?></span>
             </div>
             <div class="cs-panel__body">
+                <?php if (! empty($r['waived']) && $r['waived'] > 0): ?>
+                    <p class="mb-2"><i class="ti ti-scissors" aria-hidden="true"></i> <strong>Waived on claim - <?= cs_money($r['waived']) ?></strong> <span class="cs-muted">(the remaining plan balance; a new cycle started)</span></p>
+                <?php endif; ?>
                 <?php if (! empty($r['filed_on_behalf'])): ?>
                     <p class="mb-2">Filed by <strong><?= esc($person($r['filer_first'] ?? '', $r['filer_last'] ?? '')) ?></strong> (<?= esc((string) ($r['filer_role'] ?: 'branch')) ?>) for <strong><?= esc((string) $r['claimant_name']) ?></strong> (<?= esc((string) $r['claimant_relationship']) ?>)</p>
                 <?php endif; ?>

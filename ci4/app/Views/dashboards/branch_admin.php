@@ -32,6 +32,7 @@ $sv = $ca['service'] ?? ['overdue' => 0, 'problems' => 0, 'ready' => 0];
 $attention[] = ['branch-admin/service-package/ongoing', 'ti-alarm', 'Service tasks that are overdue', (int) $sv['overdue']];
 $attention[] = ['branch-admin/service-package/ongoing', 'ti-alert-circle', 'Problems reported on service tasks', (int) $sv['problems']];
 $attention[] = ['branch-admin/service-package/ongoing', 'ti-circle-check', 'Services ready to complete', (int) $sv['ready']];
+$attention[] = ['branch-admin/closure-requests', 'ti-door-exit', 'Clients asking to close their plan', (new \App\Services\PlanClosureService())->pendingCount((int) session('branch_id'))];
 foreach (($ca['unclosed'] ?? []) as $u) {
     $attention[] = ['branch-admin/reports/monthly-summary', 'ti-calendar-x', 'Collector ' . $u['collector_name'] . ' hasn\'t closed ' . $u['month_label'], 1];
 }

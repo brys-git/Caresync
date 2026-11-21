@@ -83,6 +83,12 @@ $kv = static fn (string $label, string $value): string =>
     <table class="rpt-table" style="margin-top:12px;"><tbody>
         <tr class="rpt-total"><td style="width:50%"><strong>Total paid (plan + package)</strong></td><td class="num"><strong><?= esc(cs_peso($grand_paid)) ?></strong></td></tr>
         <tr class="rpt-total"><td><strong>Total balance (plan + package)</strong></td><td class="num"><strong><?= esc(cs_peso($grand_balance)) ?></strong></td></tr>
+        <?php foreach (($waivers ?? []) as $w): ?>
+            <tr><td>Waived on claim (cycle <?= (int) $w['cycle_number'] ?>, <?= esc(date('M j, Y', strtotime((string) $w['waived_at']))) ?>)</td><td class="num"><?= esc(cs_peso((float) $w['amount'])) ?></td></tr>
+        <?php endforeach; ?>
+        <?php if (! empty($closed_info)): ?>
+            <tr><td colspan="2"><?= esc((string) $closed_info['label']) ?><?= ! empty($closed_info['closed_at']) ? ' on ' . esc(date('M j, Y', strtotime((string) $closed_info['closed_at']))) : '' ?></td></tr>
+        <?php endif; ?>
     </tbody></table>
 <?php endif; ?>
 

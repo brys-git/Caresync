@@ -288,13 +288,8 @@ class ClaimService
             return;
         }
 
-        $package = db_connect()->table('packages')
-            ->select('is_damayan_entitlement')
-            ->where('package_id', $packageId)
-            ->get()
-            ->getRowArray();
-
-        if (! $package || (int) ($package['is_damayan_entitlement'] ?? 0) !== 1) {
+        // Only a claim of the plan's own package (not an avail of another one) can progress the cycle.
+        if (! (new ClaimAvailService())->isClaimPackage($planHolderId, $packageId)) {
             return;
         }
 

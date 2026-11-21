@@ -79,7 +79,18 @@ class ClientDashboardController extends BaseController
         // The same figures the staff client page shows (one source: ClientPlanSummary).
         $summary = ! empty($latestPlan['plan_id']) ? (new \App\Services\ClientPlanSummary())->forPlan((int) $latestPlan['plan_id']) : null;
 
+        $closure = new \App\Services\PlanClosureService();
+        $holderIdForClosure = (int) ($planHolder['plan_holder_id'] ?? 0);
+        $closedOn = null;
+        if ($holderIdForClosure > 0 && ($access['state'] ?? '') === 'closed') {
+            $closedRow = db_connect()->table('plans')->select('closed_at')->where('plan_holder_id', $holderIdForClosure)->where('closed_at IS NOT NULL', null, false)->orderBy('plan_id', 'DESC')->get(1)->getRowArray();
+            $closedOn = $closedRow['closed_at'] ?? null;
+        }
+
         return view('client/dashboard', [
+            'claim_notice' => $holderIdForClosure > 0 ? $closure->beneficiaryClaimNotice($holderIdForClosure) : null,
+            'closure_request' => $holderIdForClosure > 0 ? $closure->pendingFor($holderIdForClosure) : null,
+            'closed_on' => $closedOn,
             'standing' => $standing,
             'summary' => $summary,
             'role_layout' => 'layouts/plan_holder',
@@ -89,7 +100,7 @@ class ClientDashboardController extends BaseController
             'plan_holder' => $planHolder,
             'plan' => $latestPlan,
             'access' => $access,
-            'program' => MembershipService::getProgramInfo(),
+            'program' => ! empty($latestPlan['plan_id']) ? MembershipService::programForPlan($latestPlan) : MembershipService::getProgramInfo(),
             'branch_name' => $branchName,
             'recent_payments' => $recentPayments,
             'membership_since' => $membershipSince,
@@ -128,7 +139,7 @@ class ClientDashboardController extends BaseController
             'access' => $access,
             'plan_holder' => $planHolder,
             'plan' => $plan,
-            'program' => MembershipService::getProgramInfo(),
+            'program' => $plan ? MembershipService::programForPlan($plan) : MembershipService::getProgramInfo(),
             'beneficiaries' => $beneficiaries,
         ]);
     }

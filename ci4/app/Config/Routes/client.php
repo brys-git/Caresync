@@ -72,6 +72,10 @@ $routes->group('client', ['filter' => 'auth'], static function (RouteCollection 
 
     // (legacy aliases removed) Use canonical apply-service/apply-package routes instead
 
+    // Request to close my plan (the Branch Admin decides)
+    $routes->post('plan-closure/request', 'Client\ClientPlanClosureController::request', ['filter' => 'role:4']);
+    $routes->post('plan-closure/cancel/(:num)', 'Client\ClientPlanClosureController::cancel/$1', ['filter' => 'role:4']);
+
     // Notifications
     $routes->get('notification', 'Notifications::index', ['filter' => 'role:4']);
     $routes->post('notification/read', 'Notifications::markRead', ['filter' => 'role:4']);

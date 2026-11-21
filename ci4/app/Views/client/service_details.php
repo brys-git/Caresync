@@ -48,7 +48,7 @@ $routes = $routes ?? [];
                 </div>
             </div>
             <div class="cs-panel__foot">
-                <span class="cs-muted small">The route price above is the full transport service fee. Your Damayan casket entitlement is a separate benefit and does not reduce this fee.</span>
+                <span class="cs-muted small">The route price above is the full transport service fee. The package included in your plan is a separate benefit and does not reduce this fee.</span>
             </div>
         </section>
     <?php else: ?>

@@ -2,7 +2,7 @@
 
 <?= $this->section('content') ?>
 <?php
-$program = $program ?? ['name' => 'Damayan Burial Program'];
+$program = $program ?? ['name' => 'Your plan'];
 $monthlyFee = (float) ($monthly_fee ?? 240.0);
 $totalContribution = (float) ($total_contribution ?? \App\Services\PlanLedgerService::targetFor([]));
 $entitlementPackage = $entitlement_package ?? null;
@@ -12,7 +12,7 @@ $minMonths = (int) ceil($monthlyFee > 0 ? 480 / $monthlyFee : 2);
 ?>
 <div class="cs-narrow">
     <section class="cs-panel mb-3">
-        <div class="cs-panel__head"><h2 class="cs-panel__title"><?= esc((string) ($program['name'] ?? 'Damayan Burial Program')) ?></h2></div>
+        <div class="cs-panel__head"><h2 class="cs-panel__title"><?= esc((string) ($program['name'] ?? 'Your plan')) ?></h2></div>
         <div class="cs-panel__body">
             <?= view('components/stat_rail', ['stats' => [
                 ['label' => 'Monthly contribution', 'value' => $monthlyFee, 'money' => true],
@@ -29,10 +29,10 @@ $minMonths = (int) ceil($monthlyFee > 0 ? 480 / $monthlyFee : 2);
 
     <?php if ($entitlementPackage): ?>
         <section class="cs-panel cs-panel--brass mb-3">
-            <div class="cs-panel__head"><h2 class="cs-panel__title"><i class="ti ti-award me-1"></i>Your Damayan entitlement</h2></div>
+            <div class="cs-panel__head"><h2 class="cs-panel__title"><i class="ti ti-award me-1"></i>The package included in your plan</h2></div>
             <div class="cs-panel__body">
                 <p class="mb-3">
-                    Every Damayan Plan Holder is entitled to claim a
+                    Every <?= esc((string) ($program['name'] ?? 'plan')) ?> plan holder is entitled to claim a
                     <strong><?= esc((string) $entitlementPackage['package_name']) ?></strong>
                     (worth <?= cs_money($entitlementPackage['base_price']) ?>) at
                     <strong>no additional cost</strong> once your <?= cs_money($totalContribution) ?> contribution
@@ -50,9 +50,9 @@ $minMonths = (int) ceil($monthlyFee > 0 ? 480 / $monthlyFee : 2);
             <div class="cs-panel__head"><h2 class="cs-panel__title">Other casket options</h2></div>
             <div class="cs-panel__body">
                 <p class="cs-muted small mb-2">
-                    Prefer a different casket? These are also available - as an active Damayan Plan Holder in good
-                    standing, a <?= cs_money($totalContribution) ?> benefit credit is applied toward any of
-                    them, waiving the remaining unpaid contribution rather than adding it on top.
+                    Prefer a different casket? These are also available as an avail: once you are an active plan holder
+                    with at least 2 paid months, you request one and your branch quotes the down payment and the
+                    monthly instalments before anything is charged.
                 </p>
                 <?php foreach ($otherPackages as $pkg): ?>
                     <div class="cs-routerow">

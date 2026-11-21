@@ -15,6 +15,7 @@ $routes->group('branch-admin', ['filter' => 'auth'], static function (RouteColle
 
     // Registration & Approvals
     $routes->get('registration-approvals', 'ClientPortal::registrationApprovals', ['filter' => 'role:2']);
+    $routes->get('registration-approvals/proof/(:num)', 'ClientPortal::initialProof/$1', ['filter' => 'role:2']);
 
     // Existing member records (past plan, payments, history) - role:2
     $routes->get('existing-records', 'LegacyRecords::index', ['filter' => 'role:2']);
@@ -56,6 +57,9 @@ $routes->group('branch-admin', ['filter' => 'auth'], static function (RouteColle
     $routes->get('client-management/edit/(:num)', 'BranchAdmin\ClientController::edit/$1', ['filter' => 'role:2']);
     $routes->post('client-management/update/(:num)', 'BranchAdmin\ClientController::update/$1', ['filter' => 'role:2']);
     $routes->post('client-management/approve/(:num)', 'BranchAdmin\ClientController::approve/$1', ['filter' => 'role:2']);
+    // Close a plan (own branch only) and the list of clients who asked for it
+    $routes->post('client-management/close/(:num)', 'BranchAdmin\PlanClosureController::close/$1', ['filter' => 'role:2']);
+    $routes->get('closure-requests', 'BranchAdmin\PlanClosureController::index', ['filter' => 'role:2']);
 
     // Client (Alternative routes)
     $routes->get('client', 'BranchAdmin\ClientController::index', ['filter' => 'role:2']);

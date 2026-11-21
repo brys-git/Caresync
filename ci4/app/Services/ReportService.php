@@ -315,7 +315,63 @@ class ReportService
         }
         unset($r);
 
+        // The plan balances waived on claims (and avails) belong in the same report: one row each.
+        if (in_array($status, ['', 'waived'], true)) {
+            foreach ($this->waiverRows($filters) as $w) {
+                $rows[] = [
+                    'avail_id' => 0, 'client_name' => trim((string) $w['first_name'] . ' ' . (string) $w['last_name']), 'unique_identifier' => $w['unique_identifier'], 'branch_name' => $w['branch_name'],
+                    'kind_label' => 'Plan balance waived (' . ($w['reason'] === 'claim' ? 'claim' : 'avail') . ')', 'what' => $w['package_name'], 'package_price' => 0.0, 'down_payment_amount' => 0.0,
+                    'down_label' => '-', 'waived_by_name' => trim((string) ($w['ap_first'] ?? '') . ' ' . (string) ($w['ap_last'] ?? '')), 'waived_at' => $w['waived_at'],
+                    'waiver_reason' => 'Waived on claim - ' . cs_peso((float) $w['amount']), 'term_label' => '-', 'term_months' => 0, 'monthly_instalment' => 0.0, 'paid_so_far' => 0.0,
+                    'balance' => 0.0, 'status' => 'waived', 'status_label' => 'Waived', 'approved_at' => $w['waived_at'], 'down_payment_status' => 'waived', 'down_payment_due_by' => null,
+                    'waiver_amount' => (float) $w['amount'],
+                ];
+            }
+            usort($rows, static fn (array $a, array $b): int => strcmp((string) ($b['approved_at'] ?? ''), (string) ($a['approved_at'] ?? '')));
+        }
+
         return $rows;
+    }
+
+    /**
+     * Plan balances waived on approved claims / avails (plan_waivers), for the reports.
+     *
+     * @return list<array<string,mixed>>
+     */
+    public function waiverRows(array $filters): array
+    {
+        $db = db_connect();
+        if (! PlanClosureService::ready()) {
+            return [];
+        }
+        $b = $db->table('plan_waivers w')
+            ->select('w.*, ph.unique_identifier, u.first_name, u.last_name, br.branch_name, pk.package_name, ap.first_name AS ap_first, ap.last_name AS ap_last', false)
+            ->join('plans pl', 'pl.plan_id = w.plan_id', 'inner')
+            ->join('plan_holders ph', 'ph.plan_holder_id = pl.plan_holder_id', 'inner')
+            ->join('users u', 'u.user_id = ph.user_id', 'inner')
+            ->join('branches br', 'br.branch_id = ph.branch_id', 'left')
+            ->join('service_applications sa', 'sa.application_id = w.application_id', 'left')
+            ->join('packages pk', 'pk.package_id = sa.package_id', 'left')
+            ->join('users ap', 'ap.user_id = w.approved_by', 'left');
+        if ((int) ($filters['branch_id'] ?? 0) > 0) {
+            $b->where('ph.branch_id', (int) $filters['branch_id']);
+        }
+        if (($filters['date_from'] ?? '') !== '') {
+            $b->where('DATE(w.waived_at) >=', (string) $filters['date_from']);
+        }
+        if (($filters['date_to'] ?? '') !== '') {
+            $b->where('DATE(w.waived_at) <=', (string) $filters['date_to']);
+        }
+        if ((string) ($filters['search'] ?? '') !== '') {
+            cs_apply_search($b, (string) $filters['search'], ['u.first_name', 'u.last_name', 'ph.unique_identifier', 'pk.package_name']);
+        }
+
+        return $b->orderBy('w.waived_at', 'DESC')->get()->getResultArray();
+    }
+
+    public function waiversTotal(array $filters): float
+    {
+        return round(array_sum(array_map(static fn (array $w): float => (float) $w['amount'], $this->waiverRows($filters))), 2);
     }
 
     /** Cleans the Avails and waivers filters (status, approval dates, search). */
@@ -408,6 +464,8 @@ class ReportService
         if ($branchId > 0) {
             $builder->where('ph.branch_id', $branchId);
         }
+        // a closed plan (plan holder deceased / closed on request) owes nothing and is not an overdue account
+        $builder->whereNotIn('pl.status', ['closed_deceased', 'closed_by_request']);
 
         cs_apply_search($builder, (string) ($filters['search'] ?? ''), ['u.first_name', 'u.last_name', 'u.contact_number', 'ph.unique_identifier']);
 
@@ -572,10 +630,14 @@ class ReportService
             unset($payment);
         }
 
+        $waivers = $plan ? (new PlanClosureService())->waivers((int) $plan['plan_id']) : [];
+
         return [
             'holder' => $holder,
             'plan' => $plan,
             'payments' => $payments,
+            'waivers' => $waivers,
+            'total_waived' => round(array_sum(array_map(static fn (array $w): float => (float) $w['amount'], $waivers)), 2),
         ];
     }
 

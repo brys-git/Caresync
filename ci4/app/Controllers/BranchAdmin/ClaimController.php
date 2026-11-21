@@ -74,7 +74,7 @@ class ClaimController extends BaseController
     {
         $this->guard();
         $holder = $this->holderOr404($planHolderId);
-        $package = $this->claims->entitlementPackage();
+        $package = $this->claims->entitlementPackage($planHolderId);
 
         if ($package === null) {
             return redirect()->to('/' . $this->requestsPath())->with('error', 'The casket package is not set up yet.');
@@ -91,14 +91,8 @@ class ClaimController extends BaseController
         $firstBeneficiary = $db->table('beneficiaries')->where('plan_holder_id', $planHolderId)->orderBy('is_primary', 'DESC')->orderBy('beneficiary_id', 'ASC')->get()->getRowArray();
 
         $memberName = trim(implode(' ', array_filter([$holder['first_name'], $holder['middle_name'], $holder['last_name']])));
-        $claimantOptions = [['id' => 'holder', 'label' => $memberName . ' (the plan holder)', 'relationship' => 'Plan holder']];
-        foreach ($db->table('beneficiaries')->where('plan_holder_id', $planHolderId)->orderBy('is_primary', 'DESC')->orderBy('beneficiary_id', 'ASC')->get()->getResultArray() as $b) {
-            $claimantOptions[] = [
-                'id' => (string) (int) $b['beneficiary_id'],
-                'label' => trim(implode(' ', array_filter([$b['first_name'], $b['middle_name'], $b['last_name'], $b['name_extension']]))) . ' (registered beneficiary)',
-                'relationship' => (string) ($b['relationship'] ?? ''),
-            ];
-        }
+        $claimantOptions = $this->claims->claimantOptions($planHolderId);
+        $deceasedOptions = \App\Services\PlanClosureService::ready() ? $this->claims->deceasedOptions($planHolderId, true) : null;
 
         $membershipService = new \App\Services\MembershipService();
 
@@ -111,6 +105,7 @@ class ClaimController extends BaseController
             'eligibility' => ['eligible' => $el['allowed'], 'reason' => $el['message']],
             'form_quote' => $formQuote,
             'claimant_options' => $claimantOptions,
+            'deceased_options' => $deceasedOptions,
             'existing_claim' => $existing,
             'attire_price' => ClaimSubmissionService::BURIAL_ATTIRE_PRICE,
             'plan_name' => $membershipService->resolvePackageName((int) ($plan['package_id'] ?? 0)),
@@ -133,7 +128,7 @@ class ClaimController extends BaseController
     {
         $this->guard();
         $holder = $this->holderOr404($planHolderId);
-        $package = $this->claims->entitlementPackage();
+        $package = $this->claims->entitlementPackage($planHolderId);
 
         if ($package === null) {
             return redirect()->to('/' . $this->requestsPath())->with('error', 'The casket package is not set up yet.');

@@ -94,6 +94,9 @@
                     </table>
                 </div>
             <?php endif; ?>
+            <?php foreach (($ledger['waivers'] ?? []) as $w): ?>
+                <p class="mb-0 mt-2"><i class="ti ti-scissors" aria-hidden="true"></i> <strong>Waived on claim - <?= cs_money($w['amount']) ?></strong> <span class="cs-muted">(cycle <?= (int) $w['cycle_number'] ?>, <?= cs_date($w['waived_at']) ?>)</span></p>
+            <?php endforeach; ?>
         </div>
     </section>
 <?php endif; ?>

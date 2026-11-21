@@ -668,7 +668,7 @@ class ClientRegistrationService
             // Post-registration activities (outside transaction)
             $this->notificationService->notify(
                 $userId,
-                'Welcome to the Damayan Burial Program! Please proceed to complete your initial payment to activate your membership.',
+                'Welcome! Please proceed to complete your initial payment to activate your membership.',
                 'registration_complete'
             );
 
